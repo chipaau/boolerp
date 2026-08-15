@@ -76,6 +76,26 @@ services:
       timeout: 3s
       retries: 10
 
+  # one-shot: applies embedded Goose migrations as the OWNER, then exits. api waits on it.
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/go.Dockerfile
+    working_dir: /w/apps/api
+    command: go run ./cmd/migrate up
+    environment:
+      MIGRATE_DSN: ${MIGRATE_DSN:-postgres://goerp:goerp@postgres:5432/goerp?sslmode=disable}
+    volumes:
+      - .:/w
+      - gocache:/root/.cache/go-build
+      - gomod:/go/pkg/mod
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+    restart: "no"
+
   api:
     build:
       context: .
@@ -84,7 +104,8 @@ services:
     command: go run ./cmd/api
     environment:
       APP_ENV: ${APP_ENV:-dev}
-      APP_DSN: ${APP_DSN:-postgres://goerp:goerp@postgres:5432/goerp?sslmode=disable}
+      # API connects as the NON-OWNER goerp_app role (created by the migrate step).
+      APP_DSN: ${APP_DSN:-postgres://goerp_app:goerp_app@postgres:5432/goerp?sslmode=disable}
       APP_PORT: "${APP_PORT:-8080}"
       APP_REDIS_URL: ${APP_REDIS_URL:-redis://redis:6379}
     volumes:
@@ -96,6 +117,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - proxy
       - internal
