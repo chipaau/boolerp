@@ -1,0 +1,10 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm 11 blocks dependency build scripts by default; allowBuilds opts specific native deps in.
+allowBuilds:
+  esbuild: true
+  lightningcss: true
+  "@tailwindcss/oxide": true
+  unrs-resolver: true

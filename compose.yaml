@@ -1,0 +1,133 @@
+name: go-erp
+
+# Local dev stack. Attaches to the shared external `proxy` network (Traefik) at *.bool.test.
+# JS services use the go-erp Node 24 + pnpm 11 dev image (docker/node.Dockerfile).
+# Grows service-by-service (postgres, kratos, cerbos, api, admin, website) as we build them.
+
+x-node: &node
+  build:
+    context: ./docker
+    dockerfile: node.Dockerfile
+  working_dir: /w
+  volumes:
+    - .:/w
+
+services:
+  app:
+    <<: *node
+    command: pnpm --filter app dev
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      # tenant subdomains → the app SPA (low priority; fixed hosts like admin.* win at higher priority)
+      - "traefik.http.routers.goerp-app.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`)"
+      - traefik.http.routers.goerp-app.entrypoints=web
+      - traefik.http.routers.goerp-app.priority=1
+      - traefik.http.routers.goerp-app.service=goerp-app
+      - traefik.http.services.goerp-app.loadbalancer.server.port=3000
+
+  admin:
+    <<: *node
+    command: pnpm --filter admin dev
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      # fixed operator host (priority 10 beats the tenant HostRegexp)
+      - "traefik.http.routers.goerp-admin.rule=Host(`admin.bool.test`)"
+      - traefik.http.routers.goerp-admin.entrypoints=web
+      - traefik.http.routers.goerp-admin.priority=10
+      - traefik.http.routers.goerp-admin.service=goerp-admin
+      - traefik.http.services.goerp-admin.loadbalancer.server.port=3000
+
+  website:
+    <<: *node
+    command: pnpm --filter website dev
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - "traefik.http.routers.goerp-website.rule=Host(`website.bool.test`) || Host(`bool.test`)"
+      - traefik.http.routers.goerp-website.entrypoints=web
+      - traefik.http.routers.goerp-website.priority=10
+      - traefik.http.routers.goerp-website.service=goerp-website
+      - traefik.http.services.goerp-website.loadbalancer.server.port=3000
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-goerp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-goerp}
+      POSTGRES_DB: ${POSTGRES_DB:-goerp}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goerp -d goerp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/go.Dockerfile
+    working_dir: /w/apps/api
+    command: go run ./cmd/api
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_DSN: ${APP_DSN:-postgres://goerp:goerp@postgres:5432/goerp?sslmode=disable}
+      APP_PORT: "${APP_PORT:-8080}"
+      APP_REDIS_URL: ${APP_REDIS_URL:-redis://redis:6379}
+    volumes:
+      - .:/w
+      - gocache:/root/.cache/go-build
+      - gomod:/go/pkg/mod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      # same-origin /api/* on every subdomain → the Go API (priority beats the SPA routers)
+      - "traefik.http.routers.goerp-api.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && PathPrefix(`/api`)"
+      - traefik.http.routers.goerp-api.entrypoints=web
+      - traefik.http.routers.goerp-api.priority=20
+      - traefik.http.routers.goerp-api.service=goerp-api
+      - traefik.http.services.goerp-api.loadbalancer.server.port=8080
+
+  redis:
+    image: redis:8-alpine
+    # cache + rate-limit backend; ephemeral (no persistence). Add a volume if used for a job queue.
+    command: redis-server --save "" --appendonly no
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+networks:
+  proxy:
+    external: true
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  gocache:
+  gomod:

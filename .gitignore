@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+.output/
+.vinxi/
+.next/
+.turbo/
+.tanstack/
+tmp/
+
+# go
+apps/api/bin/
+apps/api/internal/web/dist/
+
+# env & editor
+.env
+.env.local
+*.log
+.DS_Store
