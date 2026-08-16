@@ -24,7 +24,8 @@
   not "backend"). Scope each commit tightly.
 - **Always confirm the commit with the user before running `git commit`** — present the message(s) and
   what each will include, and wait for a clear yes. Never auto-commit.
-- Commit messages end with the `Co-Authored-By: Claude Opus 4.8` trailer. Branch/PR only when asked.
+- **Never add AI attribution to commit messages** — no `Co-Authored-By: Claude …` trailer, no
+  "Generated with" lines, nothing. Commit messages read as the author's own. Branch/PR only when asked.
 
 ## Workflow: Idea → Expansion → Review → Implementation
 
