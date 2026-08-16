@@ -13,7 +13,6 @@ import (
 	"os"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" database/sql driver
-	"github.com/pressly/goose/v3"
 
 	"github.com/boolmv/goerp/internal/db"
 )
@@ -52,9 +51,5 @@ func run(command, dsn string, args []string) error {
 	}
 	defer func() { _ = sqlDB.Close() }()
 
-	goose.SetBaseFS(db.Migrations)
-	if err := goose.SetDialect("postgres"); err != nil {
-		return err
-	}
-	return goose.RunContext(context.Background(), command, sqlDB, "migrations", args...)
+	return db.Migrate(context.Background(), sqlDB, command, args...)
 }

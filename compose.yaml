@@ -132,6 +132,29 @@ services:
       - traefik.http.routers.goerp-api.service=goerp-api
       - traefik.http.services.goerp-api.loadbalancer.server.port=8080
 
+  # Integration tests (Testcontainers). NOT started by `up` (test profile) — run with:
+  #   docker compose run --rm test
+  # Spawns a sibling Postgres via the mounted docker socket; HOST_OVERRIDE lets the in-container
+  # test process reach the sibling's published port on OrbStack. Ryuk off — the harness self-cleans.
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: docker/go.Dockerfile
+    working_dir: /w/apps/api
+    command: go test -tags=integration ./...
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+      TESTCONTAINERS_RYUK_DISABLED: "true"
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+    volumes:
+      - .:/w
+      - gocache:/root/.cache/go-build
+      - gomod:/go/pkg/mod
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - internal
+
   redis:
     image: redis:8-alpine
     # cache + rate-limit backend; ephemeral (no persistence). Add a volume if used for a job queue.
