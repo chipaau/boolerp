@@ -1,0 +1,25 @@
+version: "2"
+sql:
+  - engine: postgresql
+    # Catalog is built from the STRUCTURAL migrations only. The role/grants (00002) and seed
+    # DML (00007) carry no table catalog and would only risk confusing the parser, so they're
+    # excluded. Add new table migrations here as they land.
+    schema:
+      - internal/db/migrations/00001_extensions.sql
+      - internal/db/migrations/00003_reference.sql
+      - internal/db/migrations/00004_classification.sql
+      - internal/db/migrations/00005_identity.sql
+      - internal/db/migrations/00006_tenancy.sql
+    queries: internal/db/query
+    gen:
+      go:
+        package: sqlc
+        out: internal/db/sqlc
+        sql_package: pgx/v5
+        emit_interface: true        # Querier interface — mock/test seam
+        emit_empty_slices: true     # :many returns []T{}, not nil
+        emit_json_tags: true
+        overrides:
+          # ltree isn't a type sqlc knows; the app treats the materialised path as an opaque string.
+          - db_type: ltree
+            go_type: string
