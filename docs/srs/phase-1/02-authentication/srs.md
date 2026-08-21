@@ -1,6 +1,6 @@
 # 02 — Authentication & Sessions — SRS
 
-**Status:** 🟡 In Review &nbsp;·&nbsp; Engine: **Ory Kratos** (authN + sessions). Chi validates via
+**Status:** 🟢 Confirmed (2026-08-16) &nbsp;·&nbsp; Engine: **Ory Kratos** (authN + sessions). Chi validates via
 `GET /sessions/whoami`. **Custom UI** in `apps/app` calling Kratos self-service **browser flows**.
 
 ## Confirmed decisions (2026-08-13)

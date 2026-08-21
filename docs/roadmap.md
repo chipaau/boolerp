@@ -8,7 +8,7 @@ Phase 1 is `Confirmed`.
 | # | Component | Purpose | Status |
 |---|---|---|---|
 | 01 | Platform foundation | Chi skeleton, config, RLS `WithTenant`, `/bootstrap`, seeding, **docker/compose unit**, **self-host first-run** | 🟡 In Review |
-| 02 | Authentication & sessions | Ory Kratos: password + MFA + passkeys + OIDC, `whoami` validation, session revocation; custom UI in apps/app | 🟡 In Review |
+| 02 | Authentication & sessions | Ory Kratos: password + MFA + passkeys + OIDC, `whoami` validation, session revocation; custom UI in apps/app | 🟢 Confirmed |
 | 03 | Identity & membership | Global `users` (= Kratos subject), `tenant_users`, invites, owner, seat tracking (enforce P2) | 🟡 In Review |
 | 04 | Tenant management | Lifecycle, provisioning engine, hierarchy (ltree/`tree_key`), **visibility: auto-subordinate + mutual-affiliated (hierarchy-bounded)**, suspension | 🟡 In Review |
 | 05 | Authorization (Cerbos) | Cerbos PDP integration + role/capability/user-role **administration**; internal/operator-tenant model; four-eyes + support-access grants | 🟡 In Review |

@@ -1,6 +1,6 @@
 # 02 — Authentication & Sessions — Use Cases
 
-**Status:** 🟡 In Review. Actors: **Person** (prospective/active user), **App** (`apps/app` SPA),
+**Status:** 🟢 Confirmed (2026-08-16). Actors: **Person** (prospective/active user), **App** (`apps/app` SPA),
 **Kratos** (identity/session authority), **Chi** (stateless API), **Operator** (internal-tenant staff).
 Convention: the App renders custom screens and drives Kratos **browser self-service flows**; Chi only
 validates sessions (`whoami`) and never sees credentials.

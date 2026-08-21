@@ -1,6 +1,6 @@
 # 02 — Authentication & Sessions — Confirmation Checklist
 
-**Status:** 🟡 In Review &nbsp;·&nbsp; Engine: Ory Kratos (authN + sessions) · Chi validates via `whoami` · `srs.md` + `use-cases.md` drafted
+**Status:** 🟢 Confirmed (2026-08-16) &nbsp;·&nbsp; Engine: Ory Kratos (authN + sessions) · Chi validates via `whoami` · authoritative use-case inventory is `use-cases.md` (**UC-AUTH-01 … UC-AUTH-14**, incl. OIDC + operator impersonation)
 
 ## Scope
 - **In:** login, session validation, recovery (password reset), email verification, MFA/TOTP,
@@ -46,4 +46,4 @@
 - No app `sessions` table (Kratos is the session authority).
 
 ## Sign-off
-- [ ] Scope confirmed &nbsp; [ ] Open questions resolved &nbsp; [ ] Use-case inventory complete &nbsp; [ ] Data model confirmed
+- [x] Scope confirmed &nbsp; [x] Open questions resolved &nbsp; [x] Use-case inventory complete &nbsp; [x] Data model confirmed (no app tables; `users` mirror only, Kratos owns sessions/credentials)
