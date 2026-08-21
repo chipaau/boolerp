@@ -1,0 +1,10 @@
+# Cerbos PDP — dev config. Policies are files on disk (git-managed), hot-reloaded. Internal-only
+# (never proxied to the internet). Full role/capability policy authoring lands in component 05.
+server:
+  httpListenAddr: ":3592"
+  grpcListenAddr: ":3593"
+storage:
+  driver: "disk"
+  disk:
+    directory: /policies
+    watchForChanges: true

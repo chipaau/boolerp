@@ -108,6 +108,10 @@ services:
       APP_DSN: ${APP_DSN:-postgres://goerp_app:goerp_app@postgres:5432/goerp?sslmode=disable}
       APP_PORT: "${APP_PORT:-8080}"
       APP_REDIS_URL: ${APP_REDIS_URL:-redis://redis:6379}
+      # Kratos public = whoami; admin = provisioning/revocation (internal-only). Cerbos = authz PDP.
+      APP_KRATOS_PUBLIC_URL: ${APP_KRATOS_PUBLIC_URL:-http://kratos:4433}
+      APP_KRATOS_ADMIN_URL: ${APP_KRATOS_ADMIN_URL:-http://kratos:4434}
+      APP_CERBOS_HTTP_URL: ${APP_CERBOS_HTTP_URL:-http://cerbos:3592}
     volumes:
       - .:/w
       - gocache:/root/.cache/go-build
@@ -119,6 +123,10 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      kratos:
+        condition: service_started
+      cerbos:
+        condition: service_healthy
     networks:
       - proxy
       - internal
@@ -166,6 +174,95 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # dev mail catcher — Kratos courier delivers activation/recovery/verification mail here.
+  # UI at http://mail.bool.test ; SMTP on :1025 (internal).
+  mailpit:
+    image: axllent/mailpit:latest
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - "traefik.http.routers.goerp-mail.rule=Host(`mail.bool.test`)"
+      - traefik.http.routers.goerp-mail.entrypoints=web
+      - traefik.http.routers.goerp-mail.priority=10
+      - traefik.http.routers.goerp-mail.service=goerp-mail
+      - traefik.http.services.goerp-mail.loadbalancer.server.port=8025
+
+  # Cerbos PDP — authz decisions (internal-only, never proxied). Policies mounted from docker/cerbos.
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:0.44.0
+    command: ["server", "--config=/config/config.yaml"]
+    volumes:
+      - ./docker/cerbos/config:/config:ro
+      - ./docker/cerbos/policies:/policies:ro
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "/cerbos", "healthcheck", "--config=/config/config.yaml"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # one-shot: create the `kratos` database (separate from goerp) if absent. Kratos owns its schema.
+  kratos-initdb:
+    image: postgres:18
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-goerp}
+    command: >
+      sh -c "psql -h postgres -U ${POSTGRES_USER:-goerp} -d ${POSTGRES_DB:-goerp} -tc \"SELECT 1 FROM pg_database WHERE datname='kratos'\" | grep -q 1 || psql -h postgres -U ${POSTGRES_USER:-goerp} -d ${POSTGRES_DB:-goerp} -c 'CREATE DATABASE kratos'"
+    networks:
+      - internal
+    restart: "no"
+
+  # one-shot: apply Kratos' own SQL migrations to the kratos DB.
+  kratos-migrate:
+    image: oryd/kratos:v1.3.1
+    depends_on:
+      kratos-initdb:
+        condition: service_completed_successfully
+    environment:
+      DSN: postgres://goerp:goerp@postgres:5432/kratos?sslmode=disable
+    volumes:
+      - ./docker/kratos:/etc/config/kratos:ro
+    command: ["migrate", "sql", "-e", "--yes"]
+    networks:
+      - internal
+    restart: "no"
+
+  # Ory Kratos — identity + sessions. Public served same-origin under /auth on tenant subdomains
+  # (Traefik strips /auth). Admin (4434) stays internal-only.
+  kratos:
+    image: oryd/kratos:v1.3.1
+    depends_on:
+      kratos-migrate:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+    environment:
+      DSN: postgres://goerp:goerp@postgres:5432/kratos?sslmode=disable
+    volumes:
+      - ./docker/kratos:/etc/config/kratos:ro
+    command: ["serve", "-c", "/etc/config/kratos/kratos.yml", "--dev", "--watch-courier"]
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      # same-origin /auth/* on tenant subdomains → Kratos public (strip /auth before forwarding)
+      - "traefik.http.routers.goerp-kratos.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && PathPrefix(`/auth`)"
+      - traefik.http.routers.goerp-kratos.entrypoints=web
+      - traefik.http.routers.goerp-kratos.priority=20
+      - "traefik.http.routers.goerp-kratos.middlewares=goerp-kratos-strip"
+      - "traefik.http.middlewares.goerp-kratos-strip.stripprefix.prefixes=/auth"
+      - traefik.http.routers.goerp-kratos.service=goerp-kratos
+      - traefik.http.services.goerp-kratos.loadbalancer.server.port=4433
 
 networks:
   proxy:

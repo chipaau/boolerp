@@ -1,0 +1,14 @@
+apiVersion: api.cerbos.dev/v1
+description: >
+  Scaffold policy so the PDP loads a valid ruleset: a person may read their own profile.
+  Real tenant/role/capability policies are authored in component 05 (Authorization).
+resourcePolicy:
+  version: default
+  resource: profile
+  importDerivedRoles:
+    - common
+  rules:
+    - actions: ["read"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - self

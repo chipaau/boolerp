@@ -1,0 +1,11 @@
+apiVersion: api.cerbos.dev/v1
+description: Common derived roles shared across resources. Expanded in component 05.
+derivedRoles:
+  name: common
+  definitions:
+    - name: self
+      parentRoles:
+        - user
+      condition:
+        match:
+          expr: request.resource.attr.owner_id == request.principal.id
