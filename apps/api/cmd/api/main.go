@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/boolmv/goerp/internal/auth"
 	"github.com/boolmv/goerp/internal/config"
+	"github.com/boolmv/goerp/internal/httpapi"
 )
 
 func main() {
@@ -40,30 +40,13 @@ func run() error {
 	}
 	defer pool.Close()
 
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Recoverer)
-
-	// Traefik routes <tenant>.bool.test/api/* here (no prefix strip), so routes live under /api.
-	r.Route("/api", func(r chi.Router) {
-		// liveness — process is up
-		r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(w, http.StatusOK, `{"status":"ok"}`)
-		})
-		// readiness — dependencies reachable (DB for now; Kratos/Cerbos later)
-		r.Get("/readyz", func(w http.ResponseWriter, req *http.Request) {
-			c, cancel := context.WithTimeout(req.Context(), 2*time.Second)
-			defer cancel()
-			if err := pool.Ping(c); err != nil {
-				writeJSON(w, http.StatusServiceUnavailable, `{"status":"db unreachable"}`)
-				return
-			}
-			writeJSON(w, http.StatusOK, `{"status":"ready"}`)
-		})
+	handler := httpapi.New(httpapi.Deps{
+		Pool:   pool,
+		Kratos: auth.NewKratos(cfg.KratosPublicURL, cfg.KratosAdminURL),
+		Cerbos: auth.NewCerbos(cfg.CerbosHTTPURL),
 	})
 
-	srv := &http.Server{Addr: ":" + cfg.Port, Handler: r, ReadHeaderTimeout: 5 * time.Second}
+	srv := &http.Server{Addr: ":" + cfg.Port, Handler: handler, ReadHeaderTimeout: 5 * time.Second}
 
 	go func() {
 		slog.Info("api listening", "port", cfg.Port, "env", cfg.Env)
@@ -80,10 +63,4 @@ func run() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	return srv.Shutdown(shutdownCtx)
-}
-
-func writeJSON(w http.ResponseWriter, status int, body string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_, _ = w.Write([]byte(body))
 }

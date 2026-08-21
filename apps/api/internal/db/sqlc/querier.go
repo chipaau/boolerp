@@ -6,12 +6,15 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
 	GetCountry(ctx context.Context, code string) (Country, error)
 	GetCurrency(ctx context.Context, code string) (Currency, error)
 	GetGlobalPartyType(ctx context.Context, code string) (PartyType, error)
+	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	ListCountries(ctx context.Context) ([]Country, error)
 	// Reference-data reads (global tables — no tenant scope). Starter query set to wire sqlc.
 	ListCurrencies(ctx context.Context) ([]Currency, error)
@@ -22,6 +25,10 @@ type Querier interface {
 	// Classification reads (global tables). party_types drives tenant legal-form / identity-doc
 	// validation; institution_types selects the provisioning template.
 	ListPartyTypes(ctx context.Context) ([]PartyType, error)
+	// Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
+	// JIT-upsert the Kratos identity into platform.users on whoami (self-healing mirror).
+	// Credentials never touch this table — Kratos owns them.
+	UpsertUser(ctx context.Context, arg UpsertUserParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)

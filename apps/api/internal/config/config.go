@@ -22,6 +22,12 @@ type Config struct {
 	DSN string `env:"APP_DSN" envDefault:"postgres://goerp_app:goerp_app@postgres:5432/goerp?sslmode=disable"`
 	// RedisURL is the cache + rate-limit backend.
 	RedisURL string `env:"APP_REDIS_URL" envDefault:"redis://redis:6379"`
+	// KratosPublicURL is the Kratos public API (session validation via whoami).
+	KratosPublicURL string `env:"APP_KRATOS_PUBLIC_URL" envDefault:"http://kratos:4433"`
+	// KratosAdminURL is the Kratos admin API (provisioning + revocation; internal-only).
+	KratosAdminURL string `env:"APP_KRATOS_ADMIN_URL" envDefault:"http://kratos:4434"`
+	// CerbosHTTPURL is the Cerbos PDP HTTP API (authorization decisions).
+	CerbosHTTPURL string `env:"APP_CERBOS_HTTP_URL" envDefault:"http://cerbos:3592"`
 	// ShutdownTimeout bounds graceful shutdown.
 	ShutdownTimeout time.Duration `env:"APP_SHUTDOWN_TIMEOUT" envDefault:"10s"`
 }
