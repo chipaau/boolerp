@@ -26,6 +26,8 @@ selfservice:
       enabled: true
       config:
         min_password_length: 8
+        # DEV ONLY: allow trivial/breached passwords like "password". Production MUST remove this.
+        haveibeenpwned_enabled: false
     totp:
       enabled: true
       config:
