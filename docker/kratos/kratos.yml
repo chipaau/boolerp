@@ -19,8 +19,8 @@ serve:
 selfservice:
   default_browser_return_url: http://malecouncil.bool.test/
   allowed_return_urls:
-    - http://malecouncil.bool.test/
-    - http://admin.bool.test/
+    # dev: any subdomain (tenant apps + admin). Same-origin flows return to where they started.
+    - http://*.bool.test/
   methods:
     password:
       enabled: true

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { AuthShell } from '@/components/auth-shell'
+import { AuthShell } from '@workspace/auth'
 
 // Kratos redirects self-service errors here with ?id=; we fetch the error detail to display.
 export const Route = createFileRoute('/error')({

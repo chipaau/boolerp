@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { AuthShell } from '@/components/auth-shell'
-import { KratosForm } from '@/components/kratos-form'
-import { useKratosFlow } from '@/lib/use-flow'
+import { AuthShell } from '@workspace/auth'
+import { KratosForm } from '@workspace/auth'
+import { useKratosFlow } from '@workspace/auth'
 
 // Settings set-password. Reached after recovery to finish activation (privileged session), and later
 // for change-password (UC-AUTH-01 / UC-AUTH-13). Only the password group is shown in this slice.

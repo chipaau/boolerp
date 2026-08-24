@@ -3,7 +3,7 @@ import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
 import { Label } from '@workspace/ui/components/label'
 import { Alert, AlertDescription } from '@workspace/ui/components/alert'
-import { initialValues, nodeLabel, type Flow, type UiNode } from '@/lib/kratos'
+import { initialValues, nodeLabel, type Flow, type UiNode } from './kratos'
 
 // KratosForm renders a flow's ui.nodes generically (inputs, hidden csrf, submit buttons) and posts
 // the collected values to the flow's action. Kratos drives which fields appear, so the same

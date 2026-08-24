@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { AuthShell } from '@/components/auth-shell'
-import { KratosForm } from '@/components/kratos-form'
-import { useKratosFlow } from '@/lib/use-flow'
+import { AuthShell } from '@workspace/auth'
+import { KratosForm } from '@workspace/auth'
+import { useKratosFlow } from '@workspace/auth'
 
 // Recovery doubles as activation: the owner clicks the emailed link (or requests a code), enters it,
 // and Kratos hands off to /settings to set the first password (UC-AUTH-01 / UC-AUTH-06).

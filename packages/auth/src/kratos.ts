@@ -101,7 +101,14 @@ export async function getFlow(kind: FlowKind, id: string): Promise<Flow> {
 
 /** submit posts a flow to its ui.action. 200 = success, 400 = re-render with messages, 422 = redirect. */
 export async function submit(flow: Flow, body: Record<string, string>): Promise<SubmitResult> {
-  const res = await fetch(flow.ui.action, {
+  // Kratos builds ui.action from its single configured base_url (one tenant host in dev). We serve
+  // /auth same-origin on every subdomain via the proxy, so force the POST to the CURRENT origin —
+  // this makes flows work on admin.bool.test and any tenant subdomain, not only the base_url host.
+  const action = new URL(flow.ui.action, window.location.origin)
+  action.protocol = window.location.protocol
+  action.host = window.location.host
+
+  const res = await fetch(action.toString(), {
     method: (flow.ui.method || 'POST').toUpperCase(),
     headers: { ...JSON_HEADERS, 'Content-Type': 'application/json' },
     credentials: 'include',

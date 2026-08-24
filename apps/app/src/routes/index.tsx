@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button } from '@workspace/ui/components/button'
-import { createLogoutFlow, whoami } from '@/lib/kratos'
+import { createLogoutFlow, whoami } from '@workspace/auth'
 
 // Protected home. The session guard sends unauthenticated visitors to /login, preserving the deep
 // link via return_to (UC-AUTH-08 / UC-AUTH-12). A full bootstrap (tenant + memberships) lands with 03/04.
