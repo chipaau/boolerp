@@ -1,0 +1,66 @@
+/* Per-app accent colours. The active app's `theme-<slug>` class is set on <html> (see
+   use-app-theme). Each block overrides only the primary-family tokens, so the rest of the
+   light/dark theme is inherited from @workspace/ui. Imported after globals.css so these win. */
+
+.theme-staff-hub {
+  --primary: oklch(0.62 0.11 195); /* teal */
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.62 0.11 195);
+  --sidebar-primary: oklch(0.62 0.11 195);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.62 0.11 195);
+}
+
+.theme-control-centre {
+  --primary: oklch(0.5 0.19 264); /* indigo */
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.5 0.19 264);
+  --sidebar-primary: oklch(0.5 0.19 264);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.5 0.19 264);
+}
+
+.theme-hrms {
+  --primary: oklch(0.6 0.15 150); /* green */
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.6 0.15 150);
+  --sidebar-primary: oklch(0.6 0.15 150);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.6 0.15 150);
+}
+
+.theme-tasks {
+  --primary: oklch(0.66 0.15 55); /* amber */
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.66 0.15 55);
+  --sidebar-primary: oklch(0.66 0.15 55);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.66 0.15 55);
+}
+
+.theme-calendar {
+  --primary: oklch(0.56 0.2 295); /* violet */
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.56 0.2 295);
+  --sidebar-primary: oklch(0.56 0.2 295);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.56 0.2 295);
+}
+
+.theme-finance {
+  --primary: oklch(0.62 0.14 85); /* gold */
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.62 0.14 85);
+  --sidebar-primary: oklch(0.62 0.14 85);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.62 0.14 85);
+}
+
+.theme-inventory {
+  --primary: oklch(0.58 0.14 235); /* sky */
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.58 0.14 235);
+  --sidebar-primary: oklch(0.58 0.14 235);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.58 0.14 235);
+}

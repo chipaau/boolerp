@@ -1,4 +1,6 @@
 @import "@workspace/ui/globals.css";
+/* per-app accent colours (theme-<slug>), applied on <html> for the active app */
+@import "./styles/app-themes.css";
 
 /* scan this app's own source for Tailwind classes (the shared UI package is scanned by its own globals.css) */
 @source "../";

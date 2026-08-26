@@ -29,7 +29,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link to="/$app" params={{ app: app.slug }}>
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted/50">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
                   <Icon className="size-4" />
                 </div>
                 <div className="flex min-w-0 flex-col leading-tight">
@@ -53,7 +53,12 @@ export function AppSidebar({ app }: { app: AppDef }) {
                   const ItemIcon = item.icon
                   return (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild isActive={pathname === to} tooltip={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === to}
+                        tooltip={item.title}
+                        className="data-[active=true]:text-primary data-[active=true]:[&_svg]:text-primary"
+                      >
                         {item.slug ? (
                           <Link
                             to="/$app/$section"

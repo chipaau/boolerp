@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { PageHeader, PlaceholderContent } from '@/components/layout/page'
-import { getApp } from '@/lib/apps'
+import { findMenuItem, getApp } from '@/lib/apps'
+import { ProtoPage } from '@/proto/proto-page'
 
 export const Route = createFileRoute('/_app/$app/$section')({
   component: AppSection,
@@ -9,12 +9,6 @@ export const Route = createFileRoute('/_app/$app/$section')({
 function AppSection() {
   const { app, section } = Route.useParams()
   const cfg = getApp(app)!
-  const item = cfg.menu.flatMap((s) => s.items).find((i) => i.slug === section)
-  const title = item?.title ?? section
-  return (
-    <>
-      <PageHeader title={title} description={cfg.name} />
-      <PlaceholderContent label={title} />
-    </>
-  )
+  const item = findMenuItem(cfg, section) ?? { title: section, slug: section, variant: 'table' as const }
+  return <ProtoPage app={cfg} item={item} />
 }

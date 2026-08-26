@@ -1,13 +1,6 @@
 import type { ReactNode } from 'react'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@workspace/ui/components/card'
-import { Skeleton } from '@workspace/ui/components/skeleton'
 
+// Shared page-header primitive used by both proto and (later) real pages.
 export function PageHeader({
   title,
   description,
@@ -24,30 +17,6 @@ export function PageHeader({
         {description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions}
-    </div>
-  )
-}
-
-// Placeholder body for the shell/navigation slice — real module screens land with their components.
-export function PlaceholderContent({ label }: { label: string }) {
-  return (
-    <div className="p-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <Card key={i}>
-            <CardHeader>
-              <CardTitle className="text-base">Metric {i}</CardTitle>
-              <CardDescription>{label}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-24 w-full" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <div className="mt-4 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-        {label} — coming soon.
-      </div>
     </div>
   )
 }
