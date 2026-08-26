@@ -161,7 +161,7 @@ export const APPS: AppDef[] = [
   },
 ]
 
-export const DEFAULT_APP = 'control-centre'
+export const DEFAULT_APP = 'staff-hub'
 
 export function getApp(slug: string): AppDef | undefined {
   return APPS.find((a) => a.slug === slug)
