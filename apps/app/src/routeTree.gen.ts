@@ -10,15 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as ErrorRouteImport } from './routes/error'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RecoveryRouteImport } from './routes/recovery'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as AppAppRouteImport } from './routes/_app/$app'
+import { Route as AppAppIndexRouteImport } from './routes/_app/$app/index'
+import { Route as AppAppSectionRouteImport } from './routes/_app/$app/$section'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ErrorRoute = ErrorRouteImport.update({
@@ -46,6 +54,21 @@ const VerifyRoute = VerifyRouteImport.update({
   path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppAppRoute = AppAppRouteImport.update({
+  id: '/$app',
+  path: '/$app',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppIndexRoute = AppAppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAppRoute,
+} as any)
+const AppAppSectionRoute = AppAppSectionRouteImport.update({
+  id: '/$section',
+  path: '/$section',
+  getParentRoute: () => AppAppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +77,9 @@ export interface FileRoutesByFullPath {
   '/recovery': typeof RecoveryRoute
   '/settings': typeof SettingsRoute
   '/verify': typeof VerifyRoute
+  '/$app': typeof AppAppRouteWithChildren
+  '/$app/$section': typeof AppAppSectionRoute
+  '/$app/': typeof AppAppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,33 +88,61 @@ export interface FileRoutesByTo {
   '/recovery': typeof RecoveryRoute
   '/settings': typeof SettingsRoute
   '/verify': typeof VerifyRoute
+  '/$app/$section': typeof AppAppSectionRoute
+  '/$app': typeof AppAppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
   '/error': typeof ErrorRoute
   '/login': typeof LoginRoute
   '/recovery': typeof RecoveryRoute
   '/settings': typeof SettingsRoute
   '/verify': typeof VerifyRoute
+  '/_app/$app': typeof AppAppRouteWithChildren
+  '/_app/$app/$section': typeof AppAppSectionRoute
+  '/_app/$app/': typeof AppAppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/error' | '/login' | '/recovery' | '/settings' | '/verify'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/error' | '/login' | '/recovery' | '/settings' | '/verify'
-  id:
-    | '__root__'
+  fullPaths:
     | '/'
     | '/error'
     | '/login'
     | '/recovery'
     | '/settings'
     | '/verify'
+    | '/$app'
+    | '/$app/$section'
+    | '/$app/'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/error'
+    | '/login'
+    | '/recovery'
+    | '/settings'
+    | '/verify'
+    | '/$app/$section'
+    | '/$app'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/error'
+    | '/login'
+    | '/recovery'
+    | '/settings'
+    | '/verify'
+    | '/_app/$app'
+    | '/_app/$app/$section'
+    | '/_app/$app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
   ErrorRoute: typeof ErrorRoute
   LoginRoute: typeof LoginRoute
   RecoveryRoute: typeof RecoveryRoute
@@ -103,6 +157,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/error': {
@@ -140,11 +201,56 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/$app': {
+      id: '/_app/$app'
+      path: '/$app'
+      fullPath: '/$app'
+      preLoaderRoute: typeof AppAppRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/$app/': {
+      id: '/_app/$app/'
+      path: '/'
+      fullPath: '/$app/'
+      preLoaderRoute: typeof AppAppIndexRouteImport
+      parentRoute: typeof AppAppRoute
+    }
+    '/_app/$app/$section': {
+      id: '/_app/$app/$section'
+      path: '/$section'
+      fullPath: '/$app/$section'
+      preLoaderRoute: typeof AppAppSectionRouteImport
+      parentRoute: typeof AppAppRoute
+    }
   }
 }
 
+interface AppAppRouteChildren {
+  AppAppSectionRoute: typeof AppAppSectionRoute
+  AppAppIndexRoute: typeof AppAppIndexRoute
+}
+
+const AppAppRouteChildren: AppAppRouteChildren = {
+  AppAppSectionRoute: AppAppSectionRoute,
+  AppAppIndexRoute: AppAppIndexRoute,
+}
+
+const AppAppRouteWithChildren =
+  AppAppRoute._addFileChildren(AppAppRouteChildren)
+
+interface AppRouteChildren {
+  AppAppRoute: typeof AppAppRouteWithChildren
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAppRoute: AppAppRouteWithChildren,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
   ErrorRoute: ErrorRoute,
   LoginRoute: LoginRoute,
   RecoveryRoute: RecoveryRoute,
