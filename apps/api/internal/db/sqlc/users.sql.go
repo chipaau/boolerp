@@ -11,6 +11,45 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (id, email, name, name_dv, phone)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, email, name, name_dv, phone, status, last_login_at, created_at, updated_at
+`
+
+type CreateUserParams struct {
+	ID     pgtype.UUID `json:"id"`
+	Email  string      `json:"email"`
+	Name   string      `json:"name"`
+	NameDv pgtype.Text `json:"name_dv"`
+	Phone  pgtype.Text `json:"phone"`
+}
+
+// Provisioning-created user (owner). Distinct from UpsertUser (JIT whoami mirror): no
+// last_login_at — the user hasn't signed in yet.
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.ID,
+		arg.Email,
+		arg.Name,
+		arg.NameDv,
+		arg.Phone,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.NameDv,
+		&i.Phone,
+		&i.Status,
+		&i.LastLoginAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT id, email, name, name_dv, phone, status, last_login_at, created_at, updated_at FROM users WHERE id = $1
 `

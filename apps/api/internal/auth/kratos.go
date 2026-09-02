@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -79,4 +80,49 @@ func (k *Kratos) Whoami(ctx context.Context, cookie string) (*KratosSession, err
 // HealthReady pings the Kratos public readiness endpoint (for /readyz).
 func (k *Kratos) HealthReady(ctx context.Context) error {
 	return getOK(ctx, k.hc, k.publicURL+"/health/ready")
+}
+
+// CreateIdentityWithPassword creates a Kratos identity with an initial password credential set
+// directly via the admin API, bypassing the normal recovery-email onboarding flow. Dev/provisioning
+// tooling only (see cmd/provision-dev) — real onboarding follows the documented recovery-link flow
+// (see auth.md).
+func (k *Kratos) CreateIdentityWithPassword(ctx context.Context, email, name, password string) (string, error) {
+	body, err := json.Marshal(map[string]any{
+		"schema_id": "default",
+		"traits":    map[string]string{"email": email, "name": name},
+		"credentials": map[string]any{
+			"password": map[string]any{
+				"config": map[string]string{"password": password},
+			},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("auth: marshal identity: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, k.adminURL+"/admin/identities", bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := k.hc.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("auth: create identity request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusCreated {
+		var errBody bytes.Buffer
+		_, _ = errBody.ReadFrom(resp.Body)
+		return "", fmt.Errorf("auth: create identity: status %d: %s", resp.StatusCode, errBody.String())
+	}
+
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
+		return "", fmt.Errorf("auth: decode created identity: %w", err)
+	}
+	return created.ID, nil
 }
