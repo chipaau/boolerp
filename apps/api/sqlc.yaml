@@ -10,6 +10,7 @@ sql:
       - internal/db/migrations/00004_classification.sql
       - internal/db/migrations/00005_identity.sql
       - internal/db/migrations/00006_tenancy.sql
+      - internal/db/migrations/00008_authorization.sql
     queries: internal/db/query
     gen:
       go:

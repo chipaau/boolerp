@@ -8,6 +8,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AccessGrant struct {
+	ID           pgtype.UUID        `json:"id"`
+	TenantID     pgtype.UUID        `json:"tenant_id"`
+	TargetUserID pgtype.UUID        `json:"target_user_id"`
+	Reason       string             `json:"reason"`
+	Status       string             `json:"status"`
+	ProposedBy   pgtype.UUID        `json:"proposed_by"`
+	ApprovedBy   pgtype.UUID        `json:"approved_by"`
+	ApprovedAt   pgtype.Timestamptz `json:"approved_at"`
+	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
+	RevokedAt    pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Country struct {
 	Code          string             `json:"code"`
 	Name          string             `json:"name"`
@@ -85,6 +100,36 @@ type PartyType struct {
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
+type Role struct {
+	ID        pgtype.UUID        `json:"id"`
+	TenantID  pgtype.UUID        `json:"tenant_id"`
+	Code      string             `json:"code"`
+	Name      string             `json:"name"`
+	NameDv    pgtype.Text        `json:"name_dv"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type RoleCapability struct {
+	ID         pgtype.UUID        `json:"id"`
+	RoleID     pgtype.UUID        `json:"role_id"`
+	Capability string             `json:"capability"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type RoleChangeProposal struct {
+	ID         pgtype.UUID        `json:"id"`
+	Payload    []byte             `json:"payload"`
+	Reason     string             `json:"reason"`
+	Status     string             `json:"status"`
+	ProposedBy pgtype.UUID        `json:"proposed_by"`
+	ApprovedBy pgtype.UUID        `json:"approved_by"`
+	ApprovedAt pgtype.Timestamptz `json:"approved_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Tenant struct {
 	ID                pgtype.UUID        `json:"id"`
 	Slug              string             `json:"slug"`
@@ -156,4 +201,13 @@ type UserEfaasIdentity struct {
 	LastSyncedAt     pgtype.Timestamptz `json:"last_synced_at"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+type UserRole struct {
+	ID           pgtype.UUID        `json:"id"`
+	TenantID     pgtype.UUID        `json:"tenant_id"`
+	TenantUserID pgtype.UUID        `json:"tenant_user_id"`
+	RoleID       pgtype.UUID        `json:"role_id"`
+	AssignedBy   pgtype.UUID        `json:"assigned_by"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
