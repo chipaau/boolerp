@@ -6,21 +6,21 @@ import { cn } from '@workspace/ui/lib/utils'
 
 /**
  * The "Calendar time" icon from the design export (packages/assets/icons/calendar-time.svg),
- * inlined so its fill can follow hover/theme: a 17px squircle with the ink outline at 67% and a
- * small check inside.
+ * inlined so its fill can follow hover/theme: a squircle with the ink outline at 67% and two
+ * clock hands. `size` is the rendered box; the drawing sits on a 20px grid.
  */
-export function MeetingMarker({ size = 17, className }: { size?: number; className?: string }) {
+export function MeetingMarker({ size = 20, className }: { size?: number; className?: string }) {
   return (
     <svg
       aria-hidden="true"
       width={size}
       height={size}
-      viewBox="0 0 17 17"
+      viewBox="0 0 20 20"
       fill="none"
       className={cn('shrink-0 text-marker-meeting transition-colors duration-instant ease-hexa', className)}
     >
       <path
-        d="M0.5 8.41667C0.5 4.68472 0.5 2.81874 1.65937 1.65937C2.81874 0.5 4.68472 0.5 8.41667 0.5C12.1486 0.5 14.0146 0.5 15.174 1.65937C16.3333 2.81874 16.3333 4.68472 16.3333 8.41667C16.3333 12.1486 16.3333 14.0146 15.174 15.174C14.0146 16.3333 12.1486 16.3333 8.41667 16.3333C4.68472 16.3333 2.81874 16.3333 1.65937 15.174C0.5 14.0146 0.5 12.1486 0.5 8.41667Z"
+        d="M2.08301 9.99992C2.08301 6.26797 2.08301 4.40199 3.24237 3.24262C4.40175 2.08325 6.26772 2.08325 9.99968 2.08325C13.7316 2.08325 15.5976 2.08325 16.757 3.24262C17.9163 4.40199 17.9163 6.26797 17.9163 9.99992C17.9163 13.7318 17.9163 15.5978 16.757 16.7573C15.5976 17.9166 13.7316 17.9166 9.99968 17.9166C6.26773 17.9166 4.40175 17.9166 3.24237 16.7573C2.08301 15.5978 2.08301 13.7318 2.08301 9.99992Z"
         fill="currentColor"
         stroke="var(--marker-outline)"
         strokeOpacity="0.67"
@@ -28,10 +28,9 @@ export function MeetingMarker({ size = 17, className }: { size?: number; classNa
         strokeLinejoin="round"
       />
       <path
-        d="M5.6 8.3l2 2 3.6-3.8"
+        d="M7.5 7.49996L10.8334 10.833M13.3333 6.66663L9.16667 10.8333"
         stroke="var(--marker-outline)"
-        strokeOpacity="0.85"
-        strokeWidth="1.3"
+        strokeWidth="1.1"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
