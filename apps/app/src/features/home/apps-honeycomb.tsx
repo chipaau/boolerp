@@ -45,10 +45,9 @@ const DECOR: (HexCell & { opacity: number; angle: number })[] = [
   { col: 2, row: 0, opacity: 0.3, angle: 210 },
   { col: 2, row: 1, opacity: 0.3, angle: 210 },
   { col: 0, row: 2, opacity: 0.6, angle: 150 },
-  { col: 2, row: 2, opacity: 0.95, angle: 220 },
+  { col: 2, row: 2, opacity: 0.95, angle: 265 }, // darkest on the side that faces Asset
   { col: -1, row: 3, opacity: 0.5, angle: 140 },
   { col: 2, row: 3, opacity: 0.4, angle: 210 },
-  { col: 2, row: 4, opacity: 0.7, angle: 220 },
   { col: 0, row: 5, opacity: 0.45, angle: 150 },
   { col: 1, row: 5, opacity: 0.65, angle: 200 },
 ]
@@ -65,8 +64,13 @@ function itemTop(cell: HexCell) {
  * tiles run a longer line that passes under the neighbour and re-emerges on its far side, while
  * left-column tiles use a short one. Timing is identical for every tile.
  */
+// How far each leader reaches, in tile widths, beyond the column pitch a right-column line must
+// cross. Lower tiles get a little more so their names clear the rows above.
+const LEADER_REACH: Record<string, number> = { notes: 0.8, directory: 0.75, procurement: 0.75 }
+
 function Leader({ app, cell }: { app: AppDef; cell: HexCell }) {
-  const length = cell.col === 1 ? 'calc(var(--hc-x) + var(--hc-w) * 0.45)' : 'calc(var(--hc-w) * 0.45)'
+  const reach = LEADER_REACH[app.slug] ?? 0.45
+  const length = cell.col === 1 ? `calc(var(--hc-x) + var(--hc-w) * ${reach})` : `calc(var(--hc-w) * ${reach})`
   return (
     <span
       aria-hidden="true"
