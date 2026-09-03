@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ArrowButton } from '@workspace/ui/components/arrow-button'
@@ -119,8 +119,13 @@ export function MonthHoneycomb({ today }: { today: Date }) {
             const level = activityLevel(activity)
             const cell = { col: i % COLS, row: Math.floor(i / COLS) }
 
-            // cells rise in one after another, left to right
+            // cells rise in one after another, left to right; today arrives last and pulses once
             const stagger = { animationDelay: `${120 + i * 12}ms` }
+            const todayEntrance = {
+              animation: 'var(--animate-rise), var(--animate-pulse-once)',
+              animationDelay: '720ms, 1150ms',
+              '--pulse-color': 'var(--heat-today-from)',
+            } as CSSProperties
             if (!inMonth) {
               // a real date from the neighbouring month: say which, and jump there on click
               const direction = offset < 0 ? 'previous' : 'next'
@@ -148,7 +153,13 @@ export function MonthHoneycomb({ today }: { today: Date }) {
               )
             }
             return (
-              <HoneycombItem key={i} {...cell} role="gridcell" className="animate-rise" style={stagger}>
+              <HoneycombItem
+                key={i}
+                {...cell}
+                role="gridcell"
+                className={cn(isToday ? 'z-10' : 'animate-rise')}
+                style={isToday ? todayEntrance : stagger}
+              >
                 <Tooltip>
                   <TooltipTrigger
                     className="group block size-full rounded-full outline-none"

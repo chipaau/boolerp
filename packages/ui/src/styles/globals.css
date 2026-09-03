@@ -308,6 +308,19 @@
     }
   }
   --animate-spin-fast: spin 700ms linear infinite;
+  /* one soft glow that swells and settles (animate-pulse-once); colour via --pulse-color */
+  --animate-pulse-once: hx-pulse-once 1200ms var(--ease-hexa) 1 both;
+  @keyframes hx-pulse-once {
+    0% {
+      filter: drop-shadow(0 0 0 transparent);
+    }
+    35% {
+      filter: drop-shadow(0 0 7px var(--pulse-color, var(--brand-soft)));
+    }
+    100% {
+      filter: drop-shadow(0 0 0 transparent);
+    }
+  }
   /* a leader line growing out from its anchor (animate-grow-x, set transform-origin yourself) */
   --animate-grow-x: hx-grow-x 280ms var(--ease-hexa) both;
   @keyframes hx-grow-x {

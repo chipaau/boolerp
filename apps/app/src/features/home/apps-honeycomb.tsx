@@ -146,7 +146,16 @@ export function AppsHoneycomb() {
                   )}
                 >
                   <div className="flex flex-col items-center gap-2.5">
-                    <AppIcon slug={app.slug} variant="art" size={50} />
+                    {/* the logo lifts and grows a touch while the tile is hovered: instant, never bouncy */}
+                    <AppIcon
+                      slug={app.slug}
+                      variant="art"
+                      size={50}
+                      className={cn(
+                        'transition-transform duration-instant ease-hexa',
+                        active && 'scale-[1.08] -translate-y-0.5'
+                      )}
+                    />
                     <span className="text-[15px] font-bold text-foreground">{app.name}</span>
                   </div>
                 </Hexagon>
