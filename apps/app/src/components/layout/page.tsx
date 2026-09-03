@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { cn } from '@workspace/ui/lib/utils'
 
 // Shared page header: Heading 1 title, caption description, one hairline below. Used by proto
 // and real pages alike so every screen measures the same.
@@ -18,6 +19,36 @@ export function PageHeader({
         {description && <p className="text-caption text-muted-foreground">{description}</p>}
       </div>
       {actions}
+    </div>
+  )
+}
+
+/**
+ * The title block of a full-bleed screen (Inventory overview, All items): optional overline,
+ * the 30px title, a meta line (location, status pills) and actions at the right. The header
+ * above is for framed pages; this one sits in the page's own padding.
+ */
+export function PageTitle({
+  overline,
+  title,
+  meta,
+  actions,
+  className,
+}: {
+  overline?: ReactNode
+  title: ReactNode
+  meta?: ReactNode
+  actions?: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn('mb-[34px] flex flex-wrap items-end justify-between gap-6', className)}>
+      <div className="min-w-0 flex-1 basis-[300px]">
+        {overline && <div className="mb-2 text-overline text-faint">{overline}</div>}
+        <h1 className="text-[30px] leading-none font-medium tracking-[-0.022em] text-foreground">{title}</h1>
+        {meta && <div className="mt-2.5 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">{meta}</div>}
+      </div>
+      {actions && <div className="ms-auto flex items-center gap-2.5">{actions}</div>}
     </div>
   )
 }

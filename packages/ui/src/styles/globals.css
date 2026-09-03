@@ -229,6 +229,37 @@
   --destructive-soft: #3a2229;
   --destructive-soft-hover: #48292f;
 
+  /* the inverted metric tile flips: cream on the dark page */
+  --surface-inverted: #e8e4dc;
+  --surface-inverted-foreground: #191b24;
+
+  /* status & category tones: strong hues brighten a step, soft fills become dark tints, text-on-soft lightens */
+  --tone-success: #9aab94;
+  --tone-success-soft: #2c332b;
+  --tone-success-foreground: #b4bfb0;
+  --tone-warning: #f28213;
+  --tone-warning-soft: #3d2e1c;
+  --tone-warning-foreground: #f0b46a;
+  --tone-danger: #d97389;
+  --tone-danger-soft: #3a2229;
+  --tone-danger-foreground: #e08aa0;
+  --tone-plum: #a08ea4;
+  --tone-plum-soft: #2e2a30;
+  --tone-plum-foreground: #c4b6c8;
+  --tone-slate: #8d96a0;
+  --tone-slate-soft: #262a2e;
+  --tone-slate-foreground: #b3bbc4;
+  --tone-neutral: #a8a29a;
+  --tone-neutral-soft: #262523;
+  --tone-neutral-foreground: #a8a29a;
+  --tone-rose: #c98a9c;
+  --tone-rose-soft: #35262b;
+  --tone-rose-foreground: #d9a4b3;
+  --tone-risk: #d0684d;
+  --tone-risk-soft: #3a261f;
+  --tone-risk-foreground: #e0876c;
+  --tone-warning-deep: #e39a3a;
+
   --border: #323231;
   --divider: #323231;
   --input: #3a3937; /* ghost ring */

@@ -48,6 +48,8 @@ const badgeVariants = cva(
 )
 
 type Variant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>
+/** The status-pill hues: the one vocabulary for "which tone does this state carry" across features. */
+export type BadgeTone = Extract<Variant, "success" | "warning" | "danger" | "plum" | "slate" | "neutral" | "rose" | "risk">
 const dotColor: Partial<Record<Variant, string>> = {
   success: "bg-tone-success",
   warning: "bg-tone-warning",

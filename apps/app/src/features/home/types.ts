@@ -1,3 +1,5 @@
+import type { BadgeTone } from '@workspace/ui/components/badge'
+
 // Home resource shapes. Mirrors what the API will return; once `packages/api-client` is
 // generated these become re-exports of the generated types.
 
@@ -8,7 +10,7 @@ export type Person = { name: string; photo?: string }
 /** `people` are shown as avatars; `others` are the rest, listed on the "+n" count. */
 export type ScheduleItem = { id: string; start: string; end: string; people: Person[]; others?: string[] }
 
-export type InboxTone = 'success' | 'slate' | 'plum' | 'rose' | 'danger' | 'warning'
+export type InboxTone = BadgeTone
 export type InboxItem = {
   id: string
   /** App the item belongs to (drives the icon). */

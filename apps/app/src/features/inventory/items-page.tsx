@@ -27,6 +27,7 @@ import {
   TableRow,
   TableToolbar,
 } from '@workspace/ui/components/table'
+import { PageTitle } from '@/components/layout/page'
 import { FILTERS, STATUS_TONE, filterItems, summarize } from './logic'
 import { useItems } from './queries'
 import type { ItemFilter } from './types'
@@ -80,20 +81,23 @@ export function InventoryItemsPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <h1 className="text-[30px] leading-none font-medium tracking-[-0.022em] text-foreground">All items</h1>
-          <div className="mt-2 text-sm text-muted-foreground">
+      <PageTitle
+        className="mb-6"
+        title="All items"
+        meta={
+          <span>
             {s.itemCount} items across {s.locations.length} locations
-          </div>
-        </div>
-        <Button>
-          Add item
-          <ButtonArrow>
-            <Plus strokeWidth={2.2} />
-          </ButtonArrow>
-        </Button>
-      </div>
+          </span>
+        }
+        actions={
+          <Button>
+            Add item
+            <ButtonArrow>
+              <Plus strokeWidth={2.2} />
+            </ButtonArrow>
+          </Button>
+        }
+      />
 
       <Card className="gap-0 overflow-hidden py-0">
         <TableToolbar className="px-5">

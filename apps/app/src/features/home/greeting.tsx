@@ -1,4 +1,5 @@
 import { useCurrentUser } from '@/components/layout/user-context'
+import { monthDay, weekdayLong } from '@/lib/dates'
 import { useStats } from './queries'
 import { TodayMarker } from './markers'
 
@@ -14,8 +15,6 @@ export function Greeting({ today }: { today: Date }) {
   const user = useCurrentUser()
   const stats = useStats()
   const firstName = user.name.split(' ')[0]
-  const weekday = today.toLocaleDateString('en-GB', { weekday: 'long' })
-  const monthDay = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
 
   return (
     <div className="space-y-8">
@@ -23,7 +22,7 @@ export function Greeting({ today }: { today: Date }) {
         <div className="flex items-center gap-2 text-overline uppercase text-faint">
           <TodayMarker size={14} />
           <span>
-            {weekday} · {monthDay} ·
+            {weekdayLong(today)} · {monthDay(today)} ·
           </span>
         </div>
         <h1 className="text-h1 leading-[1.2] tracking-[-0.01em] text-foreground">

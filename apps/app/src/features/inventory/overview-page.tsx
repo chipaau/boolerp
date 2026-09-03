@@ -5,8 +5,13 @@ import { Badge } from '@workspace/ui/components/badge'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { HexGlyph } from '@workspace/ui/components/hex-glyph'
+import { ListRow } from '@workspace/ui/components/list-row'
+import { QuickAction } from '@workspace/ui/components/quick-action'
 import { Sparkline } from '@workspace/ui/components/sparkline'
+import { StatCard, StatDelta } from '@workspace/ui/components/stat-card'
 import { cn } from '@workspace/ui/lib/utils'
+import { PageTitle } from '@/components/layout/page'
+import { dateOverline } from '@/lib/dates'
 import { compactNumber, summarize } from './logic'
 import { useApprovals, useCategories, useItems, useLowStock, useMovements, useOverviewStats, useStockSeries } from './queries'
 import { StockChart } from './stock-chart'
@@ -24,65 +29,69 @@ export function InventoryOverviewPage() {
   const o = useOverviewStats()
   const critical = lowStock.filter((l) => l.tag === 'Critical').length
   const unitsUp = o.unitsDeltaPct >= 0
-  const today = new Date()
-  const dateLine = `${today.toLocaleDateString('en-GB', { weekday: 'long' })} · ${today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
 
   return (
     <div className="px-12 pt-10 pb-28">
-      {/* title row */}
-      <div className="mb-[34px] flex flex-wrap items-end justify-between gap-6">
-        <div className="min-w-0 flex-1 basis-[300px]">
-          <div className="mb-2 text-overline text-faint">{dateLine}</div>
-          <h1 className="text-[30px] leading-none font-medium tracking-[-0.022em] text-foreground">Inventory overview</h1>
-          <div className="mt-2.5 flex flex-wrap items-center gap-4">
-            <span className="text-sm text-muted-foreground">Warehouse A, B &amp; Site store</span>
+      <PageTitle
+        overline={dateOverline(new Date())}
+        title="Inventory overview"
+        meta={
+          <>
+            <span>Warehouse A, B &amp; Site store</span>
             {o.overduePurchaseOrders > 0 && (
               <Badge variant="warning" size="sm" render={<Link to="/$app/$section" params={{ app: 'inventory', section: 'purchase-orders' }} />}>
                 {o.overduePurchaseOrders} purchase {o.overduePurchaseOrders === 1 ? 'order' : 'orders'} overdue
               </Badge>
             )}
-          </div>
-        </div>
-        <div className="ms-auto flex items-center gap-2.5">
-          <Button variant="ghost" className="text-muted-foreground">
-            <Download strokeWidth={1.7} />
-            Export
-          </Button>
-          <Button>
-            Add item
-            <ButtonArrow>
-              <Plus strokeWidth={2.2} />
-            </ButtonArrow>
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            <Button variant="ghost" className="text-muted-foreground">
+              <Download strokeWidth={1.7} />
+              Export
+            </Button>
+            <Button>
+              Add item
+              <ButtonArrow>
+                <Plus strokeWidth={2.2} />
+              </ButtonArrow>
+            </Button>
+          </>
+        }
+      />
 
       {/* KPIs */}
       <div className="mb-[18px] grid grid-cols-2 gap-[18px] md:grid-cols-3 xl:grid-cols-5">
-        <Kpi label="Units on hand" value={s.unitsOnHand.toLocaleString()} delay={0} to="items">
-          <Delta up={unitsUp}>{unitsUp ? '↑' : '↓'} {Math.abs(o.unitsDeltaPct).toFixed(1)}%</Delta>
+        <StatCard label="Units on hand" value={s.unitsOnHand.toLocaleString()} className="animate-rise" style={{ animationDelay: '0ms' }} render={<Link to="/$app/$section" params={{ app: 'inventory', section: 'items' }} />}>
+          <StatDelta up={unitsUp}>{unitsUp ? '↑' : '↓'} {Math.abs(o.unitsDeltaPct).toFixed(1)}%</StatDelta>
           <span className="text-caption text-muted-foreground">vs last month</span>
           <Sparkline values={spark.onHand} className="mt-[15px] text-chart-line-a" />
-        </Kpi>
-        <Kpi label="Below reorder" value={String(s.lowCount)} valueClass="text-tone-risk-foreground" delay={40} to="low-stock">
+        </StatCard>
+        <StatCard label="Below reorder" value={String(s.lowCount)} valueClassName="text-tone-risk-foreground" className="animate-rise" style={{ animationDelay: '40ms' }} render={<Link to="/$app/$section" params={{ app: 'inventory', section: 'low-stock' }} />}>
           <span className="text-caption text-muted-foreground">{critical} critical · {lowStock.length - critical} warning</span>
           <Sparkline values={spark.low} className="mt-[15px] text-chart-line-b" />
-        </Kpi>
-        <Kpi label="Issued out" value={s.issuedOut.toLocaleString()} delay={80} to="items" search={{ filter: 'Issued' }}>
+        </StatCard>
+        <StatCard label="Issued out" value={s.issuedOut.toLocaleString()} className="animate-rise" style={{ animationDelay: '80ms' }} render={<Link to="/$app/$section" params={{ app: 'inventory', section: 'items' }} search={{ filter: 'Issued' }} />}>
           <span className="text-caption text-muted-foreground">Across {o.issuedToStaff} staff</span>
           <Sparkline values={spark.issued} className="mt-[15px] text-chart-fill" />
-        </Kpi>
-        <Kpi label="Pending approvals" value={String(approvals.length)} valueClass="text-tone-warning-deep" delay={120} to="requests">
+        </StatCard>
+        <StatCard label="Pending approvals" value={String(approvals.length)} valueClassName="text-tone-warning-deep" className="animate-rise" style={{ animationDelay: '120ms' }} render={<Link to="/$app/$section" params={{ app: 'inventory', section: 'requests' }} />}>
           <span className="text-caption text-muted-foreground">Oldest waiting {o.oldestApprovalDays} {o.oldestApprovalDays === 1 ? 'day' : 'days'}</span>
-        </Kpi>
-        <div className="animate-rise rounded-lg bg-surface-inverted p-6 [animation-delay:160ms]">
-          <div className="text-[11.5px] font-bold tracking-[0.1em] text-surface-inverted-foreground/65 uppercase">Total value</div>
-          <div className="mt-2 text-[34px] leading-[1.1] font-bold text-surface-inverted-foreground">
-            <span className="me-1.5 text-[15px] font-bold tracking-[0.06em] text-surface-inverted-foreground/65">MVR</span>
-            {compactNumber(s.stockValue)}
-          </div>
-          <div className="mt-2 text-caption text-surface-inverted-foreground/65">{s.locations.length} locations</div>
-        </div>
+        </StatCard>
+        <StatCard
+          variant="inverted"
+          label="Total value"
+          value={
+            <>
+              <span className="me-1.5 text-[15px] font-bold tracking-[0.06em] text-surface-inverted-foreground/65">MVR</span>
+              {compactNumber(s.stockValue)}
+            </>
+          }
+          className="animate-rise [animation-delay:160ms]"
+        >
+          <span className="text-caption text-surface-inverted-foreground/65">{s.locations.length} locations</span>
+        </StatCard>
       </div>
 
       {/* chart + movements */}
@@ -126,28 +135,31 @@ export function InventoryOverviewPage() {
             </div>
             <ul>
               {approvals.map((a) => (
-                <li key={a.id} className="flex items-center gap-[13px] border-b border-divider px-6 py-[15px] last:border-b-0">
-                  <Avatar name={a.who} className="size-[34px] bg-muted">
-                    <AvatarFallback className="bg-muted text-muted-foreground" />
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="truncate text-sm font-bold text-foreground">{a.title}</span>
-                      <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold', a.urgent ? 'bg-tone-warning-soft text-tone-warning-foreground' : 'text-faint')}>
-                        {a.age}
-                      </span>
-                    </div>
-                    <div className="mt-[3px] truncate text-[12.5px] text-muted-foreground">{a.meta}</div>
-                  </div>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <Button variant="outline" size="sm" className="h-[30px] text-[12.5px]">
-                      Decline
-                    </Button>
-                    <Button size="sm" className="h-[30px] px-4 text-[12.5px]">
-                      Approve
-                    </Button>
-                  </span>
-                </li>
+                <ListRow
+                  key={a.id}
+                  leading={
+                    <Avatar name={a.who} className="size-[34px] bg-muted">
+                      <AvatarFallback className="bg-muted text-muted-foreground" />
+                    </Avatar>
+                  }
+                  heading={<span className="truncate text-sm font-bold text-foreground">{a.title}</span>}
+                  aside={
+                    <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold', a.urgent ? 'bg-tone-warning-soft text-tone-warning-foreground' : 'text-faint')}>
+                      {a.age}
+                    </span>
+                  }
+                  meta={a.meta}
+                  trailing={
+                    <span className="flex shrink-0 items-center gap-2">
+                      <Button variant="outline" size="sm" className="h-[30px] text-[12.5px]">
+                        Decline
+                      </Button>
+                      <Button size="sm" className="h-[30px] px-4 text-[12.5px]">
+                        Approve
+                      </Button>
+                    </span>
+                  }
+                />
               ))}
             </ul>
           </Card>
@@ -215,25 +227,28 @@ export function InventoryOverviewPage() {
             </div>
             <ul>
               {lowStock.map((l) => (
-                <li key={l.name} className="group flex cursor-pointer items-center gap-4 border-b border-divider px-6 py-[17px] transition-colors duration-instant ease-hexa last:border-b-0 hover:bg-surface-soft">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-[9px] bg-surface-soft">
-                    <Boxes className="size-4 text-faint" strokeWidth={1.5} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2.5">
-                      <span className="truncate text-ui font-bold text-foreground">{l.name}</span>
-                      <span className="flex shrink-0 items-center gap-2">
-                        <Button variant="outline" size="xs" className="h-[26px] px-[11px] text-[11.5px] opacity-0 transition-opacity duration-instant group-hover:opacity-100">
-                          Reorder
-                        </Button>
-                        <Badge variant={l.tag === 'Critical' ? 'risk' : 'warning'} size="sm">
-                          {l.tag}
-                        </Badge>
-                      </span>
-                    </div>
-                    <div className="mt-[3px] truncate text-caption text-muted-foreground">{l.meta}</div>
-                  </div>
-                </li>
+                <ListRow
+                  key={l.name}
+                  interactive
+                  className="gap-4 py-[17px]"
+                  leading={
+                    <span className="grid size-9 shrink-0 place-items-center rounded-[9px] bg-surface-soft">
+                      <Boxes className="size-4 text-faint" strokeWidth={1.5} />
+                    </span>
+                  }
+                  heading={<span className="truncate text-ui font-bold text-foreground">{l.name}</span>}
+                  aside={
+                    <span className="flex shrink-0 items-center gap-2">
+                      <Button variant="outline" size="xs" className="h-[26px] px-[11px] text-[11.5px] opacity-0 transition-opacity duration-instant group-hover:opacity-100">
+                        Reorder
+                      </Button>
+                      <Badge variant={l.tag === 'Critical' ? 'risk' : 'warning'} size="sm">
+                        {l.tag}
+                      </Badge>
+                    </span>
+                  }
+                  meta={l.meta}
+                />
               ))}
             </ul>
           </Card>
@@ -241,65 +256,14 @@ export function InventoryOverviewPage() {
           <Card className="py-7">
             <div className="px-7 text-[15.5px] font-bold text-foreground">Quick actions</div>
             <div className="mt-3.5 grid grid-cols-2 gap-[9px] px-7">
-              <QuickAction icon={<Plus strokeWidth={1.5} />} label="Add item" />
-              <QuickAction icon={<ListChecks strokeWidth={1.5} />} label="Stock count" />
-              <QuickAction icon={<UserRound strokeWidth={1.5} />} label="Issue to person" />
-              <QuickAction icon={<HexGlyph size={16} />} label="Reorder request" />
+              <QuickAction icon={<Plus strokeWidth={1.5} />}>Add item</QuickAction>
+              <QuickAction icon={<ListChecks strokeWidth={1.5} />}>Stock count</QuickAction>
+              <QuickAction icon={<UserRound strokeWidth={1.5} />}>Issue to person</QuickAction>
+              <QuickAction icon={<HexGlyph size={16} />}>Reorder request</QuickAction>
             </div>
           </Card>
         </div>
       </div>
     </div>
-  )
-}
-
-function Kpi({
-  label,
-  value,
-  valueClass,
-  delay,
-  to,
-  search,
-  children,
-}: {
-  label: string
-  value: string
-  valueClass?: string
-  delay: number
-  to: string
-  search?: Record<string, string>
-  children?: React.ReactNode
-}) {
-  return (
-    <Link
-      to="/$app/$section"
-      params={{ app: 'inventory', section: to }}
-      search={search}
-      className="lift block animate-rise rounded-lg bg-card p-6 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="text-[11.5px] font-bold tracking-[0.1em] text-muted-foreground uppercase">{label}</div>
-      <div className={cn('mt-2 text-[34px] leading-[1.1] font-bold text-foreground', valueClass)}>{value}</div>
-      <div className="mt-[7px] flex flex-wrap items-center gap-[7px]">{children}</div>
-    </Link>
-  )
-}
-
-function Delta({ up, children }: { up?: boolean; children: React.ReactNode }) {
-  return <span className={cn('text-caption font-bold', up ? 'text-link' : 'text-tone-risk-foreground')}>{children}</span>
-}
-
-// On hover the icon plate fills amber and its glyph turns cream, as in the design.
-function QuickAction({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <button
-      type="button"
-      className="group flex items-center gap-[11px] rounded-[10px] bg-muted px-3.5 py-[13px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <span className="grid size-[34px] shrink-0 place-items-center rounded-[11px] bg-surface-soft text-brand-soft shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--faint)_16%,transparent)] transition-[background-color,color,box-shadow] duration-[150ms] ease-hexa group-hover:bg-brand-soft group-hover:text-card group-hover:shadow-none [&>svg]:size-[18px] [&>svg]:transition-colors [&>svg]:duration-[150ms]">
-        {icon}
-      </span>
-      <span className="text-[13.5px] font-bold text-foreground">{label}</span>
-    </button>
   )
 }

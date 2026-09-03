@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from '@workspace/ui/components/tooltip'
 import { cn } from '@workspace/ui/lib/utils'
+import { isoDate, monthYear, ordinal, weekdayLong } from '@/lib/dates'
 import { NO_ACTIVITY, activityLevel } from './logic'
 import { useMonthActivity } from './queries'
 import type { DayActivity } from './types'
@@ -29,30 +30,11 @@ const CELL_ASPECT = 25.5 / 25
 // Fill per activity level (light activity / healthy / at or above target); tokens in globals.css.
 const LEVEL_FILL = ['text-heat-1', 'text-heat-2', 'text-heat-3'] as const
 
-function ordinal(n: number) {
-  const v = n % 100
-  if (v >= 11 && v <= 13) return 'th'
-  switch (n % 10) {
-    case 1:
-      return 'st'
-    case 2:
-      return 'nd'
-    case 3:
-      return 'rd'
-    default:
-      return 'th'
-  }
-}
-
-function isoDate(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 /** The hover card for one day: date, counts, and a jump to that day in Task. */
 function DayCard({ date, activity, isToday }: { date: Date; activity: DayActivity; isToday: boolean }) {
-  const weekday = isToday ? 'Today' : date.toLocaleDateString('en-GB', { weekday: 'long' })
+  const weekday = isToday ? 'Today' : weekdayLong(date)
   const day = date.getDate()
-  const rest = date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+  const rest = monthYear(date)
   const rows = [
     { label: `${activity.meetings} Meeting${activity.meetings === 1 ? '' : 's'}`, icon: <MeetingMarker size={18} /> },
     { label: `${activity.tasks} Task(s) due`, icon: <TaskMarker size={18} /> },

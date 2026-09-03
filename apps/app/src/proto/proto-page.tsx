@@ -9,6 +9,7 @@ import { Badge } from '@workspace/ui/components/badge'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@workspace/ui/components/card'
 import { Checkbox } from '@workspace/ui/components/checkbox'
+import { ListRow } from '@workspace/ui/components/list-row'
 import { SearchField } from '@workspace/ui/components/search-field'
 import {
   Table,
@@ -226,22 +227,24 @@ function ListView({ label }: { label: string }) {
       <Toolbar label={label} />
       <ul>
         {rows.map((r) => (
-          <li
+          <ListRow
             key={r.name}
-            className="flex cursor-pointer items-center gap-3.5 border-b border-divider px-[22px] py-[15px] transition-colors duration-instant ease-hexa hover:bg-surface-soft"
-          >
-            <Avatar name={r.name} size="lg">
-              <AvatarFallback />
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[15px] font-bold text-foreground">{r.name}</div>
-              <div className="truncate text-caption text-muted-foreground">
-                {r.meta} · {r.ref}
-              </div>
-            </div>
-            <Badge variant={STATUS_TONE[r.status]} size="sm">{r.status}</Badge>
-            <ChevronRight className="size-4 text-faint" />
-          </li>
+            interactive
+            className="gap-3.5 px-[22px]"
+            leading={
+              <Avatar name={r.name} size="lg">
+                <AvatarFallback />
+              </Avatar>
+            }
+            heading={<span className="truncate text-[15px] font-bold text-foreground">{r.name}</span>}
+            meta={`${r.meta} · ${r.ref}`}
+            trailing={
+              <>
+                <Badge variant={STATUS_TONE[r.status]} size="sm">{r.status}</Badge>
+                <ChevronRight className="size-4 text-faint" />
+              </>
+            }
+          />
         ))}
       </ul>
       <TableFooter>

@@ -1,8 +1,9 @@
 // Pure Inventory logic: presentation mappings and derivations over the resource types. No data
 // lives here; components get data from ./queries and pass it in.
+import type { BadgeTone } from '@workspace/ui/components/badge'
 import type { Item, ItemFilter, ItemStatus } from './types'
 
-export const STATUS_TONE: Record<ItemStatus, 'success' | 'warning' | 'risk' | 'plum'> = {
+export const STATUS_TONE: Record<ItemStatus, BadgeTone> = {
   'In stock': 'success',
   'Low stock': 'warning',
   'Out of stock': 'risk',
