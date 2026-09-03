@@ -1,9 +1,7 @@
 import { Link, useLocation, useSearch } from '@tanstack/react-router'
-import { ArrowLeft } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -25,7 +23,7 @@ const BADGE_TONE = {
 /**
  * The design's rail: an overline label per group, right-rounded rows that bleed to the rail's
  * edge (ivory + short amber bar when active), counts at the right, saved views that carry their
- * filter as search params, and "Back to all apps" at the foot. The account lives in the topbar.
+ * filter as search params. The account and the way back to Home live in the topbar.
  */
 export function AppSidebar({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
@@ -92,15 +90,6 @@ export function AppSidebar({ app }: { app: AppDef }) {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="mx-[22px] border-t border-sidebar-border px-0 pt-3.5 pb-[18px] group-data-[collapsible=icon]:mx-2">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2.5 rounded-md py-2 pl-[13px] text-compact text-link outline-none transition-colors duration-instant ease-hexa hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:pl-2"
-        >
-          <ArrowLeft className="size-3.5" strokeWidth={1.75} />
-          <span className="group-data-[collapsible=icon]:hidden">Back to all apps</span>
-        </Link>
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )

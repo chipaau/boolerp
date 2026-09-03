@@ -36,8 +36,8 @@
   --popover-foreground: #191b24;
   --surface-soft: #faf8f5; /* Soft Cream · fields on page, icon plates, hex tiles */
   --surface-band: #f6f1e9; /* table header band */
-  --surface-inverted: #333331; /* inverted metric card */
-  --surface-inverted-foreground: #f4f3f1;
+  --surface-inverted: #1f1f1f; /* inverted metric card: the dark theme's card tone */
+  --surface-inverted-foreground: #e2ded7;
   --toast: #2a2725;
   --toast-foreground: #f2efea;
   --tooltip: #2a2725; /* the compact tooltip chip (dark surface in both themes) */
@@ -297,9 +297,9 @@
 
   --sidebar: #121212;
   --sidebar-foreground: #cfccc7;
-  --sidebar-accent: #1c1c1c;
+  --sidebar-accent: #282827; /* the active row: a clear step above the rail */
   --sidebar-accent-foreground: #e2ded7;
-  --sidebar-hover: #232322;
+  --sidebar-hover: #1f1f1e; /* hover stays quieter than active */
   --sidebar-border: #323231;
 
   --shadow-floating: 0 4px 10px rgba(0, 0, 0, 0.35), 0 12px 26px rgba(0, 0, 0, 0.3);

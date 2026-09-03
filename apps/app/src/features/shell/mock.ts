@@ -1,5 +1,6 @@
 // FIXTURES — sample data for the shell chrome. Only ./queries.ts may import this file
 // (lint-enforced). Delete it when the notifications / counts endpoints exist.
+import avatar5 from '@workspace/assets/avatars/avatar-5.jpg'
 import type { Membership, NavCounts, Notification, SavedView } from './types'
 
 export const NOTIFICATIONS: Notification[] = [
@@ -30,4 +31,4 @@ export const SAVED_VIEWS: Record<string, SavedView[]> = {
   ],
 }
 
-export const MEMBERSHIP: Membership = { role: 'Admin' }
+export const MEMBERSHIP: Membership = { role: 'Admin', avatar: avatar5 }

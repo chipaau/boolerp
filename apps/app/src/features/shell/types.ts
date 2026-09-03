@@ -9,4 +9,4 @@ export type NavCounts = Record<string, number>
 export type SavedView = { title: string; section: string; search: Record<string, string>; badgeKey?: string }
 
 /** The signed-in user's membership in the current tenant (role label for the account menu). */
-export type Membership = { role: string }
+export type Membership = { role: string; avatar?: string }

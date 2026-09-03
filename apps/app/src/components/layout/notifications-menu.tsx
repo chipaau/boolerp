@@ -30,7 +30,7 @@ export function NotificationsMenu() {
         }
       >
         <Bell className="size-[17px]" strokeWidth={1.6} />
-        {hasUnread && <span aria-hidden="true" className="absolute top-1.5 right-[7px] size-[7px] rounded-full bg-tone-risk" />}
+        {hasUnread && <span aria-hidden="true" className="absolute top-1.5 right-[7px] size-[7px] rounded-full bg-tone-danger" />}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-2">
         <div className="flex items-center justify-between px-3 pt-1 pb-2.5">

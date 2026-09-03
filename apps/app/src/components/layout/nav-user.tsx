@@ -1,6 +1,6 @@
 import { ChevronDown } from 'lucide-react'
 import { logout } from '@workspace/auth'
-import { Avatar, AvatarFallback } from '@workspace/ui/components/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@workspace/ui/components/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +33,7 @@ export function UserMenu() {
         }
       >
         <Avatar name={user.name} className="size-[31px]">
+          {membership?.avatar && <AvatarImage src={membership.avatar} alt="" />}
           <AvatarFallback className="bg-secondary-hover/60 text-micro tracking-[0.02em] text-muted-foreground" />
         </Avatar>
       </DropdownMenuTrigger>

@@ -1,5 +1,4 @@
 import { useMatch } from '@tanstack/react-router'
-import { SidebarTrigger } from '@workspace/ui/components/sidebar'
 import { getApp } from '@/lib/apps'
 import { AppSwitcher } from './app-switcher'
 import { BrandMark } from './brand-mark'
@@ -25,7 +24,6 @@ export function SiteHeader() {
           <>
             <span aria-hidden="true" className="h-6 w-px shrink-0 bg-border" />
             <span className="shrink-0 text-sm font-bold text-body">{app.name}</span>
-            <SidebarTrigger className="-ms-2 text-muted-foreground" />
           </>
         )}
       </div>
