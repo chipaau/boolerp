@@ -88,7 +88,8 @@ function ButtonArrow({
       data-slot="button-arrow"
       aria-hidden="true"
       className={cn(
-        "grid shrink-0 place-items-center rounded-full bg-primary-circle text-primary-circle-foreground transition-[background-color,color] duration-instant ease-hexa group-hover/btn:bg-primary-circle-hover group-hover/btn:text-primary-circle-hover-foreground [&>svg]:transition-transform [&>svg]:duration-instant [&>svg]:ease-hexa group-hover/btn:[&>svg]:-rotate-45",
+        // the circle and colour change apply to every icon; only the default arrow turns
+        "grid shrink-0 place-items-center rounded-full bg-primary-circle text-primary-circle-foreground transition-[background-color,color] duration-instant ease-hexa group-hover/btn:bg-primary-circle-hover group-hover/btn:text-primary-circle-hover-foreground [&>svg]:transition-transform [&>svg]:duration-instant [&>svg]:ease-hexa group-hover/btn:[&>svg[data-arrow]]:-rotate-45",
         "size-7 [&>svg]:size-3.5",
         "group-data-[size=xs]/btn:size-4 group-data-[size=xs]/btn:[&>svg]:size-2.5",
         "group-data-[size=sm]/btn:size-6 group-data-[size=icon-sm]/btn:size-6 group-data-[size=sm]/btn:[&>svg]:size-3 group-data-[size=icon-sm]/btn:[&>svg]:size-3",
@@ -100,7 +101,7 @@ function ButtonArrow({
       )}
       {...props}
     >
-      {children ?? <ArrowRight strokeWidth={2} />}
+      {children ?? <ArrowRight strokeWidth={2} data-arrow="" />}
     </span>
   )
 }

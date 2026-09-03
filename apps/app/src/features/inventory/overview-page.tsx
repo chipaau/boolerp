@@ -231,7 +231,7 @@ export function InventoryOverviewPage() {
               <QuickAction icon={<Plus strokeWidth={1.5} />} label="Add item" />
               <QuickAction icon={<ListChecks strokeWidth={1.5} />} label="Stock count" />
               <QuickAction icon={<UserRound strokeWidth={1.5} />} label="Issue to person" />
-              <QuickAction icon={<HexGlyph size={16} className="text-brand-soft" />} label="Reorder request" />
+              <QuickAction icon={<HexGlyph size={16} />} label="Reorder request" />
             </div>
           </Card>
         </div>
@@ -276,13 +276,14 @@ function Delta({ up, children }: { up?: boolean; children: React.ReactNode }) {
   return <span className={cn('text-caption font-bold', up ? 'text-link' : 'text-tone-risk-foreground')}>{children}</span>
 }
 
+// On hover the icon plate fills amber and its glyph turns cream, as in the design.
 function QuickAction({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <button
       type="button"
-      className="group flex items-center gap-[11px] rounded-[10px] bg-muted px-3.5 py-[13px] text-left outline-none transition-colors duration-instant ease-hexa hover:bg-secondary-hover focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex items-center gap-[11px] rounded-[10px] bg-muted px-3.5 py-[13px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span className="grid size-[34px] shrink-0 place-items-center rounded-[11px] bg-surface-soft text-brand-soft shadow-[inset_0_0_0_1px_rgba(180,152,104,0.16)] [&>svg]:size-[18px]">
+      <span className="grid size-[34px] shrink-0 place-items-center rounded-[11px] bg-surface-soft text-brand-soft shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--faint)_16%,transparent)] transition-[background-color,color,box-shadow] duration-[150ms] ease-hexa group-hover:bg-brand-soft group-hover:text-card group-hover:shadow-none [&>svg]:size-[18px] [&>svg]:transition-colors [&>svg]:duration-[150ms]">
         {icon}
       </span>
       <span className="text-[13.5px] font-bold text-foreground">{label}</span>

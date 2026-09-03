@@ -112,7 +112,8 @@ export function AppsHoneycomb() {
             />
           </HoneycombItem>
         ))}
-        {hovered !== null && TILES[hovered] && <Leader app={TILES[hovered]} cell={SLOTS[hovered]} />}
+        {/* keyed by tile so moving between tiles remounts the leader and replays its entrance */}
+        {hovered !== null && TILES[hovered] && <Leader key={hovered} app={TILES[hovered]} cell={SLOTS[hovered]} />}
         {TILES.slice(0, SLOTS.length).map((app, i) => {
           const active = hovered === i
           return (

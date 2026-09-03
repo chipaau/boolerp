@@ -1,9 +1,9 @@
 import { useMatch } from '@tanstack/react-router'
-import { SearchField } from '@workspace/ui/components/search-field'
 import { SidebarTrigger } from '@workspace/ui/components/sidebar'
 import { getApp } from '@/lib/apps'
 import { AppSwitcher } from './app-switcher'
 import { BrandMark } from './brand-mark'
+import { CommandPalette } from './command-palette'
 import { UserMenu } from './nav-user'
 import { NotificationsMenu } from './notifications-menu'
 import { TenantMenu } from './tenant-menu'
@@ -30,13 +30,7 @@ export function SiteHeader() {
         )}
       </div>
 
-      <SearchField
-        asButton
-        size="sm"
-        placeholder="Search"
-        shortcut={<span className="text-[11px] font-medium tracking-[0.04em] text-muted-foreground">⌘K</span>}
-        className="justify-self-center"
-      />
+      <CommandPalette />
 
       <div className="flex items-center justify-end gap-2 justify-self-end">
         <ThemeToggle />

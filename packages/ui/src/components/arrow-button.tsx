@@ -32,7 +32,7 @@ function ArrowCircle({
       className={cn(circleClasses.base, circleClasses.hover, small ? circleClasses.small : circleClasses.default, className)}
       {...props}
     >
-      <ArrowRight strokeWidth={2} />
+      <ArrowRight strokeWidth={2} data-arrow="" />
     </span>
   )
 }
