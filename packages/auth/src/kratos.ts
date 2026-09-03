@@ -21,6 +21,16 @@ export type UiNodeAttributes = {
   disabled?: boolean
   required?: boolean
   autocomplete?: string
+  /** WebAuthn / passkey trigger buttons carry the JS Kratos wants run on click. */
+  onclick?: string
+  /** Script nodes (the WebAuthn helper) point at the script to load. */
+  src?: string
+  async?: boolean
+  crossorigin?: string
+  integrity?: string
+  referrerpolicy?: string
+  nonce?: string
+  id?: string
   node_type: string
 }
 
@@ -101,14 +111,7 @@ export async function getFlow(kind: FlowKind, id: string): Promise<Flow> {
 
 /** submit posts a flow to its ui.action. 200 = success, 400 = re-render with messages, 422 = redirect. */
 export async function submit(flow: Flow, body: Record<string, string>): Promise<SubmitResult> {
-  // Kratos builds ui.action from its single configured base_url (one tenant host in dev). We serve
-  // /auth same-origin on every subdomain via the proxy, so force the POST to the CURRENT origin —
-  // this makes flows work on admin.bool.test and any tenant subdomain, not only the base_url host.
-  const action = new URL(flow.ui.action, window.location.origin)
-  action.protocol = window.location.protocol
-  action.host = window.location.host
-
-  const res = await fetch(action.toString(), {
+  const res = await fetch(sameOrigin(flow.ui.action), {
     method: (flow.ui.method || 'POST').toUpperCase(),
     headers: { ...JSON_HEADERS, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -144,18 +147,70 @@ export async function submit(flow: Flow, body: Record<string, string>): Promise<
   throw new FlowError(res.status, redirectTo)
 }
 
-/** whoami returns the active session or null (401). */
-export async function whoami(): Promise<Session | null> {
+/**
+ * Session state for guards. Kratos is configured with `whoami.required_aal: highest_available`, so a
+ * user who has enrolled a second factor but only completed the first gets 403 `session_aal2_required`
+ * — the guard must send them to /login?aal=aal2 rather than treat them as signed out.
+ */
+export type SessionState = { status: 'active'; session: Session } | { status: 'aal2_required' } | { status: 'none' }
+
+export async function getSession(): Promise<SessionState> {
   const res = await fetch(`${BASE}/sessions/whoami`, { headers: JSON_HEADERS, credentials: 'include' })
-  if (res.status === 200) return res.json()
-  return null
+  if (res.status === 200) return { status: 'active', session: await res.json() }
+  if (res.status === 403) {
+    const body = await res.json().catch(() => null)
+    if (body?.error?.id === 'session_aal2_required') return { status: 'aal2_required' }
+  }
+  return { status: 'none' }
 }
 
-/** logoutUrl fetches a self-service logout token+URL for the current session. */
+/** whoami returns the fully authenticated session or null. */
+export async function whoami(): Promise<Session | null> {
+  const s = await getSession()
+  return s.status === 'active' ? s.session : null
+}
+
+/**
+ * sameOrigin rewrites a Kratos-generated absolute URL onto the current origin. Kratos builds URLs
+ * from its single configured base_url (one tenant host in dev); we serve /auth same-origin on every
+ * subdomain via the proxy, so flows, scripts and logout must hit the host the user is actually on.
+ */
+export function sameOrigin(url: string): string {
+  const u = new URL(url, window.location.origin)
+  u.protocol = window.location.protocol
+  u.host = window.location.host
+  return u.toString()
+}
+
+/**
+ * safeReturnTo accepts only an in-app path: it must start with a single "/" (a second slash or a
+ * backslash would be a protocol-relative redirect to another host). Anything else → fallback.
+ */
+export function safeReturnTo(raw: unknown, fallback = '/'): string {
+  return typeof raw === 'string' && /^\/(?![\/\\])/.test(raw) ? raw : fallback
+}
+
+/** createLogoutFlow fetches a self-service logout token+URL for the current session. */
 export async function createLogoutFlow(): Promise<{ logout_url: string } | null> {
   const res = await fetch(`${BASE}/self-service/logout/browser`, { headers: JSON_HEADERS, credentials: 'include' })
   if (!res.ok) return null
   return res.json()
+}
+
+/**
+ * logout ends the current session (UC-AUTH-09) and lands on this origin's /login. The logout URL is
+ * rewritten onto the current host and told where to return, so signing out of admin.bool.test or any
+ * tenant subdomain never bounces through the base_url host.
+ */
+export async function logout(returnPath = '/login'): Promise<void> {
+  const flow = await createLogoutFlow()
+  if (!flow?.logout_url) {
+    window.location.href = returnPath
+    return
+  }
+  const url = new URL(sameOrigin(flow.logout_url))
+  url.searchParams.set('return_to', window.location.origin + returnPath)
+  window.location.href = url.toString()
 }
 
 // ---- node helpers -------------------------------------------------------------------------------

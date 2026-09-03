@@ -39,8 +39,10 @@ selfservice:
         rp:
           id: bool.test
           display_name: Bool ERP
+          # dev hosts that may register/assert passkeys (rp.id covers every *.bool.test subdomain)
           origins:
             - http://malecouncil.bool.test
+            - http://admin.bool.test
     code:
       enabled: true
       config:
@@ -83,7 +85,9 @@ session:
     name: ory_kratos_session
     persistent: true
   whoami:
-    required_aal: aal1
+    # highest_available: once a user has enrolled a second factor, a first-factor-only session is
+    # answered 403 session_aal2_required, and the SPA sends them to /login?aal=aal2 (UC-AUTH-04).
+    required_aal: highest_available
 
 identity:
   default_schema_id: default

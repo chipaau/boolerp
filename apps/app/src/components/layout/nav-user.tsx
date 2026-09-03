@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react'
-import { createLogoutFlow } from '@workspace/auth'
+import { logout } from '@workspace/auth'
 import { Avatar, AvatarFallback } from '@workspace/ui/components/avatar'
 import {
   DropdownMenu,
@@ -17,11 +17,6 @@ import { useCurrentUser } from './user-context'
  */
 export function UserMenu() {
   const user = useCurrentUser()
-
-  async function logout() {
-    const flow = await createLogoutFlow()
-    window.location.href = flow?.logout_url ?? '/login'
-  }
 
   return (
     <DropdownMenu>
@@ -53,7 +48,7 @@ export function UserMenu() {
           <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-[13.5px]">Profile &amp; preferences</DropdownMenuItem>
           <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-[13.5px]">Settings &amp; permissions</DropdownMenuItem>
           <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-[13.5px]">Switch workspace</DropdownMenuItem>
-          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-[13.5px] text-tone-risk-foreground data-highlighted:text-tone-risk-foreground" onClick={logout}>
+          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-[13.5px] text-tone-risk-foreground data-highlighted:text-tone-risk-foreground" onClick={() => logout()}>
             Sign out
           </DropdownMenuItem>
         </DropdownMenuGroup>

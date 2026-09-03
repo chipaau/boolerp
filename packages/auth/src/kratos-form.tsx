@@ -1,9 +1,9 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { HexGlyph } from '@workspace/ui/components/hex-glyph'
 import { Input } from '@workspace/ui/components/input'
 import { cn } from '@workspace/ui/lib/utils'
-import { initialValues, nodeLabel, type Flow, type UiNode, type UiText } from './kratos'
+import { initialValues, nodeLabel, sameOrigin, type Flow, type UiNode, type UiText } from './kratos'
 
 // KratosForm renders a flow's ui.nodes generically (inputs, hidden csrf, submit buttons) and posts
 // the collected values to the flow's action. Kratos drives which fields appear, so the same
@@ -24,8 +24,29 @@ export function KratosForm({
   const [values, setValues] = useState<Record<string, string>>(() => initialValues(flow))
 
   const nodes = flow.ui.nodes.filter((n) => n.group === 'default' || !groups || groups.includes(n.group))
-  const fields = nodes.filter((n) => !isSubmit(n))
+  const scripts = nodes.filter((n) => n.type === 'script')
+  const fields = nodes.filter((n) => n.type !== 'script' && !isSubmit(n))
   const submits = nodes.filter(isSubmit)
+
+  // WebAuthn / passkey steps ship a helper script node; load it once (on this origin) so the trigger
+  // buttons' onclick handlers have `window.__oryWebAuthn*` available.
+  useEffect(() => {
+    for (const node of scripts) {
+      const a = node.attributes
+      if (!a.src) continue
+      const src = sameOrigin(a.src)
+      if (document.querySelector(`script[src="${src}"]`)) continue
+      const el = document.createElement('script')
+      el.src = src
+      el.async = a.async ?? true
+      if (a.id) el.id = a.id
+      if (a.nonce) el.nonce = a.nonce
+      if (a.crossorigin) el.crossOrigin = a.crossorigin
+      if (a.integrity) el.integrity = a.integrity
+      if (a.referrerpolicy) el.referrerPolicy = a.referrerpolicy
+      document.body.appendChild(el)
+    }
+  }, [scripts])
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -36,8 +57,10 @@ export function KratosForm({
     onSubmit(body)
   }
 
+  // action/method are set so a native submit (the WebAuthn helper calls form.submit()) still reaches
+  // Kratos on this origin; the normal path is the fetch in handleSubmit.
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-[13px]">
+    <form action={sameOrigin(flow.ui.action)} method={flow.ui.method || 'POST'} onSubmit={handleSubmit} className="flex flex-col gap-[13px]">
       {fields.map((node, i) => (
         <Field
           key={node.attributes.name ?? `${node.type}-${i}`}
@@ -64,6 +87,12 @@ function isSubmit(node: UiNode) {
   return node.type === 'input' && (node.attributes.type === 'submit' || node.attributes.type === 'button')
 }
 
+/** Runs the inline handler Kratos attaches to WebAuthn / passkey trigger buttons. */
+function runNodeScript(code: string) {
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+  new Function(code)()
+}
+
 /** A flow-level message: errors shake in as a rose pill; info stays quiet. */
 function FlowMessage({ message }: { message: UiText }) {
   if (message.type === 'error') {
@@ -80,6 +109,21 @@ function FlowMessage({ message }: { message: UiText }) {
 function SubmitButton({ node, primary, submitting }: { node: UiNode; primary: boolean; submitting: boolean }) {
   const a = node.attributes
   const label = nodeLabel(node) || 'Continue'
+  if (a.type === 'button' && a.onclick) {
+    const code = a.onclick
+    return (
+      <Button
+        type="button"
+        name={a.name}
+        disabled={a.disabled || submitting}
+        variant="secondary"
+        className="h-[52px] w-full bg-card text-ui hover:bg-surface-soft"
+        onClick={() => runNodeScript(code)}
+      >
+        {label}
+      </Button>
+    )
+  }
   if (primary) {
     return (
       <Button
@@ -136,7 +180,7 @@ function Field({
   if (node.type !== 'input') return null
 
   const type = a.type ?? 'text'
-  if (type === 'hidden') return null // value is carried in form state (incl. csrf_token)
+  if (type === 'hidden') return <input type="hidden" name={a.name} value={value} readOnly />
 
   const isPassword = type === 'password'
   const hasError = node.messages?.some((m) => m.type === 'error')
