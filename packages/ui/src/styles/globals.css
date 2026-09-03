@@ -274,7 +274,8 @@
   --ease-hexa: var(--ease-hexa);
 
   /* entrance: content rises 6px and fades in (animate-rise); stagger with [animation-delay:…] */
-  --animate-rise: hx-rise 460ms var(--ease-hexa) both;
+  /* `backwards`, not `both`: once it has played, hover/dim styles must be able to change opacity */
+  --animate-rise: hx-rise 460ms var(--ease-hexa) backwards;
   @keyframes hx-rise {
     from {
       opacity: 0;
