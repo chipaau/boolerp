@@ -59,17 +59,17 @@ function itemTop(cell: HexCell) {
 }
 
 /**
- * The caption leader for the hovered tile: a line grows out from the tile's left edge to a dot,
- * and the app's one-line description fades in beyond it. It draws above the (dimmed) neighbours,
- * so right-column tiles run a longer line across the tile beside them, as in the design, and
- * left-column tiles a short one. Timing is identical for every tile.
+ * The caption leader for the hovered tile: a line grows out from beneath the tile to a dot, and
+ * the app's one-line description fades in beyond it. It sits under the tiles, so right-column
+ * tiles run a longer line that passes under the neighbour and re-emerges on its far side, while
+ * left-column tiles use a short one. Timing is identical for every tile.
  */
 function Leader({ app, cell }: { app: AppDef; cell: HexCell }) {
   const length = cell.col === 1 ? 'calc(var(--hc-x) + var(--hc-w) * 0.45)' : 'calc(var(--hc-w) * 0.45)'
   return (
     <span
       aria-hidden="true"
-      className="pointer-events-none absolute z-30 flex w-max items-center gap-2.5"
+      className="pointer-events-none absolute z-0 flex w-max items-center gap-2.5"
       style={{
         left: `calc(${itemLeft(cell)} + var(--hc-w) * 0.12)`,
         top: `calc(${itemTop(cell)} + var(--hc-h) / 2)`,
@@ -88,8 +88,8 @@ function Leader({ app, cell }: { app: AppDef; cell: HexCell }) {
 
 /**
  * The app grid's signature element: Soft Cream tiles, tessellated with a half-width offset and
- * a 24% vertical overlap, over a field of faded gradient hexagons. Hovering a tile tints it Sand,
- * dims the others, and draws its leader line.
+ * a 24% vertical overlap, over a field of faded gradient hexagons. Hovering a tile tints it Sand
+ * and draws its leader line beneath the grid.
  */
 export function AppsHoneycomb() {
   const [hovered, setHovered] = useState<number | null>(null)
@@ -102,8 +102,7 @@ export function AppsHoneycomb() {
         rows={5}
         gap={0.1}
         rowPitch={0.76}
-        data-hovered={hovered !== null ? '' : undefined}
-        className="ml-auto [&[data-hovered]_[data-tile]:not([data-active])]:opacity-40"
+        className="ml-auto"
       >
         {DECOR.map((d, i) => (
           <HoneycombItem key={`d${i}`} col={d.col} row={d.row} aria-hidden="true" className="pointer-events-none -z-10">
@@ -125,7 +124,7 @@ export function AppsHoneycomb() {
               row={SLOTS[i].row}
               data-tile=""
               data-active={active ? '' : undefined}
-              className="z-10 animate-rise transition-opacity duration-quick ease-hexa data-[active]:z-20"
+              className="z-10 animate-rise data-[active]:z-20"
               style={{ animationDelay: `${240 + i * 40}ms` }}
             >
               <Link

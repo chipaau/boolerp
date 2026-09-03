@@ -7,12 +7,16 @@ import { INBOX, type InboxItem } from './data'
 
 function InboxRow({ item, index }: { item: InboxItem; index: number }) {
   return (
-    <li className="flex animate-rise items-center gap-6 py-6" style={{ animationDelay: `${200 + index * 50}ms` }}>
-      <span className="grid size-[38px] shrink-0 place-items-center rounded-[10px] bg-card">
+    // hover: the title steps up from slate to ink and the app plate takes a thin amber ring;
+    // nothing changes size, so the row never shifts
+    <li className="group flex animate-rise items-center gap-6 py-6" style={{ animationDelay: `${200 + index * 50}ms` }}>
+      <span className="grid size-[38px] shrink-0 place-items-center rounded-[10px] bg-card transition-shadow duration-instant ease-hexa group-hover:shadow-[inset_0_0_0_1px_var(--brand-soft)]">
         <AppIcon slug={item.app} size={30} />
       </span>
       <div className="min-w-0 flex-1 space-y-2">
-        <h3 className="truncate text-base leading-[1.35] text-foreground">{item.title}</h3>
+        <h3 className="truncate text-base leading-[1.35] text-body transition-colors duration-instant ease-hexa group-hover:text-foreground">
+          {item.title}
+        </h3>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <Badge variant={item.tag.tone} size="sm">
             {item.tag.label}
