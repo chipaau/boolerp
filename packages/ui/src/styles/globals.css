@@ -6,7 +6,7 @@
 
 /*
   Hexa design system v2.0 (August 2026) — single source of truth for app, admin and website.
-  Values come from .design/Design system/Hexa Design System.dc.html. Edit tokens here only;
+  Values come from .design/Inventory dashboard/Hexa Design System.dc.html. Edit tokens here only;
   components consume them through the @theme block below, so a change lands everywhere.
 
   Rules worth remembering (from the design doc):
@@ -40,12 +40,14 @@
   --surface-inverted-foreground: #f4f3f1;
   --toast: #2a2725;
   --toast-foreground: #f2efea;
+  --tooltip: #2a2725; /* the compact tooltip chip (dark surface in both themes) */
   --scrim: rgba(38, 34, 27, 0.45);
 
   /* text */
   --text-body: #3b3c42; /* Slate text */
   --muted-foreground: #8c8579; /* Taupe */
-  --faint: #a5906f; /* eyebrows, placeholders */
+  --faint: #a5906f; /* eyebrows */
+  --placeholder: #a5906f; /* field placeholders */
   --disabled-foreground: #ada9a3;
 
   /* the one button */
@@ -169,7 +171,12 @@
   --ease-hexa: cubic-bezier(0.2, 0, 0.2, 1);
 }
 
-/* Dark neutrals are achromatic; the warmth lives only in the button fill and the honeycomb. */
+/*
+  Dark theme, from the design system v2 dark mapping: achromatic neutrals (page 161616, card
+  1F1F1F, ivory 191919, band 1D1C1B, tile 262523, rail 121212, rules 323231), ink F0EFED, body
+  CFCCC7, mute A8A29A, faint 9B958C, sage 9AAB94. The warmth lives only in the button fill and the
+  honeycomb. Status pills keep their light fills. Heat-map fills are the light colours at 42%.
+*/
 .dark {
   --background: #161616;
   --foreground: #f0efed;
@@ -177,15 +184,17 @@
   --card-foreground: #f0efed;
   --popover: #1f1f1f;
   --popover-foreground: #f0efed;
-  --surface-soft: #191919;
-  --surface-band: #232322;
+  --surface-soft: #262523; /* tile */
+  --surface-band: #1d1c1b; /* sub */
   --toast: #2a2725;
+  --tooltip: #262523;
   --scrim: rgba(0, 0, 0, 0.55);
 
   --text-body: #cfccc7;
-  --muted-foreground: #96918a;
-  --faint: #6e6a64;
-  --disabled-foreground: #5a5751;
+  --muted-foreground: #a8a29a;
+  --faint: #9b958c;
+  --placeholder: #6a6864;
+  --disabled-foreground: #6e6a64;
 
   --primary: #332f28;
   --primary-foreground: #f0efed;
@@ -193,11 +202,11 @@
   --primary-circle-foreground: #e8e4dc;
   --primary-circle-hover: #efdec8;
   --primary-circle-hover-foreground: #242424;
-  --secondary: #282827;
+  --secondary: #232322;
   --secondary-foreground: #f0efed;
-  --secondary-hover: #323231;
-  --muted: #282827;
-  --accent: #282827;
+  --secondary-hover: #2a2927;
+  --muted: #191919; /* ivory */
+  --accent: #262625; /* hover */
   --accent-foreground: #f0efed;
 
   --sage: #9aab94;
@@ -211,46 +220,32 @@
   --destructive-soft-hover: #48292f;
 
   --border: #323231;
-  --divider: #2c2c2b;
-  --input: #3a3937;
+  --divider: #323231;
+  --input: #3a3937; /* ghost ring */
   --field: #282827;
   --ring: #9aab94;
 
-  --tone-success-soft: #26302a;
-  --tone-success-foreground: #b4bfb0;
-  --tone-warning-soft: #3a2c18;
-  --tone-warning-foreground: #e0a97a;
-  --tone-danger-soft: #3a2229;
-  --tone-danger-foreground: #e39aa9;
-  --tone-plum-soft: #2f2a31;
-  --tone-plum-foreground: #c4b4c8;
-  --tone-slate-soft: #292c30;
-  --tone-slate-foreground: #b7bdc4;
-  --tone-neutral-soft: #282827;
-  --tone-neutral-foreground: #96918a;
-  --tone-rose-soft: #3a262d;
-  --tone-rose-foreground: #d9a3b3;
-
-  --hex-decor-from: #1f1f1f;
-  --hex-decor-to: #2a2723;
+  --hex-decor-from: #191919;
+  --hex-decor-to: #262523;
   --tile-hover-fill: #332d24;
   --tile-hover-stroke: #4a4034;
   --marker-meeting: #5a4632;
+  --marker-meeting-hover: #7a5a3a;
   --marker-approval: #4a5c4d;
   --marker-outline: #f0efed;
   --avatar-count: #3a3227;
-
-  --heat-0: #2c2a27;
-  --heat-1: #4a3c27;
-  --heat-2: #7a5a2c;
-  --heat-3: #c78a3a;
-  --heat-today-stroke: #f0efed;
-  --marker-meeting-hover: #7a5a3a;
   --schedule-hover: #d9b98a;
+
+  /* the light fills at 42% over the page (the design dims the honeycomb rather than recolouring it) */
+  --heat-0: #6d655e;
+  --heat-1: #746855;
+  --heat-2: #75644e;
+  --heat-3: #785d3a;
+  --heat-today-stroke: #f0efed;
 
   --sidebar: #121212;
   --sidebar-foreground: #cfccc7;
-  --sidebar-accent: #1f1f1f;
+  --sidebar-accent: #232322;
   --sidebar-accent-foreground: #f0efed;
   --sidebar-border: #323231;
 
@@ -349,6 +344,8 @@
   --color-surface-inverted-foreground: var(--surface-inverted-foreground);
   --color-toast: var(--toast);
   --color-toast-foreground: var(--toast-foreground);
+  --color-tooltip: var(--tooltip);
+  --color-placeholder: var(--placeholder);
   --color-scrim: var(--scrim);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);

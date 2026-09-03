@@ -8,7 +8,7 @@ import { cn } from "@workspace/ui/lib/utils"
 // used for rich hover content such as the heat-map day card. Triggers render another control
 // via `render={<button … />}`.
 const tooltipVariants = {
-  default: "rounded-md bg-toast px-3 py-1.5 text-xs font-bold text-toast-foreground",
+  default: "rounded-md bg-tooltip px-3 py-1.5 text-xs font-bold text-toast-foreground",
   card: "rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-floating",
 } as const
 
@@ -62,7 +62,7 @@ function TooltipContent({
         >
           {children}
           {showArrow && (
-            <TooltipPrimitive.Arrow className="z-50 size-2.5 rotate-45 rounded-[2px] bg-toast fill-toast data-[side=bottom]:-top-1 data-[side=left]:top-1/2! data-[side=left]:-right-1 data-[side=left]:-translate-y-1/2 data-[side=right]:top-1/2! data-[side=right]:-left-1 data-[side=right]:-translate-y-1/2 data-[side=top]:-bottom-1" />
+            <TooltipPrimitive.Arrow className="z-50 size-2.5 rotate-45 rounded-[2px] bg-tooltip fill-tooltip data-[side=bottom]:-top-1 data-[side=left]:top-1/2! data-[side=left]:-right-1 data-[side=left]:-translate-y-1/2 data-[side=right]:top-1/2! data-[side=right]:-left-1 data-[side=right]:-translate-y-1/2 data-[side=top]:-bottom-1" />
           )}
         </TooltipPrimitive.Popup>
       </TooltipPrimitive.Positioner>
