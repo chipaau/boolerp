@@ -17,6 +17,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAppRouteImport } from './routes/_app/$app'
+import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppAppIndexRouteImport } from './routes/_app/$app/index'
 import { Route as AppAppSectionRouteImport } from './routes/_app/$app/$section'
 
@@ -59,6 +60,11 @@ const AppAppRoute = AppAppRouteImport.update({
   path: '/$app',
   getParentRoute: () => AppRoute,
 } as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAppIndexRoute = AppAppIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/verify': typeof VerifyRoute
   '/$app': typeof AppAppRouteWithChildren
+  '/notifications': typeof AppNotificationsRoute
   '/$app/$section': typeof AppAppSectionRoute
   '/$app/': typeof AppAppIndexRoute
 }
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/recovery': typeof RecoveryRoute
   '/settings': typeof SettingsRoute
   '/verify': typeof VerifyRoute
+  '/notifications': typeof AppNotificationsRoute
   '/': typeof AppIndexRoute
   '/$app/$section': typeof AppAppSectionRoute
   '/$app': typeof AppAppIndexRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/verify': typeof VerifyRoute
   '/_app/$app': typeof AppAppRouteWithChildren
+  '/_app/notifications': typeof AppNotificationsRoute
   '/_app/': typeof AppIndexRoute
   '/_app/$app/$section': typeof AppAppSectionRoute
   '/_app/$app/': typeof AppAppIndexRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/verify'
     | '/$app'
+    | '/notifications'
     | '/$app/$section'
     | '/$app/'
   fileRoutesByTo: FileRoutesByTo
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
     | '/recovery'
     | '/settings'
     | '/verify'
+    | '/notifications'
     | '/'
     | '/$app/$section'
     | '/$app'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/verify'
     | '/_app/$app'
+    | '/_app/notifications'
     | '/_app/'
     | '/_app/$app/$section'
     | '/_app/$app/'
@@ -207,6 +219,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/notifications': {
+      id: '/_app/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/$app/': {
       id: '/_app/$app/'
       path: '/'
@@ -239,11 +258,13 @@ const AppAppRouteWithChildren =
 
 interface AppRouteChildren {
   AppAppRoute: typeof AppAppRouteWithChildren
+  AppNotificationsRoute: typeof AppNotificationsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAppRoute: AppAppRouteWithChildren,
+  AppNotificationsRoute: AppNotificationsRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
