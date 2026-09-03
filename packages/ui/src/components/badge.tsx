@@ -33,7 +33,7 @@ const badgeVariants = cva(
         risk: "rounded-full bg-tone-risk-soft text-tone-risk-foreground",
       },
       size: {
-        default: "px-[13px] py-[5px] text-[13px] leading-[1.4]",
+        default: "px-[13px] py-[5px] text-compact leading-[1.4]",
         sm: "px-[11px] py-1 text-xs leading-[1.35]",
       },
     },

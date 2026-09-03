@@ -28,14 +28,14 @@ function VerifyPage() {
       }
     >
       {error && (
-        <p role="alert" className="mb-3 rounded-full bg-destructive-soft px-[18px] py-3 text-[13.5px] text-destructive">
+        <p role="alert" className="mb-3 rounded-full bg-destructive-soft px-[18px] py-3 text-ui-sm text-destructive">
           {error}
         </p>
       )}
       {flow ? (
         <KratosForm flow={flow} onSubmit={onSubmit} submitting={submitting} groups={['code', 'link']} />
       ) : (
-        <p className="text-[15px] text-muted-foreground">Loading…</p>
+        <p className="text-ui-lg text-muted-foreground">Loading…</p>
       )}
     </AuthShell>
   )

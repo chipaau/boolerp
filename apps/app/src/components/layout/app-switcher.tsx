@@ -50,7 +50,7 @@ export function AppSwitcher() {
                 <span className="grid size-[34px] place-items-center rounded-[10px] bg-surface-soft">
                   <AppIcon slug={app.slug} size={22} />
                 </span>
-                <span className={cn('text-center text-[11.5px] leading-tight', active ? 'font-bold text-tone-warning-deep' : 'font-medium text-body')}>
+                <span className={cn('text-center text-fine leading-tight', active ? 'font-bold text-tone-warning-deep' : 'font-medium text-body')}>
                   {app.name}
                 </span>
               </Link>
@@ -58,7 +58,7 @@ export function AppSwitcher() {
           })}
         </div>
         <div className="mt-2 border-t border-divider pt-2.5 text-center">
-          <Button variant="link" size="xs" className="text-[12.5px] no-underline hover:underline" render={<Link to="/" />}>
+          <Button variant="link" size="xs" className="text-meta no-underline hover:underline" render={<Link to="/" />}>
             Browse all apps
           </Button>
         </div>

@@ -63,7 +63,7 @@ function CommandInput({
         <SearchIcon className="size-4 shrink-0" strokeWidth={1.75} />
         <CommandPrimitive.Input
           data-slot="command-input"
-          className={cn("min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-hidden placeholder:text-placeholder disabled:cursor-not-allowed disabled:opacity-50", className)}
+          className={cn("min-w-0 flex-1 bg-transparent text-ui-lg text-foreground outline-hidden placeholder:text-placeholder disabled:cursor-not-allowed disabled:opacity-50", className)}
           {...props}
         />
         {shortcut && <Kbd>{shortcut}</Kbd>}

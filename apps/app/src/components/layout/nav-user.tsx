@@ -33,15 +33,15 @@ export function UserMenu() {
         }
       >
         <Avatar name={user.name} className="size-[31px]">
-          <AvatarFallback className="bg-secondary-hover/60 text-[11px] tracking-[0.02em] text-muted-foreground" />
+          <AvatarFallback className="bg-secondary-hover/60 text-micro tracking-[0.02em] text-muted-foreground" />
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60 p-2">
         <div className="px-3 pt-1.5 pb-3">
           <div className="text-sm font-bold text-foreground">{user.name}</div>
-          <div className="mt-0.5 text-[11.5px] text-faint">{user.email}</div>
+          <div className="mt-0.5 text-fine text-faint">{user.email}</div>
           {membership && (
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted py-[3px] pr-[9px] pl-2.5 text-[11.5px] font-bold text-body">
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted py-[3px] pr-[9px] pl-2.5 text-fine font-bold text-body">
               {membership.role}
               <ChevronDown className="size-[9px] text-muted-foreground" strokeWidth={2.5} />
             </span>
@@ -49,10 +49,10 @@ export function UserMenu() {
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-[13.5px]">Profile &amp; preferences</DropdownMenuItem>
-          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-[13.5px]">Settings &amp; permissions</DropdownMenuItem>
-          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-[13.5px]">Switch workspace</DropdownMenuItem>
-          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-[13.5px] text-tone-risk-foreground data-highlighted:text-tone-risk-foreground" onClick={() => logout()}>
+          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm">Profile &amp; preferences</DropdownMenuItem>
+          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm">Settings &amp; permissions</DropdownMenuItem>
+          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm">Switch workspace</DropdownMenuItem>
+          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm text-tone-risk-foreground data-highlighted:text-tone-risk-foreground" onClick={() => logout()}>
             Sign out
           </DropdownMenuItem>
         </DropdownMenuGroup>

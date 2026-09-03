@@ -44,7 +44,7 @@ function DayCard({ date, activity, isToday }: { date: Date; activity: DayActivit
     <div className="w-60 space-y-3.5 p-1">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-[15px] text-faint">{weekday},</div>
+          <div className="text-ui-lg text-faint">{weekday},</div>
           <div className="text-[17px] leading-[1.35] text-foreground">
             {day}
             <sup className="text-[10px]">{ordinal(day)}</sup> {rest}
@@ -56,7 +56,7 @@ function DayCard({ date, activity, isToday }: { date: Date; activity: DayActivit
           render={<Link to="/$app/$section" params={{ app: 'tasks', section: 'my-tasks' }} search={{ date: isoDate(date) }} />}
         />
       </div>
-      <ul className="space-y-2 text-[15px]">
+      <ul className="space-y-2 text-ui-lg">
         {rows.map((r) => (
           <li key={r.label} className="flex items-center gap-2.5">
             {r.icon}

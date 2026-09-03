@@ -35,8 +35,8 @@ export function StockChart() {
     <div className="min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="text-[15px] font-bold text-foreground">Stock in vs out</div>
-          <div className="mt-0.5 text-[12.5px] text-muted-foreground">Units received against units issued or written off</div>
+          <div className="text-ui-lg font-bold text-foreground">Stock in vs out</div>
+          <div className="mt-0.5 text-meta text-muted-foreground">Units received against units issued or written off</div>
         </div>
         <div className="flex gap-1 rounded-full bg-muted p-1" role="tablist" aria-label="Period">
           {PERIODS.map((p) => (
@@ -50,7 +50,7 @@ export function StockChart() {
                 startTransition(() => setPeriod(p))
               }}
               className={cn(
-                'rounded-full px-[13px] py-[5px] text-[12.5px] font-bold transition-colors duration-instant ease-hexa',
+                'rounded-full px-[13px] py-[5px] text-meta font-bold transition-colors duration-instant ease-hexa',
                 p === period ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -122,7 +122,7 @@ export function StockChart() {
                 }}
               >
                 <div className="text-overline text-muted-foreground">{s.labels[hover]}</div>
-                <div className="mt-1.5 flex gap-3 text-[12.5px] font-bold text-foreground">
+                <div className="mt-1.5 flex gap-3 text-meta font-bold text-foreground">
                   <span className="flex items-center gap-1.5">
                     <span className="size-1.5 rounded-full bg-chart-line-a" />
                     {s.inn[hover]} in

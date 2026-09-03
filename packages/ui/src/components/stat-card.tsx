@@ -47,7 +47,7 @@ function StatCard({
           <>
             <div
               className={cn(
-                "text-[11.5px] font-bold tracking-[0.1em] uppercase",
+                "text-fine font-bold tracking-[0.1em] uppercase",
                 inverted ? "text-surface-inverted-foreground/65" : "text-muted-foreground"
               )}
             >

@@ -49,7 +49,7 @@ export function CommandPalette({ trigger }: { trigger?: ReactNode }) {
         asButton
         size="sm"
         placeholder="Search"
-        shortcut={<span className="text-[11px] font-medium tracking-[0.04em] text-muted-foreground">⌘K</span>}
+        shortcut={<span className="text-micro font-medium tracking-[0.04em] text-muted-foreground">⌘K</span>}
         className="justify-self-center"
         onClick={() => setOpen(true)}
       />

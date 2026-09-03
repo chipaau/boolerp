@@ -76,7 +76,7 @@ function TableHead({
       data-slot="table-head"
       aria-sort={sorted ? (sorted === "asc" ? "ascending" : "descending") : undefined}
       className={cn(
-        "h-[38px] px-[7px] text-[11px] font-bold tracking-[0.09em] whitespace-nowrap text-foreground uppercase first:pl-[22px] last:pr-[22px]",
+        "h-[38px] px-[7px] text-micro font-bold tracking-[0.09em] whitespace-nowrap text-foreground uppercase first:pl-[22px] last:pr-[22px]",
         alignClass[align],
         sortable && "cursor-pointer select-none hover:text-sage",
         className
@@ -168,7 +168,7 @@ function TableBulkAction({
       type="button"
       data-slot="table-bulk-action"
       className={cn(
-        "rounded-full px-3.5 py-1.5 text-[13.5px] font-bold text-surface-inverted-foreground transition-colors duration-instant ease-hexa hover:bg-surface-inverted-foreground/25",
+        "rounded-full px-3.5 py-1.5 text-ui-sm font-bold text-surface-inverted-foreground transition-colors duration-instant ease-hexa hover:bg-surface-inverted-foreground/25",
         emphasis ? "bg-surface-inverted-foreground/25" : "bg-surface-inverted-foreground/15",
         className
       )}
@@ -191,7 +191,7 @@ function TablePagination({
 }) {
   const pages = Array.from({ length: pageCount }, (_, i) => i + 1)
   const btn =
-    "grid size-[30px] place-items-center rounded-[7px] text-[13px] transition-colors duration-instant ease-hexa focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:text-faint"
+    "grid size-[30px] place-items-center rounded-[7px] text-compact transition-colors duration-instant ease-hexa focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:text-faint"
   return (
     <nav data-slot="table-pagination" aria-label="Pagination" className={cn("flex items-center gap-[7px]", className)} {...props}>
       <button type="button" className={cn(btn, "bg-muted text-body hover:bg-secondary-hover")} disabled={page <= 1} onClick={() => onPageChange(page - 1)} aria-label="Previous page">

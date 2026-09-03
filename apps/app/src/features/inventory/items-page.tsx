@@ -166,7 +166,7 @@ export function InventoryItemsPage() {
                       {r.name}
                     </button>
                   </TableCell>
-                  <TableCell className="font-mono text-[13px] text-muted-foreground">{r.sku}</TableCell>
+                  <TableCell className="font-mono text-compact text-muted-foreground">{r.sku}</TableCell>
                   <TableCell className="text-muted-foreground">{r.location}</TableCell>
                   <TableCell align="center" numeric>
                     {r.onHand}

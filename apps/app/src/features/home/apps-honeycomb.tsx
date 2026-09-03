@@ -83,7 +83,7 @@ function Leader({ app, cell }: { app: AppDef; cell: HexCell }) {
         transform: 'translate(-100%, -50%)',
       }}
     >
-      <span className="max-w-[5.5rem] animate-rise text-right text-[11px] leading-[1.35] font-bold tracking-[0.06em] text-muted-foreground uppercase [animation-delay:240ms]">
+      <span className="max-w-[5.5rem] animate-rise text-right text-micro leading-[1.35] font-bold tracking-[0.06em] text-muted-foreground uppercase [animation-delay:240ms]">
         {app.description}
       </span>
       <span className="relative h-px origin-right animate-grow-x bg-faint/80" style={{ width: length }}>
@@ -159,7 +159,7 @@ export function AppsHoneycomb() {
                         active && 'scale-[1.08] -translate-y-0.5'
                       )}
                     />
-                    <span className="text-[15px] font-bold text-foreground">{app.name}</span>
+                    <span className="text-ui-lg font-bold text-foreground">{app.name}</span>
                   </div>
                 </Hexagon>
               </Link>
@@ -171,7 +171,7 @@ export function AppsHoneycomb() {
       <div className="relative z-10 flex justify-end pt-2">
         <button
           type="button"
-          className="group inline-flex items-center gap-3 rounded-full text-[13.5px] font-bold text-body outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="group inline-flex items-center gap-3 rounded-full text-ui-sm font-bold text-body outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           Browse All Apps
           <ArrowCircle small />

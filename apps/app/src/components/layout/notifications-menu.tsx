@@ -44,14 +44,14 @@ export function NotificationsMenu() {
             <DropdownMenuItem key={n.id} className="items-start gap-[11px] rounded-[9px] px-3 py-[11px]" onClick={() => setRead(true)}>
               <HexGlyph size={10} className={cn('mt-1 shrink-0', n.unread && !read ? 'text-brand-soft' : 'text-border')} />
               <span className="min-w-0 flex-1">
-                <span className="block text-[13px] leading-[1.4] font-bold text-foreground">{n.text}</span>
-                <span className="mt-[3px] block text-[11.5px] text-faint">{n.time}</span>
+                <span className="block text-compact leading-[1.4] font-bold text-foreground">{n.text}</span>
+                <span className="mt-[3px] block text-fine text-faint">{n.time}</span>
               </span>
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
         <div className="mt-1.5 border-t border-divider pt-2.5 text-center">
-          <Button variant="link" size="xs" className="text-[12.5px] no-underline hover:underline">
+          <Button variant="link" size="xs" className="text-meta no-underline hover:underline">
             See all notifications
           </Button>
         </div>

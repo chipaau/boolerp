@@ -74,7 +74,7 @@ export function MonthPicker({
                 aria-selected={selected}
                 onClick={() => pick(m)}
                 className={cn(
-                  'h-9 rounded-md text-[13px] font-bold transition-colors duration-instant ease-hexa outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'h-9 rounded-md text-compact font-bold transition-colors duration-instant ease-hexa outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   selected
                     ? 'bg-sage text-sage-foreground'
                     : 'text-body hover:bg-accent hover:text-foreground',

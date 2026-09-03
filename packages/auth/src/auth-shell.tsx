@@ -52,14 +52,14 @@ export function AuthShell({
           </div>
 
           <h1 className="mt-[38px] text-display-sm font-normal text-foreground">{title}</h1>
-          {subtitle && <p className="mt-2.5 text-[15px] leading-[1.55] text-pretty text-muted-foreground">{subtitle}</p>}
+          {subtitle && <p className="mt-2.5 text-ui-lg leading-[1.55] text-pretty text-muted-foreground">{subtitle}</p>}
 
           <div className="mt-[30px]">{children}</div>
-          {footer && <div className="mt-[18px] flex flex-wrap items-center justify-between gap-4 text-[13.5px]">{footer}</div>}
+          {footer && <div className="mt-[18px] flex flex-wrap items-center justify-between gap-4 text-ui-sm">{footer}</div>}
         </div>
       </div>
 
-      <div className="relative flex w-full max-w-[408px] flex-wrap items-center gap-[18px] px-6 pb-[34px] text-[12.5px] text-muted-foreground">
+      <div className="relative flex w-full max-w-[408px] flex-wrap items-center gap-[18px] px-6 pb-[34px] text-meta text-muted-foreground">
         <span>
           © {year} {brand}
         </span>

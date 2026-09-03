@@ -72,7 +72,7 @@ function Dashboard() {
         {stats.map((s) => (
           <Card key={s.label}>
             <CardContent>
-              <div className="text-[11.5px] font-bold tracking-[0.1em] text-muted-foreground uppercase">{s.label}</div>
+              <div className="text-fine font-bold tracking-[0.1em] text-muted-foreground uppercase">{s.label}</div>
               <div className="mt-2.5 text-[34px] leading-[1.1] font-bold tabular-nums text-foreground">{s.value}</div>
               <div className="mt-2 flex items-center gap-1.5 text-caption">
                 <span className="font-bold text-link">{s.delta}</span>
@@ -236,7 +236,7 @@ function ListView({ label }: { label: string }) {
                 <AvatarFallback />
               </Avatar>
             }
-            heading={<span className="truncate text-[15px] font-bold text-foreground">{r.name}</span>}
+            heading={<span className="truncate text-ui-lg font-bold text-foreground">{r.name}</span>}
             meta={`${r.meta} · ${r.ref}`}
             trailing={
               <>
@@ -263,7 +263,7 @@ function CalendarView() {
   const dow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   return (
     <Card className="gap-0 overflow-hidden py-0">
-      <div className="grid grid-cols-7 border-b border-border bg-surface-band text-center text-[11px] font-bold tracking-[0.09em] text-foreground uppercase">
+      <div className="grid grid-cols-7 border-b border-border bg-surface-band text-center text-micro font-bold tracking-[0.09em] text-foreground uppercase">
         {dow.map((d) => (
           <div key={d} className="py-2.5">
             {d}

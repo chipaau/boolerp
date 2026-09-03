@@ -94,7 +94,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
       <SidebarFooter className="mx-[22px] border-t border-sidebar-border px-0 pt-3.5 pb-[18px] group-data-[collapsible=icon]:mx-2">
         <Link
           to="/"
-          className="inline-flex items-center gap-2.5 rounded-md py-2 pl-[13px] text-[13px] text-link outline-none transition-colors duration-instant ease-hexa hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:pl-2"
+          className="inline-flex items-center gap-2.5 rounded-md py-2 pl-[13px] text-compact text-link outline-none transition-colors duration-instant ease-hexa hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:pl-2"
         >
           <ArrowLeft className="size-3.5" strokeWidth={1.75} />
           <span className="group-data-[collapsible=icon]:hidden">Back to all apps</span>

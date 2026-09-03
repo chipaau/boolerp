@@ -99,11 +99,11 @@ function FlowMessage({ message }: { message: UiText }) {
     return (
       <div role="alert" className="flex animate-shake items-center gap-2.5 rounded-full bg-destructive-soft px-[18px] py-3">
         <HexGlyph size={11} className="text-destructive" />
-        <span className="text-[13.5px] text-destructive">{message.text}</span>
+        <span className="text-ui-sm text-destructive">{message.text}</span>
       </div>
     )
   }
-  return <p className="text-[13.5px] text-muted-foreground">{message.text}</p>
+  return <p className="text-ui-sm text-muted-foreground">{message.text}</p>
 }
 
 function SubmitButton({ node, primary, submitting }: { node: UiNode; primary: boolean; submitting: boolean }) {
@@ -174,7 +174,7 @@ function Field({
 
   if (node.type === 'text') {
     return node.meta?.label?.text ? (
-      <p className="text-[15px] leading-[1.55] text-muted-foreground">{node.meta.label.text}</p>
+      <p className="text-ui-lg leading-[1.55] text-muted-foreground">{node.meta.label.text}</p>
     ) : null
   }
   if (node.type !== 'input') return null
@@ -188,7 +188,7 @@ function Field({
   return (
     <label className="block">
       <span className="mb-2 flex items-center justify-between">
-        <span className="text-[11.5px] font-bold tracking-[0.12em] text-faint uppercase">{nodeLabel(node)}</span>
+        <span className="text-fine font-bold tracking-[0.12em] text-faint uppercase">{nodeLabel(node)}</span>
         {isPassword && (
           <button
             type="button"

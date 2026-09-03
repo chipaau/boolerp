@@ -36,7 +36,7 @@ export function TenantMenu() {
         <span className="grid size-[22px] shrink-0 place-items-center rounded-[7px] bg-secondary-hover/60 text-[9.5px] font-bold tracking-[0.02em] text-muted-foreground">
           {tenant.short}
         </span>
-        <span className="hidden max-w-[118px] truncate text-[13px] font-medium text-body lg:block">{tenant.name}</span>
+        <span className="hidden max-w-[118px] truncate text-compact font-medium text-body lg:block">{tenant.name}</span>
         <ChevronDown className="size-[9px] shrink-0 text-muted-foreground" strokeWidth={2.5} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 p-2">
@@ -47,8 +47,8 @@ export function TenantMenu() {
               {tenant.short}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13.5px] font-bold text-foreground">{tenant.name}</span>
-              <span className="block text-[11.5px] text-faint">{tenant.meta}</span>
+              <span className="block truncate text-ui-sm font-bold text-foreground">{tenant.name}</span>
+              <span className="block text-fine text-faint">{tenant.meta}</span>
             </span>
             <Check className="size-3.5 text-sage" strokeWidth={2.5} />
           </DropdownMenuItem>

@@ -34,10 +34,10 @@ const buttonVariants = cva(
       size: {
         // circle diameter is always height minus 10 (a 5px inset all round); see ButtonArrow
         xs: "h-6 gap-1.5 px-2.5 text-xs has-[>[data-slot=button-arrow]]:pr-0.5",
-        sm: "h-8 gap-2.5 px-3.5 text-[13px] has-[>[data-slot=button-arrow]]:pr-1",
+        sm: "h-8 gap-2.5 px-3.5 text-compact has-[>[data-slot=button-arrow]]:pr-1",
         default: "h-[38px] gap-3.5 px-[18px] text-sm has-[>[data-slot=button-arrow]]:pr-[5px]",
-        lg: "h-[46px] gap-4 px-[22px] text-[15px] has-[>[data-slot=button-arrow]]:pr-1.5",
-        xl: "h-14 gap-4 px-[26px] text-[15.5px] has-[>[data-slot=button-arrow]]:pr-2.5",
+        lg: "h-[46px] gap-4 px-[22px] text-ui-lg has-[>[data-slot=button-arrow]]:pr-1.5",
+        xl: "h-14 gap-4 px-[26px] text-heading-sm has-[>[data-slot=button-arrow]]:pr-2.5",
         icon: "size-[38px] p-[5px]",
         "icon-xs": "size-6 p-0.5 [&_svg:not([class*='size-'])]:size-3",
         "icon-sm": "size-8 p-1",

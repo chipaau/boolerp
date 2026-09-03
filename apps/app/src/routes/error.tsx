@@ -35,7 +35,7 @@ function ErrorPage() {
         </Link>
       }
     >
-      <p className="rounded-full bg-destructive-soft px-[18px] py-3 text-[13.5px] text-destructive">{message}</p>
+      <p className="rounded-full bg-destructive-soft px-[18px] py-3 text-ui-sm text-destructive">{message}</p>
     </AuthShell>
   )
 }
