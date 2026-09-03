@@ -72,6 +72,7 @@
   --brand-cta-foreground: #2b1e0c;
   --brand-cta-circle: #fff7ea;
   --ring-warm: #f0c98a; /* focus ring on the amber sign-in screen */
+  --plate-hover-ring: #f09a43; /* the thin ring an app plate takes on row hover (inbox) */
   --sage: #6e7f6a; /* Sage 600 · lead accent */
   --sage-foreground: #faf7f0;
   --sage-400: #8b9a86;
@@ -268,28 +269,29 @@
 
   /* Home has no cards, so its layers come from tokens: a warm lattice of decor hexes, tiles on the
      card tone with the card hairline, and the heat map as amber over the page instead of dimmed cream */
-  --hex-decor-from: #181716;
-  --hex-decor-to: #211e1a;
+  --hex-decor-from: #171716;
+  --hex-decor-to: #1d1b18;
   --tile-fill: #1f1f1f;
   --tile-stroke: #282827; /* a whisper above the fill: tiles read by tone, not by outline */
   --tile-hover-fill: #332d24;
   --tile-hover-stroke: #3d372e;
-  --marker-meeting: #5a4632;
-  --marker-meeting-hover: #7a5a3a;
+  --marker-meeting: #f5d4b7; /* same cream fill as light; only the outline changes for dark */
+  --marker-meeting-hover: #f2c196;
   --marker-approval: #4a5c4d;
   --marker-outline: #8f8a83; /* muted: the markers' fills carry the meaning, the outline only shapes them */
   --avatar-count: #3a3227;
   --schedule-hover: #d9b98a;
+  --plate-hover-ring: #6b5232;
 
   --chart-grid: #232322;
   --chart-guide: #3a3937;
   /* the amber hue stepped in brightness and kept saturated (solid, never faded or greyed); the top
      level is a softened amber so the map sits with the text instead of over it */
   --heat-0: #2a2826;
-  --heat-1: #8a5f26;
-  --heat-2: #c48a2f;
-  --heat-3: #f0ad52;
-  --heat-today-stroke: #f0efed;
+  --heat-1: #6f4e25;
+  --heat-2: #a3752f;
+  --heat-3: #d99a4a;
+  --heat-today-stroke: #a89f92; /* today keeps its hot fill; the outline goes quiet */
 
   --sidebar: #121212;
   --sidebar-foreground: #cfccc7;

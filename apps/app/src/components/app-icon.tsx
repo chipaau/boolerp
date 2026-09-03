@@ -60,7 +60,8 @@ export function AppIcon({
         alt=""
         aria-hidden="true"
         style={{ width: size, height: size }}
-        className={cn('shrink-0 object-contain', className)}
+        // the artwork is painted for cream; on the dark page it is dimmed a step so it sits with the text
+        className={cn('shrink-0 object-contain dark:brightness-[.82] dark:saturate-[.9]', className)}
       />
     )
   }
