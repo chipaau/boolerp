@@ -271,24 +271,24 @@
   --hex-decor-from: #181716;
   --hex-decor-to: #211e1a;
   --tile-fill: #1f1f1f;
-  --tile-stroke: #323231;
+  --tile-stroke: #282827; /* a whisper above the fill: tiles read by tone, not by outline */
   --tile-hover-fill: #332d24;
-  --tile-hover-stroke: #4a4034;
+  --tile-hover-stroke: #3d372e;
   --marker-meeting: #5a4632;
   --marker-meeting-hover: #7a5a3a;
   --marker-approval: #4a5c4d;
-  --marker-outline: #f0efed;
+  --marker-outline: #8f8a83; /* muted: the markers' fills carry the meaning, the outline only shapes them */
   --avatar-count: #3a3227;
   --schedule-hover: #d9b98a;
 
   --chart-grid: #232322;
   --chart-guide: #3a3937;
-  /* the amber hue stepped in brightness (solid, never faded): only the top level is the full amber,
-     so the three levels stay readable and the map does not outshine the text */
+  /* the amber hue stepped in brightness and kept saturated (solid, never faded or greyed); the top
+     level is a softened amber so the map sits with the text instead of over it */
   --heat-0: #2a2826;
-  --heat-1: #8a6a3c;
-  --heat-2: #c4903f;
-  --heat-3: #ffbf6b;
+  --heat-1: #8a5f26;
+  --heat-2: #c48a2f;
+  --heat-3: #f0ad52;
   --heat-today-stroke: #f0efed;
 
   --sidebar: #121212;
