@@ -7,15 +7,16 @@ import { cn } from '@workspace/ui/lib/utils'
 /**
  * The "Calendar time" icon from the design export (packages/assets/icons/calendar-time.svg),
  * inlined so its fill can follow hover/theme: a squircle with the ink outline at 67% and two
- * clock hands. `size` is the rendered box; the drawing sits on a 20px grid.
+ * clock hands. The viewBox is cropped to the shape, so `size` is the visible size of the
+ * squircle (matching the hexagon markers beside it), not the export's 20px canvas.
  */
-export function MeetingMarker({ size = 20, className }: { size?: number; className?: string }) {
+export function MeetingMarker({ size = 18, className }: { size?: number; className?: string }) {
   return (
     <svg
       aria-hidden="true"
       width={size}
       height={size}
-      viewBox="0 0 20 20"
+      viewBox="1.5 1.5 17 17"
       fill="none"
       style={{ width: size, height: size }}
       className={cn('block shrink-0 text-marker-meeting transition-colors duration-instant ease-hexa', className)}

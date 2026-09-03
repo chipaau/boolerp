@@ -21,7 +21,7 @@ export function Schedule() {
               type="button"
               className="group flex items-center gap-2.5 rounded-sm text-sm font-medium text-foreground outline-none transition-colors duration-instant ease-hexa hover:font-bold hover:text-schedule-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              <MeetingMarker size={20} className="group-hover:text-marker-meeting-hover" />
+              <MeetingMarker size={18} className="group-hover:text-marker-meeting-hover" />
               <span className="tabular-nums decoration-schedule-hover decoration-1 underline-offset-[5px] group-hover:underline">
                 {item.start} - {item.end}
               </span>

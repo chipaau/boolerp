@@ -42,7 +42,7 @@ function DayCard({ date, activity, isToday }: { date: Date; activity: DayActivit
   const day = date.getDate()
   const rest = date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
   const rows = [
-    { label: `${activity.meetings} Meeting${activity.meetings === 1 ? '' : 's'}`, icon: <MeetingMarker size={20} /> },
+    { label: `${activity.meetings} Meeting${activity.meetings === 1 ? '' : 's'}`, icon: <MeetingMarker size={18} /> },
     { label: `${activity.tasks} Task(s) due`, icon: <TaskMarker size={18} /> },
     { label: `${activity.approvals} Approval(s) pending`, icon: <ApprovalMarker size={18} /> },
   ]
