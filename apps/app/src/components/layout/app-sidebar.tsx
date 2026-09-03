@@ -12,6 +12,7 @@ import {
   SidebarRail,
 } from '@workspace/ui/components/sidebar'
 import { cn } from '@workspace/ui/lib/utils'
+import { AppIcon } from '@/components/app-icon'
 import { useNavCounts, useSavedViews } from '@/features/shell/queries'
 import type { AppDef, AppMenuItem, AppMenuSection } from '@/lib/apps'
 
@@ -21,9 +22,10 @@ const BADGE_TONE = {
 } as const
 
 /**
- * The design's rail: an overline label per group, right-rounded rows that bleed to the rail's
- * edge (ivory + short amber bar when active), counts at the right, saved views that carry their
- * filter as search params. The account and the way back to Home live in the topbar.
+ * The design's rail: the app's identity at the top (glyph plate, name, one-line description), an
+ * overline label per further group, right-rounded rows that bleed to the rail's edge (ivory +
+ * short amber bar when active), counts at the right, saved views that carry their filter as
+ * search params. The account and the way back to Home live in the topbar.
  */
 export function AppSidebar({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
@@ -49,12 +51,22 @@ export function AppSidebar({ app }: { app: AppDef }) {
     <Sidebar className="top-(--header-height) h-[calc(100svh-var(--header-height))]!" collapsible="icon">
       {/* left padding only: rows carry the right padding so their fill runs to the rail's edge */}
       <SidebarContent className="gap-0 pl-[22px] pt-5 group-data-[collapsible=icon]:px-2">
+        <div className="mb-5 flex items-center gap-3 pr-[22px] group-data-[collapsible=icon]:hidden">
+          <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-surface-soft">
+            <AppIcon slug={app.slug} size={22} />
+          </span>
+          <div className="min-w-0">
+            <div className="truncate text-heading-sm font-bold text-foreground">{app.name}</div>
+            <div className="truncate text-caption text-muted-foreground">{app.description}</div>
+          </div>
+        </div>
         {groups.map((section, i) => (
           <SidebarGroup
             key={section.title ?? `s${i}`}
             className={cn('p-0', i > 0 && 'relative mt-[18px] pt-4 before:absolute before:top-0 before:right-[22px] before:left-0 before:h-px before:bg-sidebar-border')}
           >
-            {section.title && <SidebarGroupLabel className="mb-2.5 h-auto">{section.title}</SidebarGroupLabel>}
+            {/* the header above already names the app, so a first group titled after it stays unlabelled */}
+            {section.title && section.title !== app.name && <SidebarGroupLabel className="mb-2.5 h-auto">{section.title}</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu className="gap-px">
                 {section.items.map((item) => {

@@ -1,5 +1,3 @@
-import { useMatch } from '@tanstack/react-router'
-import { getApp } from '@/lib/apps'
 import { AppSwitcher } from './app-switcher'
 import { BrandMark } from './brand-mark'
 import { CommandPalette } from './command-palette'
@@ -9,23 +7,15 @@ import { TenantMenu } from './tenant-menu'
 import { ThemeToggle } from './theme-toggle'
 
 /**
- * The global topbar from the design, identical in every app: brand mark (and the app name after
- * a hairline when inside one), the search pill in the middle column, then theme, workspace,
- * apps, a hairline, notifications and the account avatar.
+ * The global topbar from the design, identical on Home and in every app: brand mark, the search
+ * pill in the middle column, then theme, workspace, apps, a hairline, notifications and the
+ * account avatar. The app identifies itself at the top of its rail.
  */
 export function SiteHeader() {
-  const match = useMatch({ from: '/_app/$app', shouldThrow: false })
-  const app = match ? getApp(match.params.app) : undefined
   return (
     <header className="sticky top-0 z-50 grid h-(--header-height) w-full grid-cols-[minmax(min-content,1fr)_minmax(150px,340px)_minmax(min-content,1fr)] items-center gap-[18px] border-b border-border bg-card px-6">
       <div className="flex min-w-0 items-center gap-[18px] overflow-hidden">
         <BrandMark />
-        {app && (
-          <>
-            <span aria-hidden="true" className="h-6 w-px shrink-0 bg-border" />
-            <span className="shrink-0 text-sm font-bold text-body">{app.name}</span>
-          </>
-        )}
       </div>
 
       <CommandPalette />

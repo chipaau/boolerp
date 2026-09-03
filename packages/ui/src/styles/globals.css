@@ -232,8 +232,8 @@
   --destructive-soft-hover: #48292f;
 
   /* the inverted metric tile flips: cream on the dark page */
-  --surface-inverted: #e8e4dc;
-  --surface-inverted-foreground: #191b24;
+  --surface-inverted: #333331; /* the design's inverted tile; in dark it is the one card a step above the rest */
+  --surface-inverted-foreground: #f4f3f1;
 
   /* status & category tones: strong hues brighten a step, soft fills become dark tints, text-on-soft lightens */
   --tone-success: #9aab94;
