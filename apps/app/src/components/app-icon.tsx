@@ -14,7 +14,7 @@ import taskGlyph from '@workspace/assets/logos/task-glyph.png'
 // Artwork per app slug: `art` is the large illustration for the Home tile, `glyph` the small
 // single-colour mark for chrome (sidebar, inbox rows, switcher). Either may be missing; the
 // component falls back glyph -> art -> hex glyph in the app hue. Adding artwork is one line here.
-const ARTWORK: Record<string, { art?: string; glyph?: string }> = {
+const ARTWORK: Partial<Record<string, { art?: string; glyph?: string }>> = {
   'control-centre': { glyph: controlGlyph },
   tasks: { art: taskArt, glyph: taskGlyph },
   inventory: { art: inventoryArt },
@@ -26,7 +26,7 @@ const ARTWORK: Record<string, { art?: string; glyph?: string }> = {
 }
 
 // Single accent per app for the fallback glyph (icons never carry more than one colour).
-const HUE: Record<string, string> = {
+const HUE: Partial<Record<string, string>> = {
   inventory: 'text-brand',
   tasks: 'text-sage',
   asset: 'text-tone-slate',

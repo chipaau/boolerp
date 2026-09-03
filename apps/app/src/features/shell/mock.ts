@@ -1,6 +1,6 @@
 // FIXTURES — sample data for the shell chrome. Only ./queries.ts may import this file
 // (lint-enforced). Delete it when the notifications / counts endpoints exist.
-import type { NavCounts, Notification } from './types'
+import type { Membership, NavCounts, Notification, SavedView } from './types'
 
 export const NOTIFICATIONS: Notification[] = [
   { id: 'n1', text: 'Printer toner is below reorder level', time: 'Today, 02:37 PM', unread: true },
@@ -20,3 +20,14 @@ export const NAV_COUNTS: Record<string, NavCounts> = {
     'view:on-order': 1,
   },
 }
+
+/** Per app slug: the "My views" rail group. */
+export const SAVED_VIEWS: Record<string, SavedView[]> = {
+  inventory: [
+    { title: 'Site store · below reorder', section: 'items', search: { filter: 'Low stock', q: 'Site store' }, badgeKey: 'view:site-store-below-reorder' },
+    { title: 'Issued to my team', section: 'items', search: { filter: 'Issued' }, badgeKey: 'view:issued-to-my-team' },
+    { title: 'On order', section: 'items', search: { filter: 'On order' }, badgeKey: 'view:on-order' },
+  ],
+}
+
+export const MEMBERSHIP: Membership = { role: 'Admin' }

@@ -13,6 +13,7 @@ export function AuthShell({
   children,
   footer,
   brand = 'Hexa',
+  links = [],
 }: {
   title: string
   subtitle?: string
@@ -20,6 +21,8 @@ export function AuthShell({
   /** Row under the form (e.g. "Forgot password?"). */
   footer?: ReactNode
   brand?: string
+  /** Legal / status links beside the copyright line, when the deployment has them. */
+  links?: { label: string; href: string }[]
 }) {
   const year = new Date().getFullYear()
   return (
@@ -60,12 +63,11 @@ export function AuthShell({
         <span>
           © {year} {brand}
         </span>
-        <a href="#" className="text-link hover:underline hover:underline-offset-[3px]">
-          Privacy
-        </a>
-        <a href="#" className="text-link hover:underline hover:underline-offset-[3px]">
-          Status
-        </a>
+        {links.map((l) => (
+          <a key={l.href} href={l.href} className="text-link hover:underline hover:underline-offset-[3px]">
+            {l.label}
+          </a>
+        ))}
       </div>
     </div>
   )

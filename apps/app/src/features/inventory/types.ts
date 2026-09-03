@@ -23,3 +23,13 @@ export type LowStockItem = { name: string; meta: string; tag: 'Critical' | 'Low'
 export type Category = { name: string; value: number; pct: number; risk: number }
 export type Approval = { id: string; title: string; meta: string; who: string; age: string; urgent: boolean }
 export type Movement = { text: string; time: string }
+
+/** Headline figures the overview shows that are not derivable from the item list. */
+export type OverviewStats = {
+  overduePurchaseOrders: number
+  /** Units-on-hand change against last month, in percent (negative = down). */
+  unitsDeltaPct: number
+  /** Distinct staff currently holding issued items. */
+  issuedToStaff: number
+  oldestApprovalDays: number
+}

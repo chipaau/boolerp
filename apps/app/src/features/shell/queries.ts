@@ -2,7 +2,7 @@
 // fill in when they arrive, which is also how it should behave against the real API.
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import * as mock from './mock'
-import type { NavCounts, Notification } from './types'
+import type { Membership, NavCounts, Notification, SavedView } from './types'
 
 const key = (...parts: string[]) => ['shell', ...parts] as const
 
@@ -10,8 +10,15 @@ export const notificationsQuery = () => queryOptions({ queryKey: key('notificati
 export const navCountsQuery = (app: string) =>
   queryOptions({ queryKey: key('nav-counts', app), queryFn: async (): Promise<NavCounts> => mock.NAV_COUNTS[app] ?? {} })
 
+export const savedViewsQuery = (app: string) =>
+  queryOptions({ queryKey: key('saved-views', app), queryFn: async (): Promise<SavedView[]> => mock.SAVED_VIEWS[app] ?? [] })
+export const membershipQuery = () => queryOptions({ queryKey: key('membership'), queryFn: async (): Promise<Membership> => mock.MEMBERSHIP })
+
 const NONE: Notification[] = []
 const NO_COUNTS: NavCounts = {}
+const NO_VIEWS: SavedView[] = []
 
 export const useNotifications = () => useQuery(notificationsQuery()).data ?? NONE
 export const useNavCounts = (app: string) => useQuery(navCountsQuery(app)).data ?? NO_COUNTS
+export const useSavedViews = (app: string) => useQuery(savedViewsQuery(app)).data ?? NO_VIEWS
+export const useMembership = () => useQuery(membershipQuery()).data

@@ -7,8 +7,8 @@ import { Card } from '@workspace/ui/components/card'
 import { HexGlyph } from '@workspace/ui/components/hex-glyph'
 import { Sparkline } from '@workspace/ui/components/sparkline'
 import { cn } from '@workspace/ui/lib/utils'
-import { money, summarize } from './logic'
-import { useApprovals, useCategories, useItems, useLowStock, useMovements, useStockSeries } from './queries'
+import { compactNumber, summarize } from './logic'
+import { useApprovals, useCategories, useItems, useLowStock, useMovements, useOverviewStats, useStockSeries } from './queries'
 import { StockChart } from './stock-chart'
 
 const RAMP = ['bg-chart-1', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-chart-5']
@@ -21,6 +21,9 @@ export function InventoryOverviewPage() {
   const approvals = useApprovals()
   const categories = useCategories()
   const lowStock = useLowStock()
+  const o = useOverviewStats()
+  const critical = lowStock.filter((l) => l.tag === 'Critical').length
+  const unitsUp = o.unitsDeltaPct >= 0
   const today = new Date()
   const dateLine = `${today.toLocaleDateString('en-GB', { weekday: 'long' })} · ${today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
 
@@ -33,9 +36,11 @@ export function InventoryOverviewPage() {
           <h1 className="text-[30px] leading-none font-medium tracking-[-0.022em] text-foreground">Inventory overview</h1>
           <div className="mt-2.5 flex flex-wrap items-center gap-4">
             <span className="text-sm text-muted-foreground">Warehouse A, B &amp; Site store</span>
-            <Badge variant="warning" size="sm" render={<Link to="/$app/$section" params={{ app: 'inventory', section: 'purchase-orders' }} />}>
-              1 purchase order overdue
-            </Badge>
+            {o.overduePurchaseOrders > 0 && (
+              <Badge variant="warning" size="sm" render={<Link to="/$app/$section" params={{ app: 'inventory', section: 'purchase-orders' }} />}>
+                {o.overduePurchaseOrders} purchase {o.overduePurchaseOrders === 1 ? 'order' : 'orders'} overdue
+              </Badge>
+            )}
           </div>
         </div>
         <div className="ms-auto flex items-center gap-2.5">
@@ -55,24 +60,27 @@ export function InventoryOverviewPage() {
       {/* KPIs */}
       <div className="mb-[18px] grid grid-cols-2 gap-[18px] md:grid-cols-3 xl:grid-cols-5">
         <Kpi label="Units on hand" value={s.unitsOnHand.toLocaleString()} delay={0} to="items">
-          <Delta up>↑ 4.2%</Delta>
+          <Delta up={unitsUp}>{unitsUp ? '↑' : '↓'} {Math.abs(o.unitsDeltaPct).toFixed(1)}%</Delta>
           <span className="text-caption text-muted-foreground">vs last month</span>
           <Sparkline values={spark.onHand} className="mt-[15px] text-chart-line-a" />
         </Kpi>
         <Kpi label="Below reorder" value={String(s.lowCount)} valueClass="text-tone-risk-foreground" delay={40} to="low-stock">
-          <span className="text-caption text-muted-foreground">2 critical · 2 warning</span>
+          <span className="text-caption text-muted-foreground">{critical} critical · {lowStock.length - critical} warning</span>
           <Sparkline values={spark.low} className="mt-[15px] text-chart-line-b" />
         </Kpi>
         <Kpi label="Issued out" value={s.issuedOut.toLocaleString()} delay={80} to="items" search={{ filter: 'Issued' }}>
-          <span className="text-caption text-muted-foreground">Across 68 staff</span>
+          <span className="text-caption text-muted-foreground">Across {o.issuedToStaff} staff</span>
           <Sparkline values={spark.issued} className="mt-[15px] text-chart-fill" />
         </Kpi>
-        <Kpi label="Pending approvals" value="5" valueClass="text-tone-warning-deep" delay={120} to="requests">
-          <span className="text-caption text-muted-foreground">Oldest waiting 2 days</span>
+        <Kpi label="Pending approvals" value={String(approvals.length)} valueClass="text-tone-warning-deep" delay={120} to="requests">
+          <span className="text-caption text-muted-foreground">Oldest waiting {o.oldestApprovalDays} {o.oldestApprovalDays === 1 ? 'day' : 'days'}</span>
         </Kpi>
         <div className="animate-rise rounded-lg bg-surface-inverted p-6 [animation-delay:160ms]">
           <div className="text-[11.5px] font-bold tracking-[0.1em] text-surface-inverted-foreground/65 uppercase">Total value</div>
-          <div className="mt-2 text-[34px] leading-[1.1] font-bold text-surface-inverted-foreground">{money(s.stockValue)}</div>
+          <div className="mt-2 text-[34px] leading-[1.1] font-bold text-surface-inverted-foreground">
+            <span className="me-1.5 text-[15px] font-bold tracking-[0.06em] text-surface-inverted-foreground/65">MVR</span>
+            {compactNumber(s.stockValue)}
+          </div>
           <div className="mt-2 text-caption text-surface-inverted-foreground/65">{s.locations.length} locations</div>
         </div>
       </div>

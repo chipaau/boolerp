@@ -14,6 +14,7 @@ export const lowStockQuery = () => queryOptions({ queryKey: key('low-stock'), qu
 export const categoriesQuery = () => queryOptions({ queryKey: key('categories'), queryFn: async () => mock.CATEGORIES })
 export const approvalsQuery = () => queryOptions({ queryKey: key('approvals'), queryFn: async () => mock.APPROVALS })
 export const movementsQuery = () => queryOptions({ queryKey: key('movements'), queryFn: async () => mock.MOVEMENTS })
+export const overviewStatsQuery = () => queryOptions({ queryKey: key('overview'), queryFn: async () => mock.OVERVIEW })
 
 export const useItems = () => useSuspenseQuery(itemsQuery()).data
 export const useStockSeries = (period: Period) => useSuspenseQuery(stockSeriesQuery(period)).data
@@ -21,3 +22,4 @@ export const useLowStock = () => useSuspenseQuery(lowStockQuery()).data
 export const useCategories = () => useSuspenseQuery(categoriesQuery()).data
 export const useApprovals = () => useSuspenseQuery(approvalsQuery()).data
 export const useMovements = () => useSuspenseQuery(movementsQuery()).data
+export const useOverviewStats = () => useSuspenseQuery(overviewStatsQuery()).data

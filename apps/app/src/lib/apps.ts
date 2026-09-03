@@ -113,7 +113,8 @@ export const APPS: AppDef[] = [
     name: 'Inventory',
     description: 'Track & manage inventory',
     icon: Boxes,
-    // the design's rail: counts on the right, low stock and requests coloured, plus saved views
+    // the design's rail: counts on the right, low stock and requests coloured; the user's saved
+    // views are appended by the sidebar from features/shell
     menu: [
       {
         title: 'Inventory',
@@ -126,14 +127,6 @@ export const APPS: AppDef[] = [
           { title: 'Requests & approvals', slug: 'requests', icon: ClipboardCheck, badge: { key: 'requests', tone: 'warning' } },
           { title: 'Reports', slug: 'reports', icon: FileBarChart },
           { title: 'Settings & permissions', slug: 'settings', icon: Settings },
-        ],
-      },
-      {
-        title: 'My views',
-        items: [
-          { title: 'Site store · below reorder', slug: 'items', search: { filter: 'Low stock', q: 'Site store' }, badge: { key: 'view:site-store-below-reorder' } },
-          { title: 'Issued to my team', slug: 'items', search: { filter: 'Issued' }, badge: { key: 'view:issued-to-my-team' } },
-          { title: 'On order', slug: 'items', search: { filter: 'On order' }, badge: { key: 'view:on-order' } },
         ],
       },
     ],

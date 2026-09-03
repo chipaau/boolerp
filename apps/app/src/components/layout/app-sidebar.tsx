@@ -14,8 +14,8 @@ import {
   SidebarRail,
 } from '@workspace/ui/components/sidebar'
 import { cn } from '@workspace/ui/lib/utils'
-import { useNavCounts } from '@/features/shell/queries'
-import type { AppDef, AppMenuItem } from '@/lib/apps'
+import { useNavCounts, useSavedViews } from '@/features/shell/queries'
+import type { AppDef, AppMenuItem, AppMenuSection } from '@/lib/apps'
 
 const BADGE_TONE = {
   risk: 'bg-tone-risk-soft text-tone-risk-foreground',
@@ -29,9 +29,15 @@ const BADGE_TONE = {
  */
 export function AppSidebar({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
-  const search = useSearch({ strict: false }) as Record<string, string | undefined>
+  const search: Record<string, string | undefined> = useSearch({ strict: false })
   const base = `/${app.slug}`
   const counts = useNavCounts(app.slug)
+  const views = useSavedViews(app.slug)
+
+  // the registry's groups, then the user's saved views as one more group (same row shape)
+  const groups: AppMenuSection[] = views.length
+    ? [...app.menu, { title: 'My views', items: views.map((v) => ({ title: v.title, slug: v.section, search: v.search, badge: v.badgeKey ? { key: v.badgeKey } : undefined })) }]
+    : app.menu
 
   function isActive(item: AppMenuItem) {
     const to = item.slug ? `${base}/${item.slug}` : base
@@ -44,7 +50,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
   return (
     <Sidebar className="top-(--header-height) h-[calc(100svh-var(--header-height))]!" collapsible="icon">
       <SidebarContent className="gap-0 px-[22px] pt-5 group-data-[collapsible=icon]:px-2">
-        {app.menu.map((section, i) => (
+        {groups.map((section, i) => (
           <SidebarGroup
             key={section.title ?? `s${i}`}
             className={cn('p-0', i > 0 && 'mt-[18px] border-t border-sidebar-border pt-4')}

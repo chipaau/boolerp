@@ -1,4 +1,5 @@
-import { startTransition, useState, type CSSProperties } from 'react'
+import { startTransition, useState  } from 'react'
+import type {CSSProperties} from 'react';
 import { Link } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ArrowButton } from '@workspace/ui/components/arrow-button'
@@ -29,9 +30,18 @@ const CELL_ASPECT = 25.5 / 25
 const LEVEL_FILL = ['text-heat-1', 'text-heat-2', 'text-heat-3'] as const
 
 function ordinal(n: number) {
-  const s = ['th', 'st', 'nd', 'rd']
   const v = n % 100
-  return s[(v - 20) % 10] ?? s[v] ?? s[0]
+  if (v >= 11 && v <= 13) return 'th'
+  switch (n % 10) {
+    case 1:
+      return 'st'
+    case 2:
+      return 'nd'
+    case 3:
+      return 'rd'
+    default:
+      return 'th'
+  }
 }
 
 function isoDate(d: Date) {

@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@workspace/ui/components/dropdown-menu'
+import { useMembership } from '@/features/shell/queries'
 import { useCurrentUser } from './user-context'
 
 /**
@@ -17,6 +18,7 @@ import { useCurrentUser } from './user-context'
  */
 export function UserMenu() {
   const user = useCurrentUser()
+  const membership = useMembership()
 
   return (
     <DropdownMenu>
@@ -38,10 +40,12 @@ export function UserMenu() {
         <div className="px-3 pt-1.5 pb-3">
           <div className="text-sm font-bold text-foreground">{user.name}</div>
           <div className="mt-0.5 text-[11.5px] text-faint">{user.email}</div>
-          <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted py-[3px] pr-[9px] pl-2.5 text-[11.5px] font-bold text-body">
-            Admin
-            <ChevronDown className="size-[9px] text-muted-foreground" strokeWidth={2.5} />
-          </span>
+          {membership && (
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted py-[3px] pr-[9px] pl-2.5 text-[11.5px] font-bold text-body">
+              {membership.role}
+              <ChevronDown className="size-[9px] text-muted-foreground" strokeWidth={2.5} />
+            </span>
+          )}
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>

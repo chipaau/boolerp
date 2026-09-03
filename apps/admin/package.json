@@ -2,9 +2,6 @@
   "name": "admin",
   "private": true,
   "type": "module",
-  "imports": {
-    "#/*": "./src/*"
-  },
   "scripts": {
     "dev": "vite dev --host --port 3000",
     "generate-routes": "tsr generate",

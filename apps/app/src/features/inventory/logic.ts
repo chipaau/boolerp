@@ -25,8 +25,14 @@ export function summarize(items: Item[]) {
   return { unitsOnHand, issuedOut, stockValue, lowCount, locations, itemCount: items.length }
 }
 
-export function money(n: number) {
-  return '£' + (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(Math.round(n)))
+/** Compact figure for KPI tiles: 30.6k / 842. */
+export function compactNumber(n: number) {
+  return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(Math.round(n))
+}
+
+/** Compact money as text: "MVR 30.6k". Tenant currency defaults to MVR (conventions). */
+export function formatMoney(n: number, currency = 'MVR') {
+  return `${currency} ${compactNumber(n)}`
 }
 
 export function filterItems(items: Item[], filter: ItemFilter, query: string) {

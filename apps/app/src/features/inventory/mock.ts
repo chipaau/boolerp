@@ -1,7 +1,7 @@
 // FIXTURES — static sample data for the Inventory screens, lifted from the design file so they
 // carry the same numbers. Only ./queries.ts may import this file (lint-enforced). Delete it when
 // the Inventory API exists and point the queries at the generated client.
-import type { Approval, Category, Item, LowStockItem, Movement, Period, Series } from './types'
+import type { Approval, Category, Item, LowStockItem, Movement, OverviewStats, Period, Series } from './types'
 
 export const ITEMS: Item[] = [
   { name: 'Dell UltraSharp U2723QE', sku: 'SKU-4471-A', location: 'Warehouse A', onHand: 18, issued: 7, unitCost: 380, status: 'In stock' },
@@ -74,3 +74,5 @@ export const MOVEMENTS: Movement[] = [
   { text: '52 Logitech MX Master 3S received into Warehouse B', time: '21 Jul, 03:20 PM' },
   { text: '8 hi-vis vests transferred from Warehouse B to Site store', time: '21 Jul, 10:15 AM' },
 ]
+
+export const OVERVIEW: OverviewStats = { overduePurchaseOrders: 1, unitsDeltaPct: 4.2, issuedToStaff: 68, oldestApprovalDays: 2 }

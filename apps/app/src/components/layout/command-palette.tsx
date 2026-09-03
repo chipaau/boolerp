@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState  } from 'react'
+import type {ReactNode} from 'react';
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowRight, Moon, Sun } from 'lucide-react'
 import {

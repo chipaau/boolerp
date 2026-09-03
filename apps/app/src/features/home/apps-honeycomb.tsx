@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowCircle } from '@workspace/ui/components/arrow-button'
 import { Hexagon } from '@workspace/ui/components/hexagon'
-import { Honeycomb, HoneycombItem, type HexCell } from '@workspace/ui/components/honeycomb'
+import { Honeycomb, HoneycombItem  } from '@workspace/ui/components/honeycomb'
+import type {HexCell} from '@workspace/ui/components/honeycomb';
 import { SectionTitle } from '@workspace/ui/components/section-title'
 import { cn } from '@workspace/ui/lib/utils'
 import { AppIcon } from '@/components/app-icon'
-import { getApp, type AppDef } from '@/lib/apps'
+import { getApp  } from '@/lib/apps'
+import type {AppDef} from '@/lib/apps';
 
 // Which apps get a tile, in reading order (the Figma frame); everything else lives in the switcher.
 const TILE_ORDER = [
