@@ -1,0 +1,11 @@
+{
+  "name": "@workspace/assets",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Brand artwork shared by the apps: app illustrations and glyphs, avatars, icons.",
+  "exports": {
+    "./logos/*": "./logos/*",
+    "./avatars/*": "./avatars/*",
+    "./icons/*": "./icons/*"
+  }
+}
