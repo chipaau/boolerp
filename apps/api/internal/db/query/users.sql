@@ -16,3 +16,10 @@ RETURNING *;
 
 -- name: GetUserByID :one
 SELECT * FROM users WHERE id = $1;
+
+-- name: CreateUser :one
+-- Provisioning-created user (owner). Distinct from UpsertUser (JIT whoami mirror): no
+-- last_login_at — the user hasn't signed in yet.
+INSERT INTO users (id, email, name, name_dv, phone)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;

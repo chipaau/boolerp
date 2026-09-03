@@ -42,6 +42,8 @@
 ---
 
 ## ⚠️ Open items
-- Confirm the Phase-1 capability catalog (`srs.md`).
-- Four-eyes approver selection rule.
-- Whether tenant-level role management also needs four-eyes (default: no).
+- ~~Confirm the Phase-1 capability catalog~~ — resolved 2026-09-02: use as proposed (`srs.md`).
+- ~~Four-eyes approver selection rule~~ — resolved 2026-09-02: any two distinct internal-tenant admins.
+- ~~Whether tenant-level role management also needs four-eyes~~ — resolved 2026-09-02: no, internal only.
+- Use-case inventory itself (this list, UC-AUTHZ-01…08) not yet re-reviewed for completeness — still
+  blocks bumping this component to 🟢 Confirmed.

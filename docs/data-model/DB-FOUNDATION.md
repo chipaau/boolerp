@@ -305,6 +305,123 @@ Reference: `currencies`, `countries`, `geography_levels`, `geographies` · Class
 `institution_types` · Identity/tenancy: `users`, `user_efaas_identities`, `tenants`, `tenant_users`.
 
 **Deferred to their owning components (each defines its full DDL when first introduced):**
-`roles`/`role_capabilities`/`user_roles` (05) · `module_activations`, `audit_log`, `event_outbox` (06/foundation) ·
+`module_activations`, `audit_log`, `event_outbox` (06/foundation) ·
 billing profile + `seats` on `tenants`, `pricelist_id` on `countries`, billing tables (08) · `parties`, sites,
 org_units, and all business/module tables (later components).
+
+---
+
+## Authorization (05) — control-plane (cross-tenant by nature — role administration reads across
+tenant switches), **not** under the tenant RLS regime, same as `tenants`/`tenant_users`.
+
+### `roles` — ✅ approved 2026-09-02
+Per-tenant. The internal/operator tenant's roles are just roles where `tenant_id` = the one
+`is_internal` tenant; `platform:*` capabilities only act platform-wide when held via such a role
+(Cerbos's `is_internal_member` principal attribute is authoritative, not this table alone).
+
+```sql
+CREATE TABLE roles (
+  id          uuid        PRIMARY KEY DEFAULT uuidv7(),
+  tenant_id   uuid        NOT NULL REFERENCES tenants(id),
+  code        text        NOT NULL,          -- stable key within the tenant ('owner','admin','member', or custom)
+  name        text        NOT NULL,
+  name_dv     text,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  deleted_at  timestamptz,
+  CONSTRAINT uq_roles_tenant_code UNIQUE (tenant_id, code),
+  CONSTRAINT uq_roles_tenant_id   UNIQUE (tenant_id, id)   -- FK target for user_roles' composite guard
+);
+CREATE INDEX ON roles (tenant_id);
+```
+
+### `role_capabilities` — ✅ approved 2026-09-02
+The capability catalog itself is **code-seeded** (FR-AUTHZ-02), not a table — `capability` is a
+validated string key, not an FK. Nothing at the DB level stops a `platform:*` row on a non-internal
+tenant's role; that's a deliberate call to rely on Cerbos's `is_internal_member` check alone rather
+than duplicate the guard here.
+
+```sql
+CREATE TABLE role_capabilities (
+  id          uuid        PRIMARY KEY DEFAULT uuidv7(),
+  role_id     uuid        NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  capability  text        NOT NULL,          -- catalog key, e.g. 'members:invite'
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT uq_role_capabilities UNIQUE (role_id, capability)
+);
+CREATE INDEX ON role_capabilities (role_id);
+```
+
+### `user_roles` — ✅ approved 2026-09-02
+Assigns a role to a `tenant_users` **membership** (not directly to a user — a role only means
+something within that membership's tenant). `tenant_id` is denormalised solely to carry the composite
+FKs below, which close a real gap: without them, a bug in principal-building (joining `user_roles` →
+`roles` without also checking `roles.tenant_id`) could let a member inherit another tenant's role.
+Requires `tenant_users` to also carry `UNIQUE (tenant_id, id)` as an FK target.
+
+```sql
+ALTER TABLE tenant_users ADD CONSTRAINT uq_tenant_users_tenant_id UNIQUE (tenant_id, id);
+
+CREATE TABLE user_roles (
+  id              uuid        PRIMARY KEY DEFAULT uuidv7(),
+  tenant_id       uuid        NOT NULL,
+  tenant_user_id  uuid        NOT NULL,
+  role_id         uuid        NOT NULL,
+  assigned_by     uuid        REFERENCES users(id),
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT fk_user_roles_tenant_user FOREIGN KEY (tenant_id, tenant_user_id) REFERENCES tenant_users (tenant_id, id),
+  CONSTRAINT fk_user_roles_role        FOREIGN KEY (tenant_id, role_id)        REFERENCES roles (tenant_id, id),
+  CONSTRAINT uq_user_roles UNIQUE (tenant_user_id, role_id)
+);
+CREATE INDEX ON user_roles (tenant_user_id);
+CREATE INDEX ON user_roles (role_id);
+```
+
+### `access_grants` — ✅ approved 2026-09-02
+Support access / impersonation only (UC-AUTHZ-07 → UC-AUTH-14). Time-boxed, four-eyes gated
+(`approved_by` must differ from `proposed_by`). Deliberately **not** shared with internal-tenant role
+changes (see `role_change_proposals` below) — the two are different-shaped records that only happen
+to share a four-eyes workflow; combining them would force `tenant_id`/`target_user_id`/`expires_at`
+to all be conditionally-nullable.
+
+```sql
+CREATE TABLE access_grants (
+  id             uuid        PRIMARY KEY DEFAULT uuidv7(),
+  tenant_id      uuid        NOT NULL REFERENCES tenants(id),
+  target_user_id uuid        NOT NULL REFERENCES users(id),
+  reason         text        NOT NULL,
+  status         text        NOT NULL DEFAULT 'proposed',
+  proposed_by    uuid        NOT NULL REFERENCES users(id),
+  approved_by    uuid        REFERENCES users(id),
+  approved_at    timestamptz,
+  expires_at     timestamptz,
+  revoked_at     timestamptz,
+  created_at     timestamptz NOT NULL DEFAULT now(),
+  updated_at     timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT chk_access_grants_status   CHECK (status IN ('proposed','pending_approval','approved','rejected','revoked','expired')),
+  CONSTRAINT chk_access_grants_approver CHECK (approved_by IS NULL OR approved_by <> proposed_by)
+);
+CREATE INDEX ON access_grants (status);
+CREATE INDEX ON access_grants (tenant_id);
+CREATE INDEX ON access_grants (target_user_id);
+```
+
+### `role_change_proposals` — ✅ approved 2026-09-02
+Internal-tenant role/capability/assignment four-eyes (UC-AUTHZ-06). No `tenant_id` — always
+implicitly the one internal tenant, nothing to scope.
+
+```sql
+CREATE TABLE role_change_proposals (
+  id           uuid        PRIMARY KEY DEFAULT uuidv7(),
+  payload      jsonb       NOT NULL,          -- the proposed role/capability/assignment diff
+  reason       text        NOT NULL,
+  status       text        NOT NULL DEFAULT 'proposed',
+  proposed_by  uuid        NOT NULL REFERENCES users(id),
+  approved_by  uuid        REFERENCES users(id),
+  approved_at  timestamptz,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT chk_role_change_status   CHECK (status IN ('proposed','pending_approval','approved','rejected')),
+  CONSTRAINT chk_role_change_approver CHECK (approved_by IS NULL OR approved_by <> proposed_by)
+);
+```

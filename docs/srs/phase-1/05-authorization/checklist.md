@@ -25,12 +25,15 @@
 - [x] Internal/operator-tenant model: **Phase 1** (needed for provisioning + support access).
 - [x] Four-eyes on internal-tenant role changes + support-access grants: **yes**.
 - [x] Support-access + four-eyes lifecycle uses **`access_grants`** — this is UC-AUTH-14's record.
-- [ ] Confirm the proposed Phase-1 **capability catalog** (see `srs.md`).
-- [ ] Four-eyes approver selection (default: any two distinct internal-tenant admins).
-- [ ] Tenant-level role management four-eyes? (default: no — internal only).
+  Internal-tenant role-change four-eyes (UC-AUTHZ-06) uses a **separate** `role_change_proposals`
+  table — different-shaped record, same four-eyes workflow (confirmed 2026-09-02).
+- [x] Confirm the proposed Phase-1 **capability catalog**: **use as proposed** (confirmed 2026-09-02, see `srs.md`).
+- [x] Four-eyes approver selection: **any two distinct internal-tenant admins** (confirmed 2026-09-02).
+- [x] Tenant-level role management four-eyes: **no — internal only** (confirmed 2026-09-02).
 
 ## Data-model touchpoints
-- `roles`, `role_capabilities`, `user_roles` (group A). Cerbos policies live in `docker/cerbos/`.
+- `roles`, `role_capabilities`, `user_roles`, `access_grants`, `role_change_proposals` — ✅ approved
+  2026-09-02, table-by-table, see `docs/data-model/DB-FOUNDATION.md`. Cerbos policies live in `docker/cerbos/`.
 
 ## Sign-off
-- [ ] Scope confirmed &nbsp; [ ] Open questions resolved &nbsp; [ ] Use-case inventory complete
+- [x] Scope confirmed &nbsp; [x] Open questions resolved &nbsp; [ ] Use-case inventory complete

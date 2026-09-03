@@ -23,7 +23,7 @@
 | FR-AUTHZ-07 | `/bootstrap` capability hints are **UI-advisory only**; Cerbos enforces server-side on every mutation. |
 | FR-AUTHZ-08 | Cerbos policies live in `docker/cerbos/policies`, versioned + PR-reviewed. |
 
-## Proposed Phase-1 capability catalog (confirm)
+## Phase-1 capability catalog — ✅ confirmed 2026-09-02, as proposed
 - **Members:** `members:invite`, `members:manage`, `members:transfer-ownership`
 - **Roles:** `roles:manage`, `roles:assign`
 - **Tenant:** `tenant:manage-settings`, `tenant:manage-visibility`, `tenant:manage-hierarchy` *(operator)*
@@ -31,15 +31,20 @@
 - **Platform (internal only):** `platform:tenants:provision`, `platform:tenants:suspend`,
   `platform:support:access`, `platform:*`
 
-## Open (resolve before 🟢)
-- [ ] Confirm the Phase-1 capability catalog above (add/remove).
-- [ ] Four-eyes approver selection (default: any two distinct internal-tenant admins).
-- [ ] Does tenant-level role management need four-eyes, or only internal-tenant? (default: internal only)
+## Resolved 2026-09-02
+- Four-eyes approver: **any two distinct internal-tenant admins** (no dedicated approver role).
+- Tenant-level role management: **no four-eyes** — internal-tenant only.
+- `platform:*` misassignment to a non-internal tenant's role: **no DB-level guard** — Cerbos's
+  `is_internal_member` principal check is the sole enforcement (deliberate; not defense-in-depth).
 
-## Data model
-- `roles`, `role_capabilities`, `user_roles` (group A). **Support-access + four-eyes lifecycle uses
-  `access_grants`** (group D: `proposed → pending_approval → approved → revoked`) — this is the record
-  UC-AUTH-14 needs. Capability catalog is code-seeded. Cerbos policies in `docker/cerbos/`.
+## Data model — ✅ approved 2026-09-02, table-by-table (see `docs/data-model/DB-FOUNDATION.md`)
+- `roles`, `role_capabilities`, `user_roles` (control-plane, not RLS-scoped — group A).
+- **Support-access four-eyes** (UC-AUTHZ-07 → UC-AUTH-14) uses **`access_grants`**
+  (`proposed → pending_approval → approved → revoked`).
+- **Internal-tenant role-change four-eyes** (UC-AUTHZ-06) uses a **separate** `role_change_proposals`
+  table — different-shaped record (a role/capability diff, no target user or expiry), same four-eyes
+  workflow. Not the same table as `access_grants`.
+- Capability catalog is code-seeded. Cerbos policies in `docker/cerbos/`.
 
 ## Use cases
 See [`use-cases.md`](use-cases.md) — UC-AUTHZ-01 … UC-AUTHZ-08 (each with unit + integration + e2e per `testing.md`).

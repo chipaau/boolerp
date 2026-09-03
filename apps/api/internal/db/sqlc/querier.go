@@ -11,9 +11,27 @@ import (
 )
 
 type Querier interface {
+	CreateOwnerTenantUser(ctx context.Context, arg CreateOwnerTenantUserParams) (TenantUser, error)
+	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
+	CreateRoleCapability(ctx context.Context, arg CreateRoleCapabilityParams) (RoleCapability, error)
+	// Root tenant only (parent_id/oversight NULL) — path is a single-label ltree of its own tree_key.
+	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
+	// Provisioning-created user (owner). Distinct from UpsertUser (JIT whoami mirror): no
+	// last_login_at — the user hasn't signed in yet.
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateUserRole(ctx context.Context, arg CreateUserRoleParams) (UserRole, error)
 	GetCountry(ctx context.Context, code string) (Country, error)
 	GetCurrency(ctx context.Context, code string) (Currency, error)
 	GetGlobalPartyType(ctx context.Context, code string) (PartyType, error)
+	GetInstitutionTypeIDByCode(ctx context.Context, arg GetInstitutionTypeIDByCodeParams) (pgtype.UUID, error)
+	// At most one row can ever exist (uq_tenants_one_internal).
+	GetInternalTenant(ctx context.Context) (Tenant, error)
+	GetOwnerTenantUser(ctx context.Context, tenantID pgtype.UUID) (TenantUser, error)
+	// Platform tenancy — control-plane (not tenant-scoped). Used by provisioning (cmd/provision-dev).
+	// Global (country_code IS NULL) party types only — the app never provisions a jurisdiction-specific form here.
+	GetPartyTypeIDByCode(ctx context.Context, code string) (pgtype.UUID, error)
+	GetRoleByTenantCode(ctx context.Context, arg GetRoleByTenantCodeParams) (Role, error)
+	GetTenantBySlug(ctx context.Context, slug string) (Tenant, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	ListCountries(ctx context.Context) ([]Country, error)
 	// Reference-data reads (global tables — no tenant scope). Starter query set to wire sqlc.
@@ -25,6 +43,7 @@ type Querier interface {
 	// Classification reads (global tables). party_types drives tenant legal-form / identity-doc
 	// validation; institution_types selects the provisioning template.
 	ListPartyTypes(ctx context.Context) ([]PartyType, error)
+	NextTenantTreeKey(ctx context.Context) (int64, error)
 	// Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
 	// JIT-upsert the Kratos identity into platform.users on whoami (self-healing mirror).
 	// Credentials never touch this table — Kratos owns them.
