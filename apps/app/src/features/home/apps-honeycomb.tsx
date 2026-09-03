@@ -155,7 +155,8 @@ export function AppsHoneycomb() {
           )
         })}
       </Honeycomb>
-      <div className="flex justify-end pt-2">
+      {/* the grid is a positioned layer, so the button needs its own to sit on top of the decor */}
+      <div className="relative z-10 flex justify-end pt-2">
         <button
           type="button"
           className="group inline-flex items-center gap-3 rounded-full text-[13.5px] font-bold text-body outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
