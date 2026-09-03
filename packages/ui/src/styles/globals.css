@@ -190,11 +190,11 @@
 */
 .dark {
   --background: #161616;
-  --foreground: #f0efed;
+  --foreground: #e2ded7; /* warm off-white: headings must not glare on the dark page */
   --card: #1f1f1f;
-  --card-foreground: #f0efed;
+  --card-foreground: #e2ded7;
   --popover: #1f1f1f;
-  --popover-foreground: #f0efed;
+  --popover-foreground: #e2ded7;
   --surface-soft: #262523; /* tile */
   --surface-band: #1d1c1b; /* sub */
   --toast: #2a2725;
@@ -209,7 +209,7 @@
 
   --primary: #332f28;
   --primary-foreground: #f0efed;
-  --primary-circle: #2d2d2c; /* solid, so the arrow disc reads the same inside a button and on its own */
+  --primary-circle: #413c35; /* solid and a step above both the page and the button face, so every arrow disc matches and still lifts */
   --primary-circle-foreground: #e8e4dc;
   --primary-circle-hover: #efdec8;
   --primary-circle-hover-foreground: #242424;
@@ -296,7 +296,7 @@
   --sidebar: #121212;
   --sidebar-foreground: #cfccc7;
   --sidebar-accent: #1c1c1c;
-  --sidebar-accent-foreground: #f0efed;
+  --sidebar-accent-foreground: #e2ded7;
   --sidebar-hover: #232322;
   --sidebar-border: #323231;
 

@@ -78,7 +78,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
                         <span>{item.title}</span>
                       </SidebarMenuButton>
                       {item.badge && count !== undefined && (
-                        <SidebarMenuBadge className={cn('-right-2.5 top-2', item.badge.tone && BADGE_TONE[item.badge.tone])}>
+                        <SidebarMenuBadge className={cn('right-1 top-2', item.badge.tone && BADGE_TONE[item.badge.tone])}>
                           {count}
                         </SidebarMenuBadge>
                       )}
