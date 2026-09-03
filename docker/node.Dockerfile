@@ -3,6 +3,6 @@
 FROM node:24-alpine
 
 # Activate the pinned pnpm at build time → `pnpm` is instantly available at runtime.
-RUN corepack enable && corepack prepare pnpm@11.20.0 --activate
+RUN corepack enable && corepack prepare pnpm@11.25.0 --activate
 
 WORKDIR /w
