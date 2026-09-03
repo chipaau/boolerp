@@ -14,6 +14,7 @@ import {
 import { cn } from '@workspace/ui/lib/utils'
 import { activityFor, activityLevel, type DayActivity } from './data'
 import { ApprovalMarker, MeetingMarker, TaskMarker } from './markers'
+import { MonthPicker } from './month-picker'
 
 // 38 cells flow left-to-right (8 per row, last row short); the first few and last few are the
 // neighbouring months' days, drawn in the "no movement" fill. Cells are subtly wider than tall.
@@ -87,7 +88,7 @@ export function MonthHoneycomb({ today }: { today: Date }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-1">
-          <span className="me-1 text-base font-bold text-muted-foreground">{monthName}</span>
+          <MonthPicker value={cursor} onChange={setCursor} today={today} />
           <Button variant="ghost" size="icon-sm" className="size-7 text-faint" aria-label="Previous month" onClick={() => shift(-1)}>
             <ChevronLeft className="size-[18px]" strokeWidth={1.75} />
           </Button>

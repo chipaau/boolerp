@@ -28,10 +28,20 @@ export function Schedule() {
             </button>
             <AvatarGroup className="ms-5 -space-x-2">
               {item.people.map((p) => (
-                <Avatar key={p.name} name={p.name} className="size-7" title={p.name}>
-                  {p.photo && <AvatarImage src={p.photo} alt="" />}
-                  <AvatarFallback className="text-[10px]" />
-                </Avatar>
+                <Tooltip key={p.name}>
+                  <TooltipTrigger
+                    className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={p.name}
+                  >
+                    <Avatar name={p.name} className="size-7">
+                      {p.photo && <AvatarImage src={p.photo} alt="" />}
+                      <AvatarFallback className="text-[10px]" />
+                    </Avatar>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={6}>
+                    {p.name}
+                  </TooltipContent>
+                </Tooltip>
               ))}
               {item.others && item.others.length > 0 && (
                 <Tooltip>

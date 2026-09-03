@@ -17,7 +17,8 @@ export function MeetingMarker({ size = 20, className }: { size?: number; classNa
       height={size}
       viewBox="0 0 20 20"
       fill="none"
-      className={cn('shrink-0 text-marker-meeting transition-colors duration-instant ease-hexa', className)}
+      style={{ width: size, height: size }}
+      className={cn('block shrink-0 text-marker-meeting transition-colors duration-instant ease-hexa', className)}
     >
       <path
         d="M2.08301 9.99992C2.08301 6.26797 2.08301 4.40199 3.24237 3.24262C4.40175 2.08325 6.26772 2.08325 9.99968 2.08325C13.7316 2.08325 15.5976 2.08325 16.757 3.24262C17.9163 4.40199 17.9163 6.26797 17.9163 9.99992C17.9163 13.7318 17.9163 15.5978 16.757 16.7573C15.5976 17.9166 13.7316 17.9166 9.99968 17.9166C6.26773 17.9166 4.40175 17.9166 3.24237 16.7573C2.08301 15.5978 2.08301 13.7318 2.08301 9.99992Z"
