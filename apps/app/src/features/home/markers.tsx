@@ -1,8 +1,8 @@
 import { Hexagon } from '@workspace/ui/components/hexagon'
 import { cn } from '@workspace/ui/lib/utils'
 
-// The day markers used beside times and in the heat-map day card. Fills and the thin outline
-// come from the --marker-* tokens so light and dark stay in step.
+// The day markers used beside times and in the heat-map day card. Fills, the thin outline and
+// the clock detail come from the --marker-* tokens so light and dark stay in step.
 
 /**
  * The "Calendar time" icon from the design export (packages/assets/icons/calendar-time.svg),
@@ -31,7 +31,7 @@ export function MeetingMarker({ size = 18, className }: { size?: number; classNa
       />
       <path
         d="M7.5 7.49996L10.8334 10.833M13.3333 6.66663L9.16667 10.8333"
-        stroke="var(--marker-outline)"
+        stroke="var(--marker-detail)"
         strokeWidth="1.1"
         strokeLinecap="round"
         strokeLinejoin="round"

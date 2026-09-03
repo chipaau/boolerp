@@ -147,6 +147,7 @@
   --marker-task-to: #f39b58;
   --marker-approval: #b5d5bc;
   --marker-outline: #434343;
+  --marker-detail: #434343; /* the clock hands inside the meeting marker */
   --avatar-count: #f6e8d5;
 
   /* honeycomb heat map: other month · light · healthy · at/above target · today */
@@ -279,6 +280,7 @@
   --marker-meeting-hover: #f2c196;
   --marker-approval: #4a5c4d;
   --marker-outline: transparent; /* markers have different fills, so the outline simply disappears */
+  --marker-detail: #7a6248; /* hands stay readable on the cream fill */
   --avatar-count: #3a3227;
   --schedule-hover: #d9b98a;
   --plate-hover-ring: #6b5232;
