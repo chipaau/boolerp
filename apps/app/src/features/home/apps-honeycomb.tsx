@@ -103,7 +103,8 @@ export function AppsHoneycomb() {
   return (
     <section className="space-y-4">
       <SectionTitle className="ps-10">Apps</SectionTitle>
-      <Honeycomb cellSize="10rem" cols={2} rows={5} gap={0.1} rowPitch={0.76} className="relative z-0 ml-auto">
+      {/* the grid rides up so the top tile's apex sits level with the title; its left column starts a row lower, so nothing collides */}
+      <Honeycomb cellSize="10rem" cols={2} rows={5} gap={0.1} rowPitch={0.76} className="relative z-0 -mt-6 ml-auto">
         {DECOR.map((d, i) => (
           <HoneycombItem key={`d${i}`} col={d.col} row={d.row} aria-hidden="true" className="pointer-events-none -z-10">
             <Hexagon
