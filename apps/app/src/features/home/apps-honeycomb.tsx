@@ -1,0 +1,171 @@
+import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import { ArrowCircle } from '@workspace/ui/components/arrow-button'
+import { Hexagon } from '@workspace/ui/components/hexagon'
+import { Honeycomb, HoneycombItem, type HexCell } from '@workspace/ui/components/honeycomb'
+import { SectionTitle } from '@workspace/ui/components/section-title'
+import { AppIcon } from '@/components/app-icon'
+import { getApp, type AppDef } from '@/lib/apps'
+
+// Which apps get a tile, in reading order (the Figma frame); everything else lives in the switcher.
+const TILE_ORDER = [
+  'control-centre',
+  'tasks',
+  'inventory',
+  'asset',
+  'notes',
+  'directory',
+  'analytics',
+  'procurement',
+] as const
+const TILES = TILE_ORDER.map((slug) => getApp(slug)).filter((a): a is AppDef => Boolean(a))
+
+// Slots on a 2-column pointy-top grid, matching the design: 1 / 2 / 1 / 2 / 2 tiles per row.
+const SLOTS: HexCell[] = [
+  { col: 1, row: 0 },
+  { col: 0, row: 1 },
+  { col: 1, row: 1 },
+  { col: 1, row: 2 },
+  { col: 0, row: 3 },
+  { col: 1, row: 3 },
+  { col: 0, row: 4 },
+  { col: 1, row: 4 },
+]
+
+/**
+ * The faded gradient hexes: they fill the empty slots of the same tessellation, so they lock to
+ * the tiles (left of Control Centre, right of Inventory, both sides of Asset with the darkest on
+ * the right, left of Notes, right of Directory, and under the bottom row). Each turns its gradient
+ * so the light end faces top-left, the way the shadows fall.
+ */
+const DECOR: (HexCell & { opacity: number; angle: number })[] = [
+  { col: 0, row: 0, opacity: 0.55, angle: 150 },
+  { col: 2, row: 0, opacity: 0.3, angle: 210 },
+  { col: 2, row: 1, opacity: 0.3, angle: 210 },
+  { col: 0, row: 2, opacity: 0.6, angle: 150 },
+  { col: 2, row: 2, opacity: 0.95, angle: 220 },
+  { col: -1, row: 3, opacity: 0.5, angle: 140 },
+  { col: 2, row: 3, opacity: 0.4, angle: 210 },
+  { col: 2, row: 4, opacity: 0.7, angle: 220 },
+  { col: 0, row: 5, opacity: 0.45, angle: 150 },
+  { col: 1, row: 5, opacity: 0.65, angle: 200 },
+]
+
+function itemLeft(cell: HexCell) {
+  return `calc(var(--hc-x) * ${cell.col + (cell.row % 2 ? 0.5 : 0)})`
+}
+function itemTop(cell: HexCell) {
+  return `calc(var(--hc-y) * ${cell.row})`
+}
+
+/**
+ * The caption leader for the hovered tile: a line grows out from the tile's left edge to a dot,
+ * and the app's one-line description fades in beyond it. It draws above the (dimmed) neighbours,
+ * so right-column tiles run a longer line across the tile beside them, as in the design, and
+ * left-column tiles a short one. Timing is identical for every tile.
+ */
+function Leader({ app, cell }: { app: AppDef; cell: HexCell }) {
+  const length = cell.col === 1 ? 'calc(var(--hc-x) + var(--hc-w) * 0.45)' : 'calc(var(--hc-w) * 0.45)'
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute z-30 flex w-max items-center gap-2.5"
+      style={{
+        left: `calc(${itemLeft(cell)} + var(--hc-w) * 0.12)`,
+        top: `calc(${itemTop(cell)} + var(--hc-h) / 2)`,
+        transform: 'translate(-100%, -50%)',
+      }}
+    >
+      <span className="max-w-[5.5rem] animate-rise text-right text-[11px] leading-[1.35] font-bold tracking-[0.06em] text-muted-foreground uppercase [animation-delay:240ms]">
+        {app.description}
+      </span>
+      <span className="relative h-px origin-right animate-grow-x bg-faint/80" style={{ width: length }}>
+        <span className="absolute top-1/2 left-0 size-1.5 -translate-y-1/2 rounded-full bg-faint" />
+      </span>
+    </span>
+  )
+}
+
+/**
+ * The app grid's signature element: Soft Cream tiles, tessellated with a half-width offset and
+ * a 24% vertical overlap, over a field of faded gradient hexagons. Hovering a tile tints it Sand,
+ * dims the others, and draws its leader line.
+ */
+export function AppsHoneycomb() {
+  const [hovered, setHovered] = useState<number | null>(null)
+  return (
+    <section className="space-y-4">
+      <SectionTitle>Apps</SectionTitle>
+      <Honeycomb
+        cellSize="10rem"
+        cols={2}
+        rows={5}
+        gap={0.1}
+        rowPitch={0.76}
+        data-hovered={hovered !== null ? '' : undefined}
+        className="ml-auto [&[data-hovered]_[data-tile]:not([data-active])]:opacity-40"
+      >
+        {DECOR.map((d, i) => (
+          <HoneycombItem key={`d${i}`} col={d.col} row={d.row} aria-hidden="true" className="pointer-events-none -z-10">
+            <Hexagon
+              size="100%"
+              gradient={['var(--hex-decor-from)', 'var(--hex-decor-to)']}
+              gradientAngle={d.angle}
+              style={{ opacity: d.opacity }}
+            />
+          </HoneycombItem>
+        ))}
+        {hovered !== null && TILES[hovered] && <Leader app={TILES[hovered]} cell={SLOTS[hovered]} />}
+        {TILES.slice(0, SLOTS.length).map((app, i) => {
+          const active = hovered === i
+          return (
+            <HoneycombItem
+              key={app.slug}
+              col={SLOTS[i].col}
+              row={SLOTS[i].row}
+              data-tile=""
+              data-active={active ? '' : undefined}
+              className="z-10 animate-rise transition-opacity duration-quick ease-hexa data-[active]:z-20"
+              style={{ animationDelay: `${240 + i * 40}ms` }}
+            >
+              <Link
+                to="/$app"
+                params={{ app: app.slug }}
+                className="block size-full outline-none"
+                aria-label={`Open ${app.name}`}
+                title={app.description}
+                onMouseEnter={() => setHovered(i)}
+                onMouseLeave={() => setHovered((h) => (h === i ? null : h))}
+                onFocus={() => setHovered(i)}
+                onBlur={() => setHovered((h) => (h === i ? null : h))}
+              >
+                <Hexagon
+                  size="100%"
+                  interactive
+                  data-active={active ? '' : undefined}
+                  stroke={active ? 'var(--tile-hover-stroke)' : undefined}
+                  strokeWidth={1}
+                  className={active ? 'text-tile-hover-fill' : 'text-surface-soft'}
+                >
+                  <div className="flex flex-col items-center gap-2.5">
+                    <AppIcon slug={app.slug} variant="art" size={50} />
+                    <span className="text-[15px] font-bold text-foreground">{app.name}</span>
+                  </div>
+                </Hexagon>
+              </Link>
+            </HoneycombItem>
+          )
+        })}
+      </Honeycomb>
+      <div className="flex justify-end pt-2">
+        <button
+          type="button"
+          className="group inline-flex items-center gap-3 rounded-full text-[13.5px] font-bold text-body outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          Browse All Apps
+          <ArrowCircle small />
+        </button>
+      </div>
+    </section>
+  )
+}
