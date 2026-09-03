@@ -92,9 +92,9 @@ function Leader({ app, cell }: { app: AppDef; cell: HexCell }) {
 }
 
 /**
- * The app grid's signature element: Soft Cream tiles, tessellated with a half-width offset and
- * a 24% vertical overlap, over a field of faded gradient hexagons. Hovering a tile fades it to
- * Sand and draws its leader line beneath the grid.
+ * The app grid's signature element: Soft Cream tiles (card tone with a hairline in dark mode),
+ * tessellated with a half-width offset and a 24% vertical overlap, over a field of faded gradient
+ * hexagons. Hovering a tile fades it to Sand and draws its leader line beneath the grid.
  */
 export function AppsHoneycomb() {
   const [hovered, setHovered] = useState<number | null>(null)
@@ -139,11 +139,11 @@ export function AppsHoneycomb() {
                 <Hexagon
                   size="100%"
                   interactive
-                  stroke={active ? 'var(--tile-hover-stroke)' : undefined}
+                  stroke={active ? 'var(--tile-hover-stroke)' : 'var(--tile-stroke)'}
                   strokeWidth={1}
                   className={cn(
                     'transition-[color,transform] duration-quick ease-hexa',
-                    active ? 'text-tile-hover-fill' : 'text-surface-soft'
+                    active ? 'text-tile-hover-fill' : 'text-tile-fill'
                   )}
                 >
                   <div className="flex flex-col items-center gap-2.5">

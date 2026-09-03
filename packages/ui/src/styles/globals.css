@@ -135,6 +135,8 @@
   /* decorative honeycomb (Home): gradient hexes at varying opacity; app tile hover fill */
   --hex-decor-from: #f1ece2;
   --hex-decor-to: #efdec8;
+  --tile-fill: #faf8f5; /* the app tiles on Home: Soft Cream, edgeless */
+  --tile-stroke: transparent;
   --tile-hover-fill: #f6e8d5;
   --tile-hover-stroke: #e6d1b5;
 
@@ -183,7 +185,7 @@
   Dark theme, from the design system v2 dark mapping: achromatic neutrals (page 161616, card
   1F1F1F, ivory 191919, band 1D1C1B, tile 262523, rail 121212, rules 323231), ink F0EFED, body
   CFCCC7, mute A8A29A, faint 9B958C, sage 9AAB94. The warmth lives only in the button fill and the
-  honeycomb. Status pills keep their light fills. Heat-map fills are the light colours at 42%.
+  honeycomb. Status pills keep their light fills. The Home heat map runs amber over the page.
 */
 .dark {
   --background: #161616;
@@ -233,8 +235,12 @@
   --field: #282827;
   --ring: #9aab94;
 
-  --hex-decor-from: #191919;
-  --hex-decor-to: #262523;
+  /* Home has no cards, so its layers come from tokens: a warm lattice of decor hexes, tiles on the
+     card tone with the card hairline, and the heat map as amber over the page instead of dimmed cream */
+  --hex-decor-from: #1b1916;
+  --hex-decor-to: #2e2820;
+  --tile-fill: #1f1f1f;
+  --tile-stroke: #323231;
   --tile-hover-fill: #332d24;
   --tile-hover-stroke: #4a4034;
   --marker-meeting: #5a4632;
@@ -244,13 +250,13 @@
   --avatar-count: #3a3227;
   --schedule-hover: #d9b98a;
 
-  /* the light fills at 42% over the page (the design dims the honeycomb rather than recolouring it) */
   --chart-grid: #232322;
   --chart-guide: #3a3937;
-  --heat-0: #6d655e;
-  --heat-1: #746855;
-  --heat-2: #75644e;
-  --heat-3: #785d3a;
+  /* one hue getting hotter toward today's amber: other month · light · healthy · at/above target */
+  --heat-0: #2a2826;
+  --heat-1: #4a3a28;
+  --heat-2: #6b4a28;
+  --heat-3: #8f5f28;
   --heat-today-stroke: #f0efed;
 
   --sidebar: #121212;
@@ -446,6 +452,8 @@
 
   --color-hex-decor-from: var(--hex-decor-from);
   --color-hex-decor-to: var(--hex-decor-to);
+  --color-tile-fill: var(--tile-fill);
+  --color-tile-stroke: var(--tile-stroke);
   --color-tile-hover-fill: var(--tile-hover-fill);
   --color-tile-hover-stroke: var(--tile-hover-stroke);
   --color-tone-rose: var(--tone-rose);
