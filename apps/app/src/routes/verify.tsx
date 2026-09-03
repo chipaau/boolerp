@@ -1,7 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { AuthShell } from '@workspace/auth'
-import { KratosForm } from '@workspace/auth'
-import { useKratosFlow } from '@workspace/auth'
+import { AuthShell, KratosForm, useKratosFlow } from '@workspace/auth'
 
 // Email verification (UC-AUTH-07). Kratos emails a code; the generic form renders it.
 export const Route = createFileRoute('/verify')({
@@ -17,19 +15,27 @@ function VerifyPage() {
 
   return (
     <AuthShell
-      title="Verify email"
-      subtitle="Enter the code we emailed you"
+      title="Check your inbox"
+      subtitle="Enter the six-digit code we emailed you."
       footer={
-        <Link to="/login" className="underline">
+        <Link
+          to="/login"
+          search={{ flow: undefined, return_to: undefined }}
+          className="text-link hover:underline hover:underline-offset-[3px]"
+        >
           Back to sign in
         </Link>
       }
     >
-      {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="mb-3 rounded-full bg-destructive-soft px-[18px] py-3 text-[13.5px] text-destructive">
+          {error}
+        </p>
+      )}
       {flow ? (
         <KratosForm flow={flow} onSubmit={onSubmit} submitting={submitting} groups={['code', 'link']} />
       ) : (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-[15px] text-muted-foreground">Loading…</p>
       )}
     </AuthShell>
   )

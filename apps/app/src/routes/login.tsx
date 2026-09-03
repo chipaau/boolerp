@@ -29,18 +29,26 @@ function LoginPage() {
   return (
     <AuthShell
       title="Sign in"
-      subtitle="malecouncil.bool.test"
+      subtitle="Inventory, assets and approvals for your locations."
       footer={
-        <Link to="/recovery" className="underline">
+        <Link
+          to="/recovery"
+          search={{ flow: undefined }}
+          className="ms-auto text-link hover:underline hover:underline-offset-[3px]"
+        >
           Forgot password?
         </Link>
       }
     >
-      {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="mb-3 rounded-full bg-destructive-soft px-[18px] py-3 text-[13.5px] text-destructive">
+          {error}
+        </p>
+      )}
       {flow ? (
         <KratosForm flow={flow} onSubmit={onSubmit} submitting={submitting} groups={['password']} />
       ) : (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-[15px] text-muted-foreground">Loading…</p>
       )}
     </AuthShell>
   )

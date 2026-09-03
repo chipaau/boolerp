@@ -24,14 +24,18 @@ function ErrorPage() {
 
   return (
     <AuthShell
-      title="Error"
+      title="Something went wrong"
       footer={
-        <Link to="/login" className="underline">
+        <Link
+          to="/login"
+          search={{ flow: undefined, return_to: undefined }}
+          className="text-link hover:underline hover:underline-offset-[3px]"
+        >
           Back to sign in
         </Link>
       }
     >
-      <p className="text-sm text-muted-foreground">{message}</p>
+      <p className="rounded-full bg-destructive-soft px-[18px] py-3 text-[13.5px] text-destructive">{message}</p>
     </AuthShell>
   )
 }

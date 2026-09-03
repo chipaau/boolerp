@@ -9,7 +9,7 @@ export const Route = createFileRoute('/')({
   loader: async () => {
     const session = await whoami()
     if (!session) {
-      throw redirect({ to: '/login', search: { return_to: '/' } })
+      throw redirect({ to: '/login', search: { flow: undefined, return_to: '/' } })
     }
     return { session }
   },
