@@ -74,9 +74,9 @@ function Button({
 }
 
 /**
- * The circle at the end of a primary button. Translucent white at rest, Graphite on hover, and
- * the arrow rotates 45° toward the top-right. Sized from the parent button's `data-size`. Pass a
- * different icon as children (e.g. a plus) for create actions.
+ * The circle at the end of a primary button. Translucent white at rest, Graphite on hover; the
+ * icon itself never moves. Sized from the parent button's `data-size`. Pass a different icon as
+ * children (e.g. a plus) for create actions.
  */
 function ButtonArrow({
   className,
@@ -88,20 +88,19 @@ function ButtonArrow({
       data-slot="button-arrow"
       aria-hidden="true"
       className={cn(
-        // the circle and colour change apply to every icon; only the default arrow turns
-        "grid shrink-0 place-items-center rounded-full bg-primary-circle text-primary-circle-foreground transition-[background-color,color] duration-instant ease-hexa group-hover/btn:bg-primary-circle-hover group-hover/btn:text-primary-circle-hover-foreground [&>svg]:transition-transform [&>svg]:duration-instant [&>svg]:ease-hexa group-hover/btn:[&>svg[data-arrow]]:-rotate-45",
+        "grid shrink-0 place-items-center rounded-full bg-primary-circle text-primary-circle-foreground transition-[background-color,color] duration-instant ease-hexa group-hover/btn:bg-primary-circle-hover group-hover/btn:text-primary-circle-hover-foreground",
         "size-7 [&>svg]:size-3.5",
         "group-data-[size=xs]/btn:size-4 group-data-[size=xs]/btn:[&>svg]:size-2.5",
         "group-data-[size=sm]/btn:size-6 group-data-[size=icon-sm]/btn:size-6 group-data-[size=sm]/btn:[&>svg]:size-3 group-data-[size=icon-sm]/btn:[&>svg]:size-3",
         "group-data-[size=lg]/btn:size-[34px] group-data-[size=icon-lg]/btn:size-[34px] group-data-[size=lg]/btn:[&>svg]:size-4 group-data-[size=icon-lg]/btn:[&>svg]:size-4",
         "group-data-[size=xl]/btn:size-9 group-data-[size=xl]/btn:[&>svg]:size-4",
-        // on the amber CTA the circle is warm white and stays put; only the arrow turns
+        // on the amber CTA the circle is warm white and stays put
         "group-data-[variant=brand]/btn:bg-brand-cta-circle group-data-[variant=brand]/btn:text-brand-cta-hover group-data-[variant=brand]/btn:group-hover/btn:bg-brand-cta-circle group-data-[variant=brand]/btn:group-hover/btn:text-brand-cta-hover",
         className
       )}
       {...props}
     >
-      {children ?? <ArrowRight strokeWidth={2} data-arrow="" />}
+      {children ?? <ArrowRight strokeWidth={2} />}
     </span>
   )
 }
