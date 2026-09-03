@@ -23,3 +23,6 @@ apps/api/internal/web/dist/
 
 # design exports (Claude Design / Figma) live outside git
 .design/
+
+# local reverse-proxy scratch (certs, logs) — never commit
+Proxy/
