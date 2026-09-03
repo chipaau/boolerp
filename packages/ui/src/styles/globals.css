@@ -540,6 +540,7 @@
 */
 /* In-between sizes from the design live as --text-* tokens in @theme (micro 11 · fine 11.5 · meta 12.5 ·
    compact 13 · ui-sm 13.5 · ui-lg 15 · heading-sm 15.5): font-size only, pair with font-*/leading-*.
+   `text-body` is a colour (Slate text); the 16px reading step is `text-prose`.
    The named steps below carry weight and leading too. */
 @utility text-display {
   font-size: 52px;
@@ -573,7 +574,8 @@
   line-height: 1.35;
   font-weight: 700;
 }
-@utility text-body {
+/* 16px reading text. Named `prose`, not `body`: `text-body` is the Slate text colour. */
+@utility text-prose {
   font-size: 16px;
   line-height: 1.65;
   font-weight: 400;

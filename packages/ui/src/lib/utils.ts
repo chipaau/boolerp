@@ -7,7 +7,7 @@ import { extendTailwindMerge } from "tailwind-merge"
  * size with a colour in `cn()`. Register the scale so sizes and colours merge independently.
  */
 const TYPE_SCALE = [
-  "display", "display-sm", "h1", "h2", "h3", "title", "body", "ui", "caption", "label", "overline",
+  "display", "display-sm", "h1", "h2", "h3", "title", "prose", "ui", "caption", "label", "overline",
   "micro", "fine", "meta", "compact", "ui-sm", "ui-lg", "heading-sm",
 ]
 

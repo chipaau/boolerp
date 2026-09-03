@@ -35,7 +35,7 @@ export function AppSwitcher() {
           ))}
         </span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[292px] p-2">
+      <DropdownMenuContent align="end" className="w-[340px] p-2">
         <div className="px-2 pt-1 pb-2.5 text-overline text-faint">Apps</div>
         <div className="grid grid-cols-3 gap-1">
           {APPS.map((app) => {
