@@ -209,7 +209,7 @@
 
   --primary: #332f28;
   --primary-foreground: #f0efed;
-  --primary-circle: rgba(255, 255, 255, 0.1);
+  --primary-circle: #2d2d2c; /* solid, so the arrow disc reads the same inside a button and on its own */
   --primary-circle-foreground: #e8e4dc;
   --primary-circle-hover: #efdec8;
   --primary-circle-hover-foreground: #242424;
