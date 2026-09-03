@@ -20,3 +20,6 @@ apps/api/internal/web/dist/
 .env.local
 *.log
 .DS_Store
+
+# design exports (Claude Design / Figma) live outside git
+.design/

@@ -1,91 +1,521 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 @source "../components";
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+  Hexa design system v2.0 (August 2026) — single source of truth for app, admin and website.
+  Values come from .design/Design system/Hexa Design System.dc.html. Edit tokens here only;
+  components consume them through the @theme block below, so a change lands everywhere.
+
+  Rules worth remembering (from the design doc):
+  - Cards have no border and no shadow; they separate from the page by tone alone.
+  - Amber (--brand) is for the brand mark, the active nav bar, checkboxes, warnings and the
+    honeycomb. It never fills a button and never tints a nav item.
+  - One primary button: Sand Light pill with a Charcoal label and the circle arrow.
+  - Sage leads: links, focus rings, the first categorical hue.
+*/
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --sidebar: hsl(0 0% 98%);
-  --sidebar-foreground: hsl(240 5.3% 26.1%);
-  --sidebar-primary: hsl(240 5.9% 10%);
-  --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(240 4.8% 95.9%);
-  --sidebar-accent-foreground: hsl(240 5.9% 10%);
-  --sidebar-border: hsl(220 13% 91%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+  /* layout */
+  --header-height: 4rem; /* 64px global topbar */
+  --sidebar-width: 15.5rem; /* 248px labelled sidebar */
+
+  /* radii: 6 chip · 9 field · 14 card · 20 panel · pill */
+  --radius-chip: 6px;
+  --radius-field: 9px;
+  --radius-card: 14px;
+  --radius-panel: 20px;
+
+  /* surfaces */
+  --background: #f1ece2; /* Warm Ivory · page */
+  --foreground: #191b24; /* Ink */
+  --card: #faf7f0; /* Cream White · card */
+  --card-foreground: #191b24;
+  --popover: #faf7f0;
+  --popover-foreground: #191b24;
+  --surface-soft: #faf8f5; /* Soft Cream · fields on page, icon plates, hex tiles */
+  --surface-band: #f6f1e9; /* table header band */
+  --surface-inverted: #333331; /* inverted metric card */
+  --surface-inverted-foreground: #f4f3f1;
+  --toast: #2a2725;
+  --toast-foreground: #f2efea;
+  --scrim: rgba(38, 34, 27, 0.45);
+
+  /* text */
+  --text-body: #3b3c42; /* Slate text */
+  --muted-foreground: #8c8579; /* Taupe */
+  --faint: #a5906f; /* eyebrows, placeholders */
+  --disabled-foreground: #ada9a3;
+
+  /* the one button */
+  --primary: #efdec8; /* Sand Light */
+  --primary-foreground: #242424; /* Charcoal */
+  --primary-circle: rgba(255, 255, 255, 0.71);
+  --primary-circle-foreground: rgba(36, 36, 36, 0.8);
+  --primary-circle-hover: #585454; /* Graphite */
+  --primary-circle-hover-foreground: #ffffff;
+  --secondary: #f1ece2;
+  --secondary-foreground: #191b24;
+  --secondary-hover: #e5d6c2;
+  --muted: #f1ece2; /* inset / ivory */
+  --accent: #f1ece2; /* quiet hover */
+  --accent-foreground: #191b24;
+
+  /* hues */
+  --brand: #f28213; /* amber · logo, active bar, warnings */
+  --brand-foreground: #faf7f0;
+  --brand-soft: #f09a43; /* nav hover bar, checkbox, the sign-in CTA */
+  --brand-cta-hover: #e8892f;
+  --brand-cta-foreground: #2b1e0c;
+  --brand-cta-circle: #fff7ea;
+  --ring-warm: #f0c98a; /* focus ring on the amber sign-in screen */
+  --sage: #6e7f6a; /* Sage 600 · lead accent */
+  --sage-foreground: #faf7f0;
+  --sage-400: #8b9a86;
+  --sage-soft: #e2e6e0; /* Sage 100 */
+  --sage-soft-foreground: #465243;
+  --link: #5c6b59;
+  --link-hover: #3f4b3d;
+  --destructive: #a32b47;
+  --destructive-soft: #f3dfe3;
+  --destructive-soft-hover: #ebcbd2;
+
+  /* rules */
+  --border: #e5d6c2; /* Sand · structural rules (sidebar/topbar edges) */
+  --divider: #ece1d2; /* Tan · dividers inside a card */
+  --input: #e7dbc7; /* ghost button inset ring */
+  --field: #f1ece2; /* field fill inside a card */
+  --ring: #6e7f6a; /* sage focus ring */
+
+  /* status & category tones: strong / soft fill / text-on-soft */
+  --tone-success: #6e7f6a;
+  --tone-success-soft: #e2e6e0;
+  --tone-success-foreground: #465243;
+  --tone-warning: #f28213;
+  --tone-warning-soft: #f7e6ce;
+  --tone-warning-foreground: #8a5210;
+  --tone-danger: #a32b47;
+  --tone-danger-soft: #f3dfe3;
+  --tone-danger-foreground: #a32b47;
+  --tone-plum: #7c6a80;
+  --tone-plum-soft: #eae4eb;
+  --tone-plum-foreground: #5e4e62;
+  --tone-slate: #5e6670;
+  --tone-slate-soft: #e3e5e7;
+  --tone-slate-foreground: #4a5057;
+  --tone-neutral: #8c8579;
+  --tone-neutral-soft: #f1ece2;
+  --tone-neutral-foreground: #8c8579;
+  /* rose: a quieter pink for follow-ups and reminders (danger stays for real failures) */
+  --tone-rose: #c98a9c;
+  --tone-rose-soft: #f3e1e6;
+  --tone-rose-foreground: #8c4a5e;
+
+  /* charts: the garden ramp + line pair; terracotta = at-risk only */
+  --chart-1: #7e8f78;
+  --chart-2: #9aa893;
+  --chart-3: #b8c0ae;
+  --chart-4: #d9c6a8;
+  --chart-5: #e0a97a;
+  --chart-line-a: #b5d5bc;
+  --chart-line-b: #f39b58;
+  --chart-fill: #f2c196;
+  --chart-risk: #c0563c;
+
+  /* decorative honeycomb (Home): gradient hexes at varying opacity; app tile hover fill */
+  --hex-decor-from: #f1ece2;
+  --hex-decor-to: #efdec8;
+  --tile-hover-fill: #f6e8d5;
+  --tile-hover-stroke: #e6d1b5;
+
+  /* day markers (schedule row + heat-map day card): fills and the thin outline */
+  --marker-meeting: #f5d4b7;
+  --marker-task-from: #f2c196;
+  --marker-task-to: #f39b58;
+  --marker-approval: #b5d5bc;
+  --marker-outline: #434343;
+  --avatar-count: #f6e8d5;
+
+  /* honeycomb heat map: other month · light · healthy · at/above target · today */
+  --heat-0: #e5d6c2;
+  --heat-1: #f7d8ac;
+  --heat-2: #f9d19b;
+  --heat-3: #ffbf6b;
+  --heat-today-from: #fa9344;
+  --heat-today-to: #f58040;
+  --heat-today-stroke: #434343;
+  --heat-hover-from: #ffbf6b;
+  --heat-hover-to: #fa9344;
+  /* schedule row hover: warmer marker, tan bold time */
+  --marker-meeting-hover: #f2c196;
+  --schedule-hover: #927547;
+
+  /* sidebar */
+  --sidebar: #faf7f0;
+  --sidebar-foreground: #3b3c42;
+  --sidebar-primary: #f28213;
+  --sidebar-primary-foreground: #faf7f0;
+  --sidebar-accent: #f1ece2;
+  --sidebar-accent-foreground: #191b24;
+  --sidebar-border: #e5d6c2;
+  --sidebar-ring: #6e7f6a;
+
+  /* elevation: only things that genuinely leave the page */
+  --shadow-floating: 0 4px 10px rgba(64, 44, 20, 0.07), 0 12px 26px rgba(64, 44, 20, 0.06);
+  --shadow-overlay: 0 8px 20px rgba(64, 44, 20, 0.12), 0 28px 56px rgba(64, 44, 20, 0.12);
+
+  --font-sans: "Lato", -apple-system, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --ease-hexa: cubic-bezier(0.2, 0, 0.2, 1);
 }
 
+/* Dark neutrals are achromatic; the warmth lives only in the button fill and the honeycomb. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --sidebar: hsl(240 5.9% 10%);
-  --sidebar-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-primary: hsl(224.3 76.3% 48%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(240 3.7% 15.9%);
-  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-border: hsl(240 3.7% 15.9%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+  --background: #161616;
+  --foreground: #f0efed;
+  --card: #1f1f1f;
+  --card-foreground: #f0efed;
+  --popover: #1f1f1f;
+  --popover-foreground: #f0efed;
+  --surface-soft: #191919;
+  --surface-band: #232322;
+  --toast: #2a2725;
+  --scrim: rgba(0, 0, 0, 0.55);
+
+  --text-body: #cfccc7;
+  --muted-foreground: #96918a;
+  --faint: #6e6a64;
+  --disabled-foreground: #5a5751;
+
+  --primary: #332f28;
+  --primary-foreground: #f0efed;
+  --primary-circle: rgba(255, 255, 255, 0.1);
+  --primary-circle-foreground: #e8e4dc;
+  --primary-circle-hover: #efdec8;
+  --primary-circle-hover-foreground: #242424;
+  --secondary: #282827;
+  --secondary-foreground: #f0efed;
+  --secondary-hover: #323231;
+  --muted: #282827;
+  --accent: #282827;
+  --accent-foreground: #f0efed;
+
+  --sage: #9aab94;
+  --sage-foreground: #161616;
+  --sage-soft: #2c332b;
+  --sage-soft-foreground: #b4bfb0;
+  --link: #9aab94;
+  --link-hover: #b4bfb0;
+  --destructive: #d97389;
+  --destructive-soft: #3a2229;
+  --destructive-soft-hover: #48292f;
+
+  --border: #323231;
+  --divider: #2c2c2b;
+  --input: #3a3937;
+  --field: #282827;
+  --ring: #9aab94;
+
+  --tone-success-soft: #26302a;
+  --tone-success-foreground: #b4bfb0;
+  --tone-warning-soft: #3a2c18;
+  --tone-warning-foreground: #e0a97a;
+  --tone-danger-soft: #3a2229;
+  --tone-danger-foreground: #e39aa9;
+  --tone-plum-soft: #2f2a31;
+  --tone-plum-foreground: #c4b4c8;
+  --tone-slate-soft: #292c30;
+  --tone-slate-foreground: #b7bdc4;
+  --tone-neutral-soft: #282827;
+  --tone-neutral-foreground: #96918a;
+  --tone-rose-soft: #3a262d;
+  --tone-rose-foreground: #d9a3b3;
+
+  --hex-decor-from: #1f1f1f;
+  --hex-decor-to: #2a2723;
+  --tile-hover-fill: #332d24;
+  --tile-hover-stroke: #4a4034;
+  --marker-meeting: #5a4632;
+  --marker-approval: #4a5c4d;
+  --marker-outline: #f0efed;
+  --avatar-count: #3a3227;
+
+  --heat-0: #2c2a27;
+  --heat-1: #4a3c27;
+  --heat-2: #7a5a2c;
+  --heat-3: #c78a3a;
+  --heat-today-stroke: #f0efed;
+  --marker-meeting-hover: #7a5a3a;
+  --schedule-hover: #d9b98a;
+
+  --sidebar: #121212;
+  --sidebar-foreground: #cfccc7;
+  --sidebar-accent: #1f1f1f;
+  --sidebar-accent-foreground: #f0efed;
+  --sidebar-border: #323231;
+
+  --shadow-floating: 0 4px 10px rgba(0, 0, 0, 0.35), 0 12px 26px rgba(0, 0, 0, 0.3);
+  --shadow-overlay: 0 8px 20px rgba(0, 0, 0, 0.5), 0 28px 56px rgba(0, 0, 0, 0.45);
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  /* radii: rounded-sm/md/lg/xl = chip/field/card/panel */
+  --radius-sm: var(--radius-chip);
+  --radius-md: var(--radius-field);
+  --radius-lg: var(--radius-card);
+  --radius-xl: var(--radius-panel);
+  --radius-2xl: var(--radius-panel);
+
+  --font-sans: var(--font-sans);
+  /* Lato ships 300/400/700/900 only: medium renders as 400, semibold as 700 */
+  --font-weight-medium: 400;
+  --font-weight-semibold: 700;
+
+  --ease-hexa: var(--ease-hexa);
+
+  /* entrance: content rises 6px and fades in (animate-rise); stagger with [animation-delay:…] */
+  --animate-rise: hx-rise 460ms var(--ease-hexa) both;
+  @keyframes hx-rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* validation nudge (animate-shake) and the busy spinner (animate-spin-fast) */
+  --animate-shake: hx-shake 340ms ease both;
+  @keyframes hx-shake {
+    0%,
+    100% {
+      transform: none;
+    }
+    20% {
+      transform: translateX(-5px);
+    }
+    40% {
+      transform: translateX(5px);
+    }
+    60% {
+      transform: translateX(-3px);
+    }
+    80% {
+      transform: translateX(3px);
+    }
+  }
+  --animate-spin-fast: spin 700ms linear infinite;
+  /* a leader line growing out from its anchor (animate-grow-x, set transform-origin yourself) */
+  --animate-grow-x: hx-grow-x 280ms var(--ease-hexa) both;
+  @keyframes hx-grow-x {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  --shadow-floating: var(--shadow-floating);
+  --shadow-overlay: var(--shadow-overlay);
+  --drop-shadow-hex-hover: var(--shadow-floating);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-body: var(--text-body);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-surface-soft: var(--surface-soft);
+  --color-surface-band: var(--surface-band);
+  --color-surface-inverted: var(--surface-inverted);
+  --color-surface-inverted-foreground: var(--surface-inverted-foreground);
+  --color-toast: var(--toast);
+  --color-toast-foreground: var(--toast-foreground);
+  --color-scrim: var(--scrim);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-circle: var(--primary-circle);
+  --color-primary-circle-foreground: var(--primary-circle-foreground);
+  --color-primary-circle-hover: var(--primary-circle-hover);
+  --color-primary-circle-hover-foreground: var(--primary-circle-hover-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-hover: var(--secondary-hover);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-faint: var(--faint);
+  --color-disabled-foreground: var(--disabled-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-cta-hover: var(--brand-cta-hover);
+  --color-brand-cta-foreground: var(--brand-cta-foreground);
+  --color-brand-cta-circle: var(--brand-cta-circle);
+  --color-ring-warm: var(--ring-warm);
+  --color-sage: var(--sage);
+  --color-sage-foreground: var(--sage-foreground);
+  --color-sage-400: var(--sage-400);
+  --color-sage-soft: var(--sage-soft);
+  --color-sage-soft-foreground: var(--sage-soft-foreground);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
   --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-soft-hover: var(--destructive-soft-hover);
   --color-border: var(--border);
+  --color-divider: var(--divider);
   --color-input: var(--input);
+  --color-field: var(--field);
   --color-ring: var(--ring);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
+
+  --color-tone-success: var(--tone-success);
+  --color-tone-success-soft: var(--tone-success-soft);
+  --color-tone-success-foreground: var(--tone-success-foreground);
+  --color-tone-warning: var(--tone-warning);
+  --color-tone-warning-soft: var(--tone-warning-soft);
+  --color-tone-warning-foreground: var(--tone-warning-foreground);
+  --color-tone-danger: var(--tone-danger);
+  --color-tone-danger-soft: var(--tone-danger-soft);
+  --color-tone-danger-foreground: var(--tone-danger-foreground);
+  --color-tone-plum: var(--tone-plum);
+  --color-tone-plum-soft: var(--tone-plum-soft);
+  --color-tone-plum-foreground: var(--tone-plum-foreground);
+  --color-tone-slate: var(--tone-slate);
+  --color-tone-slate-soft: var(--tone-slate-soft);
+  --color-tone-slate-foreground: var(--tone-slate-foreground);
+  --color-tone-neutral: var(--tone-neutral);
+  --color-tone-neutral-soft: var(--tone-neutral-soft);
+  --color-tone-neutral-foreground: var(--tone-neutral-foreground);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-line-a: var(--chart-line-a);
+  --color-chart-line-b: var(--chart-line-b);
+  --color-chart-fill: var(--chart-fill);
+  --color-chart-risk: var(--chart-risk);
+
+  --color-hex-decor-from: var(--hex-decor-from);
+  --color-hex-decor-to: var(--hex-decor-to);
+  --color-tile-hover-fill: var(--tile-hover-fill);
+  --color-tile-hover-stroke: var(--tile-hover-stroke);
+  --color-tone-rose: var(--tone-rose);
+  --color-tone-rose-soft: var(--tone-rose-soft);
+  --color-tone-rose-foreground: var(--tone-rose-foreground);
+  --color-marker-meeting: var(--marker-meeting);
+  --color-marker-meeting-hover: var(--marker-meeting-hover);
+  --color-schedule-hover: var(--schedule-hover);
+  --color-marker-task-from: var(--marker-task-from);
+  --color-marker-task-to: var(--marker-task-to);
+  --color-marker-approval: var(--marker-approval);
+  --color-marker-outline: var(--marker-outline);
+  --color-avatar-count: var(--avatar-count);
+
+  --color-heat-0: var(--heat-0);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
+
   --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/*
+  Type scale. Each style sets size, line-height, weight and tracking together so a component
+  cannot pick up the size without the weight (text-display, text-h1, … text-overline).
+*/
+@utility text-display {
+  font-size: 52px;
+  line-height: 1.06;
+  font-weight: 300;
+  letter-spacing: -0.028em;
+}
+@utility text-display-sm {
+  font-size: 34px;
+  line-height: 1.14;
+  font-weight: 300;
+  letter-spacing: -0.028em;
+}
+@utility text-h1 {
+  font-size: 28px;
+  line-height: 1.45;
+  font-weight: 400;
+}
+@utility text-h2 {
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+@utility text-h3 {
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+@utility text-title {
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+@utility text-body {
+  font-size: 16px;
+  line-height: 1.65;
+  font-weight: 400;
+}
+@utility text-ui {
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+@utility text-caption {
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+@utility text-label {
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+@utility text-overline {
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* motion: instant 120 (hover/focus/press) · quick 200 (dropdowns, tooltips) · considered 280 (drawers, modals) */
+@utility duration-instant {
+  transition-duration: 120ms;
+}
+@utility duration-quick {
+  transition-duration: 200ms;
+}
+@utility duration-considered {
+  transition-duration: 280ms;
+}
+/* whole-surface click targets lift 3px on hover; the shadow does the work, never a border */
+@utility lift {
+  transition:
+    transform 120ms var(--ease-hexa),
+    box-shadow 120ms var(--ease-hexa);
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-floating);
+  }
 }
 
 @layer base {
@@ -93,8 +523,24 @@
     border-color: var(--color-border);
     outline-color: var(--color-ring);
   }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  html {
+    font-family: var(--font-sans);
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background-color: var(--primary);
   }
 }
