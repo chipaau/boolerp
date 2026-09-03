@@ -21,7 +21,7 @@ export type Series = { labels: string[]; inn: number[]; out: number[]; onHand: n
 
 export type LowStockItem = { name: string; meta: string; tag: 'Critical' | 'Low' }
 export type Category = { name: string; value: number; pct: number; risk: number }
-export type Approval = { id: string; title: string; meta: string; who: string; age: string; urgent: boolean }
+export type Approval = { id: string; title: string; meta: string; who: string; photo?: string; age: string; urgent: boolean }
 export type Movement = { text: string; time: string }
 
 /** Headline figures the overview shows that are not derivable from the item list. */

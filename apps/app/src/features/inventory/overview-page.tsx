@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Boxes, Download, ListChecks, Plus, UserRound } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@workspace/ui/components/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@workspace/ui/components/avatar'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
@@ -139,6 +139,7 @@ export function InventoryOverviewPage() {
                   key={a.id}
                   leading={
                     <Avatar name={a.who} className="size-[34px] bg-muted">
+                      {a.photo && <AvatarImage src={a.photo} alt="" />}
                       <AvatarFallback className="bg-muted text-muted-foreground" />
                     </Avatar>
                   }

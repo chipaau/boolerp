@@ -1,6 +1,10 @@
 // FIXTURES — static sample data for the Inventory screens, lifted from the design file so they
 // carry the same numbers. Only ./queries.ts may import this file (lint-enforced). Delete it when
 // the Inventory API exists and point the queries at the generated client.
+import avatar1 from '@workspace/assets/avatars/avatar-1.jpg'
+import avatar2 from '@workspace/assets/avatars/avatar-2.jpg'
+import avatar3 from '@workspace/assets/avatars/avatar-3.jpg'
+import avatar4 from '@workspace/assets/avatars/avatar-4.webp'
 import type { Approval, Category, Item, LowStockItem, Movement, OverviewStats, Period, Series } from './types'
 
 export const ITEMS: Item[] = [
@@ -59,11 +63,11 @@ export const CATEGORIES: Category[] = [
 ]
 
 export const APPROVALS: Approval[] = [
-  { id: 'a0', title: 'Reorder · HP 26X toner ×24', meta: 'Joseph Okafor · Finance', who: 'Joseph Okafor', age: '2d', urgent: true },
+  { id: 'a0', title: 'Reorder · HP 26X toner ×24', meta: 'Joseph Okafor · Finance', who: 'Joseph Okafor', photo: avatar2, age: '2d', urgent: true },
   { id: 'a1', title: 'Issue MacBook Pro to R. Bakr', meta: 'Raised by IT · needs Manager sign-off', who: 'IT', age: '6h', urgent: false },
-  { id: 'a2', title: 'Write-off · 3 damaged helmets', meta: 'Marco Rahman · Site ops', who: 'Marco Rahman', age: '1d', urgent: false },
-  { id: 'a3', title: 'Transfer · 12 hi-vis vests to Site store', meta: 'Ana Silva · Warehouse B', who: 'Ana Silva', age: '4h', urgent: false },
-  { id: 'a4', title: 'Reorder · Sit-stand desk frames ×6', meta: 'Dana Whitfield · Facilities', who: 'Dana Whitfield', age: '3d', urgent: true },
+  { id: 'a2', title: 'Write-off · 3 damaged helmets', meta: 'Marco Rahman · Site ops', who: 'Marco Rahman', photo: avatar4, age: '1d', urgent: false },
+  { id: 'a3', title: 'Transfer · 12 hi-vis vests to Site store', meta: 'Ana Silva · Warehouse B', who: 'Ana Silva', photo: avatar1, age: '4h', urgent: false },
+  { id: 'a4', title: 'Reorder · Sit-stand desk frames ×6', meta: 'Dana Whitfield · Facilities', who: 'Dana Whitfield', photo: avatar3, age: '3d', urgent: true },
 ]
 
 export const MOVEMENTS: Movement[] = [

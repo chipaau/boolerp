@@ -49,9 +49,9 @@ export function AppSidebar({ app }: { app: AppDef }) {
 
   return (
     <Sidebar className="top-(--header-height) h-[calc(100svh-var(--header-height))]!" collapsible="icon">
-      {/* left padding only: rows carry the right padding so their fill runs to the rail's edge */}
-      <SidebarContent className="gap-0 pl-[22px] pt-5 group-data-[collapsible=icon]:px-2">
-        <div className="mb-5 flex items-center gap-3 pr-[22px] group-data-[collapsible=icon]:hidden">
+      {/* rows carry their own right padding so their fill runs almost to the rail's edge, stopping 12px short */}
+      <SidebarContent className="gap-0 pr-3 pl-[22px] pt-5 group-data-[collapsible=icon]:px-2">
+        <div className="mb-5 flex items-center gap-3 group-data-[collapsible=icon]:hidden">
           <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-surface-soft">
             <AppIcon slug={app.slug} size={22} />
           </span>
@@ -63,7 +63,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
         {groups.map((section, i) => (
           <SidebarGroup
             key={section.title ?? `s${i}`}
-            className={cn('p-0', i > 0 && 'relative mt-[18px] pt-4 before:absolute before:top-0 before:right-[22px] before:left-0 before:h-px before:bg-sidebar-border')}
+            className={cn('p-0', i > 0 && 'relative mt-[18px] pt-4 before:absolute before:top-0 before:right-0 before:left-0 before:h-px before:bg-sidebar-border')}
           >
             {/* the header above already names the app, so a first group titled after it stays unlabelled */}
             {section.title && section.title !== app.name && <SidebarGroupLabel className="mb-2.5 h-auto">{section.title}</SidebarGroupLabel>}
@@ -89,7 +89,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
                         <span>{item.title}</span>
                       </SidebarMenuButton>
                       {item.badge && count !== undefined && (
-                        <SidebarMenuBadge className={cn('right-3.5 top-2', item.badge.tone && BADGE_TONE[item.badge.tone])}>
+                        <SidebarMenuBadge className={cn('right-2.5 top-2', item.badge.tone && BADGE_TONE[item.badge.tone])}>
                           {count}
                         </SidebarMenuBadge>
                       )}
