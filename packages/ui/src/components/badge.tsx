@@ -30,6 +30,7 @@ const badgeVariants = cva(
         slate: "rounded-full bg-tone-slate-soft text-tone-slate-foreground",
         neutral: "rounded-full bg-tone-neutral-soft text-tone-neutral-foreground",
         rose: "rounded-full bg-tone-rose-soft text-tone-rose-foreground",
+        risk: "rounded-full bg-tone-risk-soft text-tone-risk-foreground",
       },
       size: {
         default: "px-[13px] py-[5px] text-[13px] leading-[1.4]",
@@ -55,6 +56,7 @@ const dotColor: Partial<Record<Variant, string>> = {
   slate: "bg-tone-slate",
   neutral: "bg-tone-neutral",
   rose: "bg-tone-rose",
+  risk: "bg-tone-risk",
 }
 
 function Badge({

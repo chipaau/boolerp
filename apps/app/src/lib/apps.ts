@@ -19,8 +19,7 @@ import {
   Target,
   ScrollText,
   Package,
-  Warehouse,
-  ArrowLeftRight,
+  PackageMinus,
   Truck,
   ScanBarcode,
   ClipboardCheck,
@@ -42,6 +41,10 @@ export type AppMenuItem = {
   slug: string // empty string = the app home
   icon?: LucideIcon
   variant?: ProtoVariant
+  /** A count shown at the right edge; `tone` colours it (plain by default). */
+  badge?: { value: string | number; tone?: 'risk' | 'warning' }
+  /** Search params the link carries (saved views preset a filter / query). */
+  search?: Record<string, string>
 }
 export type AppMenuSection = { title?: string; items: AppMenuItem[] }
 
@@ -111,17 +114,29 @@ export const APPS: AppDef[] = [
     name: 'Inventory',
     description: 'Track & manage inventory',
     icon: Boxes,
+    // the design's rail: counts on the right, low stock and requests coloured, plus saved views
     menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
       {
-        title: 'Stock',
+        title: 'Inventory',
         items: [
-          { title: 'Items', slug: 'items', icon: Package, variant: 'table' },
-          { title: 'Stores', slug: 'stores', icon: Warehouse, variant: 'list' },
-          { title: 'Movements', slug: 'movements', icon: ArrowLeftRight, variant: 'table' },
+          { title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' },
+          { title: 'All items', slug: 'items', icon: Package, variant: 'table', badge: { value: 10 } },
+          { title: 'Low stock', slug: 'low-stock', icon: PackageMinus, variant: 'table', badge: { value: 4, tone: 'risk' } },
+          { title: 'Purchase orders', slug: 'purchase-orders', icon: FileSignature, variant: 'table', badge: { value: 4 } },
+          { title: 'Suppliers', slug: 'suppliers', icon: Truck, variant: 'table' },
+          { title: 'Requests & approvals', slug: 'requests', icon: ClipboardCheck, variant: 'table', badge: { value: 5, tone: 'warning' } },
+          { title: 'Reports', slug: 'reports', icon: FileBarChart, variant: 'dashboard' },
+          { title: 'Settings & permissions', slug: 'settings', icon: Settings, variant: 'dashboard' },
         ],
       },
-      { items: [{ title: 'Suppliers', slug: 'suppliers', icon: Truck, variant: 'table' }] },
+      {
+        title: 'My views',
+        items: [
+          { title: 'Site store · below reorder', slug: 'items', search: { filter: 'Low stock', q: 'Site store' }, badge: { value: 1 } },
+          { title: 'Issued to my team', slug: 'items', search: { filter: 'Issued' }, badge: { value: 8 } },
+          { title: 'On order', slug: 'items', search: { filter: 'On order' }, badge: { value: 1 } },
+        ],
+      },
     ],
   },
   {

@@ -113,6 +113,11 @@
   --tone-rose: #c98a9c;
   --tone-rose-soft: #f3e1e6;
   --tone-rose-foreground: #8c4a5e;
+  /* risk: burnt terracotta for stock at or below its reorder point (out of stock, critical) */
+  --tone-risk: #c0563c;
+  --tone-risk-soft: #f6e3da;
+  --tone-risk-foreground: #a8452c;
+  --tone-warning-deep: #c87a1e; /* an amber figure on cream (pending counts) */
 
   /* charts: the garden ramp + line pair; terracotta = at-risk only */
   --chart-1: #7e8f78;
@@ -124,6 +129,8 @@
   --chart-line-b: #f39b58;
   --chart-fill: #f2c196;
   --chart-risk: #c0563c;
+  --chart-grid: #f6f1e9;
+  --chart-guide: #ece1d2;
 
   /* decorative honeycomb (Home): gradient hexes at varying opacity; app tile hover fill */
   --hex-decor-from: #f1ece2;
@@ -237,6 +244,8 @@
   --schedule-hover: #d9b98a;
 
   /* the light fills at 42% over the page (the design dims the honeycomb rather than recolouring it) */
+  --chart-grid: #232322;
+  --chart-guide: #3a3937;
   --heat-0: #6d655e;
   --heat-1: #746855;
   --heat-2: #75644e;
@@ -314,6 +323,25 @@
     }
     100% {
       filter: drop-shadow(0 0 0 transparent);
+    }
+  }
+  /* charts: a line draws itself in (animate-draw, needs stroke-dasharray 1600) and a fill washes in */
+  --animate-draw: hx-draw 1100ms cubic-bezier(0.33, 0, 0.15, 1) both;
+  @keyframes hx-draw {
+    from {
+      stroke-dashoffset: 1600;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  --animate-wash: hx-wash 900ms 380ms ease both;
+  @keyframes hx-wash {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
   /* a leader line growing out from its anchor (animate-grow-x, set transform-origin yourself) */
@@ -421,6 +449,12 @@
   --color-tone-rose: var(--tone-rose);
   --color-tone-rose-soft: var(--tone-rose-soft);
   --color-tone-rose-foreground: var(--tone-rose-foreground);
+  --color-tone-risk: var(--tone-risk);
+  --color-tone-risk-soft: var(--tone-risk-soft);
+  --color-tone-risk-foreground: var(--tone-risk-foreground);
+  --color-tone-warning-deep: var(--tone-warning-deep);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-guide: var(--chart-guide);
   --color-marker-meeting: var(--marker-meeting);
   --color-marker-meeting-hover: var(--marker-meeting-hover);
   --color-schedule-hover: var(--schedule-hover);
