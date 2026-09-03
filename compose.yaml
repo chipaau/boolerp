@@ -11,6 +11,15 @@ x-node: &node
   working_dir: /w
   volumes:
     - .:/w
+    # Shadow node_modules with per-container volumes so the Linux-built deps here never collide
+    # with the host's (macOS) pnpm install from the bind-mounted source tree above.
+    - /w/node_modules
+    - /w/apps/app/node_modules
+    - /w/apps/admin/node_modules
+    - /w/apps/website/node_modules
+    - /w/packages/ui/node_modules
+    - /w/packages/api-client/node_modules
+    - /w/packages/auth/node_modules
 
 services:
   app:
