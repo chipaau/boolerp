@@ -171,9 +171,13 @@ export function MonthHoneycomb({ today }: { today: Date }) {
                       interactive
                       gradient={isToday ? ['var(--heat-today-from)', 'var(--heat-today-to)'] : undefined}
                       stroke={isToday ? 'var(--heat-today-stroke)' : undefined}
-                      hoverGradient={['var(--heat-hover-from)', 'var(--heat-hover-to)']}
-                      hoverStroke="var(--heat-today-stroke)"
-                      className={cn('hover:-translate-y-px', !isToday && LEVEL_FILL[level])}
+                      // today already wears the gradient and outline, so it only grows a touch on hover
+                      hoverGradient={isToday ? undefined : ['var(--heat-hover-from)', 'var(--heat-hover-to)']}
+                      hoverStroke={isToday ? undefined : 'var(--heat-today-stroke)'}
+                      className={cn(
+                        isToday ? 'hover:translate-y-0 hover:scale-[1.08]' : 'hover:-translate-y-px',
+                        !isToday && LEVEL_FILL[level]
+                      )}
                     />
                   </TooltipTrigger>
                   <TooltipContent side="right" align="start" sideOffset={8} variant="card" showArrow={false}>
