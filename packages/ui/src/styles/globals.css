@@ -278,7 +278,7 @@
   --marker-meeting: #f5d4b7; /* same cream fill as light; only the outline changes for dark */
   --marker-meeting-hover: #f2c196;
   --marker-approval: #4a5c4d;
-  --marker-outline: #5f5a53; /* the fills carry the meaning; the outline only shapes them */
+  --marker-outline: transparent; /* markers have different fills, so the outline simply disappears */
   --avatar-count: #3a3227;
   --schedule-hover: #d9b98a;
   --plate-hover-ring: #6b5232;
@@ -291,7 +291,7 @@
   --heat-1: #6f4e25;
   --heat-2: #a3752f;
   --heat-3: #d99a4a;
-  --heat-today-stroke: #6e675f; /* today keeps its hot fill; the outline is a quiet mid grey */
+  --heat-today-stroke: #f88a42; /* the outline matches the fill: today reads as one solid amber */
 
   --sidebar: #121212;
   --sidebar-foreground: #cfccc7;
