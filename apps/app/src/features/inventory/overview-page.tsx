@@ -104,7 +104,7 @@ export function InventoryOverviewPage() {
       {/* two columns */}
       <div className="grid items-start gap-[18px] lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,1fr)]">
         <div className="flex flex-col gap-[18px]">
-          <Card className="overflow-hidden py-0">
+          <Card className="gap-0 overflow-hidden py-0">
             <div className="flex items-center justify-between border-b border-divider px-6 py-[19px]">
               <div className="text-[15.5px] font-bold text-foreground">Pending approvals</div>
               <Button variant="link" size="sm" render={<Link to="/$app/$section" params={{ app: 'inventory', section: 'requests' }} />}>
@@ -190,7 +190,7 @@ export function InventoryOverviewPage() {
         </div>
 
         <div className="flex flex-col gap-[18px]">
-          <Card className="overflow-hidden py-0">
+          <Card className="gap-0 overflow-hidden py-0">
             <div className="flex items-center justify-between gap-3.5 border-b border-divider px-6 py-[19px]">
               <div>
                 <div className="text-[15.5px] font-bold text-foreground">Below reorder level</div>

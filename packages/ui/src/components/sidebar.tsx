@@ -404,15 +404,16 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button group/menu-button flex w-full items-center gap-2.5 overflow-hidden text-left text-ui text-sidebar-foreground outline-hidden transition-[border-color,color,background-color,width,height,padding] duration-instant ease-hexa group-has-data-[sidebar=menu-action]/menu-item:pr-8 focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:pointer-events-none disabled:text-disabled-foreground aria-disabled:pointer-events-none aria-disabled:text-disabled-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground [&>span:last-child]:truncate data-active:[&_svg]:text-foreground",
+  "peer/menu-button group/menu-button relative flex w-full items-center gap-2.5 text-left text-ui text-sidebar-foreground outline-hidden transition-[color,background-color,width,height,padding] duration-instant ease-hexa group-has-data-[sidebar=menu-action]/menu-item:pr-8 focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:pointer-events-none disabled:text-disabled-foreground aria-disabled:pointer-events-none aria-disabled:text-disabled-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground [&>span:last-child]:truncate data-active:[&_svg]:text-foreground",
   {
     variants: {
       variant: {
-        // the design's nav item: a 3px bar on the left, amber on hover/active, no pill
+        // the design's rail row: right-rounded, bleeds to the rail's edge, ivory when active with a
+        // short amber bar at the left; a whisper of ivory on hover
         default:
-          "border-l-[3px] border-transparent py-2 pl-[13px] pr-2 hover:border-brand-soft hover:text-foreground data-active:border-brand-soft data-active:font-bold data-active:text-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:border-l-0 group-data-[collapsible=icon]:p-2!",
-        // a quiet rounded row (the account entry in the footer)
-        pill: "rounded-md p-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!",
+          "-mr-2.5 rounded-r-[9px] py-2 pr-2.5 pl-4 hover:bg-sidebar-hover hover:text-foreground data-active:bg-sidebar-accent data-active:font-bold data-active:text-sidebar-accent-foreground data-active:before:absolute data-active:before:top-[7px] data-active:before:bottom-[7px] data-active:before:left-0 data-active:before:w-[3px] data-active:before:rounded-full data-active:before:bg-brand-soft data-active:before:content-[''] group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:rounded-md group-data-[collapsible=icon]:p-2!",
+        // a quiet rounded row (account entries, footers)
+        pill: "rounded-md p-2 hover:bg-sidebar-hover hover:text-sidebar-accent-foreground data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!",
       },
       size: {
         default: "h-9",
@@ -488,7 +489,7 @@ function SidebarMenuBadge({ className, ...props }: React.ComponentProps<"div">) 
       data-slot="sidebar-menu-badge"
       data-sidebar="menu-badge"
       className={cn(
-        "pointer-events-none absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-tone-danger-soft px-[7px] text-[11px] font-bold text-tone-danger-foreground tabular-nums select-none",
+        "pointer-events-none absolute right-0 flex h-5 min-w-5 items-center justify-center rounded-full px-2 text-[11.5px] font-bold text-faint tabular-nums select-none",
         "peer-data-[size=sm]/menu-button:top-1 peer-data-[size=default]/menu-button:top-2 peer-data-[size=lg]/menu-button:top-3.5",
         "group-data-[collapsible=icon]:hidden",
         className

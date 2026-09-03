@@ -18,8 +18,8 @@ function SearchField({
   ...props
 }: Omit<React.ComponentProps<"input">, "size"> & {
   size?: "sm" | "default"
-  /** Keyboard hint shown on the right, e.g. "⌘K". */
-  shortcut?: string
+  /** Keyboard hint shown on the right: a string renders as a Kbd chip, a node renders as given. */
+  shortcut?: React.ReactNode
   /** Render as a button (for command palettes) instead of an input. */
   asButton?: boolean
 }) {
@@ -42,7 +42,7 @@ function SearchField({
       >
         <Search className="size-4 shrink-0" strokeWidth={1.75} />
         <span className="flex-1 truncate text-sm">{placeholder}</span>
-        {shortcut && <Kbd>{shortcut}</Kbd>}
+        {typeof shortcut === "string" ? <Kbd>{shortcut}</Kbd> : shortcut}
       </button>
     )
   }
@@ -55,7 +55,7 @@ function SearchField({
         className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-placeholder [&::-webkit-search-cancel-button]:hidden"
         {...props}
       />
-      {shortcut && <Kbd>{shortcut}</Kbd>}
+      {typeof shortcut === "string" ? <Kbd>{shortcut}</Kbd> : shortcut}
     </label>
   )
 }

@@ -1,4 +1,5 @@
 import { Link, useLocation, useSearch } from '@tanstack/react-router'
+import { ArrowLeft } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -6,7 +7,6 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuBadge,
   SidebarMenuButton,
@@ -14,8 +14,6 @@ import {
   SidebarRail,
 } from '@workspace/ui/components/sidebar'
 import { cn } from '@workspace/ui/lib/utils'
-import { AppIcon } from '@/components/app-icon'
-import { NavUser } from './nav-user'
 import type { AppDef, AppMenuItem } from '@/lib/apps'
 
 const BADGE_TONE = {
@@ -23,9 +21,11 @@ const BADGE_TONE = {
   warning: 'bg-tone-warning-soft text-tone-warning-foreground',
 } as const
 
-// Per-app labelled sidebar (248px, one hairline from the content). Items have no pill: the
-// active one takes the amber bar and bold ink. Counts sit at the right edge; saved views carry
-// their filter as search params and are active only when those match.
+/**
+ * The design's rail: an overline label per group, right-rounded rows that bleed to the rail's
+ * edge (ivory + short amber bar when active), counts at the right, saved views that carry their
+ * filter as search params, and "Back to all apps" at the foot. The account lives in the topbar.
+ */
 export function AppSidebar({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
   const search = useSearch({ strict: false }) as Record<string, string | undefined>
@@ -36,34 +36,20 @@ export function AppSidebar({ app }: { app: AppDef }) {
     if (pathname !== to) return false
     const want = item.search ?? {}
     // a plain link is active only when no preset filter is applied; a view when its preset matches
-    const keys = ['filter', 'q']
-    return keys.every((k) => (search[k] ?? undefined) === (want[k] ?? undefined))
+    return ['filter', 'q'].every((k) => (search[k] ?? undefined) === (want[k] ?? undefined))
   }
 
   return (
     <Sidebar className="top-(--header-height) h-[calc(100svh-var(--header-height))]!" collapsible="icon">
-      <SidebarHeader className="px-5 pt-6 pb-2 group-data-[collapsible=icon]:px-2">
-        <Link
-          to="/$app"
-          params={{ app: app.slug }}
-          className="flex items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <span className="grid size-[38px] shrink-0 place-items-center rounded-[10px] bg-muted">
-            <AppIcon slug={app.slug} size={22} />
-          </span>
-          <span className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="truncate text-[15px] font-bold text-foreground">{app.name}</span>
-            <span className="truncate text-xs text-muted-foreground">{app.description}</span>
-          </span>
-        </Link>
-      </SidebarHeader>
-
-      <SidebarContent className="px-5 group-data-[collapsible=icon]:px-2">
+      <SidebarContent className="gap-0 px-[22px] pt-5 group-data-[collapsible=icon]:px-2">
         {app.menu.map((section, i) => (
-          <SidebarGroup key={section.title ?? `s${i}`} className="p-0 pt-3">
-            {section.title && <SidebarGroupLabel>{section.title}</SidebarGroupLabel>}
+          <SidebarGroup
+            key={section.title ?? `s${i}`}
+            className={cn('p-0', i > 0 && 'mt-[18px] border-t border-sidebar-border pt-4')}
+          >
+            {section.title && <SidebarGroupLabel className="mb-2.5 h-auto">{section.title}</SidebarGroupLabel>}
             <SidebarGroupContent>
-              <SidebarMenu className="gap-0">
+              <SidebarMenu className="gap-px">
                 {section.items.map((item) => {
                   const ItemIcon = item.icon
                   const link = item.slug ? (
@@ -77,18 +63,13 @@ export function AppSidebar({ app }: { app: AppDef }) {
                         render={link}
                         isActive={isActive(item)}
                         tooltip={item.title}
-                        className={cn(item.badge && 'pr-12')}
+                        className={cn(item.badge && 'pr-10')}
                       >
                         {ItemIcon && <ItemIcon strokeWidth={1.75} />}
                         <span>{item.title}</span>
                       </SidebarMenuButton>
                       {item.badge && (
-                        <SidebarMenuBadge
-                          className={cn(
-                            item.badge.tone ? BADGE_TONE[item.badge.tone] : 'bg-transparent font-normal text-faint',
-                            'top-2'
-                          )}
-                        >
+                        <SidebarMenuBadge className={cn('-right-2.5 top-2', item.badge.tone && BADGE_TONE[item.badge.tone])}>
                           {item.badge.value}
                         </SidebarMenuBadge>
                       )}
@@ -101,8 +82,14 @@ export function AppSidebar({ app }: { app: AppDef }) {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
-        <NavUser />
+      <SidebarFooter className="mx-[22px] border-t border-sidebar-border px-0 pt-3.5 pb-[18px] group-data-[collapsible=icon]:mx-2">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2.5 rounded-md py-2 pl-[13px] text-[13px] text-link outline-none transition-colors duration-instant ease-hexa hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:pl-2"
+        >
+          <ArrowLeft className="size-3.5" strokeWidth={1.75} />
+          <span className="group-data-[collapsible=icon]:hidden">Back to all apps</span>
+        </Link>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

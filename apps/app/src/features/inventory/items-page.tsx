@@ -92,7 +92,7 @@ export function InventoryItemsPage() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden py-0">
+      <Card className="gap-0 overflow-hidden py-0">
         <TableToolbar className="px-5">
           <SearchField
             size="sm"
@@ -210,7 +210,7 @@ export function InventoryItemsPage() {
           </TableBulkBar>
         )}
 
-        <TableFooter className="border-t border-divider">
+        <TableFooter>
           <span>
             Showing {rows.length} of {ITEMS.length} items
           </span>

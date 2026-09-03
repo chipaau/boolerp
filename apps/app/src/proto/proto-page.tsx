@@ -151,7 +151,7 @@ function TableView({ label }: { label: string }) {
   const count = Object.values(selected).filter(Boolean).length
   const allSelected = count === rows.length
   return (
-    <Card className="overflow-hidden py-0">
+    <Card className="gap-0 overflow-hidden py-0">
       <Toolbar label={label} />
       <Table>
         <TableHeader>
@@ -221,7 +221,7 @@ function TableView({ label }: { label: string }) {
 
 function ListView({ label }: { label: string }) {
   return (
-    <Card className="overflow-hidden py-0">
+    <Card className="gap-0 overflow-hidden py-0">
       <Toolbar label={label} />
       <ul>
         {rows.map((r) => (
@@ -258,7 +258,7 @@ function CalendarView() {
   const events: Record<number, string> = { 3: 'Board', 8: 'Review', 12: 'Leave', 17: 'Audit', 21: 'Town hall', 26: 'Payroll' }
   const dow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   return (
-    <Card className="overflow-hidden py-0">
+    <Card className="gap-0 overflow-hidden py-0">
       <div className="grid grid-cols-7 border-b border-border bg-surface-band text-center text-[11px] font-bold tracking-[0.09em] text-foreground uppercase">
         {dow.map((d) => (
           <div key={d} className="py-2.5">
