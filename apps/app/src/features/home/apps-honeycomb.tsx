@@ -49,7 +49,7 @@ const DECOR: (HexCell & { opacity: number; angle: number })[] = [
   { col: -1, row: 3, opacity: 0.5, angle: 140 },
   { col: 2, row: 3, opacity: 0.4, angle: 210 },
   { col: 0, row: 5, opacity: 0.45, angle: 150 },
-  { col: 1, row: 5, opacity: 0.65, angle: 200 },
+  { col: 1, row: 5, opacity: 0.9, angle: 15 }, // under "Browse All Apps": dark end at the top, where the button sits
 ]
 
 function itemLeft(cell: HexCell) {
@@ -66,7 +66,7 @@ function itemTop(cell: HexCell) {
  */
 // How far each leader reaches, in tile widths, beyond the column pitch a right-column line must
 // cross. Lower tiles get a little more so their names clear the rows above.
-const LEADER_REACH: Record<string, number> = { notes: 0.8, directory: 0.75, procurement: 0.75 }
+const LEADER_REACH: Record<string, number> = { inventory: 0.75, notes: 0.8, directory: 1.0, procurement: 0.75 }
 
 function Leader({ app, cell }: { app: AppDef; cell: HexCell }) {
   const reach = LEADER_REACH[app.slug] ?? 0.45
