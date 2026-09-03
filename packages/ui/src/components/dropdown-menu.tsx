@@ -107,11 +107,12 @@ function DropdownMenuCheckboxItem({
   return (
     <MenuPrimitive.CheckboxItem
       data-slot="dropdown-menu-checkbox-item"
-      className={cn(itemClass, "pr-2 pl-8", className)}
+      className={cn(itemClass, "pr-8", className)}
       checked={checked}
       {...props}
     >
-      <span className="pointer-events-none absolute left-2.5 flex size-3.5 items-center justify-center">
+      {/* the check sits at the right edge so the label lines up with plain items */}
+      <span className="pointer-events-none absolute right-2.5 flex size-3.5 items-center justify-center">
         <MenuPrimitive.CheckboxItemIndicator>
           <CheckIcon className="size-4 text-sage" />
         </MenuPrimitive.CheckboxItemIndicator>
@@ -133,10 +134,10 @@ function DropdownMenuRadioItem({
   return (
     <MenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
-      className={cn(itemClass, "pr-2 pl-8", className)}
+      className={cn(itemClass, "pr-8", className)}
       {...props}
     >
-      <span className="pointer-events-none absolute left-2.5 flex size-3.5 items-center justify-center">
+      <span className="pointer-events-none absolute right-2.5 flex size-3.5 items-center justify-center">
         <MenuPrimitive.RadioItemIndicator>
           <CircleIcon className="size-2 fill-sage text-sage" />
         </MenuPrimitive.RadioItemIndicator>
