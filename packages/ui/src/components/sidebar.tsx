@@ -411,7 +411,7 @@ const sidebarMenuButtonVariants = cva(
         // the design's rail row: right-rounded, bleeds to the rail's edge, ivory when active with a
         // short amber bar at the left; a whisper of ivory on hover
         default:
-          "-mr-[22px] rounded-r-[9px] py-2 pr-[22px] pl-4 hover:bg-sidebar-hover hover:text-foreground data-active:bg-sidebar-accent data-active:font-bold data-active:text-sidebar-accent-foreground data-active:before:absolute data-active:before:top-[7px] data-active:before:bottom-[7px] data-active:before:left-0 data-active:before:w-[3px] data-active:before:rounded-full data-active:before:bg-brand-soft data-active:before:content-[''] group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:rounded-md group-data-[collapsible=icon]:p-2!",
+          "rounded-r-[9px] py-2 pr-[22px] pl-4 hover:bg-sidebar-hover hover:text-foreground data-active:bg-sidebar-accent data-active:font-bold data-active:text-sidebar-accent-foreground data-active:before:absolute data-active:before:top-[7px] data-active:before:bottom-[7px] data-active:before:left-0 data-active:before:w-[3px] data-active:before:rounded-full data-active:before:bg-brand-soft data-active:before:content-[''] group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:rounded-md group-data-[collapsible=icon]:p-2!",
         // a quiet rounded row (account entries, footers)
         pill: "rounded-md p-2 hover:bg-sidebar-hover hover:text-sidebar-accent-foreground data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!",
       },
