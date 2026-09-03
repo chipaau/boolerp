@@ -24,7 +24,8 @@ import {
   TableToolbar,
 } from '@workspace/ui/components/table'
 import { PageHeader } from '@/components/layout/page'
-import type { AppDef, AppMenuItem, ProtoVariant } from '@/lib/apps'
+import type { AppDef, AppMenuItem } from '@/lib/apps'
+import { variantFor } from './variants'
 
 const NAMES = [
   'Aishath Nasheed',
@@ -287,7 +288,7 @@ function CalendarView() {
 }
 
 export function ProtoPage({ app, item }: { app: AppDef; item: AppMenuItem }) {
-  const variant: ProtoVariant = item.variant ?? 'dashboard'
+  const variant = variantFor(app.slug, item.slug)
   return (
     <>
       <PageHeader

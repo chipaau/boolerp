@@ -33,16 +33,15 @@ import {
   Receipt,
 } from 'lucide-react'
 
-// A proto page renders one of these looks so placeholders resemble the real screen they will become.
-export type ProtoVariant = 'dashboard' | 'table' | 'list' | 'calendar'
-
 export type AppMenuItem = {
   title: string
   slug: string // empty string = the app home
   icon?: LucideIcon
-  variant?: ProtoVariant
-  /** A count shown at the right edge; `tone` colours it (plain by default). */
-  badge?: { value: string | number; tone?: 'risk' | 'warning' }
+  /**
+   * Shows a live count at the right edge, read from the shell's nav counts under `key`
+   * (see features/shell); `tone` colours it (plain by default). The registry never holds numbers.
+   */
+  badge?: { key: string; tone?: 'risk' | 'warning' }
   /** Search params the link carries (saved views preset a filter / query). */
   search?: Record<string, string>
 }
@@ -57,8 +56,8 @@ export type AppDef = {
 }
 
 // The apps hosted by the workspace shell, in the order they appear on the Home honeycomb (the
-// first eight get a tile; the rest are reachable from the switcher). Pages are prototypes for
-// now (see src/proto): replacing one with a real screen is a one-line change in its route.
+// first eight get a tile; the rest are reachable from the switcher). Sections without a real
+// screen in features/screens.ts render the prototype page (src/proto) until one exists.
 // Archived apps (Staff Hub, Calendar, Finance) live in src/_archive.
 export const APPS: AppDef[] = [
   {
@@ -67,22 +66,22 @@ export const APPS: AppDef[] = [
     description: 'Configure your workspace',
     icon: SlidersHorizontal,
     menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
+      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
       {
         title: 'Access',
         items: [
-          { title: 'Users', slug: 'users', icon: Users, variant: 'table' },
-          { title: 'Roles', slug: 'roles', icon: Shield, variant: 'table' },
+          { title: 'Users', slug: 'users', icon: Users },
+          { title: 'Roles', slug: 'roles', icon: Shield },
         ],
       },
       {
         title: 'Organisation',
         items: [
-          { title: 'Org Units', slug: 'org-units', icon: Building2, variant: 'list' },
-          { title: 'Sites', slug: 'sites', icon: MapPin, variant: 'table' },
+          { title: 'Org Units', slug: 'org-units', icon: Building2 },
+          { title: 'Sites', slug: 'sites', icon: MapPin },
         ],
       },
-      { items: [{ title: 'Settings', slug: 'settings', icon: Settings, variant: 'dashboard' }] },
+      { items: [{ title: 'Settings', slug: 'settings', icon: Settings }] },
     ],
   },
   {
@@ -91,20 +90,20 @@ export const APPS: AppDef[] = [
     description: 'Plan & track work',
     icon: ListTodo,
     menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
+      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
       {
         title: 'Work',
         items: [
-          { title: 'My Tasks', slug: 'my-tasks', icon: ClipboardList, variant: 'list' },
-          { title: 'All Tasks', slug: 'tasks', icon: ListTodo, variant: 'table' },
-          { title: 'Activities', slug: 'activities', icon: Activity, variant: 'list' },
+          { title: 'My Tasks', slug: 'my-tasks', icon: ClipboardList },
+          { title: 'All Tasks', slug: 'tasks', icon: ListTodo },
+          { title: 'Activities', slug: 'activities', icon: Activity },
         ],
       },
       {
         title: 'Planning',
         items: [
-          { title: 'Operation Plans', slug: 'operation-plans', icon: Target, variant: 'table' },
-          { title: 'Service Charter', slug: 'service-charter', icon: ScrollText, variant: 'list' },
+          { title: 'Operation Plans', slug: 'operation-plans', icon: Target },
+          { title: 'Service Charter', slug: 'service-charter', icon: ScrollText },
         ],
       },
     ],
@@ -119,22 +118,22 @@ export const APPS: AppDef[] = [
       {
         title: 'Inventory',
         items: [
-          { title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' },
-          { title: 'All items', slug: 'items', icon: Package, variant: 'table', badge: { value: 10 } },
-          { title: 'Low stock', slug: 'low-stock', icon: PackageMinus, variant: 'table', badge: { value: 4, tone: 'risk' } },
-          { title: 'Purchase orders', slug: 'purchase-orders', icon: FileSignature, variant: 'table', badge: { value: 4 } },
-          { title: 'Suppliers', slug: 'suppliers', icon: Truck, variant: 'table' },
-          { title: 'Requests & approvals', slug: 'requests', icon: ClipboardCheck, variant: 'table', badge: { value: 5, tone: 'warning' } },
-          { title: 'Reports', slug: 'reports', icon: FileBarChart, variant: 'dashboard' },
-          { title: 'Settings & permissions', slug: 'settings', icon: Settings, variant: 'dashboard' },
+          { title: 'Overview', slug: '', icon: LayoutDashboard },
+          { title: 'All items', slug: 'items', icon: Package, badge: { key: 'items' } },
+          { title: 'Low stock', slug: 'low-stock', icon: PackageMinus, badge: { key: 'low-stock', tone: 'risk' } },
+          { title: 'Purchase orders', slug: 'purchase-orders', icon: FileSignature, badge: { key: 'purchase-orders' } },
+          { title: 'Suppliers', slug: 'suppliers', icon: Truck },
+          { title: 'Requests & approvals', slug: 'requests', icon: ClipboardCheck, badge: { key: 'requests', tone: 'warning' } },
+          { title: 'Reports', slug: 'reports', icon: FileBarChart },
+          { title: 'Settings & permissions', slug: 'settings', icon: Settings },
         ],
       },
       {
         title: 'My views',
         items: [
-          { title: 'Site store · below reorder', slug: 'items', search: { filter: 'Low stock', q: 'Site store' }, badge: { value: 1 } },
-          { title: 'Issued to my team', slug: 'items', search: { filter: 'Issued' }, badge: { value: 8 } },
-          { title: 'On order', slug: 'items', search: { filter: 'On order' }, badge: { value: 1 } },
+          { title: 'Site store · below reorder', slug: 'items', search: { filter: 'Low stock', q: 'Site store' }, badge: { key: 'view:site-store-below-reorder' } },
+          { title: 'Issued to my team', slug: 'items', search: { filter: 'Issued' }, badge: { key: 'view:issued-to-my-team' } },
+          { title: 'On order', slug: 'items', search: { filter: 'On order' }, badge: { key: 'view:on-order' } },
         ],
       },
     ],
@@ -145,13 +144,13 @@ export const APPS: AppDef[] = [
     description: 'Register & verify assets',
     icon: ScanBarcode,
     menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
+      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
       {
         title: 'Register',
         items: [
-          { title: 'Assets', slug: 'assets', icon: Layers, variant: 'table' },
-          { title: 'Verifications', slug: 'verifications', icon: ClipboardCheck, variant: 'list' },
-          { title: 'Maintenance', slug: 'maintenance', icon: Wrench, variant: 'table' },
+          { title: 'Assets', slug: 'assets', icon: Layers },
+          { title: 'Verifications', slug: 'verifications', icon: ClipboardCheck },
+          { title: 'Maintenance', slug: 'maintenance', icon: Wrench },
         ],
       },
     ],
@@ -164,8 +163,8 @@ export const APPS: AppDef[] = [
     menu: [
       {
         items: [
-          { title: 'All Notes', slug: '', icon: NotebookPen, variant: 'list' },
-          { title: 'Folders', slug: 'folders', icon: FolderOpen, variant: 'list' },
+          { title: 'All Notes', slug: '', icon: NotebookPen },
+          { title: 'Folders', slug: 'folders', icon: FolderOpen },
         ],
       },
     ],
@@ -178,9 +177,9 @@ export const APPS: AppDef[] = [
     menu: [
       {
         items: [
-          { title: 'People', slug: '', icon: Users, variant: 'table' },
-          { title: 'Teams', slug: 'teams', icon: UsersRound, variant: 'list' },
-          { title: 'Departments', slug: 'departments', icon: Building2, variant: 'list' },
+          { title: 'People', slug: '', icon: Users },
+          { title: 'Teams', slug: 'teams', icon: UsersRound },
+          { title: 'Departments', slug: 'departments', icon: Building2 },
         ],
       },
     ],
@@ -191,23 +190,23 @@ export const APPS: AppDef[] = [
     description: 'People & positions',
     icon: UserCog,
     menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
+      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
       {
         title: 'People',
         items: [
-          { title: 'Employees', slug: 'employees', icon: Users, variant: 'table' },
-          { title: 'Positions', slug: 'positions', icon: BadgeCheck, variant: 'table' },
+          { title: 'Employees', slug: 'employees', icon: Users },
+          { title: 'Positions', slug: 'positions', icon: BadgeCheck },
         ],
       },
       {
         title: 'Structure',
         items: [
-          { title: 'Jobs', slug: 'jobs', icon: Briefcase, variant: 'table' },
-          { title: 'Job Classifications', slug: 'job-classifications', icon: Layers, variant: 'list' },
-          { title: 'Org Units', slug: 'org-units', icon: Building2, variant: 'list' },
+          { title: 'Jobs', slug: 'jobs', icon: Briefcase },
+          { title: 'Job Classifications', slug: 'job-classifications', icon: Layers },
+          { title: 'Org Units', slug: 'org-units', icon: Building2 },
         ],
       },
-      { items: [{ title: 'Settings', slug: 'settings', icon: Settings, variant: 'dashboard' }] },
+      { items: [{ title: 'Settings', slug: 'settings', icon: Settings }] },
     ],
   },
   {
@@ -218,8 +217,8 @@ export const APPS: AppDef[] = [
     menu: [
       {
         items: [
-          { title: 'Dashboards', slug: '', icon: LayoutDashboard, variant: 'dashboard' },
-          { title: 'Reports', slug: 'reports', icon: FileBarChart, variant: 'table' },
+          { title: 'Dashboards', slug: '', icon: LayoutDashboard },
+          { title: 'Reports', slug: 'reports', icon: FileBarChart },
         ],
       },
     ],
@@ -230,16 +229,16 @@ export const APPS: AppDef[] = [
     description: 'Requests & purchase orders',
     icon: ShoppingCart,
     menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
+      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
       {
         title: 'Purchasing',
         items: [
-          { title: 'Goods Requests', slug: 'requests', icon: ClipboardList, variant: 'table' },
-          { title: 'Purchase Orders', slug: 'purchase-orders', icon: FileSignature, variant: 'table' },
-          { title: 'Invoices', slug: 'invoices', icon: Receipt, variant: 'table' },
+          { title: 'Goods Requests', slug: 'requests', icon: ClipboardList },
+          { title: 'Purchase Orders', slug: 'purchase-orders', icon: FileSignature },
+          { title: 'Invoices', slug: 'invoices', icon: Receipt },
         ],
       },
-      { items: [{ title: 'Suppliers', slug: 'suppliers', icon: Truck, variant: 'table' }] },
+      { items: [{ title: 'Suppliers', slug: 'suppliers', icon: Truck }] },
     ],
   },
 ]

@@ -14,6 +14,7 @@ import {
   SidebarRail,
 } from '@workspace/ui/components/sidebar'
 import { cn } from '@workspace/ui/lib/utils'
+import { useNavCounts } from '@/features/shell/queries'
 import type { AppDef, AppMenuItem } from '@/lib/apps'
 
 const BADGE_TONE = {
@@ -30,6 +31,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
   const search = useSearch({ strict: false }) as Record<string, string | undefined>
   const base = `/${app.slug}`
+  const counts = useNavCounts(app.slug)
 
   function isActive(item: AppMenuItem) {
     const to = item.slug ? `${base}/${item.slug}` : base
@@ -52,6 +54,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
               <SidebarMenu className="gap-px">
                 {section.items.map((item) => {
                   const ItemIcon = item.icon
+                  const count = item.badge ? counts[item.badge.key] : undefined
                   const link = item.slug ? (
                     <Link to="/$app/$section" params={{ app: app.slug, section: item.slug }} search={item.search} />
                   ) : (
@@ -63,14 +66,14 @@ export function AppSidebar({ app }: { app: AppDef }) {
                         render={link}
                         isActive={isActive(item)}
                         tooltip={item.title}
-                        className={cn(item.badge && 'pr-10')}
+                        className={cn(count !== undefined && 'pr-10')}
                       >
                         {ItemIcon && <ItemIcon strokeWidth={1.75} />}
                         <span>{item.title}</span>
                       </SidebarMenuButton>
-                      {item.badge && (
+                      {item.badge && count !== undefined && (
                         <SidebarMenuBadge className={cn('-right-2.5 top-2', item.badge.tone && BADGE_TONE[item.badge.tone])}>
-                          {item.badge.value}
+                          {count}
                         </SidebarMenuBadge>
                       )}
                     </SidebarMenuItem>

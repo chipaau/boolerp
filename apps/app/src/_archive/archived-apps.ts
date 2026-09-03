@@ -28,28 +28,28 @@ export const STAFF_HUB: AppDef = {
   description: 'Your day at work',
   icon: UsersRound,
   menu: [
-    { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
+    { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
     {
       title: 'Workplace',
       items: [
-        { title: 'My Apps', slug: 'my-apps', icon: LayoutGrid, variant: 'list' },
-        { title: 'Directory', slug: 'directory', icon: Users, variant: 'table' },
-        { title: 'My Team', slug: 'team', icon: UsersRound, variant: 'list' },
+        { title: 'My Apps', slug: 'my-apps', icon: LayoutGrid },
+        { title: 'Directory', slug: 'directory', icon: Users },
+        { title: 'My Team', slug: 'team', icon: UsersRound },
       ],
     },
     {
       title: 'Updates',
       items: [
-        { title: 'Announcements', slug: 'announcements', icon: Megaphone, variant: 'list' },
-        { title: 'Policies', slug: 'policies', icon: FileText, variant: 'table' },
+        { title: 'Announcements', slug: 'announcements', icon: Megaphone },
+        { title: 'Policies', slug: 'policies', icon: FileText },
       ],
     },
     {
       title: 'Me',
       items: [
-        { title: 'Requests', slug: 'requests', icon: Inbox, variant: 'table' },
-        { title: 'Reviews', slug: 'reviews', icon: Star, variant: 'table' },
-        { title: 'Profile', slug: 'profile', icon: UserCircle, variant: 'dashboard' },
+        { title: 'Requests', slug: 'requests', icon: Inbox },
+        { title: 'Reviews', slug: 'reviews', icon: Star },
+        { title: 'Profile', slug: 'profile', icon: UserCircle },
       ],
     },
   ],
@@ -63,9 +63,9 @@ export const CALENDAR: AppDef = {
   menu: [
     {
       items: [
-        { title: 'Calendar', slug: '', icon: CalendarDays, variant: 'calendar' },
-        { title: 'Agenda', slug: 'agenda', icon: CalendarClock, variant: 'list' },
-        { title: 'Events', slug: 'events', icon: CalendarRange, variant: 'table' },
+        { title: 'Calendar', slug: '', icon: CalendarDays },
+        { title: 'Agenda', slug: 'agenda', icon: CalendarClock },
+        { title: 'Events', slug: 'events', icon: CalendarRange },
       ],
     },
   ],
@@ -77,15 +77,15 @@ export const FINANCE: AppDef = {
   description: 'Accounts & invoices',
   icon: Landmark,
   menu: [
-    { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
+    { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
     {
       title: 'Ledger',
       items: [
-        { title: 'Accounts', slug: 'accounts', icon: BookOpen, variant: 'table' },
-        { title: 'Invoices', slug: 'invoices', icon: Receipt, variant: 'table' },
-        { title: 'Payments', slug: 'payments', icon: CreditCard, variant: 'table' },
+        { title: 'Accounts', slug: 'accounts', icon: BookOpen },
+        { title: 'Invoices', slug: 'invoices', icon: Receipt },
+        { title: 'Payments', slug: 'payments', icon: CreditCard },
       ],
     },
-    { items: [{ title: 'Reports', slug: 'reports', icon: BarChart3, variant: 'dashboard' }] },
+    { items: [{ title: 'Reports', slug: 'reports', icon: BarChart3 }] },
   ],
 }
