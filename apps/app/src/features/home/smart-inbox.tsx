@@ -3,7 +3,8 @@ import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { SectionTitle } from '@workspace/ui/components/section-title'
 import { cn } from '@workspace/ui/lib/utils'
 import { AppIcon } from '@/components/app-icon'
-import { INBOX, type InboxItem } from './data'
+import { useInbox } from './queries'
+import type { InboxItem } from './types'
 
 function InboxRow({ item, index }: { item: InboxItem; index: number }) {
   return (
@@ -43,6 +44,7 @@ function InboxRow({ item, index }: { item: InboxItem; index: number }) {
 
 // The action inbox: things that need the user's attention across apps.
 export function SmartInbox() {
+  const inbox = useInbox()
   return (
     <section>
       <SectionTitle
@@ -55,7 +57,7 @@ export function SmartInbox() {
         Smart Inbox
       </SectionTitle>
       <ul className="mt-1 divide-y divide-border">
-        {INBOX.map((item, i) => (
+        {inbox.map((item, i) => (
           <InboxRow key={item.id} item={item} index={i} />
         ))}
       </ul>

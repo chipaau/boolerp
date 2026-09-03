@@ -11,6 +11,8 @@ export const Route = createFileRoute('/_app/$app/$section')({
     filter: typeof s.filter === 'string' ? s.filter : undefined,
     q: typeof s.q === 'string' ? s.q : undefined,
   }),
+  // real screens read data with suspense queries; this boundary keeps the shell around them mounted
+  wrapInSuspense: true,
   component: AppSection,
 })
 
@@ -19,6 +21,6 @@ function AppSection() {
   const cfg = getApp(app)!
   const Screen = getScreen(app, section)
   if (Screen) return <Screen />
-  const item = findMenuItem(cfg, section) ?? { title: section, slug: section, variant: 'table' as const }
+  const item = findMenuItem(cfg, section) ?? { title: section, slug: section }
   return <ProtoPage app={cfg} item={item} />
 }

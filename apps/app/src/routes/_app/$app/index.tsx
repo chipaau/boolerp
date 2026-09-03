@@ -4,6 +4,7 @@ import { findMenuItem, getApp } from '@/lib/apps'
 import { ProtoPage } from '@/proto/proto-page'
 
 export const Route = createFileRoute('/_app/$app/')({
+  wrapInSuspense: true,
   component: AppHome,
 })
 

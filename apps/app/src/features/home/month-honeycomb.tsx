@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { startTransition, useState, type CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ArrowButton } from '@workspace/ui/components/arrow-button'
@@ -12,7 +12,9 @@ import {
   TooltipTrigger,
 } from '@workspace/ui/components/tooltip'
 import { cn } from '@workspace/ui/lib/utils'
-import { activityFor, activityLevel, type DayActivity } from './data'
+import { NO_ACTIVITY, activityLevel } from './logic'
+import { useMonthActivity } from './queries'
+import type { DayActivity } from './types'
 import { ApprovalMarker, MeetingMarker, TaskMarker } from './markers'
 import { MonthPicker } from './month-picker'
 
@@ -79,16 +81,21 @@ export function MonthHoneycomb({ today }: { today: Date }) {
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
   const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate()
   const monthName = cursor.toLocaleDateString('en-GB', { month: 'long' })
+  const activities = useMonthActivity(cursor.getFullYear(), cursor.getMonth())
 
+  // month changes run as transitions so the current grid stays up while the next month's data loads
+  function changeMonth(next: Date) {
+    startTransition(() => setCursor(next))
+  }
   function shift(delta: number) {
-    setCursor((c) => new Date(c.getFullYear(), c.getMonth() + delta, 1))
+    changeMonth(new Date(cursor.getFullYear(), cursor.getMonth() + delta, 1))
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-1">
-          <MonthPicker value={cursor} onChange={setCursor} today={today} />
+          <MonthPicker value={cursor} onChange={changeMonth} today={today} />
           <Button variant="ghost" size="icon-sm" className="size-7 text-faint" aria-label="Previous month" onClick={() => shift(-1)}>
             <ChevronLeft className="size-[18px]" strokeWidth={1.75} />
           </Button>
@@ -115,7 +122,7 @@ export function MonthHoneycomb({ today }: { today: Date }) {
             const date = new Date(cursor.getFullYear(), cursor.getMonth(), 1 + offset)
             const inMonth = offset >= 0 && offset < daysInMonth
             const isToday = inMonth && isoDate(date) === isoDate(today)
-            const activity = activityFor(date.getFullYear(), date.getMonth(), date.getDate())
+            const activity = inMonth ? (activities[date.getDate()] ?? NO_ACTIVITY) : NO_ACTIVITY
             const level = activityLevel(activity)
             const cell = { col: i % COLS, row: Math.floor(i / COLS) }
 

@@ -1,5 +1,5 @@
 import { useCurrentUser } from '@/components/layout/user-context'
-import { STATS } from './data'
+import { useStats } from './queries'
 import { TodayMarker } from './markers'
 
 function greetingFor(hour: number) {
@@ -12,6 +12,7 @@ function greetingFor(hour: number) {
 // (26 medium / 16 regular; Lato has no 500, so medium renders as 400 per the type rules).
 export function Greeting({ today }: { today: Date }) {
   const user = useCurrentUser()
+  const stats = useStats()
   const firstName = user.name.split(' ')[0]
   const weekday = today.toLocaleDateString('en-GB', { weekday: 'long' })
   const monthDay = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
@@ -31,7 +32,7 @@ export function Greeting({ today }: { today: Date }) {
       </div>
 
       <dl className="flex divide-x divide-border">
-        {STATS.map((s) => (
+        {stats.map((s) => (
           <div key={s.label} className="pe-7 not-first:ps-7">
             <dd className="text-[22px] leading-none font-medium tabular-nums text-foreground">{s.value}</dd>
             <dt className="mt-1.5 text-sm text-muted-foreground">{s.label}</dt>

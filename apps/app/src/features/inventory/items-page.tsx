@@ -27,7 +27,9 @@ import {
   TableRow,
   TableToolbar,
 } from '@workspace/ui/components/table'
-import { FILTERS, ITEMS, STATUS_TONE, filterItems, summary, type ItemFilter } from './data'
+import { FILTERS, STATUS_TONE, filterItems, summarize } from './logic'
+import { useItems } from './queries'
+import type { ItemFilter } from './types'
 
 type Sort = 'name' | 'name-desc' | 'qty' | 'qty-desc' | null
 
@@ -39,16 +41,17 @@ export function InventoryItemsPage() {
   const [query, setQuery] = useState(search.q ?? '')
   const [sort, setSort] = useState<Sort>(null)
   const [selected, setSelected] = useState<Record<string, boolean>>({})
-  const s = summary()
+  const items = useItems()
+  const s = summarize(items)
 
   const rows = useMemo(() => {
-    const r = filterItems(ITEMS, filter, query)
+    const r = filterItems(items, filter, query)
     if (sort === 'name') return [...r].sort((a, b) => a.name.localeCompare(b.name))
     if (sort === 'name-desc') return [...r].sort((a, b) => b.name.localeCompare(a.name))
     if (sort === 'qty') return [...r].sort((a, b) => a.onHand - b.onHand)
     if (sort === 'qty-desc') return [...r].sort((a, b) => b.onHand - a.onHand)
     return r
-  }, [filter, query, sort])
+  }, [items, filter, query, sort])
 
   const count = Object.values(selected).filter(Boolean).length
   const allSelected = rows.length > 0 && rows.every((r) => selected[r.sku])
@@ -212,7 +215,7 @@ export function InventoryItemsPage() {
 
         <TableFooter>
           <span>
-            Showing {rows.length} of {ITEMS.length} items
+            Showing {rows.length} of {items.length} items
           </span>
         </TableFooter>
       </Card>

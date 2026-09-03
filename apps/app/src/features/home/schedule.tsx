@@ -6,16 +6,17 @@ import {
   AvatarImage,
 } from '@workspace/ui/components/avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@workspace/ui/components/tooltip'
-import { SCHEDULE } from './data'
+import { useSchedule } from './queries'
 import { MeetingMarker } from './markers'
 
 // Today's meetings: marker, time range (14 medium), and who is attending. Hovering a time warms
 // the marker and turns it tan, bold and underlined; hovering "+n" lists the other attendees.
 export function Schedule() {
+  const schedule = useSchedule()
   return (
     <TooltipProvider delay={150}>
       <ul className="space-y-3">
-        {SCHEDULE.map((item) => (
+        {schedule.map((item) => (
           <li key={item.id} className="flex items-center gap-4">
             <button
               type="button"

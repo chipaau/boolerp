@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 import { areaPath, niceMax, plot, smoothPath } from '@workspace/ui/lib/charts'
 import { cn } from '@workspace/ui/lib/utils'
-import { SERIES, type Period } from './data'
+import { useStockSeries } from './queries'
+import type { Period } from './types'
 
 const W = 900
 const H = 200
@@ -17,7 +18,7 @@ const PERIODS: Period[] = ['7d', '30d', '90d']
 export function StockChart() {
   const [period, setPeriod] = useState<Period>('30d')
   const [hover, setHover] = useState<number | null>(null)
-  const s = SERIES[period]
+  const s = useStockSeries(period)
   const n = s.inn.length
   const max = niceMax([...s.inn, ...s.out])
   const pIn = plot(s.inn, W, TOP, BOTTOM, max)
@@ -45,8 +46,8 @@ export function StockChart() {
               role="tab"
               aria-selected={p === period}
               onClick={() => {
-                setPeriod(p)
                 setHover(null)
+                startTransition(() => setPeriod(p))
               }}
               className={cn(
                 'rounded-full px-[13px] py-[5px] text-[12.5px] font-bold transition-colors duration-instant ease-hexa',

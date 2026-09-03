@@ -1,21 +1,17 @@
-// Static mock data for the Home overview. Obviously fake; replaced by API queries when the
-// inbox/calendar endpoints exist. Keep shapes close to what the API will return.
+// FIXTURES — static sample data for the Home overview. Only ./queries.ts may import this file
+// (lint-enforced). Delete it when the inbox / calendar / activity endpoints exist.
 import avatar1 from '@workspace/assets/avatars/avatar-1.jpg'
 import avatar2 from '@workspace/assets/avatars/avatar-2.jpg'
 import avatar3 from '@workspace/assets/avatars/avatar-3.jpg'
 import avatar4 from '@workspace/assets/avatars/avatar-4.webp'
+import type { DayActivity, InboxItem, MonthActivity, ScheduleItem, Stat } from './types'
 
-export type Stat = { value: number; label: string }
 export const STATS: Stat[] = [
   { value: 6, label: 'due today' },
   { value: 12, label: 'low stock' },
   { value: 4, label: 'meetings' },
 ]
 
-export type Person = { name: string; photo?: string }
-
-/** `people` are shown as avatars; `others` are the rest, listed on the "+n" count. */
-export type ScheduleItem = { id: string; start: string; end: string; people: Person[]; others?: string[] }
 export const SCHEDULE: ScheduleItem[] = [
   {
     id: 's1',
@@ -38,16 +34,6 @@ export const SCHEDULE: ScheduleItem[] = [
   },
 ]
 
-export type InboxTone = 'success' | 'slate' | 'plum' | 'rose' | 'danger' | 'warning'
-export type InboxItem = {
-  id: string
-  /** App the item belongs to (drives the icon). */
-  app: string
-  title: string
-  tag: { label: string; tone: InboxTone }
-  meta: { label: string; overdue?: boolean }[]
-  action: 'Review' | 'Approve'
-}
 export const INBOX: InboxItem[] = [
   {
     id: 'i1',
@@ -83,18 +69,17 @@ export const INBOX: InboxItem[] = [
   },
 ]
 
-/** What a day on the heat map holds. Level 0..2 = light / healthy / at-or-above target. */
-export type DayActivity = { meetings: number; tasks: number; approvals: number }
-
-/** Deterministic mock so the heat map is stable between renders. */
-export function activityFor(year: number, month: number, day: number): DayActivity {
+/** Deterministic so the heat map is stable between renders. */
+function activityFor(year: number, month: number, day: number): DayActivity {
   const seed = (year * 12 + month) * 31 + day
   const r = (n: number) => (seed * n + 7) % 5 // 0..4
   return { meetings: r(3) % 3, tasks: r(5) % 4, approvals: r(7) % 2 }
 }
 
-export function activityLevel(a: DayActivity): 0 | 1 | 2 {
-  const total = a.meetings + a.tasks + a.approvals
-  if (total === 0) return 0
-  return total >= 4 ? 2 : 1
+/** `month` is 0-based, as in `Date`. */
+export function monthActivity(year: number, month: number): MonthActivity {
+  const days = new Date(year, month + 1, 0).getDate()
+  const out: MonthActivity = {}
+  for (let d = 1; d <= days; d++) out[d] = activityFor(year, month, d)
+  return out
 }

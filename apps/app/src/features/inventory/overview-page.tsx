@@ -7,15 +7,20 @@ import { Card } from '@workspace/ui/components/card'
 import { HexGlyph } from '@workspace/ui/components/hex-glyph'
 import { Sparkline } from '@workspace/ui/components/sparkline'
 import { cn } from '@workspace/ui/lib/utils'
-import { APPROVALS, CATEGORIES, LOW_STOCK, MOVEMENTS, SERIES, money, summary } from './data'
+import { money, summarize } from './logic'
+import { useApprovals, useCategories, useItems, useLowStock, useMovements, useStockSeries } from './queries'
 import { StockChart } from './stock-chart'
 
 const RAMP = ['bg-chart-1', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-chart-5']
 
 /** The Inventory overview: headline KPIs, stock in/out with the movement log, approvals, categories, low stock, quick actions. */
 export function InventoryOverviewPage() {
-  const s = summary()
-  const spark = SERIES['30d']
+  const s = summarize(useItems())
+  const spark = useStockSeries('30d')
+  const movements = useMovements()
+  const approvals = useApprovals()
+  const categories = useCategories()
+  const lowStock = useLowStock()
   const today = new Date()
   const dateLine = `${today.toLocaleDateString('en-GB', { weekday: 'long' })} · ${today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
 
@@ -85,11 +90,11 @@ export function InventoryOverviewPage() {
             </Button>
           </div>
           <ol className="max-h-[286px] overflow-y-auto pr-2.5">
-            {MOVEMENTS.map((m, i) => (
+            {movements.map((m, i) => (
               <li key={m.text} className="flex gap-3">
                 <div className="flex w-3 shrink-0 flex-col items-center pt-[3px]">
                   <HexGlyph size={14} className={i === 0 ? 'text-brand-soft' : 'text-border'} />
-                  {i < MOVEMENTS.length - 1 && <span className="my-[5px] w-px flex-1 bg-border" />}
+                  {i < movements.length - 1 && <span className="my-[5px] w-px flex-1 bg-border" />}
                 </div>
                 <div className="min-w-0 flex-1 pb-[15px]">
                   <div className="text-[13px] leading-[1.45] text-body">{m.text}</div>
@@ -112,7 +117,7 @@ export function InventoryOverviewPage() {
               </Button>
             </div>
             <ul>
-              {APPROVALS.map((a) => (
+              {approvals.map((a) => (
                 <li key={a.id} className="flex items-center gap-[13px] border-b border-divider px-6 py-[15px] last:border-b-0">
                   <Avatar name={a.who} className="size-[34px] bg-muted">
                     <AvatarFallback className="bg-muted text-muted-foreground" />
@@ -148,7 +153,7 @@ export function InventoryOverviewPage() {
               <Badge variant="filter">This month</Badge>
             </div>
             <div className="mt-1 flex flex-col gap-[18px] px-7">
-              {CATEGORIES.map((c, i) => {
+              {categories.map((c, i) => {
                 const riskW = c.pct * (c.risk / 100)
                 return (
                   <div key={c.name}>
@@ -201,7 +206,7 @@ export function InventoryOverviewPage() {
               </Button>
             </div>
             <ul>
-              {LOW_STOCK.map((l) => (
+              {lowStock.map((l) => (
                 <li key={l.name} className="group flex cursor-pointer items-center gap-4 border-b border-divider px-6 py-[17px] transition-colors duration-instant ease-hexa last:border-b-0 hover:bg-surface-soft">
                   <span className="grid size-9 shrink-0 place-items-center rounded-[9px] bg-surface-soft">
                     <Boxes className="size-4 text-faint" strokeWidth={1.5} />
