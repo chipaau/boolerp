@@ -1,16 +1,19 @@
 import { useMatch } from '@tanstack/react-router'
-import { Bell } from 'lucide-react'
+import { Bell, ChevronDown } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { SearchField } from '@workspace/ui/components/search-field'
 import { SidebarTrigger } from '@workspace/ui/components/sidebar'
 import { getApp } from '@/lib/apps'
 import { AppSwitcher } from './app-switcher'
 import { BrandMark } from './brand-mark'
-import { ModeToggle } from './mode-toggle'
 import { UserMenu } from './nav-user'
 
-// The global topbar is identical in every app: that is what tells a user they never left the
-// workspace. Inside an app it adds the app name after a hairline and the sidebar toggle.
+/**
+ * The global topbar, identical in every app: brand mark, the search pill in the middle, the bell
+ * and the avatar on the right (the design's four elements; the theme switch lives in the account
+ * menu). Inside an app it adds a hairline, the app name, which opens the app switcher, and the
+ * sidebar toggle.
+ */
 export function SiteHeader() {
   const match = useMatch({ from: '/_app/$app', shouldThrow: false })
   const app = match ? getApp(match.params.app) : undefined
@@ -20,7 +23,21 @@ export function SiteHeader() {
       {app && (
         <>
           <span aria-hidden="true" className="h-[26px] w-px bg-border" />
-          <span className="text-[15px] font-bold text-body">{app.name}</span>
+          <AppSwitcher
+            render={
+              <button
+                type="button"
+                aria-label={`${app.name}. Switch app`}
+                className="group inline-flex items-center gap-1.5 rounded-md text-[15px] font-bold text-body outline-none transition-colors duration-instant ease-hexa hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card data-open:text-foreground"
+              />
+            }
+          >
+            {app.name}
+            <ChevronDown
+              className="size-3.5 text-faint transition-transform duration-instant ease-hexa group-data-open:rotate-180"
+              strokeWidth={2}
+            />
+          </AppSwitcher>
           <SidebarTrigger className="-ms-2 text-muted-foreground" />
         </>
       )}
@@ -30,8 +47,6 @@ export function SiteHeader() {
       </div>
 
       <div className="ms-auto flex items-center gap-2">
-        <ModeToggle />
-        <AppSwitcher />
         <Button variant="ghost" size="icon" aria-label="Notifications" className="relative text-muted-foreground">
           <Bell className="size-[18px]" strokeWidth={1.75} />
           <span

@@ -1,9 +1,10 @@
 import type { ReactElement, ReactNode } from 'react'
-import { BadgeCheck, Bell, ChevronsUpDown, LogOut } from 'lucide-react'
+import { BadgeCheck, Bell, ChevronsUpDown, LogOut, Moon } from 'lucide-react'
 import { createLogoutFlow } from '@workspace/auth'
 import { Avatar, AvatarFallback } from '@workspace/ui/components/avatar'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -18,9 +19,11 @@ import {
   useSidebar,
 } from '@workspace/ui/components/sidebar'
 import { useCurrentUser } from './user-context'
+import { useTheme } from './use-theme'
 
 // The account dropdown, shared by the header avatar and the sidebar footer. `render` is the
-// element that becomes the trigger; `children` is what shows inside it.
+// element that becomes the trigger; `children` is what shows inside it. The light/dark switch
+// lives here rather than as a separate header icon, keeping the topbar to the design's four items.
 function UserDropdown({
   render,
   side,
@@ -31,6 +34,7 @@ function UserDropdown({
   children: ReactNode
 }) {
   const user = useCurrentUser()
+  const { isDark, setTheme } = useTheme()
 
   async function logout() {
     const flow = await createLogoutFlow()
@@ -62,6 +66,14 @@ function UserDropdown({
             <Bell />
             Notifications
           </DropdownMenuItem>
+          <DropdownMenuCheckboxItem
+            checked={isDark}
+            onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+            closeOnClick={false}
+          >
+            <Moon />
+            Dark mode
+          </DropdownMenuCheckboxItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>

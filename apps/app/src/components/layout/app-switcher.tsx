@@ -1,6 +1,5 @@
+import type { ReactElement, ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { LayoutGrid } from 'lucide-react'
-import { Button } from '@workspace/ui/components/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,16 +8,15 @@ import {
 import { AppIcon } from '@/components/app-icon'
 import { APPS } from '@/lib/apps'
 
-// Grip-style app switcher: a list of apps, each linking to its home.
-export function AppSwitcher() {
+/**
+ * The app switcher menu: every app with its glyph and one-line description, each linking to its
+ * home. `render` is the element that becomes the trigger (in the topbar, the current app's name).
+ */
+export function AppSwitcher({ render, children }: { render: ReactElement; children?: ReactNode }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={<Button variant="ghost" size="icon" aria-label="Open app switcher" className="text-muted-foreground" />}
-      >
-        <LayoutGrid className="size-[18px]" strokeWidth={1.75} />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[320px] p-0">
+      <DropdownMenuTrigger render={render}>{children}</DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-[320px] p-0">
         <div className="px-4 py-4">
           <div className="mb-3 text-overline text-faint">Apps</div>
           <div className="flex flex-col gap-0.5">
