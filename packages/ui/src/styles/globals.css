@@ -283,10 +283,11 @@
 
   --chart-grid: #232322;
   --chart-guide: #3a3937;
-  /* the light theme's ambers at full strength read best on the dark page; only other-month dims */
+  /* the amber hue stepped in brightness (solid, never faded): only the top level is the full amber,
+     so the three levels stay readable and the map does not outshine the text */
   --heat-0: #2a2826;
-  --heat-1: #f7d8ac;
-  --heat-2: #f9d19b;
+  --heat-1: #8a6a3c;
+  --heat-2: #c4903f;
   --heat-3: #ffbf6b;
   --heat-today-stroke: #f0efed;
 
