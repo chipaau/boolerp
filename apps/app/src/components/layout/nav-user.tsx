@@ -45,17 +45,20 @@ function UserDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger render={render}>{children}</DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-56" side={side} align="end">
-        <DropdownMenuLabel className="p-0 normal-case tracking-normal">
-          <div className="flex items-center gap-2.5 px-2.5 py-2 text-left">
-            <Avatar name={user.name} className="rounded-md">
-              <AvatarFallback className="rounded-md" />
-            </Avatar>
-            <div className="grid flex-1 text-left leading-tight">
-              <span className="truncate text-sm font-bold text-foreground">{user.name}</span>
-              <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+        {/* Base UI labels must live inside a group */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="p-0 normal-case tracking-normal">
+            <div className="flex items-center gap-2.5 px-2.5 py-2 text-left">
+              <Avatar name={user.name} className="rounded-md">
+                <AvatarFallback className="rounded-md" />
+              </Avatar>
+              <div className="grid flex-1 text-left leading-tight">
+                <span className="truncate text-sm font-bold text-foreground">{user.name}</span>
+                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+              </div>
             </div>
-          </div>
-        </DropdownMenuLabel>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem>
