@@ -270,11 +270,11 @@
   /* Home has no cards, so its layers come from tokens: a warm lattice of decor hexes, tiles on the
      card tone with the card hairline, and the heat map as amber over the page instead of dimmed cream */
   --hex-decor-from: #171716;
-  --hex-decor-to: #1d1b18;
-  --tile-fill: #1f1f1f;
-  --tile-stroke: #282827; /* a whisper above the fill: tiles read by tone, not by outline */
-  --tile-hover-fill: #332d24;
-  --tile-hover-stroke: #3d372e;
+  --hex-decor-to: #1a1917;
+  --tile-fill: #1a1a1a; /* just above the page */
+  --tile-stroke: #232322;
+  --tile-hover-fill: #272320; /* a warm half-step, not a jump */
+  --tile-hover-stroke: #322d27;
   --marker-meeting: #f5d4b7; /* same cream fill as light; only the outline changes for dark */
   --marker-meeting-hover: #f2c196;
   --marker-approval: #4a5c4d;
