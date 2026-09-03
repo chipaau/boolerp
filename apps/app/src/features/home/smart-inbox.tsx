@@ -14,7 +14,7 @@ function InboxRow({ item, index }: { item: InboxItem; index: number }) {
         <AppIcon slug={item.app} size={30} />
       </span>
       <div className="min-w-0 flex-1 space-y-2">
-        <h3 className="truncate text-base leading-[1.35] text-body transition-colors duration-instant ease-hexa group-hover:text-foreground">
+        <h3 className="truncate text-base leading-[1.35] text-body transition-colors duration-instant ease-hexa group-hover:font-bold group-hover:text-foreground">
           {item.title}
         </h3>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">

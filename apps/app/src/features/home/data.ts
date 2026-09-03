@@ -14,7 +14,8 @@ export const STATS: Stat[] = [
 
 export type Person = { name: string; photo?: string }
 
-export type ScheduleItem = { id: string; start: string; end: string; people: Person[]; extra?: number }
+/** `people` are shown as avatars; `others` are the rest, listed on the "+n" count. */
+export type ScheduleItem = { id: string; start: string; end: string; people: Person[]; others?: string[] }
 export const SCHEDULE: ScheduleItem[] = [
   {
     id: 's1',
@@ -24,7 +25,7 @@ export const SCHEDULE: ScheduleItem[] = [
       { name: 'Aishath Nasheed', photo: avatar1 },
       { name: 'Mohamed Waheed', photo: avatar2 },
     ],
-    extra: 3,
+    others: ['Mariyam Shifa', 'Ahmed Zayan', 'Hawwa Leena'],
   },
   {
     id: 's2',

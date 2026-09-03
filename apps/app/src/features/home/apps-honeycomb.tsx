@@ -4,6 +4,7 @@ import { ArrowCircle } from '@workspace/ui/components/arrow-button'
 import { Hexagon } from '@workspace/ui/components/hexagon'
 import { Honeycomb, HoneycombItem, type HexCell } from '@workspace/ui/components/honeycomb'
 import { SectionTitle } from '@workspace/ui/components/section-title'
+import { cn } from '@workspace/ui/lib/utils'
 import { AppIcon } from '@/components/app-icon'
 import { getApp, type AppDef } from '@/lib/apps'
 
@@ -57,53 +58,78 @@ function itemLeft(cell: HexCell) {
 function itemTop(cell: HexCell) {
   return `calc(var(--hc-y) * ${cell.row})`
 }
+/** True when the slot directly left of `cell` holds another tile (so a straight line would cross it). */
+function leftNeighbourIsTile(cell: HexCell) {
+  return SLOTS.some((s) => s.row === cell.row && s.col === cell.col - 1)
+}
 
 /**
- * The caption leader for the hovered tile: a line grows out from beneath the tile to a dot, and
- * the app's one-line description fades in beyond it. It sits under the tiles, so right-column
- * tiles run a longer line that passes under the neighbour and re-emerges on its far side, while
- * left-column tiles use a short one. Timing is identical for every tile.
+ * The caption leader for the hovered tile. Left-column tiles (and right-column tiles with an
+ * empty slot beside them) run a short line straight out to the left. Right-column tiles with a
+ * neighbour run the line from their left vertex down through the channel between the neighbour
+ * and the tile below, to the name, the way the prototype does. The line grows from the tile; the
+ * name then fades in inside a small cream pill. Both draw above the grid, but never over a tile.
  */
 function Leader({ app, cell }: { app: AppDef; cell: HexCell }) {
-  const length = cell.col === 1 ? 'calc(var(--hc-x) + var(--hc-w) * 0.45)' : 'calc(var(--hc-w) * 0.45)'
+  const channel = leftNeighbourIsTile(cell)
+  // the channel line starts at the tile's left vertex, where it meets the neighbour and the
+  // tile below, and follows the gap between those two at 30° below the horizontal
+  const start = channel
+    ? { x: `calc(${itemLeft(cell)} + var(--hc-w) * 0.02)`, y: `calc(${itemTop(cell)} + var(--hc-h) / 2)` }
+    : { x: `calc(${itemLeft(cell)} + var(--hc-w) * 0.12)`, y: `calc(${itemTop(cell)} + var(--hc-h) / 2)` }
+  const length = channel ? 'calc(var(--hc-w) * 0.9)' : 'calc(var(--hc-w) * 0.45)'
+  const angle = channel ? 30 : 0 // degrees below the horizontal, running leftwards
   return (
-    <span
-      aria-hidden="true"
-      className="pointer-events-none absolute z-0 flex w-max items-center gap-2.5"
-      style={{
-        left: `calc(${itemLeft(cell)} + var(--hc-w) * 0.12)`,
-        top: `calc(${itemTop(cell)} + var(--hc-h) / 2)`,
-        transform: 'translate(-100%, -50%)',
-      }}
-    >
-      <span className="max-w-[5.5rem] animate-rise text-right text-[11px] leading-[1.35] font-bold tracking-[0.06em] text-muted-foreground uppercase [animation-delay:240ms]">
-        {app.description}
-      </span>
-      <span className="relative h-px origin-right animate-grow-x bg-faint/80" style={{ width: length }}>
+    <>
+      {/* the line: anchored at its right end on the tile, rotated into the channel, scaling out */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute z-30 h-px origin-right"
+        style={{
+          left: start.x,
+          top: start.y,
+          width: length,
+          // a leftward line rotated clockwise climbs, so descend with a negative angle
+          transform: `translate(-100%, -50%) rotate(${-angle}deg)`,
+        }}
+      >
+        <span className="block h-px origin-right animate-grow-x bg-faint/80" />
         <span className="absolute top-1/2 left-0 size-1.5 -translate-y-1/2 rounded-full bg-faint" />
       </span>
-    </span>
+      {/* the name: at the line's far end, in a small cream pill. The outer span only positions;
+          the inner one animates, so the entrance never fights the positioning transform. */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute z-30"
+        style={{
+          left: `calc(${start.x} - ${length} * ${Math.cos((angle * Math.PI) / 180).toFixed(4)} - 0.75rem)`,
+          top: `calc(${start.y} + ${length} * ${Math.sin((angle * Math.PI) / 180).toFixed(4)})`,
+          transform: 'translate(-100%, -50%)',
+        }}
+      >
+        <span
+          className={cn(
+            'block max-w-[6.5rem] animate-rise rounded-md bg-card px-2.5 py-1.5 text-right text-[11px] leading-[1.35] font-bold tracking-[0.06em] text-muted-foreground uppercase shadow-floating [animation-delay:240ms]'
+          )}
+        >
+          {app.description}
+        </span>
+      </span>
+    </>
   )
 }
 
 /**
  * The app grid's signature element: Soft Cream tiles, tessellated with a half-width offset and
- * a 24% vertical overlap, over a field of faded gradient hexagons. Hovering a tile tints it Sand
- * and draws its leader line beneath the grid.
+ * a 24% vertical overlap, over a field of faded gradient hexagons. Hovering a tile fades it to
+ * Sand and draws its leader line beneath the grid.
  */
 export function AppsHoneycomb() {
   const [hovered, setHovered] = useState<number | null>(null)
   return (
     <section className="space-y-4">
       <SectionTitle>Apps</SectionTitle>
-      <Honeycomb
-        cellSize="10rem"
-        cols={2}
-        rows={5}
-        gap={0.1}
-        rowPitch={0.76}
-        className="ml-auto"
-      >
+      <Honeycomb cellSize="10rem" cols={2} rows={5} gap={0.1} rowPitch={0.76} className="ml-auto">
         {DECOR.map((d, i) => (
           <HoneycombItem key={`d${i}`} col={d.col} row={d.row} aria-hidden="true" className="pointer-events-none -z-10">
             <Hexagon
@@ -123,8 +149,7 @@ export function AppsHoneycomb() {
               col={SLOTS[i].col}
               row={SLOTS[i].row}
               data-tile=""
-              data-active={active ? '' : undefined}
-              className="z-10 animate-rise data-[active]:z-20"
+              className="z-10 animate-rise"
               style={{ animationDelay: `${240 + i * 40}ms` }}
             >
               <Link
@@ -141,10 +166,12 @@ export function AppsHoneycomb() {
                 <Hexagon
                   size="100%"
                   interactive
-                  data-active={active ? '' : undefined}
                   stroke={active ? 'var(--tile-hover-stroke)' : undefined}
                   strokeWidth={1}
-                  className={active ? 'text-tile-hover-fill' : 'text-surface-soft'}
+                  className={cn(
+                    'transition-[color,transform] duration-quick ease-hexa',
+                    active ? 'text-tile-hover-fill' : 'text-surface-soft'
+                  )}
                 >
                   <div className="flex flex-col items-center gap-2.5">
                     <AppIcon slug={app.slug} variant="art" size={50} />

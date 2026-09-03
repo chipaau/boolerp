@@ -121,9 +121,28 @@ export function MonthHoneycomb({ today }: { today: Date }) {
             // cells rise in one after another, left to right
             const stagger = { animationDelay: `${120 + i * 12}ms` }
             if (!inMonth) {
+              // a real date from the neighbouring month: say which, and jump there on click
+              const direction = offset < 0 ? 'previous' : 'next'
+              const label = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
               return (
-                <HoneycombItem key={i} {...cell} role="gridcell" aria-hidden="true" className="animate-rise" style={stagger}>
-                  <Hexagon size="100%" aspect={CELL_ASPECT} className="text-heat-0" />
+                <HoneycombItem key={i} {...cell} role="gridcell" className="animate-rise" style={stagger}>
+                  <Tooltip>
+                    <TooltipTrigger
+                      className="block size-full rounded-full outline-none"
+                      aria-label={`${label}, ${direction} month`}
+                      onClick={() => shift(offset < 0 ? -1 : 1)}
+                    >
+                      <Hexagon
+                        size="100%"
+                        aspect={CELL_ASPECT}
+                        interactive
+                        className="text-heat-0 hover:-translate-y-px hover:text-heat-1"
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={6}>
+                      {label} · {direction} month
+                    </TooltipContent>
+                  </Tooltip>
                 </HoneycombItem>
               )
             }
