@@ -10,7 +10,7 @@ export const Route = createFileRoute('/_app')({
     const session = await whoami()
     if (!session) {
       const returnTo = window.location.pathname + window.location.search
-      throw redirect({ to: '/login', search: { return_to: returnTo } })
+      throw redirect({ to: '/login', search: { flow: undefined, return_to: returnTo } })
     }
     const traits = session.identity.traits as Record<string, unknown>
     return { user: { name: String(traits.name ?? 'User'), email: String(traits.email ?? '') } }
@@ -25,7 +25,7 @@ function AppLayout() {
       <div className="fixed inset-0 overflow-hidden">
         <SidebarProvider className="flex flex-col">
           <SiteHeader />
-          <div className="flex h-[calc(100svh-3.5rem)] min-h-0">
+          <div className="flex h-[calc(100svh-var(--header-height))] min-h-0">
             <Outlet />
           </div>
         </SidebarProvider>

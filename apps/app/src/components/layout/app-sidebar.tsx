@@ -12,67 +12,53 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@workspace/ui/components/sidebar'
+import { AppIcon } from '@/components/app-icon'
 import { NavUser } from './nav-user'
 import type { AppDef } from '@/lib/apps'
 
-// Per-app collapsible sidebar: app header (logo + name), menu sections, and the user menu in the
-// footer. The active item is derived from the current path.
+// Per-app labelled sidebar (248px, one hairline from the content). Items have no pill: the
+// active one takes the amber bar and bold ink. The active item is derived from the current path.
 export function AppSidebar({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
   const base = `/${app.slug}`
-  const Icon = app.icon
 
   return (
-    <Sidebar className="top-14 h-[calc(100svh-3.5rem)]!" collapsible="icon">
-      <SidebarHeader className="border-b">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link to="/$app" params={{ app: app.slug }}>
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
-                  <Icon className="size-4" />
-                </div>
-                <div className="flex min-w-0 flex-col leading-tight">
-                  <span className="truncate font-medium">{app.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">{app.description}</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+    <Sidebar className="top-(--header-height) h-[calc(100svh-var(--header-height))]!" collapsible="icon">
+      <SidebarHeader className="px-5 pt-6 pb-2 group-data-[collapsible=icon]:px-2">
+        <Link
+          to="/$app"
+          params={{ app: app.slug }}
+          className="flex items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="grid size-[38px] shrink-0 place-items-center rounded-[10px] bg-muted">
+            <AppIcon slug={app.slug} size={22} />
+          </span>
+          <span className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="truncate text-[15px] font-bold text-foreground">{app.name}</span>
+            <span className="truncate text-xs text-muted-foreground">{app.description}</span>
+          </span>
+        </Link>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-5 group-data-[collapsible=icon]:px-2">
         {app.menu.map((section, i) => (
-          <SidebarGroup key={section.title ?? `s${i}`}>
+          <SidebarGroup key={section.title ?? `s${i}`} className="p-0 pt-3">
             {section.title && <SidebarGroupLabel>{section.title}</SidebarGroupLabel>}
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-0">
                 {section.items.map((item) => {
                   const to = item.slug ? `${base}/${item.slug}` : base
                   const ItemIcon = item.icon
+                  const link = item.slug ? (
+                    <Link to="/$app/$section" params={{ app: app.slug, section: item.slug }} />
+                  ) : (
+                    <Link to="/$app" params={{ app: app.slug }} />
+                  )
                   return (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={pathname === to}
-                        tooltip={item.title}
-                        className="data-[active=true]:text-primary data-[active=true]:[&_svg]:text-primary"
-                      >
-                        {item.slug ? (
-                          <Link
-                            to="/$app/$section"
-                            params={{ app: app.slug, section: item.slug }}
-                          >
-                            {ItemIcon && <ItemIcon />}
-                            <span>{item.title}</span>
-                          </Link>
-                        ) : (
-                          <Link to="/$app" params={{ app: app.slug }}>
-                            {ItemIcon && <ItemIcon />}
-                            <span>{item.title}</span>
-                          </Link>
-                        )}
+                      <SidebarMenuButton render={link} isActive={pathname === to} tooltip={item.title}>
+                        {ItemIcon && <ItemIcon strokeWidth={1.75} />}
+                        <span>{item.title}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )
@@ -83,7 +69,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
         ))}
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-sidebar-border">
         <NavUser />
       </SidebarFooter>
       <SidebarRail />

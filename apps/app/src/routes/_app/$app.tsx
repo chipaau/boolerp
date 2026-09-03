@@ -1,14 +1,13 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import { SidebarInset } from '@workspace/ui/components/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
-import { useAppTheme } from '@/components/layout/use-app-theme'
-import { DEFAULT_APP, getApp } from '@/lib/apps'
+import { getApp } from '@/lib/apps'
 
 // One dynamic route serves every app: resolve its config from the slug, render its sidebar + content.
 export const Route = createFileRoute('/_app/$app')({
   beforeLoad: ({ params }) => {
     if (!getApp(params.app)) {
-      throw redirect({ to: '/$app', params: { app: DEFAULT_APP } })
+      throw redirect({ to: '/' })
     }
   },
   component: AppShell,
@@ -17,7 +16,6 @@ export const Route = createFileRoute('/_app/$app')({
 function AppShell() {
   const { app } = Route.useParams()
   const cfg = getApp(app)!
-  useAppTheme(app)
   return (
     <>
       <AppSidebar app={cfg} />
