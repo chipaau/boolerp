@@ -5,12 +5,41 @@ import {
   AvatarGroupCount,
   AvatarImage,
 } from '@workspace/ui/components/avatar'
+import { ArrowButton } from '@workspace/ui/components/arrow-button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@workspace/ui/components/tooltip'
 import { useSchedule } from './queries'
 import { MeetingMarker } from './markers'
+import type { ScheduleItem } from './types'
+
+/** The hover card for one meeting: what, when, where, who, and a jump to the calendar. */
+function MeetingCard({ item }: { item: ScheduleItem }) {
+  const names = [...item.people.map((p) => p.name), ...(item.others ?? [])]
+  return (
+    <div className="w-64 space-y-3 p-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-ui-lg leading-[1.35] font-bold text-foreground">{item.title}</div>
+          <div className="mt-0.5 text-ui-lg text-faint">
+            {item.start} – {item.end}
+          </div>
+        </div>
+        <ArrowButton small aria-label={`Open ${item.title} in the calendar`} />
+      </div>
+      <div className="flex items-center gap-2.5 text-sm text-foreground">
+        <MeetingMarker size={16} />
+        <span className="min-w-0 truncate">{item.location}</span>
+      </div>
+      <div className="text-caption text-muted-foreground">
+        {names.length} attending · {names.slice(0, 3).join(', ')}
+        {names.length > 3 ? ` and ${names.length - 3} more` : ''}
+      </div>
+    </div>
+  )
+}
 
 // Today's meetings: marker, time range (14 medium), and who is attending. Hovering a time warms
-// the marker and turns it tan, bold and underlined; hovering "+n" lists the other attendees.
+// the marker, turns it tan, bold and underlined, and opens the meeting card (what, where, who);
+// hovering "+n" lists the other attendees.
 export function Schedule() {
   const schedule = useSchedule()
   return (
@@ -18,15 +47,20 @@ export function Schedule() {
       <ul className="space-y-3">
         {schedule.map((item) => (
           <li key={item.id} className="flex items-center gap-4">
-            <button
-              type="button"
-              className="group flex items-center gap-2.5 rounded-sm text-sm font-medium text-foreground outline-none transition-colors duration-instant ease-hexa hover:font-bold hover:text-schedule-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              <MeetingMarker size={18} className="group-hover:text-marker-meeting-hover" />
-              <span className="tabular-nums decoration-schedule-hover decoration-1 underline-offset-[5px] group-hover:underline">
-                {item.start} - {item.end}
-              </span>
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                className="group flex items-center gap-2.5 rounded-sm text-sm font-medium text-foreground outline-none transition-colors duration-instant ease-hexa hover:font-bold hover:text-schedule-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                aria-label={`${item.title}, ${item.start} to ${item.end}`}
+              >
+                <MeetingMarker size={18} className="group-hover:text-marker-meeting-hover" />
+                <span className="tabular-nums decoration-schedule-hover decoration-1 underline-offset-[5px] group-hover:underline">
+                  {item.start} - {item.end}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="start" sideOffset={8} variant="card" showArrow={false}>
+                <MeetingCard item={item} />
+              </TooltipContent>
+            </Tooltip>
             <AvatarGroup className="ms-5 -space-x-2">
               {item.people.map((p) => (
                 <Tooltip key={p.name}>

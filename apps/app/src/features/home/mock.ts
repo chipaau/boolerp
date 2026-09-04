@@ -15,8 +15,10 @@ export const STATS: Stat[] = [
 export const SCHEDULE: ScheduleItem[] = [
   {
     id: 's1',
+    title: 'Procurement weekly',
     start: '9:30 AM',
     end: '10:30 AM',
+    location: 'Meeting room 2, Council building',
     people: [
       { name: 'Aishath Nasheed', photo: avatar1 },
       { name: 'Mohamed Waheed', photo: avatar2 },
@@ -25,8 +27,10 @@ export const SCHEDULE: ScheduleItem[] = [
   },
   {
     id: 's2',
+    title: 'Site store stock count',
     start: '12:00 PM',
-    end: '14:00 PM',
+    end: '2:00 PM',
+    location: 'Site store, Hulhumalé',
     people: [
       { name: 'Fathimath Ali', photo: avatar3 },
       { name: 'Ibrahim Rasheed', photo: avatar4 },
