@@ -46,12 +46,14 @@ export function Schedule() {
   return (
     <TooltipProvider delay={150}>
       <ul className="space-y-3">
+        {schedule.length === 0 && <li className="text-sm text-muted-foreground">Nothing else today.</li>}
         {schedule.map((item) => (
           <li key={item.id} className="flex items-center gap-4">
             <Tooltip>
               <TooltipTrigger
+                render={<Link to="/$app/$section" params={{ app: 'calendar', section: 'meetings' }} search={{ id: item.meetingId }} />}
                 className="group flex items-center gap-2.5 rounded-sm text-sm font-medium text-foreground outline-none transition-colors duration-instant ease-hexa hover:font-bold hover:text-schedule-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                aria-label={`${item.title}, ${item.start} to ${item.end}`}
+                aria-label={`${item.title}, ${item.start} to ${item.end}. Open the meeting`}
               >
                 <MeetingMarker size={18} className="group-hover:text-marker-meeting-hover" />
                 <span className="tabular-nums decoration-schedule-hover decoration-1 underline-offset-[5px] group-hover:underline">

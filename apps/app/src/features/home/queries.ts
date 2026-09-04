@@ -4,8 +4,8 @@
 // never disagree about today.
 import { useMemo } from 'react'
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
-import { meetingsOn, toIso } from '@/features/calendar/logic'
-import { meetingsQuery, peopleQuery } from '@/features/calendar/queries'
+import { meetingsOn, toIso, toMinutes } from '@/features/calendar/logic'
+import { meQuery, meetingsQuery, peopleQuery } from '@/features/calendar/queries'
 import * as mock from './mock'
 import type { MonthActivity, ScheduleItem, Stat } from './types'
 
@@ -35,13 +35,17 @@ export function useStats(): Stat[] {
   return useMemo(() => [...stats, { value: today.length, label: 'meetings' }], [stats, today])
 }
 
-/** Today's meetings as schedule rows: two faces, the rest on the "+n" count. */
+/** The next two meetings still ahead today, as schedule rows: two faces, the rest on the "+n" count. */
 export function useSchedule(): ScheduleItem[] {
   const today = useTodaysMeetings()
   const people = useSuspenseQuery(peopleQuery()).data
+  const me = useSuspenseQuery(meQuery()).data
   return useMemo(
     () =>
-      today.map((m) => {
+      today
+        .filter((m) => toMinutes(m.end) > me.nowMinutes)
+        .slice(0, 2)
+        .map((m) => {
         const named = m.attendees.map((a) => people.find((p) => p.key === a.person)).filter((p) => p !== undefined)
         return {
           id: m.id,
@@ -54,7 +58,7 @@ export function useSchedule(): ScheduleItem[] {
           others: named.slice(2).map((p) => p.name),
         }
       }),
-    [today, people]
+    [today, people, me.nowMinutes]
   )
 }
 

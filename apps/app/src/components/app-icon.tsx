@@ -23,6 +23,7 @@ const ARTWORK: Partial<Record<string, { art?: string; glyph?: string }>> = {
   directory: { art: directoryArt },
   analytics: { art: analyticsArt },
   procurement: { art: procurementArt },
+  calendar: { art: procurementArt }, // the design reuses this illustration for Calendar
 }
 
 // Single accent per app for the fallback glyph (icons never carry more than one colour).
