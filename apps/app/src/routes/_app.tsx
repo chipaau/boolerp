@@ -1,6 +1,7 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import { getSession } from '@workspace/auth'
 import { SidebarProvider } from '@workspace/ui/components/sidebar'
+import { ToastProvider } from '@workspace/ui/components/toast'
 import { SiteHeader } from '@/components/layout/site-header'
 import { UserProvider } from '@/components/layout/user-context'
 
@@ -26,6 +27,7 @@ function AppLayout() {
   const { user } = Route.useLoaderData()
   return (
     <UserProvider user={user}>
+      <ToastProvider>
       <div className="fixed inset-0 overflow-hidden">
         <SidebarProvider className="flex flex-col">
           <SiteHeader />
@@ -34,6 +36,7 @@ function AppLayout() {
           </div>
         </SidebarProvider>
       </div>
+      </ToastProvider>
     </UserProvider>
   )
 }

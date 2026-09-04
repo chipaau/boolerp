@@ -13,6 +13,7 @@ import {
 } from '@workspace/ui/components/sidebar'
 import { cn } from '@workspace/ui/lib/utils'
 import { AppIcon } from '@/components/app-icon'
+import { getRail } from '@/features/rails'
 import { useNavCounts, useSavedViews } from '@/features/shell/queries'
 import type { AppDef, AppMenuItem, AppMenuSection } from '@/lib/apps'
 
@@ -31,6 +32,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
   const search: Record<string, string | undefined> = useSearch({ strict: false })
   const base = `/${app.slug}`
+  const Rail = getRail(app.slug)
   const counts = useNavCounts(app.slug)
   const views = useSavedViews(app.slug)
 
@@ -60,7 +62,9 @@ export function AppSidebar({ app }: { app: AppDef }) {
             <div className="truncate text-caption text-muted-foreground">{app.description}</div>
           </div>
         </div>
-        {groups.map((section, i) => (
+        {Rail && <Rail app={app} />}
+        {!Rail &&
+          groups.map((section, i) => (
           <SidebarGroup
             key={section.title ?? `s${i}`}
             className={cn('p-0', i > 0 && 'relative mt-[18px] pt-4 before:absolute before:top-0 before:right-0 before:left-0 before:h-px before:bg-sidebar-border')}
@@ -99,7 +103,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ))}
+          ))}
       </SidebarContent>
 
       <SidebarRail />

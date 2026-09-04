@@ -31,6 +31,7 @@ const badgeVariants = cva(
         neutral: "rounded-full bg-tone-neutral-soft text-tone-neutral-foreground",
         rose: "rounded-full bg-tone-rose-soft text-tone-rose-foreground",
         risk: "rounded-full bg-tone-risk-soft text-tone-risk-foreground",
+        tan: "rounded-full bg-tone-tan-soft text-tone-tan-foreground",
       },
       size: {
         default: "px-[13px] py-[5px] text-compact leading-[1.4]",
@@ -49,7 +50,7 @@ const badgeVariants = cva(
 
 type Variant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>
 /** The status-pill hues: the one vocabulary for "which tone does this state carry" across features. */
-export type BadgeTone = Extract<Variant, "success" | "warning" | "danger" | "plum" | "slate" | "neutral" | "rose" | "risk">
+export type BadgeTone = Extract<Variant, "success" | "warning" | "danger" | "plum" | "slate" | "neutral" | "rose" | "risk" | "tan">
 const dotColor: Partial<Record<Variant, string>> = {
   success: "bg-tone-success",
   warning: "bg-tone-warning",
@@ -59,6 +60,7 @@ const dotColor: Partial<Record<Variant, string>> = {
   neutral: "bg-tone-neutral",
   rose: "bg-tone-rose",
   risk: "bg-tone-risk",
+  tan: "bg-tone-tan",
 }
 
 function Badge({

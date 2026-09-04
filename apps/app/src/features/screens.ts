@@ -1,4 +1,6 @@
 import type { ComponentType } from 'react'
+import { CalendarPage } from './calendar/calendar-page'
+import { MeetingDetailPage } from './calendar/meeting-detail-page'
 import { InventoryItemsPage } from './inventory/items-page'
 import { InventoryOverviewPage } from './inventory/overview-page'
 
@@ -10,6 +12,10 @@ export const SCREENS: Partial<Record<string, Partial<Record<string, ComponentTyp
   inventory: {
     '': InventoryOverviewPage,
     items: InventoryItemsPage,
+  },
+  calendar: {
+    '': CalendarPage,
+    meetings: MeetingDetailPage, // /calendar/meetings?id=…
   },
 }
 

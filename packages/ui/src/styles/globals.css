@@ -119,6 +119,10 @@
   --tone-risk-soft: #f6e3da;
   --tone-risk-foreground: #a8452c;
   --tone-warning-deep: #c87a1e; /* an amber figure on cream (pending counts) */
+  /* tan: the fourth calendar hue (Recruiting) beside sage, plum and slate */
+  --tone-tan: #8a7b5c;
+  --tone-tan-soft: #f0e7d6;
+  --tone-tan-foreground: #645537;
 
   /* charts: the garden ramp + line pair; terracotta = at-risk only */
   --chart-1: #7e8f78;
@@ -261,6 +265,9 @@
   --tone-risk-soft: #3a261f;
   --tone-risk-foreground: #e0876c;
   --tone-warning-deep: #e39a3a;
+  --tone-tan: #a8946e;
+  --tone-tan-soft: #2f2a20;
+  --tone-tan-foreground: #c9b78f;
 
   --border: #323231;
   --divider: #323231;
@@ -499,6 +506,9 @@
   --color-tone-risk-soft: var(--tone-risk-soft);
   --color-tone-risk-foreground: var(--tone-risk-foreground);
   --color-tone-warning-deep: var(--tone-warning-deep);
+  --color-tone-tan: var(--tone-tan);
+  --color-tone-tan-soft: var(--tone-tan-soft);
+  --color-tone-tan-foreground: var(--tone-tan-foreground);
   --color-chart-grid: var(--chart-grid);
   --color-chart-guide: var(--chart-guide);
   --color-marker-meeting: var(--marker-meeting);
