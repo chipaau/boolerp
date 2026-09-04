@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { AuthShell } from '@workspace/auth'
-import { KratosForm } from '@workspace/auth'
-import { useKratosFlow } from '@workspace/auth'
+import { AuthShell, KratosForm, useKratosFlow } from '@workspace/auth'
 
-// Settings set-password. Reached after recovery to finish activation (privileged session), and later
-// for change-password (UC-AUTH-01 / UC-AUTH-13). Only the password group is shown in this slice.
+// Credential settings (UC-AUTH-01 / UC-AUTH-13): reached after recovery to finish activation
+// (privileged session) and later to change the password or manage the authenticator app, backup
+// codes and passkeys. Kratos decides which groups appear; profile traits are edited elsewhere.
+const CREDENTIAL_GROUPS = ['password', 'totp', 'lookup_secret', 'webauthn', 'passkey']
 export const Route = createFileRoute('/settings')({
   validateSearch: (s: Record<string, unknown>) => ({
     flow: typeof s.flow === 'string' ? s.flow : undefined,
@@ -30,10 +30,10 @@ function SettingsPage() {
   }, [flow, navigate])
 
   return (
-    <AuthShell title="Set your password" subtitle="Choose a password to finish activation">
+    <AuthShell title="Password & security" subtitle="Set your password. Add an authenticator app or passkey for a second factor.">
       {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
       {flow ? (
-        <KratosForm flow={flow} onSubmit={onSubmit} submitting={submitting} groups={['password']} />
+        <KratosForm flow={flow} onSubmit={onSubmit} submitting={submitting} groups={CREDENTIAL_GROUPS} />
       ) : (
         <p className="text-sm text-muted-foreground">Loading…</p>
       )}

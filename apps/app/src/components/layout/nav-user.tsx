@@ -1,88 +1,63 @@
-import { BadgeCheck, Bell, ChevronsUpDown, LogOut } from 'lucide-react'
-import { createLogoutFlow } from '@workspace/auth'
-import { Avatar, AvatarFallback } from '@workspace/ui/components/avatar'
+import { ChevronDown } from 'lucide-react'
+import { logout } from '@workspace/auth'
+import { Avatar, AvatarFallback, AvatarImage } from '@workspace/ui/components/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@workspace/ui/components/dropdown-menu'
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@workspace/ui/components/sidebar'
+import { useMembership } from '@/features/shell/queries'
 import { useCurrentUser } from './user-context'
 
-export function NavUser() {
-  const { isMobile } = useSidebar()
+/**
+ * The account menu behind the 31px avatar in the topbar: name, email, the role pill, then the
+ * design's four actions with Sign out in terracotta.
+ */
+export function UserMenu() {
   const user = useCurrentUser()
-  const initials = (user.name || 'U').trim().slice(0, 2).toUpperCase()
-
-  async function logout() {
-    const flow = await createLogoutFlow()
-    window.location.href = flow?.logout_url ?? '/login'
-  }
+  const membership = useMembership()
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="size-8 rounded-lg">
-                <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
-                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-              </div>
-              <ChevronsUpDown className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="min-w-56 rounded-lg"
-            side={isMobile ? 'bottom' : 'right'}
-            align="end"
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="size-8 rounded-lg">
-                  <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-                </div>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>
-              <LogOut />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <button
+            type="button"
+            aria-label={`${user.name}. Account menu`}
+            title={user.name}
+            className="ms-0.5 grid size-[34px] place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+          />
+        }
+      >
+        <Avatar name={user.name} className="size-[31px]">
+          {membership?.avatar && <AvatarImage src={membership.avatar} alt="" />}
+          <AvatarFallback className="bg-secondary-hover/60 text-micro tracking-[0.02em] text-muted-foreground" />
+        </Avatar>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60 p-2">
+        <div className="px-3 pt-1.5 pb-3">
+          <div className="text-sm font-bold text-foreground">{user.name}</div>
+          <div className="mt-0.5 text-fine text-faint">{user.email}</div>
+          {membership && (
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted py-[3px] pr-[9px] pl-2.5 text-fine font-bold text-body">
+              {membership.role}
+              <ChevronDown className="size-[9px] text-muted-foreground" strokeWidth={2.5} />
+            </span>
+          )}
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm">Profile &amp; preferences</DropdownMenuItem>
+          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm">Settings &amp; permissions</DropdownMenuItem>
+          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm">Switch workspace</DropdownMenuItem>
+          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm text-tone-risk-foreground data-highlighted:text-tone-risk-foreground" onClick={() => logout()}>
+            Sign out
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

@@ -2,9 +2,6 @@
   "name": "app",
   "private": true,
   "type": "module",
-  "imports": {
-    "#/*": "./src/*"
-  },
   "scripts": {
     "dev": "vite dev --host --port 3000",
     "generate-routes": "tsr generate",
@@ -21,6 +18,7 @@
     "@tanstack/react-query-devtools": "latest",
     "@tanstack/react-router": "latest",
     "@tanstack/react-router-devtools": "latest",
+    "@workspace/assets": "workspace:*",
     "@workspace/auth": "workspace:*",
     "@workspace/ui": "workspace:*",
     "lucide-react": "^0.469.0",

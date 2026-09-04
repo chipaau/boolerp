@@ -14,18 +14,23 @@ type Options = {
   // return_to for a NEW flow — Kratos redirects here on success. Pass the current origin so a
   // browser flow started on admin.bool.test returns to admin (not the base_url tenant host).
   returnTo?: string
+  /** Extra query for a NEW flow, e.g. `{ aal: 'aal2' }` for the second-factor step, `{ refresh: 'true' }` to re-authenticate. */
+  query?: Record<string, string | undefined>
   onSuccess?: (session?: Session) => void
 }
 
 // useKratosFlow owns a self-service flow's lifecycle: fetch/create it, submit values, re-render on
 // validation errors, follow Kratos redirects (e.g. recovery → settings), and recreate on expiry.
 export function useKratosFlow(kind: FlowKind, opts: Options = {}) {
-  const { flowId, returnTo, onSuccess } = opts
+  const { flowId, returnTo, query, onSuccess } = opts
   const [flow, setFlow] = useState<Flow | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const createQuery = returnTo ? `return_to=${encodeURIComponent(returnTo)}` : undefined
+  const params = new URLSearchParams()
+  if (returnTo) params.set('return_to', returnTo)
+  for (const [k, v] of Object.entries(query ?? {})) if (v) params.set(k, v)
+  const createQuery = params.size ? params.toString() : undefined
 
   useEffect(() => {
     let cancelled = false

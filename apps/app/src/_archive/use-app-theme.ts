@@ -1,5 +1,11 @@
+// ARCHIVED — not imported anywhere. See README.md in this folder.
 import { useEffect } from 'react'
-import { APPS, appThemeClass } from '@/lib/apps'
+import { APPS } from '@/lib/apps'
+
+/** The CSS class that themed an app accent colour (see app-themes.css). */
+export function appThemeClass(slug: string): string {
+  return `theme-${slug}`
+}
 
 const ALL_THEME_CLASSES = APPS.map((a) => appThemeClass(a.slug))
 

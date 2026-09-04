@@ -1,45 +1,66 @@
-import { Link } from '@tanstack/react-router'
-import { LayoutGrid } from 'lucide-react'
+import { Link, useMatch } from '@tanstack/react-router'
 import { Button } from '@workspace/ui/components/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@workspace/ui/components/dropdown-menu'
+import { cn } from '@workspace/ui/lib/utils'
+import { AppIcon } from '@/components/app-icon'
 import { APPS } from '@/lib/apps'
 
-// Grip-style app switcher (mirrors the workspace design): a grid of apps, each linking to its home.
+/**
+ * The 3×3-dots button in the topbar and its apps grid (icon plate + name, the current app in
+ * amber), with "Browse all apps" underneath, as in the design.
+ */
 export function AppSwitcher() {
+  const match = useMatch({ from: '/_app/$app', shouldThrow: false })
+  const current = match?.params.app
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Open app switcher" className="border">
-          <LayoutGrid className="size-4" />
-        </Button>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="size-[34px] hover:bg-sidebar-hover data-open:bg-sidebar-hover"
+            aria-label="Switch app"
+            title="Switch app"
+          />
+        }
+      >
+        <span aria-hidden="true" className="grid grid-cols-3 gap-[3.5px]">
+          {Array.from({ length: 9 }, (_, i) => (
+            <span key={i} className="size-[3px] rounded-full bg-faint" />
+          ))}
+        </span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[320px] p-0">
-        <div className="px-4 py-4">
-          <div className="mb-3 text-xs font-semibold text-muted-foreground">Apps</div>
-          <div className="flex flex-col gap-1">
-            {APPS.map((app) => (
+      <DropdownMenuContent align="end" className="w-[340px] p-2">
+        <div className="px-2 pt-1 pb-2.5 text-overline text-faint">Apps</div>
+        <div className="grid grid-cols-3 gap-1">
+          {APPS.map((app) => {
+            const active = app.slug === current
+            return (
               <Link
                 key={app.slug}
                 to="/$app"
                 params={{ app: app.slug }}
-                className="flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-accent"
+                className="flex flex-col items-center gap-[7px] rounded-[10px] px-1.5 py-3 outline-none transition-colors duration-instant ease-hexa hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted/50">
-                  <app.icon className="size-4.5" />
-                </div>
-                <div className="flex min-w-0 flex-col text-left">
-                  <span className="truncate text-sm font-semibold text-foreground">{app.name}</span>
-                  <span className="truncate text-xs leading-tight text-muted-foreground">
-                    {app.description}
-                  </span>
-                </div>
+                <span className="grid size-[34px] place-items-center rounded-[10px] bg-surface-soft">
+                  <AppIcon slug={app.slug} size={22} />
+                </span>
+                <span className={cn('text-center text-fine leading-tight', active ? 'font-bold text-tone-warning-deep' : 'font-medium text-body')}>
+                  {app.name}
+                </span>
               </Link>
-            ))}
-          </div>
+            )
+          })}
+        </div>
+        <div className="mt-2 border-t border-divider pt-2.5 text-center">
+          <Button variant="link" size="xs" className="text-meta no-underline hover:underline" render={<Link to="/" />}>
+            Browse all apps
+          </Button>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

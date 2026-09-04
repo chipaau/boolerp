@@ -9,22 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as ErrorRouteImport } from './routes/error'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RecoveryRouteImport } from './routes/recovery'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAppRouteImport } from './routes/_app/$app'
+import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppAppIndexRouteImport } from './routes/_app/$app/index'
 import { Route as AppAppSectionRouteImport } from './routes/_app/$app/$section'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -54,9 +50,19 @@ const VerifyRoute = VerifyRouteImport.update({
   path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAppRoute = AppAppRouteImport.update({
   id: '/$app',
   path: '/$app',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAppIndexRoute = AppAppIndexRouteImport.update({
@@ -71,29 +77,30 @@ const AppAppSectionRoute = AppAppSectionRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
   '/error': typeof ErrorRoute
   '/login': typeof LoginRoute
   '/recovery': typeof RecoveryRoute
   '/settings': typeof SettingsRoute
   '/verify': typeof VerifyRoute
   '/$app': typeof AppAppRouteWithChildren
+  '/notifications': typeof AppNotificationsRoute
   '/$app/$section': typeof AppAppSectionRoute
   '/$app/': typeof AppAppIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/error': typeof ErrorRoute
   '/login': typeof LoginRoute
   '/recovery': typeof RecoveryRoute
   '/settings': typeof SettingsRoute
   '/verify': typeof VerifyRoute
+  '/notifications': typeof AppNotificationsRoute
+  '/': typeof AppIndexRoute
   '/$app/$section': typeof AppAppSectionRoute
   '/$app': typeof AppAppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/error': typeof ErrorRoute
   '/login': typeof LoginRoute
@@ -101,6 +108,8 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/verify': typeof VerifyRoute
   '/_app/$app': typeof AppAppRouteWithChildren
+  '/_app/notifications': typeof AppNotificationsRoute
+  '/_app/': typeof AppIndexRoute
   '/_app/$app/$section': typeof AppAppSectionRoute
   '/_app/$app/': typeof AppAppIndexRoute
 }
@@ -114,21 +123,22 @@ export interface FileRouteTypes {
     | '/settings'
     | '/verify'
     | '/$app'
+    | '/notifications'
     | '/$app/$section'
     | '/$app/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/error'
     | '/login'
     | '/recovery'
     | '/settings'
     | '/verify'
+    | '/notifications'
+    | '/'
     | '/$app/$section'
     | '/$app'
   id:
     | '__root__'
-    | '/'
     | '/_app'
     | '/error'
     | '/login'
@@ -136,12 +146,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/verify'
     | '/_app/$app'
+    | '/_app/notifications'
+    | '/_app/'
     | '/_app/$app/$section'
     | '/_app/$app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   ErrorRoute: typeof ErrorRoute
   LoginRoute: typeof LoginRoute
@@ -152,13 +163,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -201,11 +205,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/': {
+      id: '/_app/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/$app': {
       id: '/_app/$app'
       path: '/$app'
       fullPath: '/$app'
       preLoaderRoute: typeof AppAppRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/notifications': {
+      id: '/_app/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/$app/': {
@@ -240,16 +258,19 @@ const AppAppRouteWithChildren =
 
 interface AppRouteChildren {
   AppAppRoute: typeof AppAppRouteWithChildren
+  AppNotificationsRoute: typeof AppNotificationsRoute
+  AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAppRoute: AppAppRouteWithChildren,
+  AppNotificationsRoute: AppNotificationsRoute,
+  AppIndexRoute: AppIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   ErrorRoute: ErrorRoute,
   LoginRoute: LoginRoute,

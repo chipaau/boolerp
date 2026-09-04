@@ -2,23 +2,15 @@ import type { LucideIcon } from 'lucide-react'
 import {
   SlidersHorizontal,
   Users,
+  UsersRound,
   UserCog,
   ListTodo,
-  CalendarDays,
-  Landmark,
   Boxes,
   LayoutDashboard,
   Shield,
   Building2,
   MapPin,
   Settings,
-  LayoutGrid,
-  UsersRound,
-  Megaphone,
-  FileText,
-  Inbox,
-  Star,
-  UserCircle,
   Briefcase,
   BadgeCheck,
   Layers,
@@ -26,26 +18,32 @@ import {
   Activity,
   Target,
   ScrollText,
-  CalendarClock,
-  CalendarRange,
-  BookOpen,
-  Receipt,
-  CreditCard,
-  BarChart3,
   Package,
-  Warehouse,
-  ArrowLeftRight,
+  PackageMinus,
   Truck,
+  ScanBarcode,
+  ClipboardCheck,
+  Wrench,
+  NotebookPen,
+  FolderOpen,
+  ChartColumn,
+  FileBarChart,
+  ShoppingCart,
+  FileSignature,
+  Receipt,
 } from 'lucide-react'
-
-// A proto page renders one of these looks so placeholders resemble the real screen they'll become.
-export type ProtoVariant = 'dashboard' | 'table' | 'list' | 'calendar'
 
 export type AppMenuItem = {
   title: string
-  slug: string // '' = the app's home
+  slug: string // empty string = the app home
   icon?: LucideIcon
-  variant?: ProtoVariant
+  /**
+   * Shows a live count at the right edge, read from the shell's nav counts under `key`
+   * (see features/shell); `tone` colours it (plain by default). The registry never holds numbers.
+   */
+  badge?: { key: string; tone?: 'risk' | 'warning' }
+  /** Search params the link carries (saved views preset a filter / query). */
+  search?: Record<string, string>
 }
 export type AppMenuSection = { title?: string; items: AppMenuItem[] }
 
@@ -57,177 +55,189 @@ export type AppDef = {
   menu: AppMenuSection[]
 }
 
-// The apps hosted by the workspace shell. Features are adapted from the sentinel reference; the
-// per-app accent colour lives in app-themes.css keyed by `theme-<slug>`. Pages are prototypes for
-// now (see src/proto) — replacing one with a real screen is a one-line change in its route.
+// The apps hosted by the workspace shell, in the order they appear on the Home honeycomb (the
+// first eight get a tile; the rest are reachable from the switcher). Sections without a real
+// screen in features/screens.ts render the prototype page (src/proto) until one exists.
+// Archived apps (Staff Hub, Calendar, Finance) live in src/_archive.
 export const APPS: AppDef[] = [
-  {
-    slug: 'staff-hub',
-    name: 'Staff Hub',
-    description: 'Your day at work',
-    icon: UsersRound,
-    menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
-      {
-        title: 'Workplace',
-        items: [
-          { title: 'My Apps', slug: 'my-apps', icon: LayoutGrid, variant: 'list' },
-          { title: 'Directory', slug: 'directory', icon: Users, variant: 'table' },
-          { title: 'My Team', slug: 'team', icon: UsersRound, variant: 'list' },
-        ],
-      },
-      {
-        title: 'Updates',
-        items: [
-          { title: 'Announcements', slug: 'announcements', icon: Megaphone, variant: 'list' },
-          { title: 'Policies', slug: 'policies', icon: FileText, variant: 'table' },
-        ],
-      },
-      {
-        title: 'Me',
-        items: [
-          { title: 'Requests', slug: 'requests', icon: Inbox, variant: 'table' },
-          { title: 'Reviews', slug: 'reviews', icon: Star, variant: 'table' },
-          { title: 'Profile', slug: 'profile', icon: UserCircle, variant: 'dashboard' },
-        ],
-      },
-    ],
-  },
   {
     slug: 'control-centre',
     name: 'Control Centre',
-    description: 'Tenant administration',
+    description: 'Configure your workspace',
     icon: SlidersHorizontal,
     menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
+      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
       {
         title: 'Access',
         items: [
-          { title: 'Users', slug: 'users', icon: Users, variant: 'table' },
-          { title: 'Roles', slug: 'roles', icon: Shield, variant: 'table' },
+          { title: 'Users', slug: 'users', icon: Users },
+          { title: 'Roles', slug: 'roles', icon: Shield },
         ],
       },
       {
         title: 'Organisation',
         items: [
-          { title: 'Org Units', slug: 'org-units', icon: Building2, variant: 'list' },
-          { title: 'Sites', slug: 'sites', icon: MapPin, variant: 'table' },
+          { title: 'Org Units', slug: 'org-units', icon: Building2 },
+          { title: 'Sites', slug: 'sites', icon: MapPin },
         ],
       },
-      { items: [{ title: 'Settings', slug: 'settings', icon: Settings, variant: 'dashboard' }] },
-    ],
-  },
-  {
-    slug: 'hrms',
-    name: 'HRMS',
-    description: 'Human resources',
-    icon: UserCog,
-    menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
-      {
-        title: 'People',
-        items: [
-          { title: 'Employees', slug: 'employees', icon: Users, variant: 'table' },
-          { title: 'Positions', slug: 'positions', icon: BadgeCheck, variant: 'table' },
-        ],
-      },
-      {
-        title: 'Structure',
-        items: [
-          { title: 'Jobs', slug: 'jobs', icon: Briefcase, variant: 'table' },
-          { title: 'Job Classifications', slug: 'job-classifications', icon: Layers, variant: 'list' },
-          { title: 'Org Units', slug: 'org-units', icon: Building2, variant: 'list' },
-        ],
-      },
-      { items: [{ title: 'Settings', slug: 'settings', icon: Settings, variant: 'dashboard' }] },
+      { items: [{ title: 'Settings', slug: 'settings', icon: Settings }] },
     ],
   },
   {
     slug: 'tasks',
-    name: 'Task Management',
-    description: 'Tasks & operations',
+    name: 'Task',
+    description: 'Plan & track work',
     icon: ListTodo,
     menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
+      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
       {
         title: 'Work',
         items: [
-          { title: 'My Tasks', slug: 'my-tasks', icon: ClipboardList, variant: 'list' },
-          { title: 'All Tasks', slug: 'tasks', icon: ListTodo, variant: 'table' },
-          { title: 'Activities', slug: 'activities', icon: Activity, variant: 'list' },
+          { title: 'My Tasks', slug: 'my-tasks', icon: ClipboardList },
+          { title: 'All Tasks', slug: 'tasks', icon: ListTodo },
+          { title: 'Activities', slug: 'activities', icon: Activity },
         ],
       },
       {
         title: 'Planning',
         items: [
-          { title: 'Operation Plans', slug: 'operation-plans', icon: Target, variant: 'table' },
-          { title: 'Service Charter', slug: 'service-charter', icon: ScrollText, variant: 'list' },
+          { title: 'Operation Plans', slug: 'operation-plans', icon: Target },
+          { title: 'Service Charter', slug: 'service-charter', icon: ScrollText },
         ],
       },
-    ],
-  },
-  {
-    slug: 'calendar',
-    name: 'Calendar',
-    description: 'Schedules & events',
-    icon: CalendarDays,
-    menu: [
-      {
-        items: [
-          { title: 'Calendar', slug: '', icon: CalendarDays, variant: 'calendar' },
-          { title: 'Agenda', slug: 'agenda', icon: CalendarClock, variant: 'list' },
-          { title: 'Events', slug: 'events', icon: CalendarRange, variant: 'table' },
-        ],
-      },
-    ],
-  },
-  {
-    slug: 'finance',
-    name: 'Finance Management',
-    description: 'Accounts & invoices',
-    icon: Landmark,
-    menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
-      {
-        title: 'Ledger',
-        items: [
-          { title: 'Accounts', slug: 'accounts', icon: BookOpen, variant: 'table' },
-          { title: 'Invoices', slug: 'invoices', icon: Receipt, variant: 'table' },
-          { title: 'Payments', slug: 'payments', icon: CreditCard, variant: 'table' },
-        ],
-      },
-      { items: [{ title: 'Reports', slug: 'reports', icon: BarChart3, variant: 'dashboard' }] },
     ],
   },
   {
     slug: 'inventory',
     name: 'Inventory',
-    description: 'Stock & assets',
+    description: 'Track & manage inventory',
     icon: Boxes,
+    // the design's rail: counts on the right, low stock and requests coloured; the user's saved
+    // views are appended by the sidebar from features/shell
     menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard, variant: 'dashboard' }] },
       {
-        title: 'Stock',
+        title: 'Inventory',
         items: [
-          { title: 'Items', slug: 'items', icon: Package, variant: 'table' },
-          { title: 'Stores', slug: 'stores', icon: Warehouse, variant: 'list' },
-          { title: 'Movements', slug: 'movements', icon: ArrowLeftRight, variant: 'table' },
+          { title: 'Overview', slug: '', icon: LayoutDashboard },
+          { title: 'All items', slug: 'items', icon: Package, badge: { key: 'items' } },
+          { title: 'Low stock', slug: 'low-stock', icon: PackageMinus, badge: { key: 'low-stock', tone: 'risk' } },
+          { title: 'Purchase orders', slug: 'purchase-orders', icon: FileSignature, badge: { key: 'purchase-orders' } },
+          { title: 'Suppliers', slug: 'suppliers', icon: Truck },
+          { title: 'Requests & approvals', slug: 'requests', icon: ClipboardCheck, badge: { key: 'requests', tone: 'warning' } },
+          { title: 'Reports', slug: 'reports', icon: FileBarChart },
+          { title: 'Settings & permissions', slug: 'settings', icon: Settings },
         ],
       },
-      { items: [{ title: 'Suppliers', slug: 'suppliers', icon: Truck, variant: 'table' }] },
+    ],
+  },
+  {
+    slug: 'asset',
+    name: 'Asset',
+    description: 'Register & verify assets',
+    icon: ScanBarcode,
+    menu: [
+      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
+      {
+        title: 'Register',
+        items: [
+          { title: 'Assets', slug: 'assets', icon: Layers },
+          { title: 'Verifications', slug: 'verifications', icon: ClipboardCheck },
+          { title: 'Maintenance', slug: 'maintenance', icon: Wrench },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'notes',
+    name: 'Notes',
+    description: 'Capture notes & documents',
+    icon: NotebookPen,
+    menu: [
+      {
+        items: [
+          { title: 'All Notes', slug: '', icon: NotebookPen },
+          { title: 'Folders', slug: 'folders', icon: FolderOpen },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'directory',
+    name: 'Directory',
+    description: 'People & teams',
+    icon: Users,
+    menu: [
+      {
+        items: [
+          { title: 'People', slug: '', icon: Users },
+          { title: 'Teams', slug: 'teams', icon: UsersRound },
+          { title: 'Departments', slug: 'departments', icon: Building2 },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'hrms',
+    name: 'HRMS',
+    description: 'People & positions',
+    icon: UserCog,
+    menu: [
+      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
+      {
+        title: 'People',
+        items: [
+          { title: 'Employees', slug: 'employees', icon: Users },
+          { title: 'Positions', slug: 'positions', icon: BadgeCheck },
+        ],
+      },
+      {
+        title: 'Structure',
+        items: [
+          { title: 'Jobs', slug: 'jobs', icon: Briefcase },
+          { title: 'Job Classifications', slug: 'job-classifications', icon: Layers },
+          { title: 'Org Units', slug: 'org-units', icon: Building2 },
+        ],
+      },
+      { items: [{ title: 'Settings', slug: 'settings', icon: Settings }] },
+    ],
+  },
+  {
+    slug: 'analytics',
+    name: 'Analytics',
+    description: 'Reports & insights',
+    icon: ChartColumn,
+    menu: [
+      {
+        items: [
+          { title: 'Dashboards', slug: '', icon: LayoutDashboard },
+          { title: 'Reports', slug: 'reports', icon: FileBarChart },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'procurement',
+    name: 'Procurement',
+    description: 'Requests & purchase orders',
+    icon: ShoppingCart,
+    menu: [
+      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
+      {
+        title: 'Purchasing',
+        items: [
+          { title: 'Goods Requests', slug: 'requests', icon: ClipboardList },
+          { title: 'Purchase Orders', slug: 'purchase-orders', icon: FileSignature },
+          { title: 'Invoices', slug: 'invoices', icon: Receipt },
+        ],
+      },
+      { items: [{ title: 'Suppliers', slug: 'suppliers', icon: Truck }] },
     ],
   },
 ]
 
-export const DEFAULT_APP = 'staff-hub'
-
 export function getApp(slug: string): AppDef | undefined {
   return APPS.find((a) => a.slug === slug)
-}
-
-/** The CSS class that themes an app's accent colour (see app-themes.css). */
-export function appThemeClass(slug: string): string {
-  return `theme-${slug}`
 }
 
 export function findMenuItem(app: AppDef, section: string): AppMenuItem | undefined {
