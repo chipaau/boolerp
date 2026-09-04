@@ -109,12 +109,14 @@ export function CalendarPage() {
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const split = boardView === 'month' || weekish
+  // the day panel earns its place only beside the month grid, where chips truncate; the day and
+  // week columns already show every meeting in full
+  const split = boardView === 'month'
 
   return (
     <div className="min-h-0 w-full overflow-y-auto">
       <div className="px-8 pb-24">
-        <div className="sticky top-0 z-20 -mx-8 mb-[22px] flex flex-wrap items-center gap-2.5 border-b border-divider bg-card px-8 py-[13px]">
+        <div className="sticky top-0 z-20 -mx-8 mb-[22px] flex items-center gap-2.5 border-b border-divider bg-card px-8 py-[13px]">
           <Segmented>
             <SegmentedItem active={false} className="font-bold text-foreground" onClick={() => set({ date: today })}>
               Today
@@ -127,7 +129,7 @@ export function CalendarPage() {
             </SegmentedItem>
           </Segmented>
           <span aria-hidden="true" className="h-[22px] w-px bg-border" />
-          <div className="flex items-center">
+          <div className="flex min-w-0 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {VIEWS.map((v) => (
               <button
                 key={v.key}
@@ -165,7 +167,7 @@ export function CalendarPage() {
             </PopoverContent>
           </Popover>
           <span className="flex-1" />
-          <Button onClick={() => setDraft({ date, start: '16:00', duration: 45 })}>
+          <Button className="shrink-0" onClick={() => setDraft({ date, start: '16:00', duration: 45 })}>
             New meeting
             <ButtonArrow>
               <Plus strokeWidth={2.2} />
@@ -216,7 +218,7 @@ export function CalendarPage() {
               />
             )}
           </div>
-          {split && <DayPanel meetings={visible} date={date} today={today} onCreate={() => setDraft({ date, start: `${String(DAY_START + 1).padStart(2, '0')}:00`, duration: 30 })} />}
+          {split && <DayPanel meetings={visible} date={date} today={today} nowMinutes={me.nowMinutes} onCreate={() => setDraft({ date, start: `${String(DAY_START + 1).padStart(2, '0')}:00`, duration: 30 })} />}
         </div>
       </div>
       <NewMeetingDialog draft={draft} today={today} onClose={() => setDraft(null)} />

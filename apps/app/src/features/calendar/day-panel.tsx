@@ -2,13 +2,13 @@ import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { cn } from '@workspace/ui/lib/utils'
-import { dayOfMonth, fmtRange, hoursLabel, meetingsOn, minutesOf, monthLong, myRsvp, weekdayLong } from './logic'
+import { dayOfMonth, fmtRange, hoursLabel, meetingsOn, minutesOf, monthLong, myRsvp, toMinutes, weekdayLong } from './logic'
 import { HexDot, MeetingLink, RsvpBadge, useCalendarMap } from './meeting-bits'
 import { useMe } from './queries'
 import type { Meeting } from './types'
 
-/** The selected day beside the month and week grids: date, load, and its meetings in order. */
-export function DayPanel({ meetings, date, today, onCreate }: { meetings: Meeting[]; date: string; today: string; onCreate: () => void }) {
+/** The selected day beside the month grid: date, load, and its meetings in order; today's finished ones fade. */
+export function DayPanel({ meetings, date, today, nowMinutes, onCreate }: { meetings: Meeting[]; date: string; today: string; nowMinutes: number; onCreate: () => void }) {
   const cals = useCalendarMap()
   const me = useMe()
   const items = meetingsOn(meetings, date)
@@ -35,7 +35,7 @@ export function DayPanel({ meetings, date, today, onCreate }: { meetings: Meetin
       </div>
       <div className="max-h-[calc(100svh-300px)] overflow-y-auto p-2">
         {items.map((m) => (
-          <MeetingLink key={m.id} m={m} className="flex gap-[11px] rounded-[11px] px-3 py-[11px] outline-none transition-colors duration-instant ease-hexa hover:bg-surface-soft focus-visible:bg-surface-soft">
+          <MeetingLink key={m.id} m={m} className={cn('flex gap-[11px] rounded-[11px] px-3 py-[11px] outline-none transition-colors duration-instant ease-hexa hover:bg-surface-soft focus-visible:bg-surface-soft', date === today && toMinutes(m.end) < nowMinutes && 'opacity-55 hover:opacity-100')}>
             <HexDot tone={cals[m.calendar].tone} size={8} className="mt-1" />
             <span className="min-w-0 flex-1">
               <span className="block text-xs font-bold tabular-nums text-muted-foreground">{fmtRange(m.start, m.end)}</span>
