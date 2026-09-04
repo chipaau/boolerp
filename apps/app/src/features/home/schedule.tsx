@@ -6,28 +6,25 @@ import {
   AvatarGroupCount,
   AvatarImage,
 } from '@workspace/ui/components/avatar'
-import { ArrowButton } from '@workspace/ui/components/arrow-button'
+import { MapPin } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@workspace/ui/components/tooltip'
 import { useSchedule } from './queries'
 import { MeetingMarker } from './markers'
 import type { ScheduleItem } from './types'
 
-/** The hover card for one meeting: what, when, where, who, and a jump to the calendar. */
+/** The hover card for one meeting: what, when, where, who. Clicking the time opens the meeting. */
 function MeetingCard({ item }: { item: ScheduleItem }) {
   const names = [...item.people.map((p) => p.name), ...(item.others ?? [])]
   return (
     <div className="w-64 space-y-3 p-1">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-ui-lg leading-[1.35] font-bold text-foreground">{item.title}</div>
-          <div className="mt-0.5 text-ui-lg text-faint">
-            {item.start} – {item.end}
-          </div>
+      <div className="min-w-0">
+        <div className="text-ui-lg leading-[1.35] font-bold text-foreground">{item.title}</div>
+        <div className="mt-0.5 text-ui-lg text-faint">
+          {item.start} – {item.end}
         </div>
-        <ArrowButton small aria-label={`Open ${item.title} in the calendar`} render={<Link to="/$app/$section" params={{ app: 'calendar', section: 'meetings' }} search={{ id: item.meetingId }} />} />
       </div>
       <div className="flex items-center gap-2.5 text-sm text-foreground">
-        <MeetingMarker size={16} />
+        <MapPin className="size-4 shrink-0 text-faint" strokeWidth={1.6} />
         <span className="min-w-0 truncate">{item.location}</span>
       </div>
       <div className="text-caption text-muted-foreground">
