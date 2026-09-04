@@ -32,8 +32,8 @@ export type Meeting = {
   calendar: CalendarKey
   room: string
   organiser: string
-  /** Human recurrence label ("Every weekday"); empty when one-off. */
-  repeats: string
+  /** Recurrence rule; '' when one-off. Instances are stored expanded, so the rule is descriptive for now. */
+  repeats: Recurrence
   attendees: Attendee[]
   agenda: AgendaItem[]
   notes: string
@@ -42,7 +42,7 @@ export type Meeting = {
   moved?: boolean
 }
 
-export type CalendarView = 'month' | 'workweek' | 'week' | 'agenda' | 'rooms'
-export type Recurrence = '' | 'Daily' | 'Weekly' | 'Fortnightly' | 'Monthly'
+export type CalendarView = 'day' | 'month' | 'workweek' | 'week' | 'agenda' | 'rooms'
+export type Recurrence = '' | 'Daily' | 'Weekdays' | 'Weekly' | 'Fortnightly' | 'Monthly' | 'Quarterly'
 
 export type Swatch = { name: string; tone: Tone }

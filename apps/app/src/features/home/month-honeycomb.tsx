@@ -30,7 +30,7 @@ const CELL_ASPECT = 25.5 / 25
 // Fill per activity level (light activity / healthy / at or above target); tokens in globals.css.
 const LEVEL_FILL = ['text-heat-1', 'text-heat-2', 'text-heat-3'] as const
 
-/** The hover card for one day: date, counts, and a jump to that day in Task. */
+/** The hover card for one day: date, counts, and a jump to that day in the calendar. */
 function DayCard({ date, activity, isToday }: { date: Date; activity: DayActivity; isToday: boolean }) {
   const weekday = isToday ? 'Today' : weekdayLong(date)
   const day = date.getDate()
@@ -52,8 +52,8 @@ function DayCard({ date, activity, isToday }: { date: Date; activity: DayActivit
         </div>
         <ArrowButton
           small
-          aria-label={`Open ${weekday} ${day} in Task`}
-          render={<Link to="/$app/$section" params={{ app: 'tasks', section: 'my-tasks' }} search={{ date: isoDate(date) }} />}
+          aria-label={`Open ${weekday} ${day} in the calendar`}
+          render={<Link to="/$app" params={{ app: 'calendar' }} search={{ view: 'day', date: isoDate(date) }} />}
         />
       </div>
       <ul className="space-y-2 text-ui-lg">
@@ -95,7 +95,7 @@ export function MonthHoneycomb({ today }: { today: Date }) {
             <ChevronRight className="size-[18px]" strokeWidth={1.75} />
           </Button>
         </div>
-        <ArrowButton aria-label="Open calendar" />
+        <ArrowButton aria-label="Open calendar" render={<Link to="/$app" params={{ app: 'calendar' }} search={{ view: 'month', date: isoDate(cursor) }} />} />
       </div>
 
       <TooltipProvider delay={150}>

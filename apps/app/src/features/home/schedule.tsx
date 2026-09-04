@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import {
   Avatar,
   AvatarFallback,
@@ -23,7 +24,7 @@ function MeetingCard({ item }: { item: ScheduleItem }) {
             {item.start} – {item.end}
           </div>
         </div>
-        <ArrowButton small aria-label={`Open ${item.title} in the calendar`} />
+        <ArrowButton small aria-label={`Open ${item.title} in the calendar`} render={<Link to="/$app/$section" params={{ app: 'calendar', section: 'meetings' }} search={{ id: item.meetingId }} />} />
       </div>
       <div className="flex items-center gap-2.5 text-sm text-foreground">
         <MeetingMarker size={16} />

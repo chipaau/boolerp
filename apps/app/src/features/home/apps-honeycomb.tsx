@@ -19,7 +19,7 @@ const TILE_ORDER = [
   'notes',
   'directory',
   'analytics',
-  'procurement',
+  'calendar',
 ] as const
 const TILES = TILE_ORDER.map((slug) => getApp(slug)).filter((a): a is AppDef => Boolean(a))
 

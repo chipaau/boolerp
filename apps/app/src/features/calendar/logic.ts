@@ -163,12 +163,16 @@ export function suggestSlots(meetings: Meeting[], people: string[], iso: string,
 export const RECURRENCES: { value: Recurrence; label: string }[] = [
   { value: '', label: 'Does not repeat' },
   { value: 'Daily', label: 'Every day' },
+  { value: 'Weekdays', label: 'Every weekday' },
   { value: 'Weekly', label: 'Every week' },
   { value: 'Fortnightly', label: 'Every two weeks' },
   { value: 'Monthly', label: 'Every month' },
+  { value: 'Quarterly', label: 'Every quarter' },
 ]
+export const recurrenceLabel = (r: Recurrence) => (r ? RECURRENCES.find((x) => x.value === r)?.label ?? r : '')
 
-export const VIEWS: { key: 'month' | 'workweek' | 'week' | 'agenda' | 'rooms'; label: string; hint: string }[] = [
+export const VIEWS: { key: 'day' | 'month' | 'workweek' | 'week' | 'agenda' | 'rooms'; label: string; hint: string }[] = [
+  { key: 'day', label: 'Day', hint: 'D' },
   { key: 'month', label: 'Month', hint: 'M' },
   { key: 'workweek', label: 'Work week', hint: 'E' },
   { key: 'week', label: 'Week', hint: 'W' },

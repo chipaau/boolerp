@@ -31,7 +31,7 @@ export function WeekGrid({
 }: {
   meetings: Meeting[]
   start: string
-  days: 5 | 7
+  days: 1 | 5 | 7
   selected: string
   today: string
   nowMinutes: number

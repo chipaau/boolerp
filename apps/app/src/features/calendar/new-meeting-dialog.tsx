@@ -77,7 +77,7 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
       calendar,
       room,
       organiser: me.key,
-      repeats: repeats ? RECURRENCES.find((r) => r.value === repeats)?.label ?? '' : '',
+      repeats,
       attendees: everyone.map((k) => ({ person: k, rsvp: k === me.key ? 'yes' : 'pending' })),
       agenda: notes
         .split('\n')

@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { Avatar, AvatarFallback, AvatarImage } from '@workspace/ui/components/avatar'
 import { Badge } from '@workspace/ui/components/badge'
 import { cn } from '@workspace/ui/lib/utils'
-import { RSVP_META, fmtRange, isTentative, longDate, myRsvp } from './logic'
+import { RSVP_META, fmtRange, isTentative, longDate, myRsvp, recurrenceLabel } from './logic'
 import { useCalendars, useMe, usePeople } from './queries'
 import type { CalendarDef, Meeting, Person, Rsvp, Tone } from './types'
 
@@ -91,7 +91,7 @@ export function MeetingHoverCard({ m }: { m: Meeting }) {
       </div>
       <div className="text-xs text-faint">
         {m.room} · {m.attendees.length} invited · organised by {people[m.organiser]?.name}
-        {m.repeats ? ` · ${m.repeats}` : ''}
+        {m.repeats ? ` · ${recurrenceLabel(m.repeats)}` : ''}
       </div>
       <div className="pt-1 text-fine text-faint">{tentative ? 'Dashed edge means tentative — waiting on your reply' : 'Click to open · drag in week view to move'}</div>
     </div>

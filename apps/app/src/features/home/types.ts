@@ -10,6 +10,8 @@ export type Person = { name: string; photo?: string }
 /** `people` are shown as avatars; `others` are the rest, listed on the "+n" count. */
 export type ScheduleItem = {
   id: string
+  /** The calendar meeting this row opens. */
+  meetingId: string
   title: string
   start: string
   end: string

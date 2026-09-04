@@ -8,7 +8,7 @@ import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { useMembership } from '@/features/shell/queries'
-import { fmtRange, myRsvp, shortDate, toIso } from './logic'
+import { fmtRange, myRsvp, recurrenceLabel, shortDate, toIso } from './logic'
 import { PersonAvatar, RsvpBadge, useCalendarMap, usePeopleMap } from './meeting-bits'
 import { useMe, useMeetingActions, useMeetings } from './queries'
 import { RescheduleDialog } from './reschedule-dialog'
@@ -65,7 +65,7 @@ export function MeetingDetailPage() {
                 </Badge>
                 {m.repeats && (
                   <Badge variant="neutral" size="sm">
-                    {m.repeats}
+                    {recurrenceLabel(m.repeats)}
                   </Badge>
                 )}
                 {m.cancelled && (

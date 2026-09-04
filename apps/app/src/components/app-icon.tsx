@@ -36,6 +36,7 @@ const HUE: Partial<Record<string, string>> = {
   directory: 'text-brand',
   hrms: 'text-tone-plum',
   procurement: 'text-tone-slate',
+  calendar: 'text-brand',
 }
 
 export function AppIcon({

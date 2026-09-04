@@ -42,9 +42,9 @@ export function CalendarPage() {
   )
 
   const boardView = view === 'awaiting' ? 'agenda' : view
-  const weekish = boardView === 'week' || boardView === 'workweek'
-  const days = boardView === 'workweek' ? 5 : 7
-  const weekStart = boardView === 'workweek' ? addDays(startOfWeek(date), 1) : startOfWeek(date)
+  const weekish = boardView === 'day' || boardView === 'week' || boardView === 'workweek'
+  const days = boardView === 'day' ? 1 : boardView === 'workweek' ? 5 : 7
+  const weekStart = boardView === 'day' ? date : boardView === 'workweek' ? addDays(startOfWeek(date), 1) : startOfWeek(date)
   const weekEnd = addDays(weekStart, days - 1)
   const weekList = visible.filter((m) => m.date >= weekStart && m.date <= weekEnd)
   const monthList = visible.filter((m) => sameMonth(m.date, date))
@@ -64,16 +64,17 @@ export function CalendarPage() {
   const title =
     boardView === 'rooms'
       ? roomsSpan === 'day' ? longDate(date) : `Week of ${dayOfMonth(addDays(startOfWeek(date), 1))} ${monthShort(addDays(startOfWeek(date), 1))}`
-      : weekish ? rangeTitle(weekStart, weekEnd) : monthYear(date)
+      : boardView === 'day' ? longDate(date) : weekish ? rangeTitle(weekStart, weekEnd) : monthYear(date)
   const subtitle =
     boardView === 'rooms'
       ? roomsSpan === 'day' ? `${rooms.length} rooms · ${roomStats.booked} bookings · ${hoursLabel(roomStats.free)} free across the day` : `${rooms.length} rooms · Monday to Friday · click a day to open it`
       : view === 'awaiting' ? `${awaitingList.length} invitations waiting on you`
-      : weekish ? `${weekList.length} meetings · ${hoursLabel(minutesOf(weekList))} booked`
+      : weekish ? `${weekList.length} ${weekList.length === 1 ? 'meeting' : 'meetings'} · ${hoursLabel(minutesOf(weekList))} booked`
       : `${monthList.length} meetings this month · all shared calendars`
 
   function step(dir: 1 | -1) {
-    if (weekish) set({ date: addDays(date, 7 * dir) })
+    if (boardView === 'day') set({ date: addDays(date, dir) })
+    else if (weekish) set({ date: addDays(date, 7 * dir) })
     else if (boardView === 'rooms') set({ date: addDays(date, (roomsSpan === 'week' ? 7 : 1) * dir) })
     else set({ date: addMonths(date, dir) })
   }
@@ -87,13 +88,14 @@ export function CalendarPage() {
     toast(`Moved to ${shortDate(toDate)}, ${fmtTime(start)}`, { undo: () => { undo(); toast('Move undone') } })
   }
 
-  // m / w / e / a / r switch views, t is today, n a new meeting, arrows step the period
+  // d / m / w / e / a / r switch views, t is today, n a new meeting, arrows step the period
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement | null)?.tagName ?? ''
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || e.metaKey || e.ctrlKey || draft) return
       const k = e.key.toLowerCase()
-      if (k === 'm') set({ view: 'month' })
+      if (k === 'd') set({ view: 'day' })
+      else if (k === 'm') set({ view: 'month' })
       else if (k === 'w') set({ view: 'week' })
       else if (k === 'e') set({ view: 'workweek' })
       else if (k === 'a') set({ view: 'agenda' })

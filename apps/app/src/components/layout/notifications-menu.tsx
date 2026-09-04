@@ -46,7 +46,7 @@ export function NotificationsMenu() {
             <DropdownMenuItem
               key={n.id}
               className="items-start gap-[11px] rounded-[9px] px-3 py-[11px]"
-              render={<Link to="/$app/$section" params={{ app: n.to.app, section: n.to.section ?? '' }} />}
+              render={<Link to="/$app/$section" params={{ app: n.to.app, section: n.to.section ?? '' }} search={{ id: n.to.id }} />}
               onClick={() => markAllRead.mutate()}
             >
               <HexGlyph size={10} className={cn('mt-1 shrink-0', n.unread ? 'text-brand-soft' : 'text-border')} />
