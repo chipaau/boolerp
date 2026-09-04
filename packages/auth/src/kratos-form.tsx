@@ -26,7 +26,9 @@ export function KratosForm({
   const nodes = flow.ui.nodes.filter((n) => n.group === 'default' || !groups || groups.includes(n.group))
   const scripts = nodes.filter((n) => n.type === 'script')
   const fields = nodes.filter((n) => n.type !== 'script' && !isSubmit(n))
-  const submits = nodes.filter(isSubmit)
+  // Password is the primary way in; Kratos happens to list the security-key method first, so the
+  // submits are ordered password → the rest, and the first one gets the amber CTA.
+  const submits = nodes.filter(isSubmit).sort((x, y) => rank(x) - rank(y))
 
   // WebAuthn / passkey steps ship a helper script node; load it once (on this origin) so the trigger
   // buttons' onclick handlers have `window.__oryWebAuthn*` available.
@@ -85,6 +87,13 @@ export function KratosForm({
 
 function isSubmit(node: UiNode) {
   return node.type === 'input' && (node.attributes.type === 'submit' || node.attributes.type === 'button')
+}
+
+function rank(node: UiNode) {
+  const v = String(node.attributes.value ?? '')
+  if (v === 'password') return 0
+  if (v === 'totp' || v === 'code') return 1
+  return 2
 }
 
 /** Runs the inline handler Kratos attaches to WebAuthn / passkey trigger buttons. */
