@@ -24,6 +24,7 @@ export function RoomsBoard({
   onSpan,
   onOpenDay,
   onBook,
+  onManage,
 }: {
   meetings: Meeting[]
   date: string
@@ -33,6 +34,8 @@ export function RoomsBoard({
   onSpan: (s: 'day' | 'week') => void
   onOpenDay: (iso: string) => void
   onBook: (room: string, iso: string, start: string, duration: number) => void
+  /** Admins only: opens the room list to add, edit or remove rooms. */
+  onManage?: () => void
 }) {
   const rooms = useRooms()
   const cals = useCalendarMap()
@@ -46,7 +49,13 @@ export function RoomsBoard({
           <div className="mt-1 text-meta text-muted-foreground">{span === 'day' ? 'Dashed blocks are free — click one to book it.' : 'Click any day to open its hour-by-hour grid.'}</div>
         </div>
         <div className="flex items-center gap-[9px]">
-          <span className="text-fine text-faint">Capacity set by admins</span>
+          {onManage ? (
+            <button type="button" onClick={onManage} className="text-fine font-bold text-link hover:underline">
+              Manage rooms
+            </button>
+          ) : (
+            <span className="text-fine text-faint">Capacity set by admins</span>
+          )}
           <Segmented>
             <SegmentedItem active={span === 'day'} onClick={() => onSpan('day')}>
               Day

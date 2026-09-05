@@ -6,7 +6,7 @@ import { CheckIcon, MinusIcon } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
 
 /** 19px box, 5px radius: Sand when off, amber with a cream check (or dash) when on. */
-function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
+function Checkbox({ className, indicatorClassName, ...props }: CheckboxPrimitive.Root.Props & { indicatorClassName?: string }) {
   return (
     <CheckboxPrimitive.Root
       data-slot="checkbox"
@@ -18,7 +18,10 @@ function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
     >
       <CheckboxPrimitive.Indicator
         data-slot="checkbox-indicator"
-        className="grid place-items-center text-brand-foreground [&>svg]:size-3 data-indeterminate:[&>svg:first-child]:hidden not-data-indeterminate:[&>svg:last-child]:hidden"
+        className={cn(
+          "grid place-items-center text-brand-foreground [&>svg]:size-3 data-indeterminate:[&>svg:first-child]:hidden not-data-indeterminate:[&>svg:last-child]:hidden",
+          indicatorClassName
+        )}
       >
         <CheckIcon strokeWidth={3} />
         <MinusIcon strokeWidth={3} />

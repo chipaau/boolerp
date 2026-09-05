@@ -4,7 +4,7 @@
 import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import * as mock from './mock'
-import type { CalendarDef, CalendarKey, Meeting, Tone } from './types'
+import type { CalendarDef, CalendarKey, Meeting, Room, Tone } from './types'
 
 const key = (...parts: string[]) => ['calendar', ...parts] as const
 
@@ -69,6 +69,26 @@ export function useCalendarActions() {
   return {
     rename: (k: CalendarKey, label: string) => update((c) => ({ ...c, label: label || c.label }), k),
     recolor: (k: CalendarKey, tone: Tone) => update((c) => ({ ...c, tone }), k),
+  }
+}
+
+/** Admins keep the room list. Meetings name rooms, so a rename follows through to them. */
+export function useRoomActions() {
+  const qc = useQueryClient()
+  const set = (fn: (list: Room[]) => Room[]) => qc.setQueryData<Room[]>(key('rooms'), (list) => fn(list ?? []))
+  return {
+    add: (room: Room) => set((list) => [...list, room]),
+    update: (name: string, changes: Partial<Room>) => {
+      set((list) => list.map((r) => (r.name === name ? { ...r, ...changes } : r)))
+      if (changes.name && changes.name !== name) {
+        qc.setQueryData<Meeting[]>(key('meetings'), (list) => (list ?? []).map((m) => (m.room === name ? { ...m, room: changes.name ?? m.room } : m)))
+      }
+    },
+    remove: (name: string): Undo => {
+      let before: Room[] = []
+      set((list) => ((before = list), list.filter((r) => r.name !== name)))
+      return () => set(() => before)
+    },
   }
 }
 
