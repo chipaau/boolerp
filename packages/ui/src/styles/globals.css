@@ -87,6 +87,7 @@
   /* rules */
   --border: #e5d6c2; /* Sand · structural rules (sidebar/topbar edges) */
   --divider: #ece1d2; /* Tan · dividers inside a card */
+  --scrollbar-thumb: #d9cdb9; /* the slim thumb, visible only while a pane scrolls */
   --input: #e7dbc7; /* ghost button inset ring */
   --field: #f1ece2; /* field fill inside a card */
   --ring: #6e7f6a; /* sage focus ring */
@@ -271,6 +272,7 @@
 
   --border: #323231;
   --divider: #323231;
+  --scrollbar-thumb: #3d3c39;
   --input: #3a3937; /* ghost ring */
   --field: #282827;
   --ring: #9aab94;
@@ -657,5 +659,30 @@
   }
   ::selection {
     background-color: var(--primary);
+  }
+
+  /* Theme scrollbar: native bars are hidden everywhere and useScrollbarReveal draws one 4px pill,
+     about 2cm long, beside whichever pane is scrolling. It fades out once the movement stops. */
+  * {
+    scrollbar-width: none;
+  }
+  ::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  [data-scroll-thumb] {
+    position: fixed;
+    z-index: 2147483000;
+    width: 4px;
+    height: 76px;
+    border-radius: 999px;
+    background: var(--scrollbar-thumb);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 240ms var(--ease-hexa, ease);
+  }
+  [data-scroll-thumb][data-on] {
+    opacity: 1;
   }
 }
