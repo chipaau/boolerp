@@ -18,7 +18,7 @@ export type NewMeetingDraft = { date: string; start: string; duration: number; r
 const selectClass = 'h-8 w-full border-b border-border bg-transparent pl-0.5 text-sm font-bold tabular-nums text-foreground outline-none focus-visible:border-brand-soft'
 
 /**
- * The new-meeting sheet from the design: title, calendar, a collapsible "When" with date picker,
+ * The new-meeting sheet from the design: title, calendar, a "When" row whose popover holds the date picker,
  * start/end, all-day, repeats and time suggestions, the room with live availability, attendees
  * with search, and agenda/notes. "Send invites" adds the meeting and offers an undo.
  */
@@ -120,14 +120,14 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
           </div>
 
           <Label>When</Label>
-          <div className={cn('rounded-xl bg-surface-band px-4 pt-1.5', whenOpen ? 'pb-4' : 'pb-3')}>
-            <button type="button" onClick={() => setWhenOpen((o) => !o)} className="flex w-full items-center gap-2.5 rounded-[9px] px-1 py-[11px] text-left outline-none hover:bg-surface-soft focus-visible:ring-2 focus-visible:ring-ring">
-              <CalendarDays className="size-4 text-faint" strokeWidth={1.6} />
-              <span className="min-w-0 flex-1 text-ui-sm font-bold tabular-nums text-foreground">{allDay ? `All day · ${shortDate(date)}` : `${when} · ${fmtDuration(duration)}`}</span>
-              <ChevronRight className={cn('size-4 text-faint transition-transform duration-quick', whenOpen && 'rotate-90')} />
-            </button>
-            {whenOpen && (
-              <div className="pt-1.5">
+          <div className="rounded-xl bg-surface-band px-4 pt-1.5 pb-3">
+            <Popover open={whenOpen} onOpenChange={setWhenOpen}>
+              <PopoverTrigger className="group flex w-full items-center gap-2.5 rounded-[9px] px-1 py-[11px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <CalendarDays className="size-4 fill-transparent text-faint transition-colors duration-instant group-hover:fill-primary group-hover:text-foreground group-data-popup-open:fill-primary group-data-popup-open:text-foreground" strokeWidth={1.6} />
+                <span className="min-w-0 flex-1 text-ui-sm font-bold tabular-nums text-foreground group-hover:font-black group-data-popup-open:font-black">{allDay ? `All day · ${shortDate(date)}` : `${when} · ${fmtDuration(duration)}`}</span>
+                <ChevronDown className={cn('size-4 text-faint transition-transform duration-quick', whenOpen && 'rotate-180')} />
+              </PopoverTrigger>
+              <PopoverContent align="start" sideOffset={6} className="w-(--anchor-width) max-h-[min(62vh,540px)] overflow-y-auto p-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <div className="mb-[5px] text-micro text-faint">Start date</div>
@@ -206,8 +206,8 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
                     })}
                   </div>
                 </div>
-              </div>
-            )}
+              </PopoverContent>
+            </Popover>
             <div className={cn('mt-3 px-1 text-meta font-bold tabular-nums', roomOk && !busyCount ? 'text-muted-foreground' : 'text-tone-risk-foreground')}>
               {allDay
                 ? roomOk ? `${room} is free all day` : `${room} is taken that day`

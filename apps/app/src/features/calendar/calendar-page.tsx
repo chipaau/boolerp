@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Keyboard, Plus, SlidersHorizontal } from 'lucide-react'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@workspace/ui/components/popover'
@@ -9,7 +9,7 @@ import { cn } from '@workspace/ui/lib/utils'
 import { AgendaList } from './agenda-list'
 import { useCalendarSearch } from './calendar-search'
 import { DayPanel } from './day-panel'
-import { DAY_END, DAY_START, VIEWS, addDays, addMonths, dayOfMonth, fmtTime, hoursLabel, longDate, minutesOf, monthShort, monthYear, myRsvp, rangeTitle, roomBusy, roomGaps, sameMonth, shortDate, startOfWeek, toIso, visibleMeetings } from './logic'
+import { DAY_START, VIEWS, addDays, addMonths, dayOfMonth, fmtTime, hoursLabel, longDate, minutesOf, monthShort, monthYear, myRsvp, rangeTitle, roomBusy, roomGaps, sameMonth, shortDate, startOfWeek, toIso, visibleMeetings } from './logic'
 import { usePeopleMap } from './meeting-bits'
 import { MonthGrid } from './month-grid'
 import { NewMeetingDialog  } from './new-meeting-dialog'
@@ -17,6 +17,9 @@ import type {NewMeetingDraft} from './new-meeting-dialog';
 import { useMe, useMeetingActions, useMeetings, useRooms } from './queries'
 import { RoomsBoard } from './rooms-board'
 import type { Meeting, Rsvp } from './types'
+import { useMembership } from '@/features/shell/queries'
+import { ManageDialog } from './manage-dialog'
+import { ShortcutsDialog } from './shortcuts-dialog'
 import { WeekGrid } from './week-grid'
 
 /**
@@ -34,6 +37,9 @@ export function CalendarPage() {
   const toast = useToast()
   const [draft, setDraft] = useState<NewMeetingDraft | null>(null)
   const [roomsSpan, setRoomsSpan] = useState<'day' | 'week'>('day')
+  const [help, setHelp] = useState(false)
+  const [manageRooms, setManageRooms] = useState(false)
+  const isAdmin = useMembership()?.role === 'Admin'
   const today = toIso(new Date())
 
   const visible = useMemo(
@@ -88,11 +94,12 @@ export function CalendarPage() {
     toast(`Moved to ${shortDate(toDate)}, ${fmtTime(start)}`, { undo: () => { undo(); toast('Move undone') } })
   }
 
-  // d / m / w / e / a / r switch views, t is today, n a new meeting, arrows step the period
+  // d / m / w / e / a / r switch views, t is today, n a new meeting, arrows step the period, ? lists them
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement | null)?.tagName ?? ''
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || e.metaKey || e.ctrlKey || draft) return
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || e.metaKey || e.ctrlKey || draft || help) return
+      if (e.key === '?') { e.preventDefault(); setHelp(true); return }
       const k = e.key.toLowerCase()
       if (k === 'd') set({ view: 'day' })
       else if (k === 'm') set({ view: 'month' })
@@ -166,6 +173,15 @@ export function CalendarPage() {
               </div>
             </PopoverContent>
           </Popover>
+          <button
+            type="button"
+            title="Keyboard shortcuts (?)"
+            aria-label="Keyboard shortcuts"
+            onClick={() => setHelp(true)}
+            className="grid size-[34px] place-items-center rounded-full text-body shadow-[inset_0_0_0_1px_var(--divider)] outline-none transition-colors duration-instant hover:bg-surface-soft focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Keyboard className="size-[15px]" strokeWidth={1.6} />
+          </button>
           <span className="flex-1" />
           <Button className="shrink-0" onClick={() => setDraft({ date, start: '16:00', duration: 45 })}>
             New meeting
@@ -182,7 +198,7 @@ export function CalendarPage() {
 
         <div className={cn(split && 'grid items-start gap-[18px] xl:grid-cols-[minmax(0,1fr)_328px]')}>
           <div className="min-w-0">
-            {boardView === 'month' && <MonthGrid meetings={visible} month={date} selected={date} today={today} onSelect={(d) => set({ date: d })} onCreate={(d) => setDraft({ date: d, start: '16:00', duration: 45 })} />}
+            {boardView === 'month' && <MonthGrid meetings={visible} month={date} selected={date} today={today} onSelect={(d) => set({ date: d })} onCreate={(d) => setDraft({ date: d, start: '16:00', duration: 45 })} onMove={(m, d) => move(m, d, m.start, m.end)} />}
             {weekish && (
               <WeekGrid
                 meetings={visible}
@@ -215,6 +231,7 @@ export function CalendarPage() {
                 onSpan={setRoomsSpan}
                 onOpenDay={(d) => { set({ date: d }); setRoomsSpan('day') }}
                 onBook={(room, d, start, duration) => setDraft({ date: d, start, duration, room })}
+                onManage={isAdmin ? () => setManageRooms(true) : undefined}
               />
             )}
           </div>
@@ -222,8 +239,8 @@ export function CalendarPage() {
         </div>
       </div>
       <NewMeetingDialog draft={draft} today={today} onClose={() => setDraft(null)} />
-      {/* keeps DAY_END referenced for the all-day range shown in the dialog footer */}
-      <span hidden>{DAY_END}</span>
+      <ShortcutsDialog open={help} onClose={() => setHelp(false)} />
+      <ManageDialog open={manageRooms} tab="rooms" editable={isAdmin} onClose={() => setManageRooms(false)} />
     </div>
   )
 }

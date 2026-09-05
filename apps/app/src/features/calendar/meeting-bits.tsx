@@ -7,16 +7,16 @@ import { useCalendars, useMe, usePeople } from './queries'
 import type { CalendarDef, Meeting, Person, Rsvp, Tone } from './types'
 
 /** Tone → the utility classes a chip, dot or dashed edge needs (spelled out so Tailwind sees them). */
-export const TONE: Record<Tone, { soft: string; fg: string; dot: string; border: string }> = {
-  success: { soft: 'bg-tone-success-soft', fg: 'text-tone-success-foreground', dot: 'bg-tone-success', border: 'border-tone-success' },
-  plum: { soft: 'bg-tone-plum-soft', fg: 'text-tone-plum-foreground', dot: 'bg-tone-plum', border: 'border-tone-plum' },
-  slate: { soft: 'bg-tone-slate-soft', fg: 'text-tone-slate-foreground', dot: 'bg-tone-slate', border: 'border-tone-slate' },
-  tan: { soft: 'bg-tone-tan-soft', fg: 'text-tone-tan-foreground', dot: 'bg-tone-tan', border: 'border-tone-tan' },
-  warning: { soft: 'bg-tone-warning-soft', fg: 'text-tone-warning-foreground', dot: 'bg-tone-warning', border: 'border-tone-warning' },
-  risk: { soft: 'bg-tone-risk-soft', fg: 'text-tone-risk-foreground', dot: 'bg-tone-risk', border: 'border-tone-risk' },
-  danger: { soft: 'bg-tone-danger-soft', fg: 'text-tone-danger-foreground', dot: 'bg-tone-danger', border: 'border-tone-danger' },
-  neutral: { soft: 'bg-tone-neutral-soft', fg: 'text-tone-neutral-foreground', dot: 'bg-tone-neutral', border: 'border-tone-neutral' },
-  rose: { soft: 'bg-tone-rose-soft', fg: 'text-tone-rose-foreground', dot: 'bg-tone-rose', border: 'border-tone-rose' },
+export const TONE: Record<Tone, { soft: string; fg: string; dot: string; border: string; box: string }> = {
+  success: { soft: 'bg-tone-success-soft', fg: 'text-tone-success-foreground', dot: 'bg-tone-success', border: 'border-tone-success', box: 'data-checked:bg-tone-success' },
+  plum: { soft: 'bg-tone-plum-soft', fg: 'text-tone-plum-foreground', dot: 'bg-tone-plum', border: 'border-tone-plum', box: 'data-checked:bg-tone-plum' },
+  slate: { soft: 'bg-tone-slate-soft', fg: 'text-tone-slate-foreground', dot: 'bg-tone-slate', border: 'border-tone-slate', box: 'data-checked:bg-tone-slate' },
+  tan: { soft: 'bg-tone-tan-soft', fg: 'text-tone-tan-foreground', dot: 'bg-tone-tan', border: 'border-tone-tan', box: 'data-checked:bg-tone-tan' },
+  warning: { soft: 'bg-tone-warning-soft', fg: 'text-tone-warning-foreground', dot: 'bg-tone-warning', border: 'border-tone-warning', box: 'data-checked:bg-tone-warning' },
+  risk: { soft: 'bg-tone-risk-soft', fg: 'text-tone-risk-foreground', dot: 'bg-tone-risk', border: 'border-tone-risk', box: 'data-checked:bg-tone-risk' },
+  danger: { soft: 'bg-tone-danger-soft', fg: 'text-tone-danger-foreground', dot: 'bg-tone-danger', border: 'border-tone-danger', box: 'data-checked:bg-tone-danger' },
+  neutral: { soft: 'bg-tone-neutral-soft', fg: 'text-tone-neutral-foreground', dot: 'bg-tone-neutral', border: 'border-tone-neutral', box: 'data-checked:bg-tone-neutral' },
+  rose: { soft: 'bg-tone-rose-soft', fg: 'text-tone-rose-foreground', dot: 'bg-tone-rose', border: 'border-tone-rose', box: 'data-checked:bg-tone-rose' },
 }
 
 export function useCalendarMap() {
@@ -93,7 +93,7 @@ export function MeetingHoverCard({ m }: { m: Meeting }) {
         {m.room} · {m.attendees.length} invited · organised by {people[m.organiser]?.name}
         {m.repeats ? ` · ${recurrenceLabel(m.repeats)}` : ''}
       </div>
-      <div className="pt-1 text-fine text-faint">{tentative ? 'Dashed edge means tentative — waiting on your reply' : 'Click to open · drag in week view to move'}</div>
+      <div className="pt-1 text-fine text-faint">{tentative ? 'Dashed edge means tentative — waiting on your reply' : 'Click to open · drag to move'}</div>
     </div>
   )
 }

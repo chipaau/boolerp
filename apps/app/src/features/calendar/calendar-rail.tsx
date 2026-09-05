@@ -5,7 +5,7 @@ import { cn } from '@workspace/ui/lib/utils'
 import type { AppDef } from '@/lib/apps'
 import { useMembership } from '@/features/shell/queries'
 import { useCalendarSearch } from './calendar-search'
-import { CalendarsDialog } from './calendars-dialog'
+import { ManageDialog } from './manage-dialog'
 import { addMonths, firstOfMonth, meetingsOn, myRsvp, toIso } from './logic'
 import { TONE } from './meeting-bits'
 import { useCalendars, useMe, useMeetings } from './queries'
@@ -56,13 +56,13 @@ export function CalendarRail(_: { app: AppDef }) {
           const on = !hidden.includes(c.key)
           return (
             <label key={c.key} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-sidebar-hover">
-              <Checkbox checked={on} onCheckedChange={() => toggle(c.key)} className={cn(on && cn(TONE[c.tone].dot, 'data-checked:bg-current'))} />
+              <Checkbox checked={on} onCheckedChange={() => toggle(c.key)} className={TONE[c.tone].box} indicatorClassName="dark:text-background" />
               <span className={cn('min-w-0 flex-1 text-ui-sm text-body', !on && 'opacity-55')}>{c.label}</span>
             </label>
           )
         })}
       </div>
-      <CalendarsDialog open={manage} editable={membership?.role === 'Admin'} onClose={() => setManage(false)} />
+      <ManageDialog open={manage} tab="calendars" editable={membership?.role === 'Admin'} onClose={() => setManage(false)} />
     </div>
   )
 }
