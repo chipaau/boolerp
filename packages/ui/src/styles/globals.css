@@ -87,6 +87,7 @@
   /* rules */
   --border: #e5d6c2; /* Sand · structural rules (sidebar/topbar edges) */
   --divider: #ece1d2; /* Tan · dividers inside a card */
+  --scrollbar-thumb: #d9cdb9; /* the slim thumb, visible only while a pane scrolls */
   --input: #e7dbc7; /* ghost button inset ring */
   --field: #f1ece2; /* field fill inside a card */
   --ring: #6e7f6a; /* sage focus ring */
@@ -119,6 +120,10 @@
   --tone-risk-soft: #f6e3da;
   --tone-risk-foreground: #a8452c;
   --tone-warning-deep: #c87a1e; /* an amber figure on cream (pending counts) */
+  /* tan: the fourth calendar hue (Recruiting) beside sage, plum and slate */
+  --tone-tan: #8a7b5c;
+  --tone-tan-soft: #f0e7d6;
+  --tone-tan-foreground: #645537;
 
   /* charts: the garden ramp + line pair; terracotta = at-risk only */
   --chart-1: #7e8f78;
@@ -261,9 +266,13 @@
   --tone-risk-soft: #3a261f;
   --tone-risk-foreground: #e0876c;
   --tone-warning-deep: #e39a3a;
+  --tone-tan: #a8946e;
+  --tone-tan-soft: #2f2a20;
+  --tone-tan-foreground: #c9b78f;
 
   --border: #323231;
   --divider: #323231;
+  --scrollbar-thumb: #3d3c39;
   --input: #3a3937; /* ghost ring */
   --field: #282827;
   --ring: #9aab94;
@@ -499,6 +508,9 @@
   --color-tone-risk-soft: var(--tone-risk-soft);
   --color-tone-risk-foreground: var(--tone-risk-foreground);
   --color-tone-warning-deep: var(--tone-warning-deep);
+  --color-tone-tan: var(--tone-tan);
+  --color-tone-tan-soft: var(--tone-tan-soft);
+  --color-tone-tan-foreground: var(--tone-tan-foreground);
   --color-chart-grid: var(--chart-grid);
   --color-chart-guide: var(--chart-guide);
   --color-marker-meeting: var(--marker-meeting);
@@ -647,5 +659,30 @@
   }
   ::selection {
     background-color: var(--primary);
+  }
+
+  /* Theme scrollbar: native bars are hidden everywhere and useScrollbarReveal draws one 4px pill,
+     about 2cm long, beside whichever pane is scrolling. It fades out once the movement stops. */
+  * {
+    scrollbar-width: none;
+  }
+  ::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  [data-scroll-thumb] {
+    position: fixed;
+    z-index: 2147483000;
+    width: 4px;
+    height: 76px;
+    border-radius: 999px;
+    background: var(--scrollbar-thumb);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 240ms var(--ease-hexa, ease);
+  }
+  [data-scroll-thumb][data-on] {
+    opacity: 1;
   }
 }

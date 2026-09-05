@@ -31,6 +31,7 @@ import {
   ShoppingCart,
   FileSignature,
   Receipt,
+  CalendarDays,
 } from 'lucide-react'
 
 export type AppMenuItem = {
@@ -58,7 +59,7 @@ export type AppDef = {
 // The apps hosted by the workspace shell, in the order they appear on the Home honeycomb (the
 // first eight get a tile; the rest are reachable from the switcher). Sections without a real
 // screen in features/screens.ts render the prototype page (src/proto) until one exists.
-// Archived apps (Staff Hub, Calendar, Finance) live in src/_archive.
+// Archived apps (Staff Hub, Finance) live in src/_archive.
 export const APPS: AppDef[] = [
   {
     slug: 'control-centre',
@@ -130,6 +131,14 @@ export const APPS: AppDef[] = [
         ],
       },
     ],
+  },
+  {
+    slug: 'calendar',
+    name: 'Calendar',
+    description: 'Meetings & rooms',
+    icon: CalendarDays,
+    // the rail is the app's own (mini month, awaiting replies, calendars) — see features/rails.ts
+    menu: [{ items: [{ title: 'Calendar', slug: '', icon: CalendarDays }] }],
   },
   {
     slug: 'asset',

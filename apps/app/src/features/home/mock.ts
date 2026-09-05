@@ -1,38 +1,13 @@
-// FIXTURES — static sample data for the Home overview. Only ./queries.ts may import this file
+// FIXTURES — static sample data for the Home overview (the schedule and meeting counts come from
+// the Calendar feature's data instead). Only ./queries.ts may import this file
 // (lint-enforced). Delete it when the inbox / calendar / activity endpoints exist.
-import avatar1 from '@workspace/assets/avatars/avatar-1.jpg'
-import avatar2 from '@workspace/assets/avatars/avatar-2.jpg'
-import avatar3 from '@workspace/assets/avatars/avatar-3.jpg'
-import avatar4 from '@workspace/assets/avatars/avatar-4.webp'
-import type { DayActivity, InboxItem, MonthActivity, ScheduleItem, Stat } from './types'
+import type { DayActivity, InboxItem, MonthActivity, Stat } from './types'
 
 export const STATS: Stat[] = [
   { value: 6, label: 'due today' },
   { value: 12, label: 'low stock' },
-  { value: 4, label: 'meetings' },
 ]
 
-export const SCHEDULE: ScheduleItem[] = [
-  {
-    id: 's1',
-    start: '9:30 AM',
-    end: '10:30 AM',
-    people: [
-      { name: 'Aishath Nasheed', photo: avatar1 },
-      { name: 'Mohamed Waheed', photo: avatar2 },
-    ],
-    others: ['Mariyam Shifa', 'Ahmed Zayan', 'Hawwa Leena'],
-  },
-  {
-    id: 's2',
-    start: '12:00 PM',
-    end: '14:00 PM',
-    people: [
-      { name: 'Fathimath Ali', photo: avatar3 },
-      { name: 'Ibrahim Rasheed', photo: avatar4 },
-    ],
-  },
-]
 
 export const INBOX: InboxItem[] = [
   {
@@ -69,11 +44,11 @@ export const INBOX: InboxItem[] = [
   },
 ]
 
-/** Deterministic so the heat map is stable between renders. */
+/** Deterministic so the heat map is stable between renders; meetings are filled in from the calendar. */
 function activityFor(year: number, month: number, day: number): DayActivity {
   const seed = (year * 12 + month) * 31 + day
   const r = (n: number) => (seed * n + 7) % 5 // 0..4
-  return { meetings: r(3) % 3, tasks: r(5) % 4, approvals: r(7) % 2 }
+  return { meetings: 0, tasks: r(5) % 4, approvals: r(7) % 2 }
 }
 
 /** `month` is 0-based, as in `Date`. */

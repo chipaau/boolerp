@@ -1,7 +1,8 @@
 import { useEffect, useState  } from 'react'
 import type {ReactNode} from 'react';
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowRight, Moon, Sun } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ArrowRight, CalendarDays, Moon, Sun } from 'lucide-react'
 import {
   Command,
   CommandDialog,
@@ -15,6 +16,8 @@ import {
 } from '@workspace/ui/components/command'
 import { SearchField } from '@workspace/ui/components/search-field'
 import { AppIcon } from '@/components/app-icon'
+import { fmtRange, shortDate } from '@/features/calendar/logic'
+import { meetingsQuery } from '@/features/calendar/queries'
 import { APPS } from '@/lib/apps'
 import { useTheme } from './use-theme'
 
@@ -26,6 +29,8 @@ export function CommandPalette({ trigger }: { trigger?: ReactNode }) {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const { isDark, setTheme } = useTheme()
+  // meetings join the index once loaded; the header never waits on them
+  const meetings = useQuery(meetingsQuery()).data ?? []
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -102,6 +107,26 @@ export function CommandPalette({ trigger }: { trigger?: ReactNode }) {
                 )
               )}
             </CommandGroup>
+            {meetings.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup heading="Meetings">
+                  {meetings.map((m) => (
+                    <CommandItem
+                      key={m.id}
+                      value={`${m.title} ${m.room} ${m.date}`}
+                      onSelect={() => go(() => navigate({ to: '/$app/$section', params: { app: 'calendar', section: 'meetings' }, search: { id: m.id } }))}
+                    >
+                      <CalendarDays strokeWidth={1.75} />
+                      <span className="text-foreground">{m.title}</span>
+                      <span className="truncate text-caption text-muted-foreground">
+                        {shortDate(m.date)} · {fmtRange(m.start, m.end)} · {m.room}
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
             <CommandSeparator />
             <CommandGroup heading="Commands">
               <CommandItem value="toggle theme dark light mode" onSelect={() => go(() => setTheme(isDark ? 'light' : 'dark'))}>

@@ -1,4 +1,5 @@
 import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { useScrollbarReveal } from '@workspace/ui/hooks/use-scrollbar-reveal'
 
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
@@ -10,6 +11,7 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  useScrollbarReveal()
   return (
     <>
       <Outlet />

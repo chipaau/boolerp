@@ -23,6 +23,7 @@ const ARTWORK: Partial<Record<string, { art?: string; glyph?: string }>> = {
   directory: { art: directoryArt },
   analytics: { art: analyticsArt },
   procurement: { art: procurementArt },
+  calendar: { art: procurementArt }, // the design reuses this illustration for Calendar
 }
 
 // Single accent per app for the fallback glyph (icons never carry more than one colour).
@@ -36,6 +37,7 @@ const HUE: Partial<Record<string, string>> = {
   directory: 'text-brand',
   hrms: 'text-tone-plum',
   procurement: 'text-tone-slate',
+  calendar: 'text-brand',
 }
 
 export function AppIcon({

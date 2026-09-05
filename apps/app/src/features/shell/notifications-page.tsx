@@ -10,10 +10,10 @@ import { PageTitle } from '@/components/layout/page'
 import { useMarkAllRead, useNotifications } from './queries'
 import type { Notification, NotificationCategory, NotificationGroup } from './types'
 
-const FILTERS = ['All', 'Unread', 'Stock', 'Approvals', 'Orders'] as const
+const FILTERS = ['All', 'Unread', 'Meetings', 'Stock', 'Approvals', 'Orders'] as const
 type Filter = (typeof FILTERS)[number]
 const GROUPS: NotificationGroup[] = ['Today', 'Yesterday', 'Earlier']
-const CATEGORY_TONE: Record<NotificationCategory, BadgeTone> = { Stock: 'risk', Approvals: 'warning', Orders: 'plum' }
+const CATEGORY_TONE: Record<NotificationCategory, BadgeTone> = { Meetings: 'slate', Stock: 'risk', Approvals: 'warning', Orders: 'plum' }
 
 function matches(n: Notification, f: Filter) {
   if (f === 'All') return true
@@ -38,7 +38,7 @@ export function NotificationsPage() {
         <PageTitle
           className="mb-[26px]"
           title="Notifications"
-          meta={<span>{unread ? `${unread} unread` : 'All caught up'} · stock, approvals and orders</span>}
+          meta={<span>{unread ? `${unread} unread` : 'All caught up'} · meetings, stock, approvals and orders</span>}
           actions={
             <>
               <Button variant="outline">Preferences</Button>
@@ -71,6 +71,7 @@ export function NotificationsPage() {
                       <Link
                         to="/$app/$section"
                         params={{ app: n.to.app, section: n.to.section ?? '' }}
+                        search={{ id: n.to.id }}
                         onClick={() => markAllRead.mutate()}
                         className="grid grid-cols-[12px_minmax(0,1fr)_auto] items-start gap-3.5 border-b border-divider px-[22px] py-4 outline-none transition-colors duration-instant ease-hexa hover:bg-surface-soft focus-visible:bg-surface-soft [li:last-child>&]:border-b-0"
                       >

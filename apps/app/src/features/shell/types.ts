@@ -1,6 +1,6 @@
 // Shell (workspace chrome) resource shapes: things the header and rails show for every app.
 
-export type NotificationCategory = 'Stock' | 'Approvals' | 'Orders'
+export type NotificationCategory = 'Meetings' | 'Stock' | 'Approvals' | 'Orders'
 export type NotificationGroup = 'Today' | 'Yesterday' | 'Earlier'
 export type Notification = {
   id: string
@@ -12,8 +12,8 @@ export type Notification = {
   time: string
   group: NotificationGroup
   unread: boolean
-  /** Where the row leads: an app and optionally a section. */
-  to: { app: string; section?: string }
+  /** Where the row leads: an app, optionally a section and a record id. */
+  to: { app: string; section?: string; id?: string }
 }
 
 /** Counts shown at the right edge of an app's rail, keyed by the `badge.key` in the app registry. */
