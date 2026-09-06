@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react'
+import { useState } from 'react'
 import { logout } from '@workspace/auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@workspace/ui/components/avatar'
 import {
@@ -9,18 +9,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@workspace/ui/components/dropdown-menu'
+import { AvatarDialog } from '@/features/shell/avatar-dialog'
 import { useMembership } from '@/features/shell/queries'
 import { useCurrentUser } from './user-context'
 
 /**
- * The account menu behind the 31px avatar in the topbar: name, email, the role pill, then the
- * design's four actions with Sign out in terracotta.
+ * The account menu behind the 31px avatar in the topbar: name and email, then the actions with
+ * Sign out in terracotta. The role is not shown: every screen is already gated by it.
  */
 export function UserMenu() {
   const user = useCurrentUser()
   const membership = useMembership()
+  const [photo, setPhoto] = useState(false)
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
@@ -41,15 +44,12 @@ export function UserMenu() {
         <div className="px-3 pt-1.5 pb-3">
           <div className="text-sm font-bold text-foreground">{user.name}</div>
           <div className="mt-0.5 text-fine text-faint">{user.email}</div>
-          {membership && (
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted py-[3px] pr-[9px] pl-2.5 text-fine font-bold text-body">
-              {membership.role}
-              <ChevronDown className="size-[9px] text-muted-foreground" strokeWidth={2.5} />
-            </span>
-          )}
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm" onClick={() => setPhoto(true)}>
+            Change photo…
+          </DropdownMenuItem>
           <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm">Profile &amp; preferences</DropdownMenuItem>
           <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm">Settings &amp; permissions</DropdownMenuItem>
           <DropdownMenuItem className="rounded-[9px] px-3 py-[9px] text-ui-sm">Switch workspace</DropdownMenuItem>
@@ -59,5 +59,7 @@ export function UserMenu() {
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+    <AvatarDialog open={photo} name={user.name} current={membership?.avatar} onClose={() => setPhoto(false)} />
+    </>
   )
 }
