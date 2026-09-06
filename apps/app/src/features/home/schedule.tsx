@@ -14,7 +14,7 @@ import type { ScheduleItem } from './types'
 
 /** The hover card for one meeting: what, when, where, who. Clicking the time opens the meeting. */
 function MeetingCard({ item }: { item: ScheduleItem }) {
-  const names = [...item.people.map((p) => p.name), ...(item.others ?? [])]
+  const names = [...item.people, ...(item.others ?? [])].map((p) => p.name)
   return (
     <div className="w-64 space-y-3 p-1">
       <div className="min-w-0">
@@ -88,10 +88,16 @@ export function Schedule() {
                       +{item.others.length}
                     </AvatarGroupCount>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" align="start" sideOffset={6}>
-                    <ul className="space-y-0.5 text-left">
-                      {item.others.map((name) => (
-                        <li key={name}>{name}</li>
+                  <TooltipContent side="bottom" align="start" sideOffset={8} variant="card" showArrow={false}>
+                    <ul className="space-y-2 p-0.5 text-left">
+                      {item.others.map((p) => (
+                        <li key={p.name} className="flex items-center gap-2.5">
+                          <Avatar name={p.name} className="size-7">
+                            {p.photo && <AvatarImage src={p.photo} alt="" />}
+                            <AvatarFallback className="text-[10px]" />
+                          </Avatar>
+                          <span className="text-sm text-foreground">{p.name}</span>
+                        </li>
                       ))}
                     </ul>
                   </TooltipContent>

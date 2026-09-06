@@ -74,6 +74,11 @@ export function MonthHoneycomb({ today }: { today: Date }) {
   const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate()
   const monthName = cursor.toLocaleDateString('en-GB', { month: 'long' })
   const activities = useMonthActivity(cursor.getFullYear(), cursor.getMonth())
+  // the lead and tail cells are real days of the neighbouring months, so they carry the same card
+  const before = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1)
+  const after = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
+  const prevActivities = useMonthActivity(before.getFullYear(), before.getMonth())
+  const nextActivities = useMonthActivity(after.getFullYear(), after.getMonth())
 
   // month changes run as transitions so the current grid stays up while the next month's data loads
   function changeMonth(next: Date) {
@@ -114,7 +119,7 @@ export function MonthHoneycomb({ today }: { today: Date }) {
             const date = new Date(cursor.getFullYear(), cursor.getMonth(), 1 + offset)
             const inMonth = offset >= 0 && offset < daysInMonth
             const isToday = inMonth && isoDate(date) === isoDate(today)
-            const activity = inMonth ? (activities[date.getDate()] ?? NO_ACTIVITY) : NO_ACTIVITY
+            const activity = (inMonth ? activities : offset < 0 ? prevActivities : nextActivities)[date.getDate()] ?? NO_ACTIVITY
             const level = activityLevel(activity)
             const cell = { col: i % COLS, row: Math.floor(i / COLS) }
 
@@ -126,15 +131,13 @@ export function MonthHoneycomb({ today }: { today: Date }) {
               '--pulse-color': 'var(--heat-today-from)',
             } as CSSProperties
             if (!inMonth) {
-              // a real date from the neighbouring month: say which, and jump there on click
-              const direction = offset < 0 ? 'previous' : 'next'
-              const label = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
+              // a real date from the neighbouring month: the same card, and the grid moves there on click
               return (
                 <HoneycombItem key={i} {...cell} role="gridcell" className="animate-rise" style={stagger}>
                   <Tooltip>
                     <TooltipTrigger
                       className="block size-full rounded-full outline-none"
-                      aria-label={`${label}, ${direction} month`}
+                      aria-label={date.toLocaleDateString('en-GB', { dateStyle: 'full' })}
                       onClick={() => shift(offset < 0 ? -1 : 1)}
                     >
                       <Hexagon
@@ -144,8 +147,8 @@ export function MonthHoneycomb({ today }: { today: Date }) {
                         className="text-heat-0 hover:-translate-y-px hover:text-heat-1"
                       />
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" sideOffset={6}>
-                      {label} · {direction} month
+                    <TooltipContent side="right" align="start" sideOffset={8} variant="card" showArrow={false}>
+                      <DayCard date={date} activity={activity} isToday={false} />
                     </TooltipContent>
                   </Tooltip>
                 </HoneycombItem>
