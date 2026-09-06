@@ -685,4 +685,42 @@
   [data-scroll-thumb][data-on] {
     opacity: 1;
   }
+
+  /* Tiptap (RichText): the document itself, inside the Soft Cream plate. */
+  .tiptap {
+    min-height: 6.5rem;
+    outline: none;
+  }
+  .tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: var(--color-placeholder);
+    pointer-events: none;
+  }
+  .tiptap ol,
+  .tiptap ul {
+    margin: 0.25em 0;
+    padding-left: 1.45em;
+  }
+  .tiptap ol {
+    list-style: decimal;
+  }
+  .tiptap ul {
+    list-style: disc;
+  }
+  .tiptap li + li {
+    margin-top: 0.2em;
+  }
+  .tiptap li::marker {
+    color: var(--color-faint);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .tiptap p + p {
+    margin-top: 0.45em;
+  }
+  .tiptap strong {
+    font-weight: 700;
+  }
 }

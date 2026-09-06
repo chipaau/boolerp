@@ -4,11 +4,12 @@ import { ArrowRight, Clock, MapPin } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
+import { RichText } from '@workspace/ui/components/rich-text'
 import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { useMembership } from '@/features/shell/queries'
-import { fmtRange, myRsvp, recurrenceLabel, shortDate, toIso } from './logic'
+import { agendaFromHtml, agendaToHtml, fmtRange, myRsvp, recurrenceLabel, shortDate, toIso } from './logic'
 import { PersonAvatar, RsvpBadge, useCalendarMap, usePeopleMap } from './meeting-bits'
 import { useMe, useMeetingActions, useMeetings } from './queries'
 import { RescheduleDialog } from './reschedule-dialog'
@@ -28,6 +29,7 @@ export function MeetingDetailPage() {
   const actions = useMeetingActions()
   const toast = useToast()
   const [resched, setResched] = useState(false)
+  const [agendaDraft, setAgendaDraft] = useState<string | null>(null)
   const m = meetings.find((x) => x.id === id) ?? meetings[0]
   const cal = cals[m.calendar]
   const mine = myRsvp(m, me.key)
@@ -38,6 +40,11 @@ export function MeetingDetailPage() {
   function setRsvp(v: Rsvp) {
     actions.setRsvp(m.id, me.key, v)
     toast(v === 'yes' ? 'You’re going' : v === 'maybe' ? 'Marked as maybe' : 'Declined — organiser notified', { ok: v !== 'no' })
+  }
+  function saveAgenda() {
+    actions.setAgenda(m.id, agendaFromHtml(agendaDraft ?? ''))
+    setAgendaDraft(null)
+    toast('Agenda saved — attendees see it now')
   }
   function toggleCancel() {
     const was = !!m.cancelled
@@ -116,8 +123,27 @@ export function MeetingDetailPage() {
             </div>
             <div className="grid gap-[30px] px-7 pt-6 pb-[26px] md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
               <div className="min-w-0">
-                <div className="text-ui-sm font-bold text-muted-foreground">Agenda</div>
-                {m.agenda.length ? (
+                <div className="flex items-center gap-3">
+                  <div className="text-ui-sm font-bold text-muted-foreground">Agenda</div>
+                  {editable && m.agenda.length > 0 && agendaDraft === null && (
+                    <Button variant="link" size="xs" onClick={() => setAgendaDraft(agendaToHtml(m.agenda))} className="ms-auto text-fine">
+                      Edit
+                    </Button>
+                  )}
+                </div>
+                {agendaDraft !== null ? (
+                  <div className="mt-3">
+                    <RichText value={agendaDraft} onChange={setAgendaDraft} autoFocus placeholder="One item per line, with its minutes — “Blockers worth a room · 10 min”." />
+                    <div className="mt-2.5 flex items-center justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setAgendaDraft(null)}>
+                        Cancel
+                      </Button>
+                      <Button size="sm" onClick={saveAgenda}>
+                        Save agenda
+                      </Button>
+                    </div>
+                  </div>
+                ) : m.agenda.length ? (
                   <ol className="mt-1.5">
                     {m.agenda.map((a, i) => (
                       <li key={i} className={cn('grid grid-cols-[26px_minmax(0,1fr)_auto] gap-3 py-[13px]', i > 0 && 'border-t border-divider')}>
@@ -130,9 +156,11 @@ export function MeetingDetailPage() {
                 ) : (
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-surface-band px-[18px] py-4">
                     <span className="text-ui-sm text-muted-foreground">No agenda yet. Meetings without one run 20% longer.</span>
-                    <Button variant="outline" size="sm" onClick={() => toast('Agenda draft added')}>
-                      Add agenda
-                    </Button>
+                    {editable && (
+                      <Button variant="outline" size="sm" onClick={() => setAgendaDraft('')}>
+                        Add agenda
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

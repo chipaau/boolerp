@@ -55,7 +55,7 @@ export function useSchedule(): ScheduleItem[] {
           end: clock(m.end),
           location: m.room,
           people: named.slice(0, 2).map((p) => ({ name: p.name, photo: p.photo })),
-          others: named.slice(2).map((p) => p.name),
+          others: named.slice(2).map((p) => ({ name: p.name, photo: p.photo })),
         }
       }),
     [today, people, me.nowMinutes]

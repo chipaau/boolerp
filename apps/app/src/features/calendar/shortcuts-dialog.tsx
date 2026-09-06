@@ -8,7 +8,6 @@ const GROUPS: { title: string; rows: { keys: string[]; does: string }[] }[] = [
     title: 'Views',
     rows: [
       { keys: ['D'], does: 'Day' },
-      { keys: ['E'], does: 'Work week' },
       { keys: ['W'], does: 'Week' },
       { keys: ['M'], does: 'Month' },
       { keys: ['A'], does: 'Agenda' },

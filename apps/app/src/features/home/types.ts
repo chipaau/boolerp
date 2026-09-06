@@ -7,7 +7,7 @@ export type Stat = { value: number; label: string }
 
 export type Person = { name: string; photo?: string }
 
-/** `people` are shown as avatars; `others` are the rest, listed on the "+n" count. */
+/** `people` are shown as avatars; `others` are the rest, listed with their photos on the "+n" count. */
 export type ScheduleItem = {
   id: string
   /** The calendar meeting this row opens. */
@@ -18,7 +18,7 @@ export type ScheduleItem = {
   /** Room, site or link label. */
   location: string
   people: Person[]
-  others?: string[]
+  others?: Person[]
 }
 
 export type InboxTone = BadgeTone

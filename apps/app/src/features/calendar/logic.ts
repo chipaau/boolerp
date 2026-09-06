@@ -1,7 +1,7 @@
 // Pure calendar logic: dates and times as strings, meeting queries, lane packing for the week
 // grid, room availability and time suggestions. No data lives here.
 import type { BadgeTone } from '@workspace/ui/components/badge'
-import type { CalendarKey, Meeting, Recurrence, Rsvp } from './types'
+import type { AgendaItem, CalendarKey, Meeting, Recurrence, Rsvp, CalendarView } from './types'
 
 /** The visible day runs 8am to 7pm; the week grid draws each hour at this height. */
 export const DAY_START = 8
@@ -73,6 +73,28 @@ export const longDate = (iso: string) => `${weekdayLong(iso)} ${dayOfMonth(iso)}
 /** "30 Aug – 5 Sep 2026" */
 export function rangeTitle(from: string, to: string) {
   return `${dayOfMonth(from)} ${monthShort(from)} – ${dayOfMonth(to)} ${monthShort(to)} ${parseIso(to).getFullYear()}`
+}
+
+// ---- agenda
+/** Agenda items as the editor's document: a numbered list, each line ending in its minutes. */
+export function agendaToHtml(items: AgendaItem[]) {
+  if (!items.length) return ''
+  return `<ol>${items.map((a) => `<li>${escapeHtml(a.text)}${a.minutes ? ` · ${escapeHtml(a.minutes)}` : ''}</li>`).join('')}</ol>`
+}
+/** List items (or paragraphs) back into agenda items; a trailing "· 10 min" or "(10 min)" becomes the minutes. */
+export function agendaFromHtml(html: string): AgendaItem[] {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const nodes = doc.querySelectorAll('li').length ? doc.querySelectorAll('li') : doc.querySelectorAll('p')
+  return [...nodes]
+    .map((n) => n.textContent.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .map((line) => {
+      const m = /^(.*?)[\s·\-–(]*(\d+\s*min)\)?\s*$/i.exec(line)
+      return m && m[1].trim() ? { text: m[1].trim(), minutes: m[2].replace(/\s+/, ' ') } : { text: line, minutes: '' }
+    })
+}
+function escapeHtml(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 // ---- meetings
@@ -171,10 +193,9 @@ export const RECURRENCES: { value: Recurrence; label: string }[] = [
 ]
 export const recurrenceLabel = (r: Recurrence) => (r ? RECURRENCES.find((x) => x.value === r)?.label ?? r : '')
 
-export const VIEWS: { key: 'day' | 'month' | 'workweek' | 'week' | 'agenda' | 'rooms'; label: string; hint: string }[] = [
+export const VIEWS: { key: CalendarView; label: string; hint: string }[] = [
   { key: 'day', label: 'Day', hint: 'D' },
   { key: 'month', label: 'Month', hint: 'M' },
-  { key: 'workweek', label: 'Work week', hint: 'E' },
   { key: 'week', label: 'Week', hint: 'W' },
   { key: 'agenda', label: 'Agenda', hint: 'A' },
   { key: 'rooms', label: 'Rooms', hint: 'R' },

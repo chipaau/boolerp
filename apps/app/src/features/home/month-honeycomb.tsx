@@ -30,16 +30,19 @@ const CELL_ASPECT = 25.5 / 25
 // Fill per activity level (light activity / healthy / at or above target); tokens in globals.css.
 const LEVEL_FILL = ['text-heat-1', 'text-heat-2', 'text-heat-3'] as const
 
-/** The hover card for one day: date, counts, and a jump to that day in the calendar. */
+/** The hover card for one day: date, counts (or that there are none), and a jump to that day in the calendar. */
 function DayCard({ date, activity, isToday }: { date: Date; activity: DayActivity; isToday: boolean }) {
   const weekday = isToday ? 'Today' : weekdayLong(date)
   const day = date.getDate()
   const rest = monthYear(date)
+  const quiet = activity.meetings + activity.tasks + activity.approvals === 0
+  const past = date < new Date(new Date().toDateString())
+  // only what the day actually holds; a zero row says nothing worth the space
   const rows = [
-    { label: `${activity.meetings} Meeting${activity.meetings === 1 ? '' : 's'}`, icon: <MeetingMarker size={18} /> },
-    { label: `${activity.tasks} Task(s) due`, icon: <TaskMarker size={18} /> },
-    { label: `${activity.approvals} Approval(s) pending`, icon: <ApprovalMarker size={18} /> },
-  ]
+    { n: activity.meetings, label: `${activity.meetings} Meeting${activity.meetings === 1 ? '' : 's'}`, icon: <MeetingMarker size={18} /> },
+    { n: activity.tasks, label: `${activity.tasks} Task${activity.tasks === 1 ? '' : 's'} due`, icon: <TaskMarker size={18} /> },
+    { n: activity.approvals, label: `${activity.approvals} Approval${activity.approvals === 1 ? '' : 's'} pending`, icon: <ApprovalMarker size={18} /> },
+  ].filter((r) => r.n > 0)
   return (
     <div className="w-60 space-y-3.5 p-1">
       <div className="flex items-start justify-between gap-3">
@@ -56,14 +59,18 @@ function DayCard({ date, activity, isToday }: { date: Date; activity: DayActivit
           render={<Link to="/$app" params={{ app: 'calendar' }} search={{ view: 'day', date: isoDate(date) }} />}
         />
       </div>
-      <ul className="space-y-2 text-ui-lg">
-        {rows.map((r) => (
-          <li key={r.label} className="flex items-center gap-2.5">
-            {r.icon}
-            <span className="text-foreground">{r.label}</span>
-          </li>
-        ))}
-      </ul>
+      {quiet ? (
+        <p className="text-ui-lg leading-[1.45] text-muted-foreground">{past ? 'A quiet day. Nothing was due or booked.' : 'Nothing here yet. The day is yours.'}</p>
+      ) : (
+        <ul className="space-y-2 text-ui-lg">
+          {rows.map((r) => (
+            <li key={r.label} className="flex items-center gap-2.5">
+              {r.icon}
+              <span className="text-foreground">{r.label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -74,6 +81,11 @@ export function MonthHoneycomb({ today }: { today: Date }) {
   const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate()
   const monthName = cursor.toLocaleDateString('en-GB', { month: 'long' })
   const activities = useMonthActivity(cursor.getFullYear(), cursor.getMonth())
+  // the lead and tail cells are real days of the neighbouring months, so they carry the same card
+  const before = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1)
+  const after = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
+  const prevActivities = useMonthActivity(before.getFullYear(), before.getMonth())
+  const nextActivities = useMonthActivity(after.getFullYear(), after.getMonth())
 
   // month changes run as transitions so the current grid stays up while the next month's data loads
   function changeMonth(next: Date) {
@@ -114,7 +126,7 @@ export function MonthHoneycomb({ today }: { today: Date }) {
             const date = new Date(cursor.getFullYear(), cursor.getMonth(), 1 + offset)
             const inMonth = offset >= 0 && offset < daysInMonth
             const isToday = inMonth && isoDate(date) === isoDate(today)
-            const activity = inMonth ? (activities[date.getDate()] ?? NO_ACTIVITY) : NO_ACTIVITY
+            const activity = (inMonth ? activities : offset < 0 ? prevActivities : nextActivities)[date.getDate()] ?? NO_ACTIVITY
             const level = activityLevel(activity)
             const cell = { col: i % COLS, row: Math.floor(i / COLS) }
 
@@ -126,15 +138,13 @@ export function MonthHoneycomb({ today }: { today: Date }) {
               '--pulse-color': 'var(--heat-today-from)',
             } as CSSProperties
             if (!inMonth) {
-              // a real date from the neighbouring month: say which, and jump there on click
-              const direction = offset < 0 ? 'previous' : 'next'
-              const label = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
+              // a real date from the neighbouring month: the same card, and the grid moves there on click
               return (
                 <HoneycombItem key={i} {...cell} role="gridcell" className="animate-rise" style={stagger}>
                   <Tooltip>
                     <TooltipTrigger
                       className="block size-full rounded-full outline-none"
-                      aria-label={`${label}, ${direction} month`}
+                      aria-label={date.toLocaleDateString('en-GB', { dateStyle: 'full' })}
                       onClick={() => shift(offset < 0 ? -1 : 1)}
                     >
                       <Hexagon
@@ -144,8 +154,8 @@ export function MonthHoneycomb({ today }: { today: Date }) {
                         className="text-heat-0 hover:-translate-y-px hover:text-heat-1"
                       />
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" sideOffset={6}>
-                      {label} · {direction} month
+                    <TooltipContent side="right" align="start" sideOffset={8} variant="card" showArrow={false}>
+                      <DayCard date={date} activity={activity} isToday={false} />
                     </TooltipContent>
                   </Tooltip>
                 </HoneycombItem>

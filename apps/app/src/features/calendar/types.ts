@@ -42,7 +42,7 @@ export type Meeting = {
   moved?: boolean
 }
 
-export type CalendarView = 'day' | 'month' | 'workweek' | 'week' | 'agenda' | 'rooms'
+export type CalendarView = 'day' | 'month' | 'week' | 'agenda' | 'rooms'
 export type Recurrence = '' | 'Daily' | 'Weekdays' | 'Weekly' | 'Fortnightly' | 'Monthly' | 'Quarterly'
 
 export type Swatch = { name: string; tone: Tone }

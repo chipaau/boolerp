@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { MoreHorizontal, Plus } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
@@ -14,6 +14,7 @@ import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { EmptyState } from '@workspace/ui/components/empty-state'
+import { RowsShown } from '@workspace/ui/components/rows-shown'
 import { SearchField } from '@workspace/ui/components/search-field'
 import {
   Table,
@@ -54,8 +55,13 @@ export function InventoryItemsPage() {
     return r
   }, [items, filter, query, sort])
 
+  const [limit, setLimit] = useState(10)
+  // a new filter, search or sort starts again from the first ten
+  useEffect(() => setLimit(10), [filter, query, sort])
+  const pageRows = rows.slice(0, limit)
+
   const count = Object.values(selected).filter(Boolean).length
-  const allSelected = rows.length > 0 && rows.every((r) => selected[r.sku])
+  const allSelected = pageRows.length > 0 && pageRows.every((r) => selected[r.sku])
 
   function setFilter(next: ItemFilter) {
     setSelected({})
@@ -135,7 +141,7 @@ export function InventoryItemsPage() {
                     aria-label="Select all"
                     checked={allSelected}
                     indeterminate={count > 0 && !allSelected}
-                    onCheckedChange={(v) => setSelected(v ? Object.fromEntries(rows.map((r) => [r.sku, true])) : {})}
+                    onCheckedChange={(v) => setSelected(v ? Object.fromEntries(pageRows.map((r) => [r.sku, true])) : {})}
                   />
                 </TableHead>
                 <TableHead sortable sorted={sort === 'name' ? 'asc' : sort === 'name-desc' ? 'desc' : false} onClick={() => setSort(sort === 'name' ? 'name-desc' : 'name')}>
@@ -152,7 +158,7 @@ export function InventoryItemsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((r) => (
+              {pageRows.map((r) => (
                 <TableRow key={r.sku} selected={!!selected[r.sku]}>
                   <TableCell>
                     <Checkbox
@@ -218,9 +224,7 @@ export function InventoryItemsPage() {
         )}
 
         <TableFooter>
-          <span>
-            Showing {rows.length} of {items.length} items
-          </span>
+          <RowsShown shown={pageRows.length} total={rows.length} limit={limit} onLimit={setLimit} noun="items" />
         </TableFooter>
       </Card>
     </div>
