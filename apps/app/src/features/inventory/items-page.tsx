@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { MoreHorizontal, Plus } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
@@ -14,6 +14,8 @@ import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { EmptyState } from '@workspace/ui/components/empty-state'
+import { Pagination, paginate } from '@workspace/ui/components/pagination'
+import type { PageSize } from '@workspace/ui/components/pagination'
 import { SearchField } from '@workspace/ui/components/search-field'
 import {
   Table,
@@ -54,8 +56,15 @@ export function InventoryItemsPage() {
     return r
   }, [items, filter, query, sort])
 
+  const [pageSize, setPageSize] = useState<PageSize>(10)
+  const [page, setPage] = useState(1)
+  // a new filter, search, sort or page size starts again from the first page
+  useEffect(() => setPage(1), [filter, query, sort, pageSize])
+  const paged = paginate(rows, page, pageSize)
+  const pageRows = paged.rows
+
   const count = Object.values(selected).filter(Boolean).length
-  const allSelected = rows.length > 0 && rows.every((r) => selected[r.sku])
+  const allSelected = pageRows.length > 0 && pageRows.every((r) => selected[r.sku])
 
   function setFilter(next: ItemFilter) {
     setSelected({})
@@ -135,7 +144,7 @@ export function InventoryItemsPage() {
                     aria-label="Select all"
                     checked={allSelected}
                     indeterminate={count > 0 && !allSelected}
-                    onCheckedChange={(v) => setSelected(v ? Object.fromEntries(rows.map((r) => [r.sku, true])) : {})}
+                    onCheckedChange={(v) => setSelected(v ? Object.fromEntries(pageRows.map((r) => [r.sku, true])) : {})}
                   />
                 </TableHead>
                 <TableHead sortable sorted={sort === 'name' ? 'asc' : sort === 'name-desc' ? 'desc' : false} onClick={() => setSort(sort === 'name' ? 'name-desc' : 'name')}>
@@ -152,7 +161,7 @@ export function InventoryItemsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((r) => (
+              {pageRows.map((r) => (
                 <TableRow key={r.sku} selected={!!selected[r.sku]}>
                   <TableCell>
                     <Checkbox
@@ -218,9 +227,7 @@ export function InventoryItemsPage() {
         )}
 
         <TableFooter>
-          <span>
-            Showing {rows.length} of {items.length} items
-          </span>
+          <Pagination total={rows.length} page={paged.page} pageSize={pageSize} onPage={setPage} onPageSize={setPageSize} noun="items" />
         </TableFooter>
       </Card>
     </div>
