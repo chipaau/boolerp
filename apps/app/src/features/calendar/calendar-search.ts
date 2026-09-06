@@ -4,7 +4,7 @@ import type { CalendarKey, CalendarView } from './types'
 
 /** Board state kept in the URL: which view, which day, hidden calendars and the two filters. */
 export type BoardView = CalendarView | 'awaiting'
-const VIEW_KEYS: BoardView[] = ['day', 'month', 'workweek', 'week', 'agenda', 'rooms', 'awaiting']
+const VIEW_KEYS: BoardView[] = ['day', 'month', 'week', 'agenda', 'rooms', 'awaiting']
 
 export function useCalendarSearch() {
   const search = useSearch({ strict: false })

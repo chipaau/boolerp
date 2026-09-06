@@ -13,7 +13,7 @@ type Drag = { mode: 'create'; date: string; s: number; e: number } | { mode: 'mo
 const HOURS = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_START + i)
 
 /**
- * Seven (or five) day columns over an hour ruler, 8am to 7pm. Meetings are placed absolutely and
+ * Seven day columns (or one) over an hour ruler, 8am to 7pm. Meetings are placed absolutely and
  * packed side by side when they overlap; the red line is now on today's column. A single day
  * skips the column header since the board title already names it, and stretches its hours to fill
  * the height on hand rather than leaving a blank band below. Drag on empty
@@ -33,7 +33,7 @@ export function WeekGrid({
 }: {
   meetings: Meeting[]
   start: string
-  days: 1 | 5 | 7
+  days: 1 | 7
   selected: string
   today: string
   nowMinutes: number

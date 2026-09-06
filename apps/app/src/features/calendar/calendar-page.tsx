@@ -48,9 +48,9 @@ export function CalendarPage() {
   )
 
   const boardView = view === 'awaiting' ? 'agenda' : view
-  const weekish = boardView === 'day' || boardView === 'week' || boardView === 'workweek'
-  const days = boardView === 'day' ? 1 : boardView === 'workweek' ? 5 : 7
-  const weekStart = boardView === 'day' ? date : boardView === 'workweek' ? addDays(startOfWeek(date), 1) : startOfWeek(date)
+  const weekish = boardView === 'day' || boardView === 'week'
+  const days = boardView === 'day' ? 1 : 7
+  const weekStart = boardView === 'day' ? date : startOfWeek(date)
   const weekEnd = addDays(weekStart, days - 1)
   const weekList = visible.filter((m) => m.date >= weekStart && m.date <= weekEnd)
   const monthList = visible.filter((m) => sameMonth(m.date, date))

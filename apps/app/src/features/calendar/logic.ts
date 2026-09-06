@@ -1,7 +1,7 @@
 // Pure calendar logic: dates and times as strings, meeting queries, lane packing for the week
 // grid, room availability and time suggestions. No data lives here.
 import type { BadgeTone } from '@workspace/ui/components/badge'
-import type { AgendaItem, CalendarKey, Meeting, Recurrence, Rsvp } from './types'
+import type { AgendaItem, CalendarKey, Meeting, Recurrence, Rsvp, CalendarView } from './types'
 
 /** The visible day runs 8am to 7pm; the week grid draws each hour at this height. */
 export const DAY_START = 8
@@ -193,10 +193,9 @@ export const RECURRENCES: { value: Recurrence; label: string }[] = [
 ]
 export const recurrenceLabel = (r: Recurrence) => (r ? RECURRENCES.find((x) => x.value === r)?.label ?? r : '')
 
-export const VIEWS: { key: 'day' | 'month' | 'workweek' | 'week' | 'agenda' | 'rooms'; label: string; hint: string }[] = [
+export const VIEWS: { key: CalendarView; label: string; hint: string }[] = [
   { key: 'day', label: 'Day', hint: 'D' },
   { key: 'month', label: 'Month', hint: 'M' },
-  { key: 'workweek', label: 'Work week', hint: 'E' },
   { key: 'week', label: 'Week', hint: 'W' },
   { key: 'agenda', label: 'Agenda', hint: 'A' },
   { key: 'rooms', label: 'Rooms', hint: 'R' },
