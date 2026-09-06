@@ -126,9 +126,9 @@ export function MeetingDetailPage() {
                 <div className="flex items-center gap-3">
                   <div className="text-ui-sm font-bold text-muted-foreground">Agenda</div>
                   {editable && m.agenda.length > 0 && agendaDraft === null && (
-                    <button type="button" onClick={() => setAgendaDraft(agendaToHtml(m.agenda))} className="ms-auto text-fine font-bold text-link hover:underline">
+                    <Button variant="link" size="xs" onClick={() => setAgendaDraft(agendaToHtml(m.agenda))} className="ms-auto text-fine">
                       Edit
-                    </button>
+                    </Button>
                   )}
                 </div>
                 {agendaDraft !== null ? (

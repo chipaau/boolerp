@@ -1,4 +1,5 @@
 import { Card } from '@workspace/ui/components/card'
+import { Button } from '@workspace/ui/components/button'
 import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@workspace/ui/components/tooltip'
 import { cn } from '@workspace/ui/lib/utils'
@@ -50,9 +51,9 @@ export function RoomsBoard({
         </div>
         <div className="flex items-center gap-[9px]">
           {onManage ? (
-            <button type="button" onClick={onManage} className="text-fine font-bold text-link hover:underline">
+            <Button variant="link" size="xs" onClick={onManage} className="text-fine">
               Manage rooms
-            </button>
+            </Button>
           ) : (
             <span className="text-fine text-faint">Capacity set by admins</span>
           )}

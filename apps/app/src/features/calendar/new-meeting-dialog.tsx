@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarDays, ChevronDown, ChevronRight, X } from 'lucide-react'
+import { Badge } from '@workspace/ui/components/badge'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
 import { Input } from '@workspace/ui/components/input'
+import { Label } from '@workspace/ui/components/label'
+import { NativeSelect } from '@workspace/ui/components/native-select'
 import { MiniCalendar } from '@workspace/ui/components/mini-calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@workspace/ui/components/popover'
 import { RichText } from '@workspace/ui/components/rich-text'
@@ -15,8 +18,6 @@ import { useCalendars, useMe, useMeetingActions, useMeetings, usePeople, useRoom
 import type { CalendarKey, Meeting, Recurrence } from './types'
 
 export type NewMeetingDraft = { date: string; start: string; duration: number; room?: string }
-
-const selectClass = 'h-8 w-full border-b border-border bg-transparent pl-0.5 text-sm font-bold tabular-nums text-foreground outline-none focus-visible:border-brand-soft'
 
 /**
  * The new-meeting sheet from the design: title, calendar, a "When" row whose popover holds the date picker,
@@ -107,7 +108,7 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
         <div className="max-h-[min(74vh,620px)] overflow-y-auto px-6 pt-5 pb-3">
           <Input value={title} onChange={(ev) => setTitle(ev.target.value)} placeholder="What is this meeting for?" className="h-10 rounded-[10px] bg-surface-band text-sm" />
 
-          <Label>Calendar</Label>
+          <Label className="mt-5 mb-2 text-meta font-bold text-muted-foreground">Calendar</Label>
           <div className="flex flex-wrap gap-[7px]">
             {calendars.map((c) => (
               <Pill key={c.key} active={calendar === c.key} onClick={() => setCalendar(c.key)}>
@@ -117,7 +118,7 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
             ))}
           </div>
 
-          <Label>When</Label>
+          <Label className="mt-5 mb-2 text-meta font-bold text-muted-foreground">When</Label>
           <div className="rounded-xl bg-surface-band px-4 pt-1.5 pb-3">
             <Popover open={whenOpen} onOpenChange={setWhenOpen}>
               <PopoverTrigger className="group flex w-full items-center gap-2.5 rounded-[9px] px-1 py-[11px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -130,7 +131,7 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
                   <div>
                     <div className="mb-[5px] text-micro text-faint">Start date</div>
                     <Popover>
-                      <PopoverTrigger className={cn(selectClass, 'flex items-center justify-between gap-2 text-left')}>
+                      <PopoverTrigger className="flex h-[34px] w-full items-center justify-between gap-2 rounded-[9px] bg-surface-band pr-2.5 pl-[11px] text-left text-sm font-bold tabular-nums text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <span>{shortDate(date)}</span>
                         <CalendarDays className="size-[15px] text-faint" strokeWidth={1.6} />
                       </PopoverTrigger>
@@ -141,23 +142,23 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
                   </div>
                   <div className={cn(allDay && 'pointer-events-none opacity-35')}>
                     <div className="mb-[5px] text-micro text-faint">Start time</div>
-                    <select value={start} onChange={(ev) => setStart(ev.target.value)} className={selectClass}>
+                    <NativeSelect value={start} onChange={(ev) => setStart(ev.target.value)}>
                       {times(DAY_START * 60, DAY_END * 60 - 15).map((t) => (
                         <option key={t} value={t}>
                           {fmtTime(t)}
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                   </div>
                   <div className={cn(allDay && 'pointer-events-none opacity-35')}>
                     <div className="mb-[5px] text-micro text-faint">End time</div>
-                    <select value={fromMinutes(e)} onChange={(ev) => setDuration(Math.max(15, toMinutes(ev.target.value) - s))} className={selectClass}>
+                    <NativeSelect value={fromMinutes(e)} onChange={(ev) => setDuration(Math.max(15, toMinutes(ev.target.value) - s))}>
                       {times(s + 15, DAY_END * 60).map((t) => (
                         <option key={t} value={t}>
                           {fmtTime(t)}
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -168,13 +169,13 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
                     <Checkbox checked={!!repeats} onCheckedChange={(v) => setRepeats(v ? 'Weekly' : '')} /> Repeats
                   </label>
                   {repeats && (
-                    <select value={repeats} onChange={(ev) => setRepeats(ev.target.value as Recurrence)} className="h-[30px] rounded-lg bg-transparent px-2 text-meta font-bold text-foreground shadow-[inset_0_0_0_1px_var(--border)] outline-none">
+                    <NativeSelect value={repeats} onChange={(ev) => setRepeats(ev.target.value as Recurrence)} className="w-[132px] [&>select]:h-[30px] [&>select]:text-meta">
                       {RECURRENCES.filter((r) => r.value).map((r) => (
                         <option key={r.value} value={r.value}>
                           {r.label}
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                   )}
                 </div>
                 <div className="mt-[18px] border-t border-divider pt-4">
@@ -198,7 +199,9 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
                           <span className="text-compact tabular-nums text-body">
                             {fmtTime(fromMinutes(sl.s))} – {fmtTime(fromMinutes(sl.e))} ({fmtDuration(sl.e - sl.s)})
                           </span>
-                          <span className={cn('rounded-full px-2 py-[3px] text-micro font-bold whitespace-nowrap', all ? 'bg-tone-success-soft text-tone-success-foreground' : 'bg-tone-warning-soft text-tone-warning-foreground')}>{all ? 'All free' : `${sl.free} of ${everyone.length} free`}</span>
+                          <Badge variant={all ? 'success' : 'warning'} size="sm">
+                            {all ? 'All free' : `${sl.free} of ${everyone.length} free`}
+                          </Badge>
                         </button>
                       )
                     })}
@@ -213,7 +216,7 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
             </div>
           </div>
 
-          <Label>Room</Label>
+          <Label className="mt-5 mb-2 text-meta font-bold text-muted-foreground">Room</Label>
           <Popover>
             <PopoverTrigger className="flex w-full items-center gap-[11px] rounded-[10px] bg-surface-band px-[13px] py-[9px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring data-popup-open:shadow-[inset_0_0_0_1px_var(--brand-soft)]">
               <span className={cn('size-2 shrink-0 rounded-full', roomOk ? 'bg-tone-success' : 'bg-tone-risk')} />
@@ -239,14 +242,16 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
                         {r.capacity} seats · {r.kit} · {next ? `next booking ${fmtTime(next.start)}` : 'nothing booked'}
                       </span>
                     </span>
-                    <span className={cn('rounded-full px-2 py-[3px] text-[10.5px] font-bold', ok ? 'bg-tone-success-soft text-tone-success-foreground' : 'bg-tone-risk-soft text-tone-risk-foreground')}>{ok ? 'Free' : 'Taken'}</span>
+                    <Badge variant={ok ? 'success' : 'risk'} size="sm">
+                      {ok ? 'Free' : 'Taken'}
+                    </Badge>
                   </button>
                 )
               })}
             </PopoverContent>
           </Popover>
 
-          <Label>Attendees</Label>
+          <Label className="mt-5 mb-2 text-meta font-bold text-muted-foreground">Attendees</Label>
           <div className="flex flex-wrap items-center gap-[7px] rounded-[10px] bg-surface-band px-2.5 py-[9px]">
             {invites.map((k) => {
               const p = people.find((x) => x.key === k)
@@ -299,19 +304,12 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
   )
 }
 
-function Label({ children }: { children: React.ReactNode }) {
-  return <label className="mt-5 mb-2 block text-meta font-bold text-muted-foreground">{children}</label>
-}
-
+/** A choice chip: the Badge filter pill rendered as a button, the chosen one in the primary sand. */
 function Pill({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn('inline-flex h-8 items-center gap-[7px] rounded-full px-[13px] text-meta font-bold outline-none transition-colors duration-instant focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary text-foreground' : 'bg-muted text-body hover:bg-secondary-hover')}
-    >
+    <Badge variant="filter" render={<button type="button" onClick={onClick} aria-pressed={active} />} className={cn('h-8 px-[13px] text-meta', active && 'bg-primary text-foreground hover:bg-primary')}>
       {children}
-    </button>
+    </Badge>
   )
 }
 

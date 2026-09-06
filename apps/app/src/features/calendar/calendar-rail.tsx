@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Badge } from '@workspace/ui/components/badge'
+import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { MiniCalendar } from '@workspace/ui/components/mini-calendar'
 import { cn } from '@workspace/ui/lib/utils'
@@ -42,15 +44,19 @@ export function CalendarRail(_: { app: AppDef }) {
         className={cn('flex items-center justify-between gap-2.5 rounded-lg py-2 pr-3 pl-[13px] text-left text-ui outline-none transition-colors duration-instant focus-visible:ring-2 focus-visible:ring-ring', awaitingOn ? 'bg-sidebar-accent font-bold text-foreground' : 'text-body hover:bg-sidebar-hover hover:text-foreground')}
       >
         <span>Awaiting your reply</span>
-        {awaiting > 0 && <span className="rounded-full bg-tone-warning-soft px-2 py-0.5 text-micro font-bold text-tone-warning-foreground">{awaiting}</span>}
+        {awaiting > 0 && (
+          <Badge variant="warning" size="sm">
+            {awaiting}
+          </Badge>
+        )}
       </button>
 
       <div className="border-t border-sidebar-border pt-4">
         <div className="mb-2.5 flex items-center gap-2">
           <div className="text-overline text-faint">My calendars</div>
-          <button type="button" onClick={() => setManage(true)} className="ms-auto text-fine font-bold text-link hover:underline">
+          <Button variant="link" size="xs" onClick={() => setManage(true)} className="ms-auto text-fine">
             {membership?.role === 'Admin' ? 'Manage' : 'Details'}
-          </button>
+          </Button>
         </div>
         {calendars.map((c) => {
           const on = !hidden.includes(c.key)

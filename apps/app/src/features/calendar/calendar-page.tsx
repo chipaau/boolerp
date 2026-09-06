@@ -94,7 +94,7 @@ export function CalendarPage() {
     toast(`Moved to ${shortDate(toDate)}, ${fmtTime(start)}`, { undo: () => { undo(); toast('Move undone') } })
   }
 
-  // d / m / w / e / a / r switch views, t is today, n a new meeting, arrows step the period, ? lists them
+  // d / m / w / a / r switch views, t is today, n a new meeting, arrows step the period, ? lists them
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement | null)?.tagName ?? ''
@@ -104,7 +104,6 @@ export function CalendarPage() {
       if (k === 'd') set({ view: 'day' })
       else if (k === 'm') set({ view: 'month' })
       else if (k === 'w') set({ view: 'week' })
-      else if (k === 'e') set({ view: 'workweek' })
       else if (k === 'a') set({ view: 'agenda' })
       else if (k === 'r') set({ view: 'rooms' })
       else if (k === 't') set({ date: today })
@@ -151,8 +150,9 @@ export function CalendarPage() {
           </div>
           <Popover>
             <PopoverTrigger
+              render={<Button variant="outline" size="icon-sm" />}
               title={filterCount ? `${filterCount} filter${filterCount === 1 ? '' : 's'} applied` : 'Filter'}
-              className={cn('relative grid size-[34px] place-items-center rounded-full outline-none transition-colors duration-instant focus-visible:ring-2 focus-visible:ring-ring', filterCount ? 'bg-tone-warning-soft text-tone-warning-foreground' : 'text-body shadow-[inset_0_0_0_1px_var(--divider)] hover:bg-surface-soft')}
+              className={cn('relative size-[34px] text-body', filterCount && 'bg-tone-warning-soft text-tone-warning-foreground shadow-none hover:bg-tone-warning-soft')}
             >
               <SlidersHorizontal className="size-[15px]" strokeWidth={1.6} />
               {filterCount > 0 && <span className="absolute -top-[3px] -right-[3px] grid h-4 min-w-4 place-items-center rounded-full bg-brand-soft px-1 text-[10px] font-bold text-brand-cta-foreground">{filterCount}</span>}
@@ -173,15 +173,9 @@ export function CalendarPage() {
               </div>
             </PopoverContent>
           </Popover>
-          <button
-            type="button"
-            title="Keyboard shortcuts (?)"
-            aria-label="Keyboard shortcuts"
-            onClick={() => setHelp(true)}
-            className="grid size-[34px] place-items-center rounded-full text-body shadow-[inset_0_0_0_1px_var(--divider)] outline-none transition-colors duration-instant hover:bg-surface-soft focus-visible:ring-2 focus-visible:ring-ring"
-          >
+          <Button variant="outline" size="icon-sm" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" onClick={() => setHelp(true)} className="size-[34px] text-body">
             <Keyboard className="size-[15px]" strokeWidth={1.6} />
-          </button>
+          </Button>
           <span className="flex-1" />
           <Button className="shrink-0" onClick={() => setDraft({ date, start: '16:00', duration: 45 })}>
             New meeting

@@ -6,6 +6,7 @@ import { Placeholder } from "@tiptap/extensions"
 import { Bold, Italic, List, ListOrdered, Undo2 } from "lucide-react"
 import { useEffect } from "react"
 
+import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 /**
@@ -78,21 +79,19 @@ function RichText({
 
 function Tool({ label, active = false, disabled = false, onClick, children }: { label: string; active?: boolean; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon-xs"
       title={label}
       aria-label={label}
       aria-pressed={active}
       disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={cn(
-        "grid size-7 place-items-center rounded-[7px] outline-none transition-colors duration-instant focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 [&_svg]:size-[15px]",
-        active ? "bg-primary text-foreground" : "text-muted-foreground hover:bg-surface-soft hover:text-foreground"
-      )}
+      className={cn("size-7 rounded-[7px] hover:translate-y-0 [&_svg:not([class*='size-'])]:size-[15px]", active ? "bg-primary text-foreground hover:bg-primary" : "text-muted-foreground")}
     >
       {children}
-    </button>
+    </Button>
   )
 }
 
