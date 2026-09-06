@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import logo from '@workspace/assets/logos/hexa-logo.png'
 import { Hexagon } from '@workspace/ui/components/hexagon'
+import { MadeBy } from '@workspace/ui/components/made-by'
 
 /**
  * The sign-in canvas from the Hexa Login design: Warm Ivory page with three faded hexagons
@@ -63,6 +64,7 @@ export function AuthShell({
         <span>
           © {year} {brand}
         </span>
+        <MadeBy />
         {links.map((l) => (
           <a key={l.href} href={l.href} className="text-link hover:underline hover:underline-offset-[3px]">
             {l.label}

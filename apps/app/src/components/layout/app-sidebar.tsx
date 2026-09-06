@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { Link, useLocation, useSearch } from '@tanstack/react-router'
+import { LifeBuoy, MessageSquarePlus } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -11,10 +14,13 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@workspace/ui/components/sidebar'
+import { MadeBy } from '@workspace/ui/components/made-by'
 import { cn } from '@workspace/ui/lib/utils'
 import { AppIcon } from '@/components/app-icon'
 import { getRail } from '@/features/rails'
+import { FeedbackDialog } from '@/features/shell/feedback-dialog'
 import { useNavCounts, useSavedViews } from '@/features/shell/queries'
+import { SupportDialog } from '@/features/shell/support-dialog'
 import type { AppDef, AppMenuItem, AppMenuSection } from '@/lib/apps'
 
 const BADGE_TONE = {
@@ -26,7 +32,8 @@ const BADGE_TONE = {
  * The design's rail: the app's identity at the top (glyph plate, name, one-line description), an
  * overline label per further group, right-rounded rows that bleed to the rail's edge (ivory +
  * short amber bar when active), counts at the right, saved views that carry their filter as
- * search params. The account and the way back to Home live in the topbar.
+ * search params. Support, feedback and the maker's mark sit at the foot. Collapsed to icons, the
+ * app's glyph plate stays as its label. The account and the way back to Home live in the topbar.
  */
 export function AppSidebar({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
@@ -35,6 +42,8 @@ export function AppSidebar({ app }: { app: AppDef }) {
   const Rail = getRail(app.slug)
   const counts = useNavCounts(app.slug)
   const views = useSavedViews(app.slug)
+  const [support, setSupport] = useState(false)
+  const [feedback, setFeedback] = useState(false)
 
   // the registry's groups, then the user's saved views as one more group (same row shape)
   const groups: AppMenuSection[] = views.length
@@ -53,11 +62,11 @@ export function AppSidebar({ app }: { app: AppDef }) {
     <Sidebar className="top-(--header-height) h-[calc(100svh-var(--header-height))]!" collapsible="icon">
       {/* rows carry their own right padding so their fill runs almost to the rail's edge, stopping 12px short */}
       <SidebarContent className="gap-0 pr-3 pl-[22px] pt-5 group-data-[collapsible=icon]:px-2">
-        <div className="mb-5 flex items-center gap-3 group-data-[collapsible=icon]:hidden">
-          <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-surface-soft">
+        <div className="mb-5 flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+          <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-surface-soft" title={app.name}>
             <AppIcon slug={app.slug} size={22} />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <div className="truncate text-heading-sm font-bold text-foreground">{app.name}</div>
             <div className="truncate text-caption text-muted-foreground">{app.description}</div>
           </div>
@@ -105,6 +114,26 @@ export function AppSidebar({ app }: { app: AppDef }) {
           </SidebarGroup>
           ))}
       </SidebarContent>
+
+      <SidebarFooter className="gap-0 border-t border-sidebar-border px-3 pt-2 pb-3.5 group-data-[collapsible=icon]:px-2">
+        <SidebarMenu className="gap-px">
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Support" onClick={() => setSupport(true)}>
+              <LifeBuoy strokeWidth={1.75} />
+              <span>Support</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Send feedback" onClick={() => setFeedback(true)}>
+              <MessageSquarePlus strokeWidth={1.75} />
+              <span>Send feedback</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <MadeBy href="https://bool.mv" className="mt-3.5 ps-4 group-data-[collapsible=icon]:hidden" />
+      </SidebarFooter>
+      <SupportDialog open={support} onClose={() => setSupport(false)} onFeedback={() => { setSupport(false); setFeedback(true) }} />
+      <FeedbackDialog open={feedback} page={pathname} onClose={() => setFeedback(false)} />
 
       <SidebarRail />
     </Sidebar>
