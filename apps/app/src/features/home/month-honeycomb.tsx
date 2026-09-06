@@ -30,11 +30,13 @@ const CELL_ASPECT = 25.5 / 25
 // Fill per activity level (light activity / healthy / at or above target); tokens in globals.css.
 const LEVEL_FILL = ['text-heat-1', 'text-heat-2', 'text-heat-3'] as const
 
-/** The hover card for one day: date, counts, and a jump to that day in the calendar. */
+/** The hover card for one day: date, counts (or that there are none), and a jump to that day in the calendar. */
 function DayCard({ date, activity, isToday }: { date: Date; activity: DayActivity; isToday: boolean }) {
   const weekday = isToday ? 'Today' : weekdayLong(date)
   const day = date.getDate()
   const rest = monthYear(date)
+  const quiet = activity.meetings + activity.tasks + activity.approvals === 0
+  const past = date < new Date(new Date().toDateString())
   const rows = [
     { label: `${activity.meetings} Meeting${activity.meetings === 1 ? '' : 's'}`, icon: <MeetingMarker size={18} /> },
     { label: `${activity.tasks} Task(s) due`, icon: <TaskMarker size={18} /> },
@@ -56,14 +58,18 @@ function DayCard({ date, activity, isToday }: { date: Date; activity: DayActivit
           render={<Link to="/$app" params={{ app: 'calendar' }} search={{ view: 'day', date: isoDate(date) }} />}
         />
       </div>
-      <ul className="space-y-2 text-ui-lg">
-        {rows.map((r) => (
-          <li key={r.label} className="flex items-center gap-2.5">
-            {r.icon}
-            <span className="text-foreground">{r.label}</span>
-          </li>
-        ))}
-      </ul>
+      {quiet ? (
+        <p className="text-ui-lg leading-[1.45] text-muted-foreground">{past ? 'A quiet day. Nothing was due or booked.' : 'Nothing here yet. The day is yours.'}</p>
+      ) : (
+        <ul className="space-y-2 text-ui-lg">
+          {rows.map((r) => (
+            <li key={r.label} className="flex items-center gap-2.5">
+              {r.icon}
+              <span className="text-foreground">{r.label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

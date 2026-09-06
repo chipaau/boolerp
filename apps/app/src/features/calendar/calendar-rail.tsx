@@ -6,6 +6,7 @@ import { Checkbox } from '@workspace/ui/components/checkbox'
 import { MiniCalendar } from '@workspace/ui/components/mini-calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@workspace/ui/components/popover'
 import { useSidebar } from '@workspace/ui/components/sidebar'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@workspace/ui/components/tooltip'
 import { cn } from '@workspace/ui/lib/utils'
 import type { AppDef } from '@/lib/apps'
 import { useMembership } from '@/features/shell/queries'
@@ -64,21 +65,36 @@ export function CalendarRail(_: { app: AppDef }) {
     return (
       <div className="flex flex-col items-center gap-1.5">
         <Popover>
-          <PopoverTrigger render={<Button variant="ghost" size="icon-sm" />} title="Pick a day" aria-label="Pick a day" className="text-body">
-            <CalendarDays strokeWidth={1.75} />
-          </PopoverTrigger>
+          <Tooltip>
+            <TooltipTrigger render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" />} />} aria-label="Pick a day" className="text-body">
+              <CalendarDays strokeWidth={1.75} />
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              Pick a day
+            </TooltipContent>
+          </Tooltip>
           <PopoverContent side="right" align="start" sideOffset={10} className="w-[252px] p-3">
             {mini(true)}
           </PopoverContent>
         </Popover>
-        <Button variant={awaitingOn ? 'secondary' : 'ghost'} size="icon-sm" title="Awaiting your reply" aria-label={`Awaiting your reply${awaiting ? `, ${awaiting}` : ''}`} onClick={() => set({ view: awaitingOn ? 'agenda' : 'awaiting' })} className="relative text-body">
-          <MailQuestion strokeWidth={1.75} />
-          {awaiting > 0 && <span className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-tone-warning-soft px-1 text-[10px] font-bold text-tone-warning-foreground">{awaiting}</span>}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger render={<Button variant={awaitingOn ? 'secondary' : 'ghost'} size="icon-sm" />} aria-label={`Awaiting your reply${awaiting ? `, ${awaiting}` : ''}`} onClick={() => set({ view: awaitingOn ? 'agenda' : 'awaiting' })} className="relative text-body">
+            <MailQuestion strokeWidth={1.75} />
+            {awaiting > 0 && <span className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-tone-warning-soft px-1 text-[10px] font-bold text-tone-warning-foreground">{awaiting}</span>}
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>
+            {awaiting ? `Awaiting your reply · ${awaiting}` : 'Awaiting your reply'}
+          </TooltipContent>
+        </Tooltip>
         <Popover>
-          <PopoverTrigger render={<Button variant="ghost" size="icon-sm" />} title="My calendars" aria-label="My calendars" className="text-body">
-            <Tags strokeWidth={1.75} />
-          </PopoverTrigger>
+          <Tooltip>
+            <TooltipTrigger render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" />} />} aria-label="My calendars" className="text-body">
+              <Tags strokeWidth={1.75} />
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              My calendars
+            </TooltipContent>
+          </Tooltip>
           <PopoverContent side="right" align="start" sideOffset={10} className="w-[216px] p-2">
             <div className="px-2 pt-1 pb-1.5 text-overline text-faint">My calendars</div>
             <CalendarToggles />

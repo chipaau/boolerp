@@ -14,8 +14,7 @@ import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { EmptyState } from '@workspace/ui/components/empty-state'
-import { Pagination, paginate } from '@workspace/ui/components/pagination'
-import type { PageSize } from '@workspace/ui/components/pagination'
+import { ShowMore } from '@workspace/ui/components/show-more'
 import { SearchField } from '@workspace/ui/components/search-field'
 import {
   Table,
@@ -56,12 +55,10 @@ export function InventoryItemsPage() {
     return r
   }, [items, filter, query, sort])
 
-  const [pageSize, setPageSize] = useState<PageSize>(10)
-  const [page, setPage] = useState(1)
-  // a new filter, search, sort or page size starts again from the first page
-  useEffect(() => setPage(1), [filter, query, sort, pageSize])
-  const paged = paginate(rows, page, pageSize)
-  const pageRows = paged.rows
+  const [limit, setLimit] = useState(10)
+  // a new filter, search or sort starts again from the first ten
+  useEffect(() => setLimit(10), [filter, query, sort])
+  const pageRows = rows.slice(0, limit)
 
   const count = Object.values(selected).filter(Boolean).length
   const allSelected = pageRows.length > 0 && pageRows.every((r) => selected[r.sku])
@@ -227,7 +224,7 @@ export function InventoryItemsPage() {
         )}
 
         <TableFooter>
-          <Pagination total={rows.length} page={paged.page} pageSize={pageSize} onPage={setPage} onPageSize={setPageSize} noun="items" />
+          <ShowMore shown={pageRows.length} total={rows.length} onShow={setLimit} noun="items" />
         </TableFooter>
       </Card>
     </div>

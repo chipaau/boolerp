@@ -88,15 +88,15 @@ export function Schedule() {
                       +{item.others.length}
                     </AvatarGroupCount>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" align="start" sideOffset={8} variant="card" showArrow={false}>
-                    <ul className="space-y-2 p-0.5 text-left">
+                  <TooltipContent side="bottom" align="start" sideOffset={6}>
+                    <ul className="space-y-1.5 py-0.5 text-left">
                       {item.others.map((p) => (
-                        <li key={p.name} className="flex items-center gap-2.5">
-                          <Avatar name={p.name} className="size-7">
+                        <li key={p.name} className="flex items-center gap-2">
+                          <Avatar name={p.name} className="size-5">
                             {p.photo && <AvatarImage src={p.photo} alt="" />}
-                            <AvatarFallback className="text-[10px]" />
+                            <AvatarFallback className="text-[8px]" />
                           </Avatar>
-                          <span className="text-sm text-foreground">{p.name}</span>
+                          {p.name}
                         </li>
                       ))}
                     </ul>
