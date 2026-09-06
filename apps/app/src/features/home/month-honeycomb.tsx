@@ -37,11 +37,12 @@ function DayCard({ date, activity, isToday }: { date: Date; activity: DayActivit
   const rest = monthYear(date)
   const quiet = activity.meetings + activity.tasks + activity.approvals === 0
   const past = date < new Date(new Date().toDateString())
+  // only what the day actually holds; a zero row says nothing worth the space
   const rows = [
-    { label: `${activity.meetings} Meeting${activity.meetings === 1 ? '' : 's'}`, icon: <MeetingMarker size={18} /> },
-    { label: `${activity.tasks} Task(s) due`, icon: <TaskMarker size={18} /> },
-    { label: `${activity.approvals} Approval(s) pending`, icon: <ApprovalMarker size={18} /> },
-  ]
+    { n: activity.meetings, label: `${activity.meetings} Meeting${activity.meetings === 1 ? '' : 's'}`, icon: <MeetingMarker size={18} /> },
+    { n: activity.tasks, label: `${activity.tasks} Task${activity.tasks === 1 ? '' : 's'} due`, icon: <TaskMarker size={18} /> },
+    { n: activity.approvals, label: `${activity.approvals} Approval${activity.approvals === 1 ? '' : 's'} pending`, icon: <ApprovalMarker size={18} /> },
+  ].filter((r) => r.n > 0)
   return (
     <div className="w-60 space-y-3.5 p-1">
       <div className="flex items-start justify-between gap-3">

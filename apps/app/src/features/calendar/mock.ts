@@ -6,6 +6,8 @@ import avatar2 from '@workspace/assets/avatars/avatar-2.jpg'
 import avatar3 from '@workspace/assets/avatars/avatar-3.jpg'
 import avatar4 from '@workspace/assets/avatars/avatar-4.webp'
 import avatar5 from '@workspace/assets/avatars/avatar-5.jpg'
+import avatar6 from '@workspace/assets/avatars/avatar-6.jpg'
+import avatar7 from '@workspace/assets/avatars/avatar-7.jpg'
 import { addDays, toIso } from './logic'
 import type { Attendee, CalendarDef, Meeting, Person, Room, Rsvp, Swatch } from './types'
 
@@ -42,9 +44,9 @@ export const PEOPLE: Person[] = [
   { key: 'MA', name: 'Mariyam Ahmed', role: 'Design lead', photo: avatar5 },
   { key: 'JL', name: 'Jonas Lindqvist', role: 'Product manager', photo: avatar2 },
   { key: 'PR', name: 'Priya Raman', role: 'Engineering', photo: avatar1 },
-  { key: 'TK', name: 'Tom Kean', role: 'Operations' },
+  { key: 'TK', name: 'Tom Kean', role: 'Operations', photo: avatar7 },
   { key: 'SD', name: 'Sofia Duarte', role: 'Client — Acme', photo: avatar3 },
-  { key: 'AB', name: 'Adam Boyle', role: 'Engineering' },
+  { key: 'AB', name: 'Adam Boyle', role: 'Engineering', photo: avatar6 },
   { key: 'HY', name: 'Hana Yusuf', role: 'Design', photo: avatar4 },
   { key: 'RC', name: 'Ruben Cole', role: 'Finance' },
   { key: 'EM', name: 'Elena Marsh', role: 'Recruiting' },

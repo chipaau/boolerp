@@ -14,7 +14,7 @@ import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { EmptyState } from '@workspace/ui/components/empty-state'
-import { ShowMore } from '@workspace/ui/components/show-more'
+import { RowsShown } from '@workspace/ui/components/rows-shown'
 import { SearchField } from '@workspace/ui/components/search-field'
 import {
   Table,
@@ -224,7 +224,7 @@ export function InventoryItemsPage() {
         )}
 
         <TableFooter>
-          <ShowMore shown={pageRows.length} total={rows.length} onShow={setLimit} noun="items" />
+          <RowsShown shown={pageRows.length} total={rows.length} limit={limit} onLimit={setLimit} noun="items" />
         </TableFooter>
       </Card>
     </div>

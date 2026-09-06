@@ -5,6 +5,8 @@ import avatar2 from '@workspace/assets/avatars/avatar-2.jpg'
 import avatar3 from '@workspace/assets/avatars/avatar-3.jpg'
 import avatar4 from '@workspace/assets/avatars/avatar-4.webp'
 import avatar5 from '@workspace/assets/avatars/avatar-5.jpg'
+import avatar6 from '@workspace/assets/avatars/avatar-6.jpg'
+import avatar7 from '@workspace/assets/avatars/avatar-7.jpg'
 import type { AvatarChoice, Membership, NavCounts, Notification, SavedView, SupportLink } from './types'
 
 export const NOTIFICATIONS: Notification[] = [
@@ -51,6 +53,8 @@ export const AVATAR_CHOICES: AvatarChoice[] = [
   { id: 'a3', src: avatar3, label: 'Portrait 3' },
   { id: 'a4', src: avatar4, label: 'Portrait 4' },
   { id: 'a5', src: avatar5, label: 'Portrait 5' },
+  { id: 'a6', src: avatar6, label: 'Portrait 6' },
+  { id: 'a7', src: avatar7, label: 'Portrait 7' },
 ]
 
 /** Placeholder destinations; the real help centre and support inbox replace these at integration. */
