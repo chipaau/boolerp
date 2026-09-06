@@ -53,6 +53,7 @@ export function useMeetingActions() {
       return () => update((list) => list.map((m) => (m.id === id && before ? before : m)))
     },
     setCancelled: (id: string, cancelled: boolean) => patch(id, { cancelled }),
+    setAgenda: (id: string, agenda: Meeting['agenda']) => patch(id, { agenda }),
     /** Moves to a new day and start, keeping the length. */
     move: (id: string, date: string, start: string, end: string) => patch(id, { date, start, end, moved: true }),
     create: (meeting: Meeting): Undo => {

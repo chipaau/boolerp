@@ -6,9 +6,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@workspace/ui/components/input'
 import { MiniCalendar } from '@workspace/ui/components/mini-calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@workspace/ui/components/popover'
+import { RichText } from '@workspace/ui/components/rich-text'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
-import { DAY_END, DAY_START, RECURRENCES, addMonths, firstOfMonth, fmtDuration, fmtTime, fromMinutes, isPersonFree, isRoomFree, meetingsOn, roomBusy, shortDate, suggestSlots, toMinutes } from './logic'
+import { DAY_END, DAY_START, RECURRENCES, addMonths, agendaFromHtml, firstOfMonth, fmtDuration, fmtTime, fromMinutes, isPersonFree, isRoomFree, meetingsOn, roomBusy, shortDate, suggestSlots, toMinutes } from './logic'
 import { HexDot, PersonAvatar, TONE } from './meeting-bits'
 import { useCalendars, useMe, useMeetingActions, useMeetings, usePeople, useRooms } from './queries'
 import type { CalendarKey, Meeting, Recurrence } from './types'
@@ -20,7 +21,7 @@ const selectClass = 'h-8 w-full border-b border-border bg-transparent pl-0.5 tex
 /**
  * The new-meeting sheet from the design: title, calendar, a "When" row whose popover holds the date picker,
  * start/end, all-day, repeats and time suggestions, the room with live availability, attendees
- * with search, and agenda/notes. "Send invites" adds the meeting and offers an undo.
+ * with search, and the agenda in a rich-text editor. "Send invites" adds the meeting and offers an undo.
  */
 export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingDraft | null; today: string; onClose: () => void }) {
   const meetings = useMeetings()
@@ -66,6 +67,7 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
   const suggestions = people.filter((p) => query.trim() && p.key !== me.key && !invites.includes(p.key) && p.name.toLowerCase().includes(query.trim().toLowerCase()))
   const marks = useMemo(() => Object.fromEntries([...new Set(meetings.map((m) => m.date))].map((d) => [d, meetingsOn(meetings, d).length])), [meetings])
   const when = `${shortDate(date)} · ${fmtTime(start)} – ${fmtTime(fromMinutes(e))}`
+  const agendaCount = useMemo(() => agendaFromHtml(notes).length, [notes])
 
   function create() {
     const meeting: Meeting = {
@@ -79,11 +81,7 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
       organiser: me.key,
       repeats,
       attendees: everyone.map((k) => ({ person: k, rsvp: k === me.key ? 'yes' : 'pending' })),
-      agenda: notes
-        .split('\n')
-        .map((l) => l.trim())
-        .filter(Boolean)
-        .map((text) => ({ text, minutes: '' })),
+      agenda: agendaFromHtml(notes),
       notes: '',
     }
     const undo = actions.create(meeting)
@@ -277,18 +275,10 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
           <div className="mt-5 border-t border-divider">
             <button type="button" onClick={() => setNotesOpen((o) => !o)} className="flex w-full items-center gap-2.5 rounded-[9px] px-0.5 py-3 text-left outline-none hover:bg-surface-soft focus-visible:ring-2 focus-visible:ring-ring">
               <ChevronRight className={cn('size-3.5 text-faint transition-transform duration-quick', notesOpen && 'rotate-90')} />
-              <span className="text-ui-sm font-bold text-foreground">Agenda &amp; notes</span>
-              <span className="ms-auto text-xs text-faint">{notes.trim() ? `${notes.split('\n').filter((l) => l.trim()).length} lines` : 'Empty'}</span>
+              <span className="text-ui-sm font-bold text-foreground">Agenda</span>
+              <span className="ms-auto text-xs text-faint">{agendaCount ? `${agendaCount} ${agendaCount === 1 ? 'item' : 'items'}` : 'Empty'}</span>
             </button>
-            {notesOpen && (
-              <textarea
-                value={notes}
-                onChange={(ev) => setNotes(ev.target.value)}
-                rows={6}
-                placeholder="Agenda, one item per line — then anything to read, bring, or decide beforehand."
-                className="mb-3.5 w-full resize-y rounded-[10px] bg-surface-band px-[13px] py-[11px] text-compact leading-[1.6] text-foreground outline-none placeholder:text-placeholder"
-              />
-            )}
+            {notesOpen && <RichText value={notes} onChange={setNotes} autoFocus placeholder="One item per line, with its minutes — “Blockers worth a room · 10 min”." className="mb-3.5" />}
           </div>
         </div>
 
