@@ -37,7 +37,7 @@ export function InventoryOverviewPage() {
         title="Inventory overview"
         meta={
           <>
-            <span>Warehouse A, B &amp; Site store</span>
+            <span>Malé, Hithadhoo &amp; Kulhudhuffushi</span>
             {o.overduePurchaseOrders > 0 && (
               <Badge variant="warning" size="sm" render={<Link to="/$app/$section" params={{ app: 'inventory', section: 'purchase-orders' }} />}>
                 {o.overduePurchaseOrders} purchase {o.overduePurchaseOrders === 1 ? 'order' : 'orders'} overdue
