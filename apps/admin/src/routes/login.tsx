@@ -3,6 +3,10 @@ import { AuthShell, KratosForm, getSession, safeReturnTo, useKratosFlow } from '
 
 const LOGIN_GROUPS = ['password', 'webauthn', 'passkey', 'totp', 'lookup_secret', 'code']
 
+// Dev convenience — matches the internal operator seeded by apps/api/cmd/provision-dev. Dev-only:
+// import.meta.env.DEV is inlined to `false` in production builds, so this branch is eliminated.
+const DEV_CREDENTIALS = { identifier: 'user@bool.test', password: 'dev-operator-12345' }
+
 // Operator sign-in. Same Kratos flow machinery as the tenant app (shared @workspace/auth), single
 // origin admin.bool.test. Enforced-MFA + IP/VPN restrictions are hardening (later); this is the shell.
 export const Route = createFileRoute('/login')({
@@ -36,7 +40,13 @@ function LoginPage() {
     <AuthShell title="Operator sign in" subtitle="admin.bool.test — internal only">
       {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
       {flow ? (
-        <KratosForm flow={flow} onSubmit={onSubmit} submitting={submitting} groups={LOGIN_GROUPS} />
+        <KratosForm
+          flow={flow}
+          onSubmit={onSubmit}
+          submitting={submitting}
+          groups={LOGIN_GROUPS}
+          autofill={import.meta.env.DEV && aal !== 'aal2' ? DEV_CREDENTIALS : undefined}
+        />
       ) : (
         <p className="text-sm text-muted-foreground">Loading…</p>
       )}

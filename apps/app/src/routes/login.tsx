@@ -5,6 +5,10 @@ import { AuthShell, KratosForm, getSession, safeReturnTo, useKratosFlow } from '
 // second-factor step (authenticator code, backup code) when Kratos asks for aal2.
 const LOGIN_GROUPS = ['password', 'webauthn', 'passkey', 'totp', 'lookup_secret', 'code']
 
+// Dev convenience — matches the malecouncil owner seeded by apps/api/cmd/provision-dev. Dev-only:
+// import.meta.env.DEV is inlined to `false` in production builds, so this branch is eliminated.
+const DEV_CREDENTIALS = { identifier: 'user@malecouncil.test', password: 'dev-password-12345' }
+
 export const Route = createFileRoute('/login')({
   validateSearch: (s: Record<string, unknown>): { flow?: string; return_to?: string; aal?: 'aal2'; refresh?: 'true' } => ({
     flow: typeof s.flow === 'string' ? s.flow : undefined,
@@ -56,7 +60,13 @@ function LoginPage() {
         </p>
       )}
       {flow ? (
-        <KratosForm flow={flow} onSubmit={onSubmit} submitting={submitting} groups={LOGIN_GROUPS} />
+        <KratosForm
+          flow={flow}
+          onSubmit={onSubmit}
+          submitting={submitting}
+          groups={LOGIN_GROUPS}
+          autofill={import.meta.env.DEV && !secondFactor ? DEV_CREDENTIALS : undefined}
+        />
       ) : (
         <p className="text-ui-lg text-muted-foreground">Loading…</p>
       )}

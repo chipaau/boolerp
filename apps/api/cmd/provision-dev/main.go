@@ -27,7 +27,10 @@ const (
 	tenantSlug = "malecouncil"
 	tenantCode = "MCC"
 	tenantName = "Malé City Council"
-	ownerEmail = "owner@malecouncil.mv"
+	// user@malecouncil.test / operatorEmail below use the reserved .test TLD (RFC 2606) since
+	// these logins only ever exist in this compose stack — kept in sync with the login pages'
+	// DEV_CREDENTIALS (apps/app, apps/admin), which autofill exactly these values in dev builds.
+	ownerEmail = "user@malecouncil.test"
 	ownerName  = "Dev Owner"
 	// devPassword is a throwaway local-only credential, same spirit as kratos.yml's own
 	// dev-insecure secrets — never valid outside this compose stack.
@@ -38,7 +41,7 @@ const (
 	internalTenantName = "Bool ERP Platform Operations"
 	operatorRoleCode   = "operator"
 	operatorRoleName   = "Operator"
-	operatorEmail      = "operator@bool.mv"
+	operatorEmail      = "user@bool.test"
 	operatorName       = "Dev Operator"
 	operatorPassword   = "dev-operator-12345"
 )
