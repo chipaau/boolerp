@@ -3,17 +3,22 @@ import { getScreen } from '@/features/screens'
 import { findMenuItem, getApp } from '@/lib/apps'
 import { ProtoPage } from '@/proto/proto-page'
 
-export type AppHomeSearch = { view?: string; date?: string; hide?: string; mine?: 'true'; declined?: 'true' }
+export type AppHomeSearch = { view?: string; date?: string; hide?: string; mine?: 'true'; declined?: 'true'; scope?: string; sort?: string; q?: string; id?: string }
 
 export const Route = createFileRoute('/_app/$app/')({
   // Optional view state an app home may keep in the URL (Calendar: view, selected day, hidden
-  // calendars, filters) so it survives reloads and can be linked to.
+  // calendars, filters; Directory: scope, sort, query, open record) so it survives reloads and
+  // can be linked to.
   validateSearch: (s: Record<string, unknown>): AppHomeSearch => ({
     view: typeof s.view === 'string' ? s.view : undefined,
     date: typeof s.date === 'string' ? s.date : undefined,
     hide: typeof s.hide === 'string' ? s.hide : undefined,
     mine: s.mine === 'true' || s.mine === true ? 'true' : undefined,
     declined: s.declined === 'true' || s.declined === true ? 'true' : undefined,
+    scope: typeof s.scope === 'string' ? s.scope : undefined,
+    sort: typeof s.sort === 'string' ? s.sort : undefined,
+    q: typeof s.q === 'string' ? s.q : undefined,
+    id: typeof s.id === 'string' ? s.id : undefined,
   }),
   wrapInSuspense: true,
   component: AppHome,
