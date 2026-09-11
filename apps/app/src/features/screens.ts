@@ -1,6 +1,8 @@
 import type { ComponentType } from 'react'
 import { CalendarPage } from './calendar/calendar-page'
 import { MeetingDetailPage } from './calendar/meeting-detail-page'
+import { ControlOverviewPage } from './control-centre/overview-page'
+import { UnitsPage } from './control-centre/units-page'
 import { OrgPage } from './directory/org-page'
 import { PeoplePage } from './directory/people-page'
 import { InventoryItemsPage } from './inventory/items-page'
@@ -18,6 +20,10 @@ export const SCREENS: Partial<Record<string, Partial<Record<string, ComponentTyp
   calendar: {
     '': CalendarPage,
     meetings: MeetingDetailPage, // /calendar/meetings?id=…
+  },
+  'control-centre': {
+    '': ControlOverviewPage,
+    units: UnitsPage, // ?id=<unit>
   },
   directory: {
     '': PeoplePage, // ?scope=group:<unit>|mgr:<person>|away&sort=team&q=&id=<person>

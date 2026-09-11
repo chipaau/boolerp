@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import { CalendarRail } from './calendar/calendar-rail'
+import { ControlRail } from './control-centre/control-rail'
 import { DirectoryRail } from './directory/directory-rail'
 import type { AppDef } from '@/lib/apps'
 
@@ -10,6 +11,7 @@ import type { AppDef } from '@/lib/apps'
  */
 export const RAILS: Partial<Record<string, ComponentType<{ app: AppDef }>>> = {
   calendar: CalendarRail,
+  'control-centre': ControlRail,
   directory: DirectoryRail,
 }
 
