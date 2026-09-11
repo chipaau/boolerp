@@ -15,13 +15,17 @@ export function KratosForm({
   onSubmit,
   submitting = false,
   groups,
+  autofill,
 }: {
   flow: Flow
   onSubmit: (body: Record<string, string>) => void
   submitting?: boolean
   groups?: string[] // restrict to these node groups (+ 'default' for csrf); omit to render all
+  // Dev convenience: seed named fields (e.g. identifier/password) on first render. Callers must
+  // gate this behind import.meta.env.DEV so it's dead-code-eliminated from production bundles.
+  autofill?: Record<string, string>
 }) {
-  const [values, setValues] = useState<Record<string, string>>(() => initialValues(flow))
+  const [values, setValues] = useState<Record<string, string>>(() => ({ ...initialValues(flow), ...autofill }))
 
   const nodes = flow.ui.nodes.filter((n) => n.group === 'default' || !groups || groups.includes(n.group))
   const scripts = nodes.filter((n) => n.type === 'script')
