@@ -22,8 +22,12 @@
 
 ## Commit discipline
 
-- **Commit whenever a coherent, commitable unit of work is done** — don't let unrelated changes pile
-  up into one large diff.
+- **Commit whenever a coherent, commitable unit of work is done — proactively, along the way.**
+  Don't let a long session accumulate into one giant diff that only gets committed when the user
+  remembers to ask "commit and push" at the end. As soon as a table, a doc, a feature, or any other
+  self-contained piece finishes, propose the commit message right then and wait for a yes — don't
+  wait to be asked. Still one commit at a time, still confirmed (see below); the discipline is in
+  the timing, not skipping the confirmation.
 - **Keep commits granular:** one logical change per commit (e.g. "migrations for foundation tables",
   not "backend"). Scope each commit tightly.
 - **Always confirm the commit with the user before running `git commit`** — present the message(s) and
