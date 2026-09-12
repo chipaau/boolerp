@@ -37,13 +37,17 @@
 - `platform:*` misassignment to a non-internal tenant's role: **no DB-level guard** — Cerbos's
   `is_internal_member` principal check is the sole enforcement (deliberate; not defense-in-depth).
 
-## Data model — ✅ approved 2026-09-02, table-by-table (see `docs/data-model/DB-FOUNDATION.md`)
-- `roles`, `role_capabilities`, `user_roles` (control-plane, not RLS-scoped — group A).
-- **Support-access four-eyes** (UC-AUTHZ-07 → UC-AUTH-14) uses **`access_grants`**
-  (`proposed → pending_approval → approved → revoked`).
-- **Internal-tenant role-change four-eyes** (UC-AUTHZ-06) uses a **separate** `role_change_proposals`
-  table — different-shaped record (a role/capability diff, no target user or expiry), same four-eyes
-  workflow. Not the same table as `access_grants`.
+## Data model — ✅ approved 2026-09-02, revised 2026-09-12 (table-by-table, see `docs/data-model/DB-FOUNDATION.md`)
+- `roles`, `role_capabilities`, `user_roles` (control-plane, not RLS-scoped — group A); `roles` is
+  now **app-scoped** (`app_id` + nullable `tenant_id` — NULL is a global template shared by every
+  tenant with the app activated, set is that tenant's own custom role).
+- **Role-assignment four-eyes** (UC-AUTHZ-06, opt-in per tenant via `tenant_settings`) uses
+  **`role_requests`** (`pending_review → pending_approval → approved/rejected/expired`). This
+  replaced the earlier separate `role_change_proposals` table (dropped 2026-09-12) — its one
+  confirmed use case, internal-tenant role assignment, is fully covered by `role_requests`.
+- **Support-access four-eyes** (UC-AUTHZ-07 → UC-AUTH-14) uses **`support_access_grants`** (renamed
+  from `access_grants` 2026-09-12; `pending_review → pending_approval → approved → revoked`, plus
+  tenant-notify/tenant-approve fields since this grants access into a *different* tenant's data).
 - Capability catalog is code-seeded. Cerbos policies in `docker/cerbos/`.
 
 ## Use cases

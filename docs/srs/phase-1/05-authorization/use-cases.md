@@ -31,8 +31,8 @@
 
 ## UC-AUTHZ-07 — Grant support access *(Operator ×2 → enables UC-AUTH-14)*
 - **Trigger:** operator requests support access to a tenant/user (reason, target, duration). · **Main flow:**
-  recorded in `access_grants` (`proposed`); a second operator approves (`approved`) → a **time-boxed**
-  grant exists → UC-AUTH-14 impersonation may run. · **Exceptions:** no approval → no access; expiry → revoked.
+  recorded in `support_access_grants` (`pending_review`); a second operator approves (`approved`) → a
+  **time-boxed** grant exists → UC-AUTH-14 impersonation may run. · **Exceptions:** no approval → no access; expiry → revoked.
 - **Postcondition:** a consented, expiring, audited support grant.
 
 ## UC-AUTHZ-08 — Seed capability catalog + default role templates *(system, bootstrap)*

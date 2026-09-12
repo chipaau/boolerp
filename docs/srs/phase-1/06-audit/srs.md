@@ -32,4 +32,4 @@ technical tracing/logging (→ 07). `event_outbox` (transactional outbox for eve
 ## Use cases
 See [`use-cases.md`](use-cases.md) — UC-AUD-01 … UC-AUD-05 (each with unit + integration + e2e per `testing.md`).
 
-> With this in place, **02 Authentication** can reach 🟢 Confirmed (its UC-AUTH-14 audit + `access_grants` record are now defined).
+> With this in place, **02 Authentication** can reach 🟢 Confirmed (its UC-AUTH-14 audit + `support_access_grants` record are now defined).
