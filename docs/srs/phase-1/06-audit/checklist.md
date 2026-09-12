@@ -1,6 +1,14 @@
 # 06 — Audit — Confirmation Checklist
 
-**Status:** 🟡 In Review &nbsp;·&nbsp; Immutable, append-only business audit trail. `srs.md` + `use-cases.md` drafted.
+**Status:** 🟡 Partially Implemented (2026-09-12) &nbsp;·&nbsp; Immutable, append-only business audit
+trail. `audit_log` exists (migration `00009_audit.sql`), RLS-scoped, append-only via a real DB
+trigger (`trg_audit_log_append_only`, not just app-code omission). UC-AUD-01 works for tenant
+lifecycle only (`internal/tenancy`'s `Provision`/`Suspend`/`Reactivate`/`Archive` each write their
+own audit row atomically) — **not** a generic capture-everything interceptor yet; every other
+auditable entity (once one exists) needs its own call to `internal/audit.Record` until one is built.
+UC-AUD-02 (view/search) has no UI/API yet — capture only. Month partitioning
+`(tenant_id, month)` was not built — a single table for now, disproportionate at current volume.
+`event_outbox` was not created.
 
 ## Scope
 - **In:** `audit_log` capture (create/update/delete/restore) with actor, entity, before/after,
@@ -31,4 +39,9 @@
 - `audit_log`, `event_outbox` (group E).
 
 ## Sign-off
-- [ ] Scope confirmed &nbsp; [ ] Open questions resolved &nbsp; [ ] Use-case inventory complete
+- [x] Scope confirmed (capture mechanism) &nbsp; [ ] Open questions resolved &nbsp; [ ] Use-case inventory complete
+- [~] **Partially implemented** (2026-09-12): `audit_log` + append-only trigger + `internal/audit`,
+  wired to tenant lifecycle only. Tested: `internal/db/sqlc/audit_integration_test.go` (append-only,
+  RLS isolation), `internal/tenancy/lifecycle_integration_test.go` +
+  `internal/tenancy/provision_integration_test.go` (capture correctness). No generic capture layer,
+  no read/search surface, no partitioning, no `event_outbox`.

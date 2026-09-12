@@ -7,13 +7,13 @@ Phase 1 is `Confirmed`.
 
 | # | Component | Purpose | Status |
 |---|---|---|---|
-| 01 | Platform foundation | Chi skeleton, config, RLS `WithTenant`, `/bootstrap`, seeding, **docker/compose unit**, **self-host first-run** | 🟡 In Review |
+| 01 | Platform foundation | Chi skeleton, config, RLS `WithTenant`, `/bootstrap`, seeding, **docker/compose unit**, **self-host first-run** | 🟡 Partially Implemented |
 | 02 | Authentication & sessions | Ory Kratos: password + MFA + passkeys + OIDC, `whoami` validation, session revocation; custom UI in apps/app | 🟢 Confirmed |
 | 03 | Identity & membership | Global `users` (= Kratos subject), `tenant_users`, invites, owner, seat tracking (enforce P2) | 🟡 In Review |
-| 04 | Tenant management | Lifecycle, provisioning engine, hierarchy (ltree/`tree_key`), **visibility: auto-subordinate + mutual-affiliated (hierarchy-bounded)**, suspension | 🟡 In Review |
-| 05 | Authorization (Cerbos) | Cerbos PDP integration + role/capability/user-role **administration**; internal/operator-tenant model; four-eyes + support-access grants | 🟡 In Review |
-| 06 | Audit | `audit_log` auto-capture (changed-cols + snapshot-on-delete), immutability, ≥7y retention | 🟡 In Review |
-| 07 | Observability | Distributed tracing (OpenTelemetry), structured logging, correlation IDs, metrics, health; stdout-default self-host | 🟡 In Review |
+| 04 | Tenant management | Lifecycle, provisioning engine, hierarchy (ltree/`tree_key`), **visibility: auto-subordinate + mutual-affiliated (hierarchy-bounded)**, suspension | 🟡 Partially Implemented (flat CRUD; hierarchy/visibility deferred) |
+| 05 | Authorization (Cerbos) | Cerbos PDP integration + role/capability/user-role **administration**; internal/operator-tenant model; four-eyes + support-access grants | 🟡 Partially Implemented (enforcement wired; tenant-facing role admin not built) |
+| 06 | Audit | `audit_log` auto-capture (changed-cols + snapshot-on-delete), immutability, ≥7y retention | 🟡 Partially Implemented (tenant lifecycle only; no generic capture layer) |
+| 07 | Observability | Distributed tracing (OpenTelemetry), structured logging, correlation IDs, metrics, health; stdout-default self-host | ✅ Implemented (sampling strategy + SaaS backend choice still open) |
 | 08 | Onboarding & billing | Website self-serve (Odoo-style): plans/pricelists, subscriptions, payment gateway (fake driver → BML), coupons, provisioning trigger + seat enforcement. **Sequenced last; SaaS-only; on-prem sales-gated.** | 🔴 Draft |
 
 > **Scope note:** components **01**, **03**, the **visibility model in 04**, and **08 Onboarding & billing**

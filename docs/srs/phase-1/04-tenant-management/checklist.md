@@ -1,6 +1,12 @@
 # 04 — Tenant Management — Confirmation Checklist
 
-**Status:** 🟡 In Review &nbsp;·&nbsp; Tenant lifecycle + **hierarchy** + **visibility/oversight**. `srs.md` + `use-cases.md` drafted.
+**Status:** 🟡 Partially Implemented (2026-09-12) &nbsp;·&nbsp; **Flat tenant CRUD is built**: provisioning
+(`internal/tenancy.Provision` — tenant → owner identity via Kratos recovery link → owner membership,
+atomic, tears down on failure) and the status lifecycle (`SuspendTenant`/`ReactivateTenant`/
+`ArchiveTenant`, each atomically audited), exposed via `/api/v1/admin/tenants` and a real
+`apps/admin` UI. **Hierarchy and visibility/oversight are deliberately deferred** — no
+`tenant_visibility_grants` table exists yet (never reviewed table-by-table), no `parent_id`/
+`tree_key` UI, no parent-tenant use case to validate against. Revisit as its own pass.
 
 ## Scope
 - **In:** tenant CRUD + provisioning; slug/code; party-type classification; status
@@ -37,4 +43,9 @@
 - `tenants`, `tenant_visibility_grants`, `party_types` (group A).
 
 ## Sign-off
-- [ ] Scope confirmed &nbsp; [ ] Open questions resolved &nbsp; [ ] Use-case inventory complete
+- [x] Scope confirmed (flat CRUD) &nbsp; [ ] Open questions resolved (hierarchy/visibility ones remain
+  genuinely open, not just unchecked) &nbsp; [ ] Use-case inventory complete
+- [~] **Partially implemented** (2026-09-12): UC-TEN-01 (provision) and UC-TEN-02 (suspend/
+  reactivate/archive) only — `internal/tenancy/{provision,lifecycle}.go` +
+  `internal/httpapi/admin_tenants.go` + `apps/admin`'s Tenants page, all tested (Go integration +
+  Playwright e2e). UC-TEN-03 through 09 (hierarchy, re-parenting, visibility grants) not started.

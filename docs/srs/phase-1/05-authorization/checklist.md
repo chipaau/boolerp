@@ -1,6 +1,12 @@
 # 05 — Authorization (Cerbos) — Confirmation Checklist
 
-**Status:** 🟡 In Review &nbsp;·&nbsp; Cerbos = enforcement (PDP); app = role/capability administration. `srs.md` + `use-cases.md` drafted.
+**Status:** 🟡 Partially Implemented (2026-09-12) &nbsp;·&nbsp; Cerbos = enforcement (PDP); app = role/capability
+administration. UC-AUTHZ-01 and 05 are built and tested: `auth.Authorize`/`BuildOperatorPrincipal`
+(real `user_roles`/`role_capabilities`, not a hardcoded role) and `httpapi.AdminRoute` (the
+fail-closed per-handler wrapper — every admin route's Cerbos check is inside the wrapper itself, not
+something a handler author can forget). `docker/cerbos/policies/resource_tenant.yaml` is the first
+real policy beyond the `profile`/`self` scaffold. UC-AUTHZ-02/03/04 (tenant admin defining/editing
+their own roles in Control Centre) and 06 (seeding default role templates) are not built.
 
 ## Scope
 - **In:** Cerbos integration (live per-request check, principal built from memberships/roles);
@@ -39,3 +45,6 @@
 
 ## Sign-off
 - [x] Scope confirmed &nbsp; [x] Open questions resolved &nbsp; [ ] Use-case inventory complete
+- [~] **Partially implemented** (2026-09-12): UC-AUTHZ-01 + 05 (see status line above), tested in
+  `internal/auth/authz_integration_test.go` + `internal/httpapi/admin_route_integration_test.go`.
+  UC-AUTHZ-02/03/04/06 remain, tied to Control Centre (tenant-facing role admin UI) not yet built.

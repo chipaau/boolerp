@@ -1,6 +1,12 @@
 # 07 — Observability — Confirmation Checklist
 
-**Status:** 🟡 In Review &nbsp;·&nbsp; Technical tracing/logging/metrics (distinct from business audit → 06). `srs.md` + `use-cases.md` drafted.
+**Status:** ✅ Implemented (mechanism), 🟡 policy questions still open (2026-09-12) &nbsp;·&nbsp;
+Technical tracing/logging/metrics (distinct from business audit → 06). `internal/observability`:
+`SetupTracing` (OTLP opt-in, no-op otherwise), `DBTracer` (pgx spans) + `otelhttp` transport on the
+Kratos/Cerbos clients (UC-OBS-02's "HTTP → DB → Kratos/Cerbos" chain), `RequestLogger` +
+`NewRedactingHandler` (code-enforced redaction, not just convention — UC-OBS-03), `MetricsMiddleware`
++ `RegisterPoolMetrics` behind an opt-in `/metrics` (UC-OBS-05). `tenant_id` isn't in the logger yet —
+no tenant-scoped route resolves one to add. UC-OBS-04 (health/readiness) predates this component.
 
 ## Scope
 - **In:** distributed tracing (OpenTelemetry), structured logging (`log/slog`) with correlation/
@@ -30,4 +36,7 @@
 - None (infrastructure).
 
 ## Sign-off
-- [ ] Scope confirmed &nbsp; [ ] Open questions resolved &nbsp; [ ] Use-case inventory complete
+- [x] Scope confirmed &nbsp; [ ] Open questions resolved (sampling strategy + SaaS backend choice
+  remain genuinely open policy decisions) &nbsp; [x] Use-case inventory complete
+- [x] **Implemented** (2026-09-12): `internal/observability/{tracing,dbtracer,logging,metrics}.go`,
+  tested (`internal/observability/{logging,metrics}_test.go`). See status line above for scope.

@@ -1,6 +1,11 @@
 # 01 — Platform Foundation — Confirmation Checklist
 
-**Status:** 🟡 In Review &nbsp;·&nbsp; The substrate every component sits on. `srs.md` + `use-cases.md` drafted.
+**Status:** 🟡 Partially Implemented (2026-09-12) &nbsp;·&nbsp; The substrate every component sits on.
+`WithTenant`, the RLS coverage guard, and the tenant-resolution middleware are built and tested
+(`internal/tenancy`) — but the guard has nothing real to enforce yet (no business tables exist), and
+the middleware isn't mounted on any route (no tenant-scoped business endpoint exists to need it).
+**Not built:** the interactive first-run setup wizard (UC-FND-02) and `GET /api/v1/bootstrap`
+(UC-FND-04) — `cmd/provision-dev` is dev-only tooling, not the first-run wizard.
 
 ## Scope
 - **In:** Chi app skeleton + `main.go` wiring; config loading; DB pool (pgx) + `WithTenant` RLS
@@ -34,4 +39,7 @@
 ## Sign-off
 - [x] Scope confirmed &nbsp; [x] Open questions resolved &nbsp; [x] Use-case inventory complete
 - [x] **Data model confirmed** — 10 tables, table-by-table, in `docs/data-model/DB-FOUNDATION.md` (2026-08-13)
-- [ ] Implemented (migrations + Chi skeleton + tests)
+- [~] **Partially implemented** (2026-09-12): `internal/tenancy.WithTenant`, `CheckRLSCoverage`
+  (wired into `cmd/api` startup), `Middleware.RequireTenant` — all tested (`internal/tenancy/*_test.go`).
+  Remaining: first-run setup wizard, `GET /api/v1/bootstrap`, mounting `RequireTenant` on a real
+  tenant-scoped route once one exists.
