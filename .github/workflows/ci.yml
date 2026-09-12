@@ -85,7 +85,7 @@ jobs:
           exit 1
 
       - name: Seed dev logins (operator + tenant owner)
-        run: docker compose run --rm api sh -c "go run ./cmd/provision-dev"
+        run: docker compose run --rm api sh -c "go run -buildvcs=false ./cmd/provision-dev"
 
       - name: Run Playwright suite
         run: cd e2e && ./run.sh

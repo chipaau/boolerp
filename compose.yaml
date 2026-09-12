@@ -94,7 +94,10 @@ services:
       context: .
       dockerfile: docker/go.Dockerfile
     working_dir: /w/apps/api
-    command: go run ./cmd/migrate up
+    # -buildvcs=false: this directory is a bind-mounted checkout, not a git clone the container
+    # owns — Go's VCS-stamping git calls can fail on CI runners (ownership/shallow-clone mismatch);
+    # we don't need embedded VCS info in a dev binary anyway.
+    command: go run -buildvcs=false ./cmd/migrate up
     environment:
       MIGRATE_DSN: ${MIGRATE_DSN:-postgres://goerp:goerp@postgres:5432/goerp?sslmode=disable}
     volumes:
@@ -117,7 +120,8 @@ services:
     # stop/compose down would silently skip the whole graceful-shutdown path (proven correct in
     # internal/server's own tests, but never exercised here). Build once, then `exec` the binary so
     # it becomes PID 1 and receives the signal directly.
-    command: sh -c "go build -o /tmp/goerp-api ./cmd/api && exec /tmp/goerp-api"
+    # -buildvcs=false: see the migrate service's comment above — same bind-mounted-checkout issue.
+    command: sh -c "go build -buildvcs=false -o /tmp/goerp-api ./cmd/api && exec /tmp/goerp-api"
     environment:
       APP_ENV: ${APP_ENV:-dev}
       # API connects as the NON-OWNER goerp_app role (created by the migrate step).
@@ -176,7 +180,7 @@ services:
       context: .
       dockerfile: docker/go.Dockerfile
     working_dir: /w/apps/api
-    command: go test -tags=integration ./...
+    command: go test -buildvcs=false -tags=integration ./...
     environment:
       DOCKER_HOST: unix:///var/run/docker.sock
       TESTCONTAINERS_RYUK_DISABLED: "true"
