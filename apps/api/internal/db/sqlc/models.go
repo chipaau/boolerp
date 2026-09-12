@@ -133,7 +133,7 @@ type Tenant struct {
 	Slug              string             `json:"slug"`
 	Code              string             `json:"code"`
 	Name              string             `json:"name"`
-	NameDv            pgtype.Text        `json:"name_dv"`
+	NameI18n          []byte             `json:"name_i18n"`
 	PartyTypeID       pgtype.UUID        `json:"party_type_id"`
 	InstitutionTypeID pgtype.UUID        `json:"institution_type_id"`
 	IdentityType      pgtype.Text        `json:"identity_type"`
@@ -145,15 +145,13 @@ type Tenant struct {
 	Oversight         pgtype.Text        `json:"oversight"`
 	TreeKey           int64              `json:"tree_key"`
 	Path              string             `json:"path"`
-	ConnectionKey     string             `json:"connection_key"`
 	Country           string             `json:"country"`
-	DefaultLocale     string             `json:"default_locale"`
 	Timezone          string             `json:"timezone"`
 	Status            string             `json:"status"`
-	Settings          []byte             `json:"settings"`
+	ActiveFrom        pgtype.Timestamptz `json:"active_from"`
+	ActiveTo          pgtype.Timestamptz `json:"active_to"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type TenantUser struct {

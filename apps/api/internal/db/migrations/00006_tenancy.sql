@@ -8,32 +8,30 @@ CREATE TABLE tenants (
   id                  uuid        PRIMARY KEY DEFAULT uuidv7(),
   slug                text        NOT NULL UNIQUE,             -- subdomain; immutable after go-live
   code                text        NOT NULL UNIQUE,             -- short official ref ('MCC','MOH'); used in document numbering + reports
-  name                text        NOT NULL,                    -- official org name (English)
-  name_dv             text,                                    -- official Dhivehi name — nullable (foreign tenants)
-  party_type_id       uuid        REFERENCES party_types(id),        -- LEGAL form (identity docs). MUST be organisation-class (app-enforced). NULL until classified
+  name                text        NOT NULL,                    -- canonical/operational name (English) — universal fallback, used throughout the app
+  name_i18n           jsonb       NOT NULL DEFAULT '{}',       -- jurisdiction-required local-script legal name for DOCUMENT GENERATION only (e.g. {"dv": "..."} for MV) — which key a document uses is decided by the document template, not a tenant default; absent key falls back to `name`
+  party_type_id       uuid        REFERENCES party_types(id),        -- LEGAL form (identity docs + oversight default). MUST be organisation-class (app-enforced). NULL until classified
   institution_type_id uuid        REFERENCES institution_types(id),  -- FUNCTION/sector (provisioning template). NULL until classified
-  identity_type       text,                                    -- org identity doc type; validated vs party_type.allowed_identity_types
-  identity_number     text,                                    -- org identity number (company reg no, …)
+  identity_type       text,                                    -- org identity doc type; validated vs party_type.allowed_identity_types ([] = none, e.g. Government)
+  identity_number     text,                                    -- org identity number (company reg no, …); NULL where the type has none
   email               text,                                    -- tenant contact email
   phone               text,                                    -- tenant contact phone (international form)
-  is_internal         boolean     NOT NULL DEFAULT false,      -- the ONE internal/operator tenant; platform:* caps act platform-wide only via its roles
+  is_internal         boolean     NOT NULL DEFAULT false,      -- the ONE internal/operator tenant; resolves admin.bool.test's membership check; Cerbos is_internal_member reads this
   parent_id           uuid        REFERENCES tenants(id),      -- hierarchy parent; NULL for roots
   oversight           text,                                    -- 'subordinate' (auto aggregate) | 'affiliated' (mutual agreement). NULL iff parent_id NULL
   tree_key            bigint      NOT NULL UNIQUE,             -- immutable ltree label
   path                ltree       NOT NULL,                    -- materialised hierarchy path of tree_keys; GiST-indexed
-  connection_key      text        NOT NULL DEFAULT 'primary',  -- tenant → database routing; 'primary' for all in Phase 1 (stub)
   country             char(2)     NOT NULL REFERENCES countries(code),
-  default_locale      text        NOT NULL DEFAULT 'en',       -- 'en' | 'dv'
   timezone            text        NOT NULL DEFAULT 'Indian/Maldives',
   status              text        NOT NULL DEFAULT 'provisioning', -- 'provisioning'|'active'|'suspended'|'archived'
-  settings            jsonb       NOT NULL DEFAULT '{}',
+  active_from         timestamptz,                             -- became active; NULL while provisioning (same pattern as tenant_users.active_from)
+  active_to           timestamptz,                             -- ceased being active; NULL = still active (replaces deleted_at)
   created_at          timestamptz NOT NULL DEFAULT now(),
   updated_at          timestamptz NOT NULL DEFAULT now(),
-  deleted_at          timestamptz,
   CONSTRAINT chk_tenants_oversight_pair CHECK ((parent_id IS NULL) = (oversight IS NULL)),
   CONSTRAINT chk_tenants_oversight_val  CHECK (oversight IS NULL OR oversight IN ('subordinate','affiliated')),
   CONSTRAINT chk_tenants_status         CHECK (status IN ('provisioning','active','suspended','archived')),
-  CONSTRAINT chk_tenants_locale         CHECK (default_locale IN ('en','dv'))
+  CONSTRAINT chk_tenants_active_order   CHECK (active_to IS NULL OR active_to >= active_from)
 );
 CREATE UNIQUE INDEX uq_tenants_one_internal ON tenants ((is_internal)) WHERE is_internal;  -- at most ONE internal tenant
 CREATE INDEX ON tenants USING GIST (path);

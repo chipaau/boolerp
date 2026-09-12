@@ -97,7 +97,7 @@ INSERT INTO tenants (
 ) VALUES (
   $1, $2, $3, $4, $5, $6, $7::ltree, $8, $9, $10
 )
-RETURNING id, slug, code, name, name_dv, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, connection_key, country, default_locale, timezone, status, settings, created_at, updated_at, deleted_at
+RETURNING id, slug, code, name, name_i18n, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, country, timezone, status, active_from, active_to, created_at, updated_at
 `
 
 type CreateTenantParams struct {
@@ -133,7 +133,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		&i.Slug,
 		&i.Code,
 		&i.Name,
-		&i.NameDv,
+		&i.NameI18n,
 		&i.PartyTypeID,
 		&i.InstitutionTypeID,
 		&i.IdentityType,
@@ -145,15 +145,13 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		&i.Oversight,
 		&i.TreeKey,
 		&i.Path,
-		&i.ConnectionKey,
 		&i.Country,
-		&i.DefaultLocale,
 		&i.Timezone,
 		&i.Status,
-		&i.Settings,
+		&i.ActiveFrom,
+		&i.ActiveTo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -207,7 +205,7 @@ func (q *Queries) GetInstitutionTypeIDByCode(ctx context.Context, arg GetInstitu
 }
 
 const getInternalTenant = `-- name: GetInternalTenant :one
-SELECT id, slug, code, name, name_dv, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, connection_key, country, default_locale, timezone, status, settings, created_at, updated_at, deleted_at FROM tenants WHERE is_internal
+SELECT id, slug, code, name, name_i18n, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, country, timezone, status, active_from, active_to, created_at, updated_at FROM tenants WHERE is_internal
 `
 
 // At most one row can ever exist (uq_tenants_one_internal).
@@ -219,7 +217,7 @@ func (q *Queries) GetInternalTenant(ctx context.Context) (Tenant, error) {
 		&i.Slug,
 		&i.Code,
 		&i.Name,
-		&i.NameDv,
+		&i.NameI18n,
 		&i.PartyTypeID,
 		&i.InstitutionTypeID,
 		&i.IdentityType,
@@ -231,15 +229,13 @@ func (q *Queries) GetInternalTenant(ctx context.Context) (Tenant, error) {
 		&i.Oversight,
 		&i.TreeKey,
 		&i.Path,
-		&i.ConnectionKey,
 		&i.Country,
-		&i.DefaultLocale,
 		&i.Timezone,
 		&i.Status,
-		&i.Settings,
+		&i.ActiveFrom,
+		&i.ActiveTo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -307,7 +303,7 @@ func (q *Queries) GetRoleByTenantCode(ctx context.Context, arg GetRoleByTenantCo
 }
 
 const getTenantBySlug = `-- name: GetTenantBySlug :one
-SELECT id, slug, code, name, name_dv, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, connection_key, country, default_locale, timezone, status, settings, created_at, updated_at, deleted_at FROM tenants WHERE slug = $1
+SELECT id, slug, code, name, name_i18n, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, country, timezone, status, active_from, active_to, created_at, updated_at FROM tenants WHERE slug = $1
 `
 
 func (q *Queries) GetTenantBySlug(ctx context.Context, slug string) (Tenant, error) {
@@ -318,7 +314,7 @@ func (q *Queries) GetTenantBySlug(ctx context.Context, slug string) (Tenant, err
 		&i.Slug,
 		&i.Code,
 		&i.Name,
-		&i.NameDv,
+		&i.NameI18n,
 		&i.PartyTypeID,
 		&i.InstitutionTypeID,
 		&i.IdentityType,
@@ -330,15 +326,13 @@ func (q *Queries) GetTenantBySlug(ctx context.Context, slug string) (Tenant, err
 		&i.Oversight,
 		&i.TreeKey,
 		&i.Path,
-		&i.ConnectionKey,
 		&i.Country,
-		&i.DefaultLocale,
 		&i.Timezone,
 		&i.Status,
-		&i.Settings,
+		&i.ActiveFrom,
+		&i.ActiveTo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
