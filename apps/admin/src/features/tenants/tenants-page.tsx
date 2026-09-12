@@ -9,6 +9,7 @@ import { Label } from '@workspace/ui/components/label'
 import { NativeSelect } from '@workspace/ui/components/native-select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
+import { PageTitle } from '@/components/layout/page'
 import { useCreateTenant, useReactivateTenant, useSuspendTenant, useArchiveTenant, useTenants } from './queries'
 import type { CreateTenantInput, Tenant, TenantStatus } from './types'
 
@@ -77,13 +78,12 @@ export function TenantsPage() {
   return (
     <div className="min-h-0 w-full overflow-y-auto">
       <div className="px-8 pt-7 pb-24">
-        <div className="mb-5 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-heading-sm font-bold text-foreground">Tenants</h1>
-            <p className="mt-1 text-ui-sm text-body">Every tenant on the platform — provision new ones, suspend or archive existing ones.</p>
-          </div>
-          <Button onClick={() => setCreating(true)}>New tenant</Button>
-        </div>
+        <PageTitle
+          overline="Operator Console"
+          title="Tenants"
+          meta="Every tenant on the platform — provision new ones, suspend or archive existing ones."
+          actions={<Button onClick={() => setCreating(true)}>New tenant</Button>}
+        />
 
         <Card className="gap-0 overflow-clip py-0">
           <Table>
@@ -211,20 +211,20 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
           <DialogTitle>New tenant</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3.5">
-          <Field label="Name">
-            <Input value={form.name} onChange={set('name')} placeholder="Malé City Council" />
+          <Field label="Name" htmlFor="tenant-name">
+            <Input id="tenant-name" value={form.name} onChange={set('name')} placeholder="Malé City Council" />
           </Field>
           <div className="grid grid-cols-2 gap-3.5">
-            <Field label="Slug">
-              <Input value={form.slug} onChange={set('slug')} placeholder="malecouncil" />
+            <Field label="Slug" htmlFor="tenant-slug">
+              <Input id="tenant-slug" value={form.slug} onChange={set('slug')} placeholder="malecouncil" />
             </Field>
-            <Field label="Code">
-              <Input value={form.code} onChange={set('code')} placeholder="MCC" />
+            <Field label="Code" htmlFor="tenant-code">
+              <Input id="tenant-code" value={form.code} onChange={set('code')} placeholder="MCC" />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3.5">
-            <Field label="Party type">
-              <NativeSelect value={form.party_type_code} onChange={set('party_type_code')}>
+            <Field label="Party type" htmlFor="tenant-party-type">
+              <NativeSelect id="tenant-party-type" value={form.party_type_code} onChange={set('party_type_code')}>
                 {PARTY_TYPES.map((p) => (
                   <option key={p.code} value={p.code}>
                     {p.label}
@@ -232,8 +232,8 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
                 ))}
               </NativeSelect>
             </Field>
-            <Field label="Institution type">
-              <NativeSelect value={form.institution_type_code} onChange={set('institution_type_code')}>
+            <Field label="Institution type" htmlFor="tenant-institution-type">
+              <NativeSelect id="tenant-institution-type" value={form.institution_type_code} onChange={set('institution_type_code')}>
                 {INSTITUTION_TYPES.map((p) => (
                   <option key={p.code} value={p.code}>
                     {p.label}
@@ -242,11 +242,11 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
               </NativeSelect>
             </Field>
           </div>
-          <Field label="Owner email">
-            <Input type="email" value={form.owner_email} onChange={set('owner_email')} placeholder="owner@example.mv" />
+          <Field label="Owner email" htmlFor="tenant-owner-email">
+            <Input id="tenant-owner-email" type="email" value={form.owner_email} onChange={set('owner_email')} placeholder="owner@example.mv" />
           </Field>
-          <Field label="Owner name">
-            <Input value={form.owner_name} onChange={set('owner_name')} placeholder="Dev Owner" />
+          <Field label="Owner name" htmlFor="tenant-owner-name">
+            <Input id="tenant-owner-name" value={form.owner_name} onChange={set('owner_name')} placeholder="Dev Owner" />
           </Field>
         </div>
         <DialogFooter>
@@ -262,10 +262,10 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
   )
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <Label>{label}</Label>
+      <Label htmlFor={htmlFor}>{label}</Label>
       {children}
     </div>
   )
