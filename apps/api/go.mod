@@ -1,4 +1,4 @@
-module github.com/boolmv/goerp
+module github.com/Bool-Maldives/erp
 
 go 1.27.1
 

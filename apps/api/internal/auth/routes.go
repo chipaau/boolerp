@@ -7,10 +7,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/boolmv/goerp/internal/db/sqlc"
-	"github.com/boolmv/goerp/internal/module"
-	"github.com/boolmv/goerp/internal/observability"
-	"github.com/boolmv/goerp/internal/respond"
+	"github.com/Bool-Maldives/erp/internal/db/sqlc"
+	"github.com/Bool-Maldives/erp/internal/module"
+	"github.com/Bool-Maldives/erp/internal/observability"
+	"github.com/Bool-Maldives/erp/internal/respond"
 )
 
 // Register builds this package's own module.Module: GET /me, the current user's own profile.

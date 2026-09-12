@@ -15,10 +15,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/boolmv/goerp/internal/auth"
-	"github.com/boolmv/goerp/internal/db/sqlc"
-	"github.com/boolmv/goerp/internal/dbtest"
-	"github.com/boolmv/goerp/internal/tenancy"
+	"github.com/Bool-Maldives/erp/internal/auth"
+	"github.com/Bool-Maldives/erp/internal/db/sqlc"
+	"github.com/Bool-Maldives/erp/internal/dbtest"
+	"github.com/Bool-Maldives/erp/internal/tenancy"
 )
 
 func uuidToString(id pgtype.UUID) string { return uuid.UUID(id.Bytes).String() }

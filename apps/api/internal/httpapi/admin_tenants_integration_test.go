@@ -13,10 +13,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/boolmv/goerp/internal/auth"
-	"github.com/boolmv/goerp/internal/db/sqlc"
-	"github.com/boolmv/goerp/internal/httpapi"
-	"github.com/boolmv/goerp/internal/tenancy"
+	"github.com/Bool-Maldives/erp/internal/auth"
+	"github.com/Bool-Maldives/erp/internal/db/sqlc"
+	"github.com/Bool-Maldives/erp/internal/httpapi"
+	"github.com/Bool-Maldives/erp/internal/tenancy"
 )
 
 // fakeKratosFor serves whoami for one fixed identity — parameterised (unlike me_integration_test.go's

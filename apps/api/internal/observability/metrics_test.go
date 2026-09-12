@@ -9,7 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/boolmv/goerp/internal/observability"
+	"github.com/Bool-Maldives/erp/internal/observability"
 )
 
 func TestMetricsMiddleware_RecordsRequestCount(t *testing.T) {

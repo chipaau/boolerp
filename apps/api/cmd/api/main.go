@@ -13,12 +13,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/boolmv/goerp/internal/auth"
-	"github.com/boolmv/goerp/internal/config"
-	"github.com/boolmv/goerp/internal/httpapi"
-	"github.com/boolmv/goerp/internal/observability"
-	"github.com/boolmv/goerp/internal/server"
-	"github.com/boolmv/goerp/internal/tenancy"
+	"github.com/Bool-Maldives/erp/internal/auth"
+	"github.com/Bool-Maldives/erp/internal/config"
+	"github.com/Bool-Maldives/erp/internal/httpapi"
+	"github.com/Bool-Maldives/erp/internal/observability"
+	"github.com/Bool-Maldives/erp/internal/server"
+	"github.com/Bool-Maldives/erp/internal/tenancy"
 )
 
 func main() {

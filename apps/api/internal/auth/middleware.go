@@ -7,9 +7,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/boolmv/goerp/internal/db/sqlc"
-	"github.com/boolmv/goerp/internal/observability"
-	"github.com/boolmv/goerp/internal/respond"
+	"github.com/Bool-Maldives/erp/internal/db/sqlc"
+	"github.com/Bool-Maldives/erp/internal/observability"
+	"github.com/Bool-Maldives/erp/internal/respond"
 )
 
 // Middleware validates the Kratos session on each request and JIT-upserts the users mirror.
