@@ -17,7 +17,8 @@ type Querier interface {
 	// Root tenant only (parent_id/oversight NULL) — path is a single-label ltree of its own tree_key.
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	// Provisioning-created user (owner). Distinct from UpsertUser (JIT whoami mirror): no
-	// last_login_at — the user hasn't signed in yet.
+	// last_login_at — the user hasn't signed in yet. name_i18n omitted — defaults to '{}';
+	// provisioning never sets it, same as it never set name_dv before.
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserRole(ctx context.Context, arg CreateUserRoleParams) (UserRole, error)
 	GetCountry(ctx context.Context, code string) (Country, error)

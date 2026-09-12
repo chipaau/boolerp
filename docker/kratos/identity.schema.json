@@ -25,7 +25,11 @@
           }
         },
         "name": { "type": "string", "title": "Name", "maxLength": 256 },
-        "name_dv": { "type": "string", "title": "Name (Dhivehi)", "maxLength": 256 },
+        "name_i18n": {
+          "type": "object",
+          "title": "Name (other languages)",
+          "additionalProperties": { "type": "string", "maxLength": 256 }
+        },
         "phone": { "type": "string", "title": "Phone", "maxLength": 32 }
       },
       "required": ["email", "name"],

@@ -12,27 +12,26 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, email, name, name_dv, phone)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, email, name, name_dv, phone, status, last_login_at, created_at, updated_at
+INSERT INTO users (id, email, name, phone)
+VALUES ($1, $2, $3, $4)
+RETURNING id, email, name, name_i18n, phone, status, last_login_at, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	ID     pgtype.UUID `json:"id"`
-	Email  string      `json:"email"`
-	Name   string      `json:"name"`
-	NameDv pgtype.Text `json:"name_dv"`
-	Phone  pgtype.Text `json:"phone"`
+	ID    pgtype.UUID `json:"id"`
+	Email string      `json:"email"`
+	Name  string      `json:"name"`
+	Phone pgtype.Text `json:"phone"`
 }
 
 // Provisioning-created user (owner). Distinct from UpsertUser (JIT whoami mirror): no
-// last_login_at — the user hasn't signed in yet.
+// last_login_at — the user hasn't signed in yet. name_i18n omitted — defaults to '{}';
+// provisioning never sets it, same as it never set name_dv before.
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, createUser,
 		arg.ID,
 		arg.Email,
 		arg.Name,
-		arg.NameDv,
 		arg.Phone,
 	)
 	var i User
@@ -40,7 +39,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.ID,
 		&i.Email,
 		&i.Name,
-		&i.NameDv,
+		&i.NameI18n,
 		&i.Phone,
 		&i.Status,
 		&i.LastLoginAt,
@@ -51,7 +50,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, name_dv, phone, status, last_login_at, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, name, name_i18n, phone, status, last_login_at, created_at, updated_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -61,7 +60,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.ID,
 		&i.Email,
 		&i.Name,
-		&i.NameDv,
+		&i.NameI18n,
 		&i.Phone,
 		&i.Status,
 		&i.LastLoginAt,
@@ -73,24 +72,24 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 
 const upsertUser = `-- name: UpsertUser :one
 
-INSERT INTO users (id, email, name, name_dv, phone, last_login_at)
+INSERT INTO users (id, email, name, name_i18n, phone, last_login_at)
 VALUES ($1, $2, $3, $4, $5, now())
 ON CONFLICT (id) DO UPDATE SET
   email         = EXCLUDED.email,
   name          = EXCLUDED.name,
-  name_dv       = EXCLUDED.name_dv,
+  name_i18n     = EXCLUDED.name_i18n,
   phone         = EXCLUDED.phone,
   last_login_at = now(),
   updated_at    = now()
-RETURNING id, email, name, name_dv, phone, status, last_login_at, created_at, updated_at
+RETURNING id, email, name, name_i18n, phone, status, last_login_at, created_at, updated_at
 `
 
 type UpsertUserParams struct {
-	ID     pgtype.UUID `json:"id"`
-	Email  string      `json:"email"`
-	Name   string      `json:"name"`
-	NameDv pgtype.Text `json:"name_dv"`
-	Phone  pgtype.Text `json:"phone"`
+	ID       pgtype.UUID `json:"id"`
+	Email    string      `json:"email"`
+	Name     string      `json:"name"`
+	NameI18n []byte      `json:"name_i18n"`
+	Phone    pgtype.Text `json:"phone"`
 }
 
 // Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
@@ -101,7 +100,7 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (User, e
 		arg.ID,
 		arg.Email,
 		arg.Name,
-		arg.NameDv,
+		arg.NameI18n,
 		arg.Phone,
 	)
 	var i User
@@ -109,7 +108,7 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (User, e
 		&i.ID,
 		&i.Email,
 		&i.Name,
-		&i.NameDv,
+		&i.NameI18n,
 		&i.Phone,
 		&i.Status,
 		&i.LastLoginAt,

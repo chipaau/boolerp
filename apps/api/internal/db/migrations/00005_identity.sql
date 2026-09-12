@@ -6,8 +6,8 @@
 CREATE TABLE users (
   id            uuid        PRIMARY KEY,               -- = Kratos identity id (IdP subject); no DEFAULT — supplied by Kratos
   email         text        NOT NULL UNIQUE,           -- mirror of Kratos email trait; one global identity per email
-  name          text        NOT NULL,                  -- profile/display name
-  name_dv       text,                                  -- Dhivehi name — nullable
+  name          text        NOT NULL,                  -- canonical/operational name (English)
+  name_i18n     jsonb       NOT NULL DEFAULT '{}',     -- local-script name for DOCUMENT GENERATION only, e.g. {"dv": "..."} — sparse, synced from the Kratos name_i18n trait
   phone         text,
   status        text        NOT NULL DEFAULT 'active', -- 'active' | 'disabled' (disable revokes sessions, UC-AUTH-11)
   last_login_at timestamptz,                           -- set on login/whoami; NULL until first login

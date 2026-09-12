@@ -173,7 +173,7 @@ type User struct {
 	ID          pgtype.UUID        `json:"id"`
 	Email       string             `json:"email"`
 	Name        string             `json:"name"`
-	NameDv      pgtype.Text        `json:"name_dv"`
+	NameI18n    []byte             `json:"name_i18n"`
 	Phone       pgtype.Text        `json:"phone"`
 	Status      string             `json:"status"`
 	LastLoginAt pgtype.Timestamptz `json:"last_login_at"`
