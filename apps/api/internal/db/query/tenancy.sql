@@ -5,7 +5,14 @@
 SELECT id FROM party_types WHERE country_code IS NULL AND code = $1;
 
 -- name: GetInstitutionTypeIDByCode :one
-SELECT id FROM institution_types WHERE country_code = $1 AND code = $2;
+-- institution_types is "global set + country overrides" (e.g. 'council' is MV-only, 'business' is
+-- global/NULL). An exact country_code = $1 match would never resolve a global row for a real
+-- country argument (NULL = 'MV' is never true) — prefer a country-specific override if one exists
+-- for this code, else fall back to the global row.
+SELECT id FROM institution_types
+WHERE (country_code = $1 OR country_code IS NULL) AND code = $2
+ORDER BY country_code NULLS LAST
+LIMIT 1;
 
 -- name: GetTenantBySlug :one
 SELECT * FROM tenants WHERE slug = $1;

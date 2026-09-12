@@ -51,6 +51,13 @@ func New(d Deps) http.Handler {
 		r.Route("/v1", func(r chi.Router) {
 			r.Use(authmw.RequireSession)
 			r.Get("/me", me(d))
+
+			// Operator console (apps/admin) surface — same origin, same API, gated per-handler by
+			// AdminRoute's Cerbos check (is_internal_member + the specific platform:* capability),
+			// not by tenant subdomain resolution (operators act across tenants from admin.bool.test).
+			r.Route("/admin", func(r chi.Router) {
+				registerAdminTenantRoutes(r, d)
+			})
 		})
 	})
 	// otelhttp creates the root span per request (UC-OBS-01/02); a no-op wrapper when tracing isn't

@@ -33,6 +33,10 @@ type Querier interface {
 	GetCountry(ctx context.Context, code string) (Country, error)
 	GetCurrency(ctx context.Context, code string) (Currency, error)
 	GetGlobalPartyType(ctx context.Context, code string) (PartyType, error)
+	// institution_types is "global set + country overrides" (e.g. 'council' is MV-only, 'business' is
+	// global/NULL). An exact country_code = $1 match would never resolve a global row for a real
+	// country argument (NULL = 'MV' is never true) — prefer a country-specific override if one exists
+	// for this code, else fall back to the global row.
 	GetInstitutionTypeIDByCode(ctx context.Context, arg GetInstitutionTypeIDByCodeParams) (pgtype.UUID, error)
 	// At most one row can ever exist (uq_tenants_one_internal).
 	GetInternalTenant(ctx context.Context) (Tenant, error)

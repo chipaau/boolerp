@@ -15,7 +15,7 @@ import (
 // flagged as an unbuilt gap: a per-handler Cerbos call that's easy to forget). action names the
 // Cerbos action on the "tenant" resource (see docker/cerbos/policies) — "list", "get", "provision",
 // "suspend", "reactivate", "archive".
-func AdminRoute(r chi.Router, method, pattern, action string, deps Deps, handler func(w http.ResponseWriter, req *http.Request, p auth.AuthzPrincipal)) {
+func AdminRoute(r chi.Router, method, pattern, action string, deps Deps, handler func(w http.ResponseWriter, req *http.Request, d Deps, p auth.AuthzPrincipal)) {
 	r.Method(method, pattern, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		principal, ok := auth.PrincipalFrom(req.Context())
 		if !ok {
@@ -44,6 +44,6 @@ func AdminRoute(r chi.Router, method, pattern, action string, deps Deps, handler
 			return
 		}
 
-		handler(w, req, azp)
+		handler(w, req, deps, azp)
 	}))
 }
