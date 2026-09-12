@@ -66,7 +66,7 @@ func newAdminAPITestRouter(t *testing.T, kratosURL string) http.Handler {
 		Pool:   env.Pool,
 		Kratos: auth.NewKratos(kratosURL, kratosURL),
 		Cerbos: auth.NewCerbos(cerbosSrv.URL),
-	})
+	}, httpapi.AdminTenantRoutes)
 }
 
 func doAsOperator(t *testing.T, h http.Handler, method, path string, body any) *httptest.ResponseRecorder {
@@ -94,7 +94,7 @@ func TestAdminTenants_ListAndGet(t *testing.T) {
 	defer kratos.Close()
 	h := newAdminAPITestRouter(t, kratos.URL)
 
-	rec := doAsOperator(t, h, http.MethodGet, "/api/v1/admin/tenants", nil)
+	rec := doAsOperator(t, h, http.MethodGet, "/v1/admin/tenants", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list: want 200, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -107,7 +107,7 @@ func TestAdminTenants_ListAndGet(t *testing.T) {
 	}
 
 	id, _ := list[0]["id"].(string)
-	rec2 := doAsOperator(t, h, http.MethodGet, "/api/v1/admin/tenants/"+id, nil)
+	rec2 := doAsOperator(t, h, http.MethodGet, "/v1/admin/tenants/"+id, nil)
 	if rec2.Code != http.StatusOK {
 		t.Fatalf("get: want 200, got %d: %s", rec2.Code, rec2.Body.String())
 	}
@@ -124,7 +124,7 @@ func TestAdminTenants_CreateProvisionsARealTenant(t *testing.T) {
 		"country": "MV", "party_type_code": "private-company", "institution_type_code": "business",
 		"owner_email": "owner@e2e-created-co.test", "owner_name": "New Owner",
 	}
-	rec := doAsOperator(t, h, http.MethodPost, "/api/v1/admin/tenants", body)
+	rec := doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants", body)
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("want 201, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -154,7 +154,7 @@ func TestAdminTenants_CreateDeniedWithoutProvisionCapability(t *testing.T) {
 		"country": "MV", "party_type_code": "private-company", "institution_type_code": "business",
 		"owner_email": "owner@should-not-exist.test", "owner_name": "Nobody",
 	}
-	rec := doAsOperator(t, h, http.MethodPost, "/api/v1/admin/tenants", body)
+	rec := doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants", body)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("want 403, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -169,19 +169,19 @@ func TestAdminTenants_SuspendReactivateArchive(t *testing.T) {
 	// Create the target tenant directly (not through the API — that's covered by the create test).
 	target := createLifecycleTargetTenant(t, "e2e-lifecycle-target")
 
-	rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/api/v1/admin/tenants/%s/suspend", target), nil)
+	rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/suspend", target), nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("suspend: want 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 	assertTenantStatus(t, rec, "suspended")
 
-	rec = doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/api/v1/admin/tenants/%s/reactivate", target), nil)
+	rec = doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/reactivate", target), nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("reactivate: want 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 	assertTenantStatus(t, rec, "active")
 
-	rec = doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/api/v1/admin/tenants/%s/archive", target), nil)
+	rec = doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/archive", target), nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("archive: want 200, got %d: %s", rec.Code, rec.Body.String())
 	}

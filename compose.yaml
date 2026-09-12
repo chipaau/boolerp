@@ -149,10 +149,14 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      # same-origin /api/* on every subdomain → the Go API (priority beats the SPA routers)
+      # same-origin /api/* on every subdomain → the Go API. The Go router itself has no /api prefix
+      # in its own path space (see internal/httpapi/router.go) — Traefik strips it before forwarding,
+      # same pattern as the Kratos /auth router below.
       - "traefik.http.routers.goerp-api.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && PathPrefix(`/api`)"
       - traefik.http.routers.goerp-api.entrypoints=web
       - traefik.http.routers.goerp-api.priority=20
+      - "traefik.http.routers.goerp-api.middlewares=goerp-api-strip"
+      - "traefik.http.middlewares.goerp-api-strip.stripprefix.prefixes=/api"
       - traefik.http.routers.goerp-api.service=goerp-api
       - traefik.http.services.goerp-api.loadbalancer.server.port=8080
       # fixed host, direct to the API — no /api prefix needed at all here, this host IS the API

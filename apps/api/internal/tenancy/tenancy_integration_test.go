@@ -120,7 +120,7 @@ func TestRequireTenant_UnknownSlugIsNotFound(t *testing.T) {
 	mw := tenancy.NewMiddleware(env.Pool)
 	h := mw.RequireTenant(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 
-	req := httptest.NewRequest(http.MethodGet, "http://no-such-tenant.bool.test/api/v1/x", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://no-such-tenant.bool.test/v1/x", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
@@ -169,7 +169,7 @@ func TestRequireTenant_ActiveMemberIsAllowedAndTenantIDIsAttached(t *testing.T) 
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "http://test-mw-allowed.bool.test/api/v1/x", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://test-mw-allowed.bool.test/v1/x", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), &auth.Principal{ID: principalID}))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -193,7 +193,7 @@ func TestRequireTenant_NonMemberIsNotFound(t *testing.T) {
 	mw := tenancy.NewMiddleware(env.Pool)
 	h := mw.RequireTenant(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 
-	req := httptest.NewRequest(http.MethodGet, "http://test-mw-nonmember.bool.test/api/v1/x", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://test-mw-nonmember.bool.test/v1/x", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), &auth.Principal{ID: principalID}))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -213,7 +213,7 @@ func TestRequireTenant_SuspendedTenantIsForbidden(t *testing.T) {
 	mw := tenancy.NewMiddleware(env.Pool)
 	h := mw.RequireTenant(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 
-	req := httptest.NewRequest(http.MethodGet, "http://test-mw-suspended.bool.test/api/v1/x", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://test-mw-suspended.bool.test/v1/x", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), &auth.Principal{ID: principalID}))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
