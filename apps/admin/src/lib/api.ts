@@ -9,7 +9,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => null)
-    const message = body && typeof body === 'object' && 'error' in body ? String((body as { error: unknown }).error) : `Request failed (${res.status})`
+    const message = body && typeof body === 'object' && 'error' in body ? String((body).error) : `Request failed (${res.status})`
     throw new Error(message)
   }
   if (res.status === 204) return undefined as T

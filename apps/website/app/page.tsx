@@ -32,8 +32,8 @@ export default function Home() {
             <a href="#deployment" className="hover:text-foreground">Deployment</a>
             <a href="#contact" className="hover:text-foreground">Contact</a>
           </nav>
-          <Button asChild size="sm">
-            <a href="#contact">Get started</a>
+          <Button size="sm" render={<a href="#contact" />}>
+            Get started
           </Button>
         </div>
       </header>
@@ -52,11 +52,11 @@ export default function Home() {
             health facilities, and companies — as cloud SaaS, or self-hosted on your own infrastructure.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild size="lg">
-              <a href="#contact">Get started</a>
+            <Button size="lg" render={<a href="#contact" />}>
+              Get started
             </Button>
-            <Button asChild size="lg" variant="outline">
-              <a href="#contact">Talk to us</a>
+            <Button size="lg" variant="outline" render={<a href="#contact" />}>
+              Talk to us
             </Button>
           </div>
           <p className="mt-6 text-sm text-muted-foreground">
@@ -160,8 +160,8 @@ export default function Home() {
               we’ll get your institution provisioned.
             </p>
             <div className="mt-8">
-              <Button asChild size="lg">
-                <a href="mailto:sales@bool.mv?subject=Bool%20ERP%20enquiry">Contact sales</a>
+              <Button size="lg" render={<a href="mailto:sales@bool.mv?subject=Bool%20ERP%20enquiry" />}>
+                Contact sales
               </Button>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">sales@bool.mv</p>
