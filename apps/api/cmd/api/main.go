@@ -87,7 +87,7 @@ func run() error {
 		Kratos:         auth.NewKratos(cfg.KratosPublicURL, cfg.KratosAdminURL),
 		Cerbos:         auth.NewCerbos(cfg.CerbosHTTPURL),
 		MetricsEnabled: cfg.MetricsEnabled,
-	}, httpapi.AdminTenantRoutes)
+	}, tenancy.Routes)
 
 	ln, err := net.Listen("tcp", ":"+cfg.Port)
 	if err != nil {

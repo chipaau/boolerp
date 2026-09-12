@@ -20,18 +20,18 @@ func AdminRoute(r chi.Router, method, pattern, action string, deps Deps, handler
 	r.Method(method, pattern, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		principal, ok := auth.PrincipalFrom(req.Context())
 		if !ok {
-			writeJSON(w, http.StatusUnauthorized, `{"error":"unauthenticated"}`)
+			WriteJSON(w, http.StatusUnauthorized, `{"error":"unauthenticated"}`)
 			return
 		}
 		userID, err := auth.ParseUUID(principal.ID)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, `{"error":"bad principal id"}`)
+			WriteJSON(w, http.StatusInternalServerError, `{"error":"bad principal id"}`)
 			return
 		}
 
 		azp, err := auth.BuildOperatorPrincipal(req.Context(), deps.Pool, userID)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, `{"error":"internal"}`)
+			WriteJSON(w, http.StatusInternalServerError, `{"error":"internal"}`)
 			return
 		}
 
@@ -46,11 +46,11 @@ func AdminRoute(r chi.Router, method, pattern, action string, deps Deps, handler
 		allowed, err := deps.Cerbos.Authorize(req.Context(), azp, auth.AuthzResource{Kind: "tenant", ID: resourceID}, action)
 		if err != nil {
 			observability.LoggerFrom(req.Context()).Error("cerbos authorize", "err", err)
-			writeJSON(w, http.StatusBadGateway, `{"error":"authz upstream"}`)
+			WriteJSON(w, http.StatusBadGateway, `{"error":"authz upstream"}`)
 			return
 		}
 		if !allowed {
-			writeJSON(w, http.StatusForbidden, `{"error":"forbidden"}`)
+			WriteJSON(w, http.StatusForbidden, `{"error":"forbidden"}`)
 			return
 		}
 

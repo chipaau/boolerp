@@ -28,9 +28,11 @@ type Deps struct {
 }
 
 // Module mounts one feature's routes onto the authenticated /v1 group. Each business/platform
-// feature owns its own path namespace (e.g. AdminTenantRoutes mounts "/admin"); main.go composes
-// the running server by listing which modules it wants — that list is the one place "which
-// features exist" is visible, instead of being buried inside this package.
+// feature owns its own path namespace AND its own handlers, in its own package (e.g. tenancy.Routes
+// mounts "/admin"); main.go composes the running server by listing which modules it wants — that
+// list is the one place "which features exist" is visible. This package stays the composition root
+// plus genuinely cross-cutting platform pieces (Deps, AdminRoute, health/ready/metrics/session) —
+// it never owns a specific module's handlers itself.
 type Module func(r chi.Router, d Deps)
 
 // New builds the API router with core platform routes (health/ready/metrics/session validation),
@@ -50,7 +52,7 @@ func New(d Deps, modules ...Module) http.Handler {
 	authmw := auth.NewMiddleware(d.Kratos, d.Pool)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, `{"status":"ok"}`)
+		WriteJSON(w, http.StatusOK, `{"status":"ok"}`)
 	})
 	r.Get("/readyz", readyz(d))
 	r.Get("/", readyz(d))
@@ -76,18 +78,18 @@ func readyz(d Deps) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
 		defer cancel()
 		if err := d.Pool.Ping(ctx); err != nil {
-			writeJSON(w, http.StatusServiceUnavailable, `{"status":"db unreachable"}`)
+			WriteJSON(w, http.StatusServiceUnavailable, `{"status":"db unreachable"}`)
 			return
 		}
 		if err := d.Kratos.HealthReady(ctx); err != nil {
-			writeJSON(w, http.StatusServiceUnavailable, `{"status":"kratos unreachable"}`)
+			WriteJSON(w, http.StatusServiceUnavailable, `{"status":"kratos unreachable"}`)
 			return
 		}
 		if err := d.Cerbos.Health(ctx); err != nil {
-			writeJSON(w, http.StatusServiceUnavailable, `{"status":"cerbos unreachable"}`)
+			WriteJSON(w, http.StatusServiceUnavailable, `{"status":"cerbos unreachable"}`)
 			return
 		}
-		writeJSON(w, http.StatusOK, `{"status":"ready"}`)
+		WriteJSON(w, http.StatusOK, `{"status":"ready"}`)
 	}
 }
 
@@ -106,30 +108,30 @@ func me(d Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p, ok := auth.PrincipalFrom(r.Context())
 		if !ok {
-			writeJSON(w, http.StatusInternalServerError, `{"error":"no principal"}`)
+			WriteJSON(w, http.StatusInternalServerError, `{"error":"no principal"}`)
 			return
 		}
 
 		allowed, err := d.Cerbos.AllowSelfProfileRead(r.Context(), p.ID)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("cerbos check", "err", err)
-			writeJSON(w, http.StatusBadGateway, `{"error":"authz upstream"}`)
+			WriteJSON(w, http.StatusBadGateway, `{"error":"authz upstream"}`)
 			return
 		}
 		if !allowed {
-			writeJSON(w, http.StatusForbidden, `{"error":"forbidden"}`)
+			WriteJSON(w, http.StatusForbidden, `{"error":"forbidden"}`)
 			return
 		}
 
 		id, err := auth.ParseUUID(p.ID)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, `{"error":"bad principal id"}`)
+			WriteJSON(w, http.StatusInternalServerError, `{"error":"bad principal id"}`)
 			return
 		}
 		u, err := sqlc.New(d.Pool).GetUserByID(r.Context(), id)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("get user", "err", err)
-			writeJSON(w, http.StatusInternalServerError, `{"error":"internal"}`)
+			WriteJSON(w, http.StatusInternalServerError, `{"error":"internal"}`)
 			return
 		}
 
@@ -142,8 +144,17 @@ func me(d Deps) http.HandlerFunc {
 	}
 }
 
-func writeJSON(w http.ResponseWriter, status int, body string) {
+// WriteJSON writes a literal JSON body — for small fixed responses; see WriteJSONBody to encode a
+// value. Exported so every module gets a consistent response shape without reimplementing it.
+func WriteJSON(w http.ResponseWriter, status int, body string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, _ = w.Write([]byte(body))
+}
+
+// WriteJSONBody encodes v as the JSON response body.
+func WriteJSONBody(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
 }

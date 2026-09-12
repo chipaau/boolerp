@@ -16,6 +16,7 @@ import (
 	"github.com/boolmv/goerp/internal/auth"
 	"github.com/boolmv/goerp/internal/db/sqlc"
 	"github.com/boolmv/goerp/internal/httpapi"
+	"github.com/boolmv/goerp/internal/tenancy"
 )
 
 // fakeKratosFor serves whoami for one fixed identity — parameterised (unlike me_integration_test.go's
@@ -66,7 +67,7 @@ func newAdminAPITestRouter(t *testing.T, kratosURL string) http.Handler {
 		Pool:   env.Pool,
 		Kratos: auth.NewKratos(kratosURL, kratosURL),
 		Cerbos: auth.NewCerbos(cerbosSrv.URL),
-	}, httpapi.AdminTenantRoutes)
+	}, tenancy.Routes)
 }
 
 func doAsOperator(t *testing.T, h http.Handler, method, path string, body any) *httptest.ResponseRecorder {
