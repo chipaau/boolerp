@@ -1,65 +1,80 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { ChevronRight, Plus } from 'lucide-react'
-import { Badge } from '@workspace/ui/components/badge'
+import { ArrowDown, ArrowUp, ChevronRight, Plus } from 'lucide-react'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { ConfirmDialog } from '@workspace/ui/components/confirm-dialog'
-import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
+import { NativeSelect } from '@workspace/ui/components/native-select'
 import { useToast } from '@workspace/ui/components/toast'
 import { ToneDot } from '@workspace/ui/components/tone-dot'
 import { cn } from '@workspace/ui/lib/utils'
 import { BRAND } from '@/lib/brand'
-import { PersonAvatar } from '@/features/directory/people-bits'
-import { isOnBooks, liveUnits, unitById, unitKids, unitLead, unitMembers, unitPath, unitTone } from '@/features/org/logic'
-import { usePeople, useSites, useUnitActions, useUnits } from '@/features/org/queries'
-import type { Unit } from '@/features/org/types'
-import { ControlTitle, Panel, RoleBadge, RuleStrip, useCanEdit } from './control-bits'
+import { PersonAvatar, TONE_FALLBACK } from '@/features/directory/people-bits'
+import { isOnBooks, liveUnits, unitById, unitChain, unitKids, unitLead, unitMembers, unitPath, unitTone } from '@/features/org/logic'
+import { usePeople, useUnitActions, useUnits } from '@/features/org/queries'
+import type { Tone, Unit } from '@/features/org/types'
+import { ControlTitle, FieldLabel, RuleStrip, useCanEdit } from './control-bits'
 import { UnitDialog } from './unit-dialog'
 import type { UnitDraft } from './unit-dialog'
 
+const SWATCHES: { name: string; tone: Tone }[] = [
+  { name: 'Sage', tone: 'success' },
+  { name: 'Plum', tone: 'plum' },
+  { name: 'Slate', tone: 'slate' },
+  { name: 'Tan', tone: 'tan' },
+  { name: 'Amber', tone: 'warning' },
+  { name: 'Clay', tone: 'risk' },
+  { name: 'Rose', tone: 'rose' },
+]
+const TONE_TEXT: Record<Tone, string> = {
+  success: 'text-tone-success-foreground', plum: 'text-tone-plum-foreground', slate: 'text-tone-slate-foreground', tan: 'text-tone-tan-foreground',
+  warning: 'text-tone-warning-foreground', risk: 'text-tone-risk-foreground', danger: 'text-tone-danger-foreground', neutral: 'text-tone-neutral-foreground', rose: 'text-tone-rose-foreground',
+}
+
 /**
- * The org tree as Control Centre keeps it. Tree mode: the units at the left, the selected one at
- * the right with its people. Chart mode: the divisions in a row with their sub-units. `?id=`
- * selects a unit so the overview, the Directory and the rail can link straight to one.
+ * The org tree as drill-down columns (the Directory design's structure view): top level, then
+ * each level you open. Beneath, the selected group: rename, colour, lead, nest a new group,
+ * reorder among its siblings, archive what is empty, and the people sitting directly in it.
+ * `?id=` selects a group; `?id=company` the company itself.
  */
 export function UnitsPage() {
-  const units = useUnits(), people = usePeople(), sites = useSites()
+  const units = useUnits(), people = usePeople()
   const actions = useUnitActions()
   const canEdit = useCanEdit()
   const toast = useToast()
   const navigate = useNavigate()
   const search = useSearch({ from: '/_app/$app/$section' })
-  const [mode, setMode] = useState<'tree' | 'chart'>('tree')
-  const [open, setOpen] = useState<Record<string, boolean>>({ ops: true, people: true })
   const [draft, setDraft] = useState<UnitDraft | null>(null)
   const [archiving, setArchiving] = useState<Unit | null>(null)
   const roots = unitKids(units, null)
-  const sel = unitById(units, search.id) ?? roots[0]
+  const isCompany = search.id === 'company'
+  const sel = isCompany ? undefined : (unitById(units, search.id) ?? roots[0])
+  const path = sel ? unitChain(units, sel.id) : []
   const select = (id: string) => void navigate({ to: '/$app/$section', params: { app: 'control-centre', section: 'units' }, search: { id }, replace: true })
+  const guard = (fn: () => void) => () => (canEdit ? fn() : toast('Read only as Staff — ask an Admin to change setup', { ok: false }))
   const active = people.filter((p) => isOnBooks(p) && p.status === 'Active')
   const empty = liveUnits(units).filter((u) => !unitMembers(people, units, u.id, true).length)
-  const lead = unitLead(units, people, sel.id)
-  const direct = unitMembers(people, units, sel.id, false)
-  const kids = unitKids(units, sel.id)
+  const chief = people.find((p) => isOnBooks(p) && !p.managerId)
 
-  const rows = useMemo(() => {
-    const out: { u: Unit; depth: number; kids: number }[] = []
-    const walk = (parent: string | null, depth: number) => unitKids(units, parent).forEach((u) => { const k = unitKids(units, u.id).length; out.push({ u, depth, kids: k }); if (open[u.id]) walk(u.id, depth + 1) })
-    walk(null, 0)
-    return out
-  }, [units, open])
+  // one column per level that is open: the top level, then each ancestor of the selection that has children
+  const columns: { parent: Unit | null; items: Unit[] }[] = [{ parent: null, items: roots }]
+  path.forEach((u) => { const kids = unitKids(units, u.id); if (kids.length) columns.push({ parent: u, items: kids }) })
+
+  const direct = sel ? unitMembers(people, units, sel.id, false) : []
+  const deep = sel ? unitMembers(people, units, sel.id, true) : []
+  const lead = sel ? unitLead(units, people, sel.id) : undefined
+  const tone = sel ? unitTone(units, sel.id) : 'warning'
+  const sibs = sel ? unitKids(units, sel.parent) : []
+  const at = sel ? sibs.findIndex((s) => s.id === sel.id) : -1
 
   function askArchive(u: Unit) {
     if (!canEdit) return toast('Read only as Staff — ask an Admin to change setup', { ok: false })
-    const k = unitKids(units, u.id).length, n = unitMembers(people, units, u.id, false).length
-    if (k) return toast(`Move or archive its ${k} ${k === 1 ? 'sub-unit' : 'sub-units'} first`, { ok: false })
-    if (n) return toast(`${n} ${n === 1 ? 'employee sits' : 'employees sit'} here — reassign them first`, { ok: false })
+    if (unitMembers(people, units, u.id, true).length) return toast('Move its people out first', { ok: false })
+    if (unitKids(units, u.id).length) return toast('Move or archive its subgroups first', { ok: false })
     setArchiving(u)
   }
-  function guard(fn: () => void) {
-    return () => (canEdit ? fn() : toast('Read only as Staff — ask an Admin to change setup', { ok: false }))
-  }
+
+  const row = (on: boolean, t: Tone) => cn('flex w-full items-center gap-2.5 rounded-[9px] px-3 py-[9px] text-left outline-none transition-colors duration-instant focus-visible:ring-2 focus-visible:ring-ring', on ? cn(TONE_FALLBACK[t], 'shadow-[inset_2px_0_0_currentColor]') : 'hover:bg-surface-soft')
 
   return (
     <div className="min-h-0 w-full overflow-y-auto">
@@ -67,179 +82,190 @@ export function UnitsPage() {
         <ControlTitle
           overline="Organisation"
           title="Admin units"
-          description="One org tree — divisions, departments and teams. The Directory shows this same structure read-only; approvals and notifications follow its shape."
+          description="One org tree, any depth — a group can hold both people and other groups. The Directory draws this same structure read-only; approvals and notifications follow its shape."
           actions={
-            <>
-              <Segmented>
-                <SegmentedItem active={mode === 'tree'} onClick={() => setMode('tree')}>
-                  Tree
-                </SegmentedItem>
-                <SegmentedItem active={mode === 'chart'} onClick={() => setMode('chart')}>
-                  Org chart
-                </SegmentedItem>
-              </Segmented>
-              <Button onClick={guard(() => setDraft({ parent: sel.id }))}>
-                New unit
-                <ButtonArrow>
-                  <Plus strokeWidth={2.2} />
-                </ButtonArrow>
-              </Button>
-            </>
+            <Button onClick={guard(() => setDraft({ parent: sel?.id ?? null }))}>
+              New group
+              <ButtonArrow>
+                <Plus strokeWidth={2.2} />
+              </ButtonArrow>
+            </Button>
           }
         />
         <RuleStrip>
-          {liveUnits(units).length} units · {active.length} people placed · {empty.length ? `${empty.length} ${empty.length === 1 ? 'unit' : 'units'} with nobody in ${empty.length === 1 ? 'it' : 'them'}` : 'every unit has someone in it'}
+          {liveUnits(units).length} groups · {active.length} people placed · {empty.length ? `${empty.length} ${empty.length === 1 ? 'group' : 'groups'} with nobody in ${empty.length === 1 ? 'it' : 'them'}` : 'every group has someone in it'}
         </RuleStrip>
 
-        {mode === 'chart' ? (
-          <Card className="gap-0 overflow-x-auto px-6 py-7">
-            <div className="flex min-w-min flex-col items-center">
-              <button type="button" onClick={() => setMode('tree')} className="rounded-[13px] bg-tone-warning-soft px-5 py-3 text-center shadow-[inset_0_0_0_1px_var(--tone-warning)] outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <div className="text-ui font-bold text-foreground">{BRAND.name}</div>
-                <div className="mt-0.5 text-caption text-faint">
-                  {active.length} people · {roots.length} top-level
-                </div>
-              </button>
-              <div className="relative mt-[30px] flex items-start gap-[18px] pt-[30px]">
-                <span aria-hidden="true" className="absolute top-[-30px] left-1/2 h-[30px] w-px bg-border" />
-                <span aria-hidden="true" className="absolute top-0 h-px bg-border" style={{ left: `calc((100% - ${(roots.length - 1) * 18}px) / ${roots.length * 2})`, right: `calc((100% - ${(roots.length - 1) * 18}px) / ${roots.length * 2})` }} />
-                {roots.map((u) => {
-                  const k = unitKids(units, u.id), l = unitLead(units, people, u.id)
+        <Card className="flex max-w-full flex-row items-stretch gap-0 self-start overflow-x-auto py-0" style={{ minHeight: 322 }}>
+          {columns.map((col, ci) => (
+            <div key={col.parent?.id ?? 'top'} className={cn('w-[232px] shrink-0', ci < columns.length - 1 && 'border-r border-divider')}>
+              <div className="flex items-center gap-2 border-b border-divider px-3.5 py-3">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-compact font-bold text-foreground">{col.parent ? col.parent.name : 'Top level'}</span>
+                  <span className="mt-0.5 block text-caption text-faint">
+                    {col.items.length} {col.items.length === 1 ? 'group' : 'groups'}
+                  </span>
+                </span>
+                <Button variant="outline" size="xs" onClick={guard(() => setDraft({ parent: col.parent?.id ?? null }))}>
+                  + Group
+                </Button>
+              </div>
+              <div className="flex flex-col gap-0.5 p-2">
+                {ci === 0 && (
+                  <button type="button" onClick={() => select('company')} className={row(isCompany, 'warning')}>
+                    <ToneDot tone="warning" shape="square" size={7} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-compact font-bold text-foreground">{chief?.name ?? BRAND.name}</span>
+                      <span className="block truncate text-caption text-faint">Company · top of the chart</span>
+                    </span>
+                    <span className="text-caption font-bold tabular-nums text-muted-foreground">{active.length}</span>
+                  </button>
+                )}
+                {col.items.map((u) => {
+                  const kids = unitKids(units, u.id), on = path.some((p) => p.id === u.id), t = unitTone(units, u.id)
                   return (
-                    <div key={u.id} className="relative flex min-w-[168px] flex-1 flex-col">
-                      <span aria-hidden="true" className="absolute top-[-30px] left-1/2 h-[30px] w-px bg-border" />
-                      <button type="button" onClick={() => { select(u.id); setOpen((o) => ({ ...o, [u.id]: true })) }} className={cn('rounded-xl px-3.5 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring', sel.id === u.id ? 'bg-surface-band shadow-[inset_0_0_0_1.5px_var(--sage)]' : 'bg-surface-soft shadow-[inset_0_0_0_1px_var(--divider)] hover:bg-surface-band')}>
-                        <div className="flex items-center gap-[7px]">
-                          <ToneDot tone={unitTone(units, u.id)} shape="square" size={7} />
-                          <span className="min-w-0 flex-1 truncate text-ui-sm font-bold text-foreground">{u.name}</span>
-                          <span className="text-caption font-bold text-faint">{unitMembers(people, units, u.id, true).length}</span>
-                        </div>
-                        <div className="mt-1 text-caption text-faint">{l ? l.name : 'No lead yet'}</div>
-                      </button>
-                      {k.length > 0 && (
-                        <div className="mt-2.5 ml-3.5 flex flex-col gap-[5px] border-l border-divider pl-3.5">
-                          {k.map((c) => (
-                            <button key={c.id} type="button" onClick={() => { select(c.id); setMode('tree') }} className={cn('flex items-center gap-2 rounded-[9px] px-[11px] py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring', sel.id === c.id ? 'bg-surface-band' : 'shadow-[inset_0_0_0_1px_var(--divider)] hover:bg-surface-soft')}>
-                              <span className="min-w-0 flex-1 truncate text-compact font-bold text-body">{c.name}</span>
-                              <span className="text-caption text-faint">{unitMembers(people, units, c.id, true).length}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <button key={u.id} type="button" onClick={() => select(u.id)} className={row(on, t)}>
+                      <ToneDot tone={t} shape={ci === 0 ? 'square' : 'round'} size={7} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-compact font-bold text-foreground">{u.name}</span>
+                        <span className="block truncate text-caption text-faint">{kids.length ? `${kids.length} ${kids.length === 1 ? 'subgroup' : 'subgroups'}` : `${unitMembers(people, units, u.id, false).length} direct`}</span>
+                      </span>
+                      <span className="text-caption font-bold tabular-nums text-muted-foreground">{unitMembers(people, units, u.id, true).length}</span>
+                      {kids.length > 0 && <ChevronRight className="size-3 shrink-0 text-faint" strokeWidth={1.8} />}
+                    </button>
                   )
                 })}
               </div>
             </div>
-            <div className="mt-3 text-caption text-faint">Units only — the Directory draws the same shape with every person in it. Click a unit to open it.</div>
-          </Card>
-        ) : (
-          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,288px)_minmax(0,1fr)]">
-            <Card className="gap-0 px-2.5 py-3">
-              <ul className="flex flex-col gap-px">
-                {rows.map(({ u, depth, kids: k }) => (
-                  <li key={u.id}>
-                    <div className={cn('flex items-center gap-[7px] rounded-[9px] py-[7px] pr-2.5 text-ui-sm outline-none', sel.id === u.id ? 'bg-sidebar-accent font-bold text-foreground' : 'text-body hover:bg-surface-soft', depth === 0 && 'font-bold')} style={{ paddingLeft: 10 + depth * 15 }}>
-                      <button type="button" aria-label={open[u.id] ? 'Collapse' : 'Expand'} onClick={() => setOpen((o) => ({ ...o, [u.id]: !o[u.id] }))} className={cn('grid size-[15px] shrink-0 place-items-center text-faint transition-transform duration-instant', open[u.id] && 'rotate-90', !k && 'invisible')}>
-                        <ChevronRight className="size-[11px]" strokeWidth={1.9} />
-                      </button>
-                      <button type="button" onClick={() => select(u.id)} className="min-w-0 flex-1 truncate text-left outline-none">
-                        {u.name}
-                      </button>
-                      <span className="text-caption tabular-nums text-faint">{unitMembers(people, units, u.id, true).length}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+          ))}
+        </Card>
 
-            <div className="flex min-w-0 flex-col gap-4">
-              <Panel bodyClassName="pt-5">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="text-caption text-faint">{sel.parent ? unitPath(units, sel.parent) : 'Top level'}</div>
-                    <h2 className="mt-1 text-[22px] leading-tight font-bold tracking-[-0.015em] text-foreground">{sel.name}</h2>
-                    <div className="mt-2 flex flex-wrap items-center gap-2.5">
-                      <Badge variant="neutral" size="sm">
-                        {sel.kind}
-                      </Badge>
-                      <span className="text-compact text-faint">
-                        {sel.code} · {lead ? `led by ${lead.name}` : 'no lead yet'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-[7px]">
-                    <Button variant="outline" size="sm" onClick={guard(() => setDraft({ parent: sel.id }))}>
-                      Add sub-unit
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={guard(() => void navigate({ to: '/$app/$section', params: { app: 'control-centre', section: 'employees' }, search: { filter: `new:${sel.id}` } }))}>
-                      Add employee
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={guard(() => setDraft({ edit: sel, parent: sel.parent }))}>
-                      Edit
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-tone-risk-foreground" onClick={() => askArchive(sel)}>
-                      Archive
-                    </Button>
-                  </div>
-                </div>
-                <dl className="mt-[18px] grid grid-cols-[repeat(auto-fit,minmax(124px,1fr))] gap-3.5 border-t border-divider pt-4">
-                  {[
-                    ['In this unit', direct.length],
-                    ['Including sub-units', unitMembers(people, units, sel.id, true).length],
-                    ['Sub-units', kids.length],
-                    ['Site managers', unitMembers(people, units, sel.id, true).filter((p) => sites.some((s) => s.ownerId === p.id)).length],
-                  ].map(([k, v]) => (
-                    <div key={k}>
-                      <dd className="text-[19px] font-bold text-foreground">{v}</dd>
-                      <dt className="mt-0.5 text-caption text-faint">{k}</dt>
-                    </div>
-                  ))}
-                </dl>
-              </Panel>
-
-              <Card className="gap-0 overflow-clip py-0">
-                <div className="flex items-baseline justify-between gap-3 border-b border-divider px-5 py-4">
-                  <div className="text-overline text-faint">People in this unit</div>
-                  <span className="text-caption text-faint">{kids.length ? 'Direct members only — sub-units have their own' : 'Direct members'}</span>
-                </div>
-                {direct.length ? (
-                  <ul>
-                    {direct.map((p) => (
-                      <li key={p.id}>
-                        <Link to="/$app/$section" params={{ app: 'control-centre', section: 'employees' }} search={{ id: p.id }} className="grid grid-cols-[32px_minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-divider px-5 py-3 outline-none last:border-b-0 hover:bg-surface-soft focus-visible:ring-2 focus-visible:ring-ring">
-                          <PersonAvatar person={p} units={units} className="size-[30px]" />
-                          <span className="min-w-0">
-                            <span className="block truncate text-ui-sm font-bold text-foreground">{p.name}</span>
-                            <span className="block truncate text-caption text-faint">{p.title}</span>
-                          </span>
-                          <span className="text-compact text-body">{p.primarySite ? sites.find((s) => s.id === p.primarySite)?.code : 'No site'}</span>
-                          <RoleBadge role={p.role} />
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="px-5 py-[18px] text-ui-sm leading-[1.55] text-body">No one sits directly in this unit. {kids.length ? `Its sub-units hold ${unitMembers(people, units, sel.id, true).length}.` : 'Add someone, or archive the unit.'}</div>
-                )}
-              </Card>
+        <Card className="mt-4 gap-3.5 px-[22px] py-[18px]">
+          {isCompany || !sel ? (
+            <div>
+              <div className="flex items-center gap-2">
+                <ToneDot tone="warning" shape="square" size={8} />
+                <span className={cn('text-overline', TONE_TEXT.warning)}>Company · {chief?.name ?? BRAND.name}</span>
+              </div>
+              <div className="mt-2 text-ui-sm text-muted-foreground">
+                {active.length} people across {roots.length} top-level groups
+              </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <>
+              <div className="flex flex-wrap items-start gap-3.5">
+                <div className="min-w-0 flex-1 basis-[260px]">
+                  <div className="flex items-center gap-2">
+                    <ToneDot tone={tone} shape={sel.parent ? 'round' : 'square'} size={8} />
+                    <span className={cn('text-overline', TONE_TEXT[tone])}>{unitPath(units, sel.id)}</span>
+                  </div>
+                  <input
+                    key={sel.id}
+                    defaultValue={sel.name}
+                    readOnly={!canEdit}
+                    aria-label="Group name"
+                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== sel.name) actions.update(sel.id, { name: v }); else e.target.value = sel.name }}
+                    className="mt-2 h-[38px] w-full max-w-[340px] rounded-[10px] bg-surface-band px-3 text-base font-bold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <div className="mt-2 text-ui-sm text-muted-foreground">
+                    {deep.length} {deep.length === 1 ? 'person' : 'people'} · {direct.length} sitting here directly · {unitKids(units, sel.id).length} {unitKids(units, sel.id).length === 1 ? 'subgroup' : 'subgroups'}
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <FieldLabel>Colour</FieldLabel>
+                  <div className="flex flex-wrap items-center gap-[7px]">
+                    {SWATCHES.map((sw) => (
+                      <button
+                        key={sw.tone}
+                        type="button"
+                        title={sw.name}
+                        aria-label={sw.name}
+                        onClick={guard(() => actions.recolor(sel.id, sw.tone))}
+                        className={cn('size-[22px] rounded-[7px] outline-none focus-visible:ring-2 focus-visible:ring-ring', sel.tone === sw.tone ? 'ring-2 ring-card ring-offset-2 ring-offset-current' : 'shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)]')}
+                        style={{ backgroundColor: `var(--color-tone-${sw.tone})`, color: `var(--color-tone-${sw.tone})` }}
+                      />
+                    ))}
+                    {sel.tone && (
+                      <Button variant="link" size="xs" onClick={guard(() => actions.recolor(sel.id, undefined))}>
+                        Reset
+                      </Button>
+                    )}
+                  </div>
+                  <div className="mt-2 max-w-[210px] text-caption text-faint">{unitKids(units, sel.id).length ? 'Subgroups inherit this unless they set their own.' : 'Used for this group everywhere it appears.'}</div>
+                </div>
+                <div className="w-[236px] shrink-0">
+                  <FieldLabel>Lead</FieldLabel>
+                  <NativeSelect value={sel.leadId ?? ''} disabled={!canEdit} onChange={(e) => { const p = people.find((x) => x.id === e.target.value); actions.setLead(sel.id, e.target.value || undefined, p?.name); if (p) toast('Lead updated') }} className="[&>select]:h-[38px]">
+                    <option value="">{lead ? `Standing in: ${lead.name}` : 'No lead'}</option>
+                    {deep.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} · {p.title}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 border-t border-divider pt-3.5">
+                <Button variant="outline" size="sm" onClick={guard(() => setDraft({ parent: sel.id }))}>
+                  Add subgroup
+                </Button>
+                <Button variant="outline" size="sm" onClick={guard(() => void navigate({ to: '/$app/$section', params: { app: 'control-centre', section: 'employees' }, search: { filter: `new:${sel.id}` } }))}>
+                  Add person here
+                </Button>
+                <Button variant="link" size="sm" render={<Link to="/$app" params={{ app: 'directory' }} search={{ scope: `group:${sel.id}` }} />}>
+                  View people
+                </Button>
+                <span aria-hidden="true" className="h-5 w-px bg-border" />
+                <Button variant="outline" size="icon-sm" aria-label="Move up among its siblings" disabled={at <= 0} onClick={guard(() => actions.nudge(sel.id, -1))}>
+                  <ArrowUp className="size-3.5" />
+                </Button>
+                <Button variant="outline" size="icon-sm" aria-label="Move down among its siblings" disabled={at < 0 || at >= sibs.length - 1} onClick={guard(() => actions.nudge(sel.id, 1))}>
+                  <ArrowDown className="size-3.5" />
+                </Button>
+                <span className="flex-1" />
+                <span className="text-caption text-faint">{deep.length ? 'Move its people out before archiving' : 'Empty — safe to archive'}</span>
+                <Button variant="outline" size="sm" className={cn(deep.length ? 'text-faint' : 'text-tone-risk-foreground')} onClick={() => askArchive(sel)}>
+                  Archive
+                </Button>
+              </div>
+
+              {direct.length > 0 && (
+                <div>
+                  <div className="mb-2 text-caption text-faint">
+                    {direct.length} sitting directly in {sel.name}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {direct.map((p) => (
+                      <Link key={p.id} to="/$app/$section" params={{ app: 'control-centre', section: 'employees' }} search={{ id: p.id }} className="flex items-center gap-2.5 rounded-full bg-muted py-1.5 pr-3 pl-[7px] outline-none hover:bg-secondary-hover focus-visible:ring-2 focus-visible:ring-ring">
+                        <PersonAvatar person={p} units={units} className="size-[26px]" fallbackClassName="text-[9.5px]" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-compact font-bold text-foreground">{p.name}</span>
+                          <span className="block truncate text-caption text-faint">{p.title}</span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {direct.length === 0 && <div className="text-caption text-faint">No one sits directly in this group.</div>}
+            </>
+          )}
+        </Card>
       </div>
-      <UnitDialog draft={draft} onClose={() => setDraft(null)} onSaved={(id) => { select(id); setOpen((o) => ({ ...o, [units.find((u) => u.id === id)?.parent ?? '']: true })) }} />
+      <UnitDialog draft={draft} onClose={() => setDraft(null)} onSaved={select} />
       <ConfirmDialog
         open={archiving !== null}
-        title={`Archive ${archiving?.name ?? 'unit'}?`}
-        description="Archiving keeps the unit and its history — reports that already reference it stay intact. It disappears from pickers and from the Directory, and can be brought back by an Admin."
-        action="Archive unit"
+        title={`Archive ${archiving?.name ?? 'group'}?`}
+        description="Archiving keeps the group and its history — reports that already reference it stay intact. It disappears from pickers and from the Directory, and can be brought back by an Admin."
+        action="Archive group"
         danger
         onClose={() => setArchiving(null)}
         onConfirm={() => {
           if (!archiving) return
           const undo = actions.archive(archiving.id)
           toast(`${archiving.name} archived — history kept`, { undo: () => { undo(); toast(`${archiving.name} is back`) } })
-          select(archiving.parent ?? roots[0].id)
+          select(archiving.parent ?? 'company')
           setArchiving(null)
         }}
       />

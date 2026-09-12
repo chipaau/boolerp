@@ -3,7 +3,7 @@
 // mutations update the cache in place and write an audit entry; later they PATCH then invalidate.
 import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { fmtDate, nextCode, personById, unitPath } from './logic'
+import { fmtDate, nextCode, personById, unitKids, unitPath } from './logic'
 import * as mock from './mock'
 import type { AuditEntry, Country, Me, NumberingRule, Person, Region, Site, SiteType, Unit } from './types'
 
@@ -83,6 +83,27 @@ export function useUnitActions() {
       const undo = patch(id, { archived: true })
       if (u) log('Admin units', `${u.name} archived`)
       return undo
+    },
+    recolor: (id: string, tone: Unit['tone']) => {
+      const u = units().find((x) => x.id === id)
+      patch(id, { tone })
+      if (u) log('Admin units', tone ? `${u.name} recoloured` : `${u.name} colour reset`)
+    },
+    setLead: (id: string, leadId: string | undefined, leadName?: string) => {
+      const u = units().find((x) => x.id === id)
+      patch(id, { leadId })
+      if (u) log('Admin units', leadId ? `${leadName ?? 'Someone'} set as lead of ${u.name}` : `${u.name} lead cleared`)
+    },
+    /** Moves a unit one place up or down among its siblings. */
+    nudge: (id: string, dir: 1 | -1) => {
+      const u = units().find((x) => x.id === id)
+      if (!u) return
+      const sibs = unitKids(units(), u.parent)
+      const at = sibs.findIndex((x) => x.id === id), to = at + dir
+      if (at < 0 || to < 0 || to >= sibs.length) return
+      const next = [...sibs]
+      next.splice(to, 0, next.splice(at, 1)[0])
+      set((list) => list.map((x) => { const ix = next.findIndex((n) => n.id === x.id); return ix < 0 ? x : { ...x, order: ix } }))
     },
   }
 }

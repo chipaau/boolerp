@@ -6,7 +6,8 @@ export const UNIT_KINDS: Unit['kind'][] = ['Division', 'Department', 'Team']
 
 export const liveUnits = (units: Unit[]) => units.filter((u) => !u.archived)
 export const unitById = (units: Unit[], id: string | null | undefined) => (id ? units.find((u) => u.id === id && !u.archived) : undefined)
-export const unitKids = (units: Unit[], parent: string | null) => liveUnits(units).filter((u) => u.parent === parent)
+export const unitKids = (units: Unit[], parent: string | null) =>
+  liveUnits(units).map((u, i) => ({ u, i })).filter(({ u }) => u.parent === parent).sort((a, b) => (a.u.order ?? a.i) - (b.u.order ?? b.i)).map(({ u }) => u)
 export function unitDescendants(units: Unit[], id: string): Unit[] {
   const out: Unit[] = []
   const walk = (p: string) => unitKids(units, p).forEach((k) => { out.push(k); walk(k.id) })

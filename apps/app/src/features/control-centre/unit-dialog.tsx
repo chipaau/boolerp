@@ -10,7 +10,7 @@ import { FieldLabel, fieldClass } from './control-bits'
 
 export type UnitDraft = { edit?: Unit; parent: string | null }
 
-/** New or edited admin unit: name, short code, kind and where it sits. */
+/** New or edited group: name, where it sits, and the short code and kind the record keeps. */
 export function UnitDialog({ draft, onClose, onSaved }: { draft: UnitDraft | null; onClose: () => void; onSaved: (id: string) => void }) {
   const units = useUnits()
   const actions = useUnitActions()
@@ -49,12 +49,12 @@ export function UnitDialog({ draft, onClose, onSaved }: { draft: UnitDraft | nul
     <Dialog open={draft !== null} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="gap-0 p-0 sm:max-w-[520px]" showCloseButton={false}>
         <DialogHeader className="px-6 pt-[22px] pb-3 text-left">
-          <DialogTitle className="text-[19px] tracking-[-0.015em]">{editing ? `Edit ${editing.name}` : 'New admin unit'}</DialogTitle>
-          <DialogDescription className="mt-1 text-compact text-muted-foreground">{editing ? 'Renaming is safe — employees, approvals and the Directory follow the unit, not its name.' : 'Units are the org tree every other app routes through.'}</DialogDescription>
+          <DialogTitle className="text-[19px] tracking-[-0.015em]">{editing ? `Edit ${editing.name}` : 'Add a group'}</DialogTitle>
+          <DialogDescription className="mt-1 text-compact text-muted-foreground">{editing ? 'Renaming is safe — employees, approvals and the Directory follow the group, not its name.' : 'Groups nest as deep as you need — a group can hold both people and other groups.'}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 px-6 pb-2 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <FieldLabel>Unit name</FieldLabel>
+            <FieldLabel>Group name</FieldLabel>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Warehouse" className={fieldClass} autoFocus />
           </div>
           <div>
@@ -87,7 +87,7 @@ export function UnitDialog({ draft, onClose, onSaved }: { draft: UnitDraft | nul
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save}>{editing ? 'Save changes' : 'Create unit'}</Button>
+          <Button onClick={save}>{editing ? 'Save changes' : 'Create group'}</Button>
         </div>
       </DialogContent>
     </Dialog>

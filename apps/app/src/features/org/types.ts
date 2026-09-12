@@ -17,6 +17,8 @@ export type Unit = {
   tone?: Tone
   /** A chosen lead; otherwise the most senior member stands in. */
   leadId?: string
+  /** Position among siblings; unset means fixture order. */
+  order?: number
   archived: boolean
 }
 
