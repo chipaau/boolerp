@@ -309,7 +309,7 @@ func (q *Queries) GetPartyTypeIDByCode(ctx context.Context, code string) (pgtype
 }
 
 const getRoleByAppTenantCode = `-- name: GetRoleByAppTenantCode :one
-SELECT id, app_id, tenant_id, code, name, is_default, active_from, active_to, created_at, updated_at FROM roles WHERE app_id = $1 AND tenant_id = $2 AND code = $3
+SELECT id, app_id, tenant_id, code, name, is_default, active_from, active_to, created_at, updated_at FROM roles WHERE app_id = $1 AND tenant_id IS NOT DISTINCT FROM $2 AND code = $3
 `
 
 type GetRoleByAppTenantCodeParams struct {
@@ -318,6 +318,10 @@ type GetRoleByAppTenantCodeParams struct {
 	Code     string      `json:"code"`
 }
 
+// tenant_id may be NULL (a global template) — a NULL query argument must match a NULL column, so
+// this uses IS NOT DISTINCT FROM rather than =, mirroring the table's own NULLS NOT DISTINCT unique
+// constraint. `tenant_id = $2` would silently never match a global role for a NULL argument (SQL's
+// three-valued logic: NULL = NULL is UNKNOWN, never TRUE).
 func (q *Queries) GetRoleByAppTenantCode(ctx context.Context, arg GetRoleByAppTenantCodeParams) (Role, error) {
 	row := q.db.QueryRow(ctx, getRoleByAppTenantCode, arg.AppID, arg.TenantID, arg.Code)
 	var i Role

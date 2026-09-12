@@ -32,6 +32,10 @@ type Querier interface {
 	// Platform tenancy — control-plane (not tenant-scoped). Used by provisioning (cmd/provision-dev).
 	// Global (country_code IS NULL) party types only — the app never provisions a jurisdiction-specific form here.
 	GetPartyTypeIDByCode(ctx context.Context, code string) (pgtype.UUID, error)
+	// tenant_id may be NULL (a global template) — a NULL query argument must match a NULL column, so
+	// this uses IS NOT DISTINCT FROM rather than =, mirroring the table's own NULLS NOT DISTINCT unique
+	// constraint. `tenant_id = $2` would silently never match a global role for a NULL argument (SQL's
+	// three-valued logic: NULL = NULL is UNKNOWN, never TRUE).
 	GetRoleByAppTenantCode(ctx context.Context, arg GetRoleByAppTenantCodeParams) (Role, error)
 	GetTenantBySlug(ctx context.Context, slug string) (Tenant, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)

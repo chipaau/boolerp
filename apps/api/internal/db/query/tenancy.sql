@@ -39,7 +39,11 @@ WHERE tu.tenant_id = $1 AND tu.is_owner AND tu.active_to IS NULL;
 SELECT * FROM apps WHERE code = $1;
 
 -- name: GetRoleByAppTenantCode :one
-SELECT * FROM roles WHERE app_id = $1 AND tenant_id = $2 AND code = $3;
+-- tenant_id may be NULL (a global template) — a NULL query argument must match a NULL column, so
+-- this uses IS NOT DISTINCT FROM rather than =, mirroring the table's own NULLS NOT DISTINCT unique
+-- constraint. `tenant_id = $2` would silently never match a global role for a NULL argument (SQL's
+-- three-valued logic: NULL = NULL is UNKNOWN, never TRUE).
+SELECT * FROM roles WHERE app_id = $1 AND tenant_id IS NOT DISTINCT FROM $2 AND code = $3;
 
 -- name: CreateRole :one
 INSERT INTO roles (app_id, tenant_id, code, name)
