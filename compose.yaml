@@ -181,6 +181,11 @@ services:
       DOCKER_HOST: unix:///var/run/docker.sock
       TESTCONTAINERS_RYUK_DISABLED: "true"
       TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+    # OrbStack/Docker Desktop define host.docker.internal by default; plain Linux dockerd (CI
+    # runners) don't — this magic extra_hosts value works on both, so the "test" service reaches the
+    # sibling Postgres container's published port the same way in CI as it does locally.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - .:/w
       - gocache:/root/.cache/go-build
