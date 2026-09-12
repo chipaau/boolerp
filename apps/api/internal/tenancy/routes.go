@@ -29,21 +29,25 @@ type Deps struct {
 // docker/cerbos/policies/resource_tenant.yaml).
 const resourceKind = "tenant"
 
-// Module builds this package's httpapi.Module: its own path namespace ("/admin"), its own Deps,
-// and the RLS-scoped tables it owns (RLSScopedTables) — the one place all three travel together,
-// so main.go's module list is also the source of truth for the startup RLS coverage guard.
-func Module(deps Deps, pool *pgxpool.Pool, cerbos *auth.Cerbos) httpapi.Module {
+// Register builds this package's httpapi.Module from the platform-wide Deps: its own path
+// namespace ("/admin"), its own narrowed Deps for its handlers, and the RLS-scoped tables it owns
+// (RLSScopedTables) — the one place all three travel together, so main.go's module list is also the
+// source of truth for the startup RLS coverage guard. main.go passes the whole platform Deps once;
+// each module decides for itself what it actually needs from it — nothing is picked apart by hand
+// at the call site.
+func Register(platform httpapi.Deps) httpapi.Module {
+	deps := Deps{Pool: platform.Pool, Kratos: platform.Kratos}
 	return httpapi.Module{
 		Name:      "tenancy",
 		RLSTables: RLSScopedTables,
 		Mount: func(r chi.Router) {
 			r.Route("/admin", func(r chi.Router) {
-				httpapi.AdminRoute(r, http.MethodGet, "/tenants", resourceKind, "list", pool, cerbos, deps, adminListTenants)
-				httpapi.AdminRoute(r, http.MethodGet, "/tenants/{id}", resourceKind, "get", pool, cerbos, deps, adminGetTenant)
-				httpapi.AdminRoute(r, http.MethodPost, "/tenants", resourceKind, "provision", pool, cerbos, deps, adminCreateTenant)
-				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/suspend", resourceKind, "suspend", pool, cerbos, deps, adminTransitionHandler(SuspendTenant))
-				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/reactivate", resourceKind, "reactivate", pool, cerbos, deps, adminTransitionHandler(ReactivateTenant))
-				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/archive", resourceKind, "archive", pool, cerbos, deps, adminTransitionHandler(ArchiveTenant))
+				httpapi.AdminRoute(r, http.MethodGet, "/tenants", resourceKind, "list", platform.Pool, platform.Cerbos, deps, adminListTenants)
+				httpapi.AdminRoute(r, http.MethodGet, "/tenants/{id}", resourceKind, "get", platform.Pool, platform.Cerbos, deps, adminGetTenant)
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants", resourceKind, "provision", platform.Pool, platform.Cerbos, deps, adminCreateTenant)
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/suspend", resourceKind, "suspend", platform.Pool, platform.Cerbos, deps, adminTransitionHandler(SuspendTenant))
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/reactivate", resourceKind, "reactivate", platform.Pool, platform.Cerbos, deps, adminTransitionHandler(ReactivateTenant))
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/archive", resourceKind, "archive", platform.Pool, platform.Cerbos, deps, adminTransitionHandler(ArchiveTenant))
 			})
 		},
 	}
