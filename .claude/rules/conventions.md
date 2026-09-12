@@ -22,6 +22,9 @@
 
 ## Commit discipline
 
+- **Run the affected tests locally before every `git commit`; never commit on a known-failing or
+  unrun suite.** See `testing.md` for the exact commands (Docker-first, per layer) and the 100%
+  coverage gate required before a PR goes up.
 - **Commit whenever a coherent, commitable unit of work is done — proactively, along the way.**
   Don't let a long session accumulate into one giant diff that only gets committed when the user
   remembers to ask "commit and push" at the end. As soon as a table, a doc, a feature, or any other
