@@ -475,6 +475,57 @@ func (q *Queries) GetTenantBySlug(ctx context.Context, slug string) (Tenant, err
 	return i, err
 }
 
+const isInternalTenantMember = `-- name: IsInternalTenantMember :one
+SELECT EXISTS (
+  SELECT 1 FROM tenant_users tu
+  JOIN tenants t ON t.id = tu.tenant_id
+  WHERE tu.user_id = $1 AND t.is_internal AND tu.status = 'active' AND tu.active_to IS NULL
+)
+`
+
+// FR-AUTHZ-04: platform:* capabilities only act platform-wide when held via a role on the ONE
+// internal/operator tenant, and only when the caller is genuinely a member of it.
+func (q *Queries) IsInternalTenantMember(ctx context.Context, userID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, isInternalTenantMember, userID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const listActiveCapabilitiesForUserInTenant = `-- name: ListActiveCapabilitiesForUserInTenant :many
+SELECT DISTINCT rc.capability
+FROM user_roles ur
+JOIN role_capabilities rc ON rc.role_id = ur.role_id
+WHERE ur.user_id = $1 AND ur.tenant_id = $2 AND ur.active_to IS NULL
+`
+
+type ListActiveCapabilitiesForUserInTenantParams struct {
+	UserID   pgtype.UUID `json:"user_id"`
+	TenantID pgtype.UUID `json:"tenant_id"`
+}
+
+// The capability slugs a user currently holds via CURRENT role assignments in one tenant — the
+// principal-building query behind authz.Authorize.
+func (q *Queries) ListActiveCapabilitiesForUserInTenant(ctx context.Context, arg ListActiveCapabilitiesForUserInTenantParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listActiveCapabilitiesForUserInTenant, arg.UserID, arg.TenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var capability string
+		if err := rows.Scan(&capability); err != nil {
+			return nil, err
+		}
+		items = append(items, capability)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTenants = `-- name: ListTenants :many
 SELECT id, slug, code, name, name_i18n, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, country, timezone, status, active_from, active_to, created_at, updated_at FROM tenants ORDER BY created_at DESC
 `

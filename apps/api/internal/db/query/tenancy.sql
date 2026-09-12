@@ -55,6 +55,23 @@ WHERE tu.tenant_id = $1 AND tu.is_owner AND tu.active_to IS NULL;
 SELECT tu.* FROM tenant_users tu
 WHERE tu.tenant_id = $1 AND tu.user_id = $2 AND tu.status = 'active' AND tu.active_to IS NULL;
 
+-- name: IsInternalTenantMember :one
+-- FR-AUTHZ-04: platform:* capabilities only act platform-wide when held via a role on the ONE
+-- internal/operator tenant, and only when the caller is genuinely a member of it.
+SELECT EXISTS (
+  SELECT 1 FROM tenant_users tu
+  JOIN tenants t ON t.id = tu.tenant_id
+  WHERE tu.user_id = $1 AND t.is_internal AND tu.status = 'active' AND tu.active_to IS NULL
+);
+
+-- name: ListActiveCapabilitiesForUserInTenant :many
+-- The capability slugs a user currently holds via CURRENT role assignments in one tenant — the
+-- principal-building query behind authz.Authorize.
+SELECT DISTINCT rc.capability
+FROM user_roles ur
+JOIN role_capabilities rc ON rc.role_id = ur.role_id
+WHERE ur.user_id = $1 AND ur.tenant_id = $2 AND ur.active_to IS NULL;
+
 -- name: GetAppByCode :one
 SELECT * FROM apps WHERE code = $1;
 

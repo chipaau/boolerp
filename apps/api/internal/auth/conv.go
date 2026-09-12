@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -16,6 +17,12 @@ func ParseUUID(s string) (pgtype.UUID, error) {
 		return pgtype.UUID{}, fmt.Errorf("auth: parse uuid %q: %w", s, err)
 	}
 	return u, nil
+}
+
+// uuidString is ParseUUID's inverse — the canonical string form, used when a pgtype.UUID (e.g. a
+// user id looked up from the DB) needs to become an AuthzPrincipal.ID.
+func uuidString(id pgtype.UUID) string {
+	return uuid.UUID(id.Bytes).String()
 }
 
 // textOrNull maps an empty string to SQL NULL, else a valid text value.

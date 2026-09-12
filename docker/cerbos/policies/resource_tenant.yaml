@@ -1,0 +1,32 @@
+apiVersion: api.cerbos.dev/v1
+description: >
+  Operator (apps/admin) actions on the tenant resource: listing, provisioning, and the
+  suspend/reactivate/archive lifecycle. Enforced per-handler via httpapi.AdminRoute — never a
+  blanket middleware, since a check with no resource loaded can't evaluate attribute-based grants.
+resourcePolicy:
+  version: default
+  resource: tenant
+  importDerivedRoles:
+    - common
+  rules:
+    - actions: ["list", "get"]
+      effect: EFFECT_ALLOW
+      derivedRoles: [operator]
+
+    - actions: ["provision"]
+      effect: EFFECT_ALLOW
+      derivedRoles: [operator]
+      condition:
+        match:
+          expr: >
+            "platform:tenants:provision" in request.principal.roles ||
+            "platform:*" in request.principal.roles
+
+    - actions: ["suspend", "reactivate", "archive"]
+      effect: EFFECT_ALLOW
+      derivedRoles: [operator]
+      condition:
+        match:
+          expr: >
+            "platform:tenants:suspend" in request.principal.roles ||
+            "platform:*" in request.principal.roles

@@ -1,5 +1,5 @@
 apiVersion: api.cerbos.dev/v1
-description: Common derived roles shared across resources. Expanded in component 05.
+description: Common derived roles shared across resources.
 derivedRoles:
   name: common
   definitions:
@@ -9,3 +9,12 @@ derivedRoles:
       condition:
         match:
           expr: request.resource.attr.owner_id == request.principal.id
+    - name: operator
+      parentRoles:
+        - user
+      condition:
+        match:
+          # FR-AUTHZ-04: platform:* capabilities only act platform-wide via a role held on the ONE
+          # internal/operator tenant — this attribute (auth.BuildOperatorPrincipal) is the sole gate,
+          # never inferred from a capability string alone.
+          expr: request.principal.attr.is_internal_member == true

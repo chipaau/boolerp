@@ -44,6 +44,12 @@ type Querier interface {
 	GetTenantByID(ctx context.Context, id pgtype.UUID) (Tenant, error)
 	GetTenantBySlug(ctx context.Context, slug string) (Tenant, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	// FR-AUTHZ-04: platform:* capabilities only act platform-wide when held via a role on the ONE
+	// internal/operator tenant, and only when the caller is genuinely a member of it.
+	IsInternalTenantMember(ctx context.Context, userID pgtype.UUID) (bool, error)
+	// The capability slugs a user currently holds via CURRENT role assignments in one tenant — the
+	// principal-building query behind authz.Authorize.
+	ListActiveCapabilitiesForUserInTenant(ctx context.Context, arg ListActiveCapabilitiesForUserInTenantParams) ([]string, error)
 	ListCountries(ctx context.Context) ([]Country, error)
 	// Reference-data reads (global tables — no tenant scope). Starter query set to wire sqlc.
 	ListCurrencies(ctx context.Context) ([]Currency, error)
