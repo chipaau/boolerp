@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Bool-Maldives/erp/internal/server"
+	"github.com/boolmv/erp/internal/server"
 )
 
 func TestServe_DrainsInFlightRequestButRefusesNewOnesDuringShutdown(t *testing.T) {

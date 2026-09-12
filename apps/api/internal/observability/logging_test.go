@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/Bool-Maldives/erp/internal/observability"
+	"github.com/boolmv/erp/internal/observability"
 )
 
 func TestRedactingHandler_ScrubsSensitiveTopLevelAttrs(t *testing.T) {

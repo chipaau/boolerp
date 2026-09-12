@@ -21,7 +21,7 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	appdb "github.com/Bool-Maldives/erp/internal/db"
+	appdb "github.com/boolmv/erp/internal/db"
 )
 
 // Env is a running test database: a live pool over a throwaway container with the schema applied.

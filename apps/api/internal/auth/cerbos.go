@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
-	"github.com/Bool-Maldives/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/db/sqlc"
 )
 
 // Cerbos is a thin client over the Cerbos PDP HTTP API — consulted live per request (FR-AUTHZ-01),

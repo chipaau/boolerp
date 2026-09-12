@@ -8,9 +8,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Bool-Maldives/erp/internal/audit"
-	"github.com/Bool-Maldives/erp/internal/auth"
-	"github.com/Bool-Maldives/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/audit"
+	"github.com/boolmv/erp/internal/auth"
+	"github.com/boolmv/erp/internal/db/sqlc"
 )
 
 // CreateTenantRow computes the next tree_key and inserts a root tenant row — the piece shared by

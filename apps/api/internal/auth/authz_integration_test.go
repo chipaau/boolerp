@@ -11,9 +11,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/Bool-Maldives/erp/internal/auth"
-	"github.com/Bool-Maldives/erp/internal/db/sqlc"
-	"github.com/Bool-Maldives/erp/internal/dbtest"
+	"github.com/boolmv/erp/internal/auth"
+	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/dbtest"
 )
 
 var env *dbtest.Env

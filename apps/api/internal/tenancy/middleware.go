@@ -8,8 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Bool-Maldives/erp/internal/auth"
-	"github.com/Bool-Maldives/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/auth"
+	"github.com/boolmv/erp/internal/db/sqlc"
 )
 
 // Middleware resolves the tenant from the request's Host and verifies the authenticated principal

@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Bool-Maldives/erp/internal/auth"
+	"github.com/boolmv/erp/internal/auth"
 )
 
 func TestWhoamiActive(t *testing.T) {

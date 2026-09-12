@@ -14,7 +14,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" database/sql driver
 
-	"github.com/Bool-Maldives/erp/internal/db"
+	"github.com/boolmv/erp/internal/db"
 )
 
 const defaultDSN = "postgres://goerp:goerp@postgres:5432/goerp?sslmode=disable"

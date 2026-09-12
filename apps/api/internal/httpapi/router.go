@@ -13,10 +13,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
-	"github.com/Bool-Maldives/erp/internal/auth"
-	"github.com/Bool-Maldives/erp/internal/module"
-	"github.com/Bool-Maldives/erp/internal/observability"
-	"github.com/Bool-Maldives/erp/internal/respond"
+	"github.com/boolmv/erp/internal/auth"
+	"github.com/boolmv/erp/internal/module"
+	"github.com/boolmv/erp/internal/observability"
+	"github.com/boolmv/erp/internal/respond"
 )
 
 // PlatformDeps are the collaborators the HTTP layer itself needs — distinct from any module's own

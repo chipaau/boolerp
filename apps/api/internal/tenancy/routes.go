@@ -11,11 +11,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Bool-Maldives/erp/internal/auth"
-	"github.com/Bool-Maldives/erp/internal/db/sqlc"
-	"github.com/Bool-Maldives/erp/internal/httpapi"
-	"github.com/Bool-Maldives/erp/internal/observability"
-	"github.com/Bool-Maldives/erp/internal/respond"
+	"github.com/boolmv/erp/internal/auth"
+	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/httpapi"
+	"github.com/boolmv/erp/internal/observability"
+	"github.com/boolmv/erp/internal/respond"
 )
 
 // Deps are the collaborators this package's own HTTP handlers need — narrower than the

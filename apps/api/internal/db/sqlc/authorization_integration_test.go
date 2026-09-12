@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/Bool-Maldives/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/db/sqlc"
 )
 
 // newTestUUID mints a random v4 UUID for fixtures that don't come from Kratos/provisioning.

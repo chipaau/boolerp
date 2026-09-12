@@ -11,10 +11,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Bool-Maldives/erp/internal/auth"
-	"github.com/Bool-Maldives/erp/internal/db/sqlc"
-	"github.com/Bool-Maldives/erp/internal/dbtest"
-	"github.com/Bool-Maldives/erp/internal/httpapi"
+	"github.com/boolmv/erp/internal/auth"
+	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/dbtest"
+	"github.com/boolmv/erp/internal/httpapi"
 )
 
 var env *dbtest.Env

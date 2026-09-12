@@ -9,8 +9,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Bool-Maldives/erp/internal/db/sqlc"
-	"github.com/Bool-Maldives/erp/internal/dbtest"
+	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/dbtest"
 )
 
 var env *dbtest.Env

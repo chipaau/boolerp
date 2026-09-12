@@ -6,9 +6,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Bool-Maldives/erp/internal/auth"
-	"github.com/Bool-Maldives/erp/internal/observability"
-	"github.com/Bool-Maldives/erp/internal/respond"
+	"github.com/boolmv/erp/internal/auth"
+	"github.com/boolmv/erp/internal/observability"
+	"github.com/boolmv/erp/internal/respond"
 )
 
 // AdminRoute registers an operator/admin-console handler that is authorized against a Cerbos

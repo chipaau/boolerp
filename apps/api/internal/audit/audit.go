@@ -10,7 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/Bool-Maldives/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/db/sqlc"
 )
 
 // Entry is one audit_log row's content, before FR-AUD-04 impersonation context or request
