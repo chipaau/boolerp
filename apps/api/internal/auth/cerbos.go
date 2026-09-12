@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/boolmv/goerp/internal/db/sqlc"
 )
@@ -22,7 +23,7 @@ type Cerbos struct {
 
 // NewCerbos builds a Cerbos client (internal-only PDP).
 func NewCerbos(baseURL string) *Cerbos {
-	return &Cerbos{baseURL: baseURL, hc: &http.Client{Timeout: 5 * time.Second}}
+	return &Cerbos{baseURL: baseURL, hc: &http.Client{Timeout: 5 * time.Second, Transport: otelhttp.NewTransport(http.DefaultTransport)}}
 }
 
 // AuthzPrincipal is everything Cerbos needs to decide: the base "user" role always applies (so

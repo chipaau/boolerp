@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // ErrNoSession means Kratos reported no active session (401/403) — the caller replies 401.
@@ -44,7 +46,10 @@ func NewKratos(publicURL, adminURL string) *Kratos {
 	return &Kratos{
 		publicURL: publicURL,
 		adminURL:  adminURL,
-		hc:        &http.Client{Timeout: 5 * time.Second},
+		// otelhttp.NewTransport makes each outbound call a child span of whatever's in the request
+		// context (UC-OBS-02: "HTTP -> DB -> Kratos/Cerbos") — a no-op wrapper when tracing isn't
+		// configured (SetupTracing left the default no-op TracerProvider in place).
+		hc: &http.Client{Timeout: 5 * time.Second, Transport: otelhttp.NewTransport(http.DefaultTransport)},
 	}
 }
 

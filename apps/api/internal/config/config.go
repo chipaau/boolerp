@@ -30,6 +30,11 @@ type Config struct {
 	CerbosHTTPURL string `env:"APP_CERBOS_HTTP_URL" envDefault:"http://cerbos:3592"`
 	// ShutdownTimeout bounds graceful shutdown.
 	ShutdownTimeout time.Duration `env:"APP_SHUTDOWN_TIMEOUT" envDefault:"10s"`
+	// OTLPEndpoint is the OpenTelemetry collector to export traces to (host:port). Empty (the
+	// self-host default) keeps tracing off — zero external calls, per component 07's design.
+	OTLPEndpoint string `env:"APP_OTLP_ENDPOINT" envDefault:""`
+	// MetricsEnabled turns on the opt-in /metrics Prometheus endpoint (FR-OBS-04).
+	MetricsEnabled bool `env:"APP_METRICS_ENABLED" envDefault:"false"`
 }
 
 // Load reads the environment into a Config, applying defaults.

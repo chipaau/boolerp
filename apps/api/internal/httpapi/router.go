@@ -12,16 +12,19 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/boolmv/goerp/internal/auth"
 	"github.com/boolmv/goerp/internal/db/sqlc"
+	"github.com/boolmv/goerp/internal/observability"
 )
 
 // Deps are the collaborators the HTTP layer needs.
 type Deps struct {
-	Pool   *pgxpool.Pool
-	Kratos *auth.Kratos
-	Cerbos *auth.Cerbos
+	Pool           *pgxpool.Pool
+	Kratos         *auth.Kratos
+	Cerbos         *auth.Cerbos
+	MetricsEnabled bool
 }
 
 // New builds the API router. Public: /api/healthz, /api/readyz. Authenticated: /api/v1/*.
@@ -30,6 +33,8 @@ func New(d Deps) http.Handler {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
+	r.Use(observability.RequestLogger(slog.Default()))
+	r.Use(observability.MetricsMiddleware)
 
 	authmw := auth.NewMiddleware(d.Kratos, d.Pool)
 
@@ -39,13 +44,18 @@ func New(d Deps) http.Handler {
 			writeJSON(w, http.StatusOK, `{"status":"ok"}`)
 		})
 		r.Get("/readyz", readyz(d))
+		if d.MetricsEnabled {
+			r.Handle("/metrics", observability.MetricsHandler())
+		}
 
 		r.Route("/v1", func(r chi.Router) {
 			r.Use(authmw.RequireSession)
 			r.Get("/me", me(d))
 		})
 	})
-	return r
+	// otelhttp creates the root span per request (UC-OBS-01/02); a no-op wrapper when tracing isn't
+	// configured (SetupTracing left the default no-op TracerProvider in place).
+	return otelhttp.NewHandler(r, "goerp-api")
 }
 
 // readyz reports readiness only when every dependency is reachable.
@@ -90,7 +100,7 @@ func me(d Deps) http.HandlerFunc {
 
 		allowed, err := d.Cerbos.AllowSelfProfileRead(r.Context(), p.ID)
 		if err != nil {
-			slog.Error("cerbos check", "err", err)
+			observability.LoggerFrom(r.Context()).Error("cerbos check", "err", err)
 			writeJSON(w, http.StatusBadGateway, `{"error":"authz upstream"}`)
 			return
 		}
@@ -106,7 +116,7 @@ func me(d Deps) http.HandlerFunc {
 		}
 		u, err := sqlc.New(d.Pool).GetUserByID(r.Context(), id)
 		if err != nil {
-			slog.Error("get user", "err", err)
+			observability.LoggerFrom(r.Context()).Error("get user", "err", err)
 			writeJSON(w, http.StatusInternalServerError, `{"error":"internal"}`)
 			return
 		}

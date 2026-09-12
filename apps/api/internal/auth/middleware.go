@@ -3,12 +3,12 @@ package auth
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/boolmv/goerp/internal/db/sqlc"
+	"github.com/boolmv/goerp/internal/observability"
 )
 
 // Middleware validates the Kratos session on each request and JIT-upserts the users mirror.
@@ -38,7 +38,7 @@ func (m *Middleware) RequireSession(next http.Handler) http.Handler {
 				unauthorized(w)
 				return
 			}
-			slog.Error("whoami failed", "err", err)
+			observability.LoggerFrom(r.Context()).Error("whoami failed", "err", err)
 			writeErr(w, http.StatusBadGateway, "auth upstream")
 			return
 		}
@@ -49,13 +49,15 @@ func (m *Middleware) RequireSession(next http.Handler) http.Handler {
 
 		user, err := m.upsert(r.Context(), sess)
 		if err != nil {
-			slog.Error("jit upsert failed", "err", err)
+			observability.LoggerFrom(r.Context()).Error("jit upsert failed", "err", err)
 			writeErr(w, http.StatusInternalServerError, "internal")
 			return
 		}
 
 		p := &Principal{ID: sess.Identity.ID, Email: user.Email, Name: user.Name}
-		next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
+		ctx := WithPrincipal(r.Context(), p)
+		ctx = observability.WithLogger(ctx, observability.LoggerFrom(ctx).With("user_id", p.ID))
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
