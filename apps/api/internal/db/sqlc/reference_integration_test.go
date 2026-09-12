@@ -4,6 +4,7 @@ package sqlc_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -59,16 +60,21 @@ func TestReferenceSeeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCountry(MV): %v", err)
 	}
-	if mv.DefaultLocale != "dv" {
-		t.Fatalf("MV default_locale: want dv, got %q", mv.DefaultLocale)
+	var mvNames map[string]string
+	if err := json.Unmarshal(mv.NameI18n, &mvNames); err != nil {
+		t.Fatalf("MV name_i18n: unmarshal: %v", err)
+	}
+	if mvNames["dv"] == "" {
+		t.Fatalf("MV name_i18n: want a 'dv' key, got %v", mvNames)
 	}
 
 	parties, err := q.ListPartyTypes(ctx)
 	if err != nil {
 		t.Fatalf("ListPartyTypes: %v", err)
 	}
-	if len(parties) != 12 {
-		t.Fatalf("party_types: want 12, got %d", len(parties))
+	// Flat seed (no root/grouping nodes): 3 individual + 6 organisation.
+	if len(parties) != 9 {
+		t.Fatalf("party_types: want 9, got %d", len(parties))
 	}
 }
 
@@ -86,7 +92,7 @@ func TestTxRollbackIsolation(t *testing.T) {
 		t.Fatalf("begin: %v", err)
 	}
 	if _, err := tx.Exec(ctx,
-		`INSERT INTO currencies (code, name, name_dv, symbol) VALUES ('TST','Test','Test','T')`,
+		`INSERT INTO currencies (code, name, symbol) VALUES ('TST','Test','T')`,
 	); err != nil {
 		t.Fatalf("insert: %v", err)
 	}

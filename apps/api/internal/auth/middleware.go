@@ -66,11 +66,11 @@ func (m *Middleware) upsert(ctx context.Context, sess *KratosSession) (sqlc.User
 	}
 	t := sess.Identity.Traits
 	return sqlc.New(m.pool).UpsertUser(ctx, sqlc.UpsertUserParams{
-		ID:     id,
-		Email:  t.Email,
-		Name:   t.Name,
-		NameDv: textOrNull(t.NameDv),
-		Phone:  textOrNull(t.Phone),
+		ID:       id,
+		Email:    t.Email,
+		Name:     t.Name,
+		NameI18n: nameI18n(t.NameI18n),
+		Phone:    textOrNull(t.Phone),
 	})
 }
 

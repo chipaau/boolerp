@@ -5,8 +5,11 @@ Confirmation-driven specs. **Nothing is implemented until its use cases and data
 
 ## Structure
 
+- `overview.md` — product vision, actors, module map, integration flows.
+- `glossary.md` — domain terminology across all modules.
 - `roadmap.md` — phases and per-component status.
-- `adr/` — architecture decision records (`0001-tenancy-model.md`, …).
+- `adr/` — architecture decision records (`0001-tenancy-pooled-rls.md`, `0002-pricing-and-promotions.md`, …).
+  `adr/history/` holds superseded decisions kept for context, outside this repo's ADR sequence.
 - `data-model/` — `DB-*.md` (tables, columns, constraints). Confirmed before any migration.
 - `srs/phase-<n>/<NN-component>/` — per component:
   - `checklist.md` — scope, open questions, candidate use-case inventory, sign-off. Drives

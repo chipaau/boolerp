@@ -35,12 +35,19 @@ RETURNING *;
 SELECT tu.* FROM tenant_users tu
 WHERE tu.tenant_id = $1 AND tu.is_owner AND tu.active_to IS NULL;
 
--- name: GetRoleByTenantCode :one
-SELECT * FROM roles WHERE tenant_id = $1 AND code = $2;
+-- name: GetAppByCode :one
+SELECT * FROM apps WHERE code = $1;
+
+-- name: GetRoleByAppTenantCode :one
+-- tenant_id may be NULL (a global template) — a NULL query argument must match a NULL column, so
+-- this uses IS NOT DISTINCT FROM rather than =, mirroring the table's own NULLS NOT DISTINCT unique
+-- constraint. `tenant_id = $2` would silently never match a global role for a NULL argument (SQL's
+-- three-valued logic: NULL = NULL is UNKNOWN, never TRUE).
+SELECT * FROM roles WHERE app_id = $1 AND tenant_id IS NOT DISTINCT FROM $2 AND code = $3;
 
 -- name: CreateRole :one
-INSERT INTO roles (tenant_id, code, name)
-VALUES ($1, $2, $3)
+INSERT INTO roles (app_id, tenant_id, code, name)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: CreateRoleCapability :one
@@ -49,6 +56,6 @@ VALUES ($1, $2)
 RETURNING *;
 
 -- name: CreateUserRole :one
-INSERT INTO user_roles (tenant_id, tenant_user_id, role_id, assigned_by)
+INSERT INTO user_roles (tenant_id, user_id, role_id, assigned_by)
 VALUES ($1, $2, $3, $4)
 RETURNING *;

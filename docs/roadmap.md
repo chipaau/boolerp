@@ -31,3 +31,18 @@ Phase 1 is `Confirmed`.
 
 - Real payment gateway (**BML/MPGS**) swapped in behind the port; recurring billing / renewals / invoicing.
 - Business modules, in order: **IMS → HRMS → Procurement → Performance** (each its own confirmed SRS + DB model).
+
+## Orphaned platform topics — proposed placement (pending review)
+
+Docs consolidation (2026-09-11) surfaced platform-level topics from the prior codebase's
+`DB-PLATFORM.md` that don't map to any line above. Proposed placements below — **none of these are
+decided**; they need the same explicit sign-off as a new roadmap line or table.
+
+| Topic | Prior tables | Proposal | Why |
+|---|---|---|---|
+| **Module activation** | `module_activations`, `module_admins` | Already placed — component **06 (Audit)**/foundation, per `data-model/DB-FOUNDATION.md`'s deferred list. `module_admins` isn't explicitly named there; piggyback it on the same landing. | No new decision needed, just confirming it's tracked. |
+| **Sites** | `site_types`, `site_categories`, `sites`, `org_unit_sites` | New Phase 1 component — **09 Sites & locations**, sequenced after 04 (Tenant management). | Physical locations are tenant-scoped infrastructure every business module needs (IMS storage points, HRMS device sites) — fits Phase 1's own "everything a business module needs before it can exist" framing, not tenant lifecycle itself. |
+| **Party registry** | `parties` (party_types/classification already ✅ in DB-FOUNDATION) | Defer to Phase 2 — first module that needs it (likely HRMS employee-as-party or Procurement supplier-as-party) defines its initial shape. | No Phase 1 component currently needs a generic party master record; `users`/`tenant_users` already cover human identity. Forcing it into Phase 1 speculatively risks the wrong shape. |
+| **Workflow engine** | `workflow_definitions`, `workflow_instances`, `workflow_steps` | **Open — needs a real decision, not a default.** Option A: new Phase 1 component (approval chains are load-bearing for nearly every Phase 2 module). Option B: Phase 2, first module (Procurement PR approval, or HRMS leave approval) builds its own, extracted into a shared engine once a second consumer exists. | This is the biggest-scope item here — a generic workflow engine is substantial work; deferring risks each module reinventing approval chains, building early risks over-engineering before there's a second real consumer. |
+| **Documents & numbering** | `document_templates`, `documents`, `numbering_series` | Defer to Phase 2. | The gapless-numbering *invariant* is already documented (`.claude/rules/tenancy.md`); the tables themselves aren't needed until something issues numbered documents (invoices, POs, IUL letters) — and invoicing itself is already Phase 2+ per this roadmap. |
+| **Notifications** | `notification_templates`, `notification_log` | Defer to Phase 2, with a note: component 05's four-eyes approval flows (role-change proposals, access grants) may want a Phase 1 notification stub sooner than the business modules do. | Kratos's own courier already covers auth-related mail (component 02); generic in-app/SMS notification infra is otherwise business-module-driven. |

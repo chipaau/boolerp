@@ -70,12 +70,12 @@ func readyz(d Deps) http.HandlerFunc {
 }
 
 type meResponse struct {
-	ID     string  `json:"id"`
-	Email  string  `json:"email"`
-	Name   string  `json:"name"`
-	NameDv *string `json:"name_dv,omitempty"`
-	Phone  *string `json:"phone,omitempty"`
-	Status string  `json:"status"`
+	ID       string          `json:"id"`
+	Email    string          `json:"email"`
+	Name     string          `json:"name"`
+	NameI18n json.RawMessage `json:"name_i18n"`
+	Phone    *string         `json:"phone,omitempty"`
+	Status   string          `json:"status"`
 }
 
 // me returns the current user. Exercises the full backbone: session (whoami) → JIT-upsert (in the
@@ -111,10 +111,7 @@ func me(d Deps) http.HandlerFunc {
 			return
 		}
 
-		resp := meResponse{ID: p.ID, Email: u.Email, Name: u.Name, Status: u.Status}
-		if u.NameDv.Valid {
-			resp.NameDv = &u.NameDv.String
-		}
+		resp := meResponse{ID: p.ID, Email: u.Email, Name: u.Name, NameI18n: u.NameI18n, Status: u.Status}
 		if u.Phone.Valid {
 			resp.Phone = &u.Phone.String
 		}

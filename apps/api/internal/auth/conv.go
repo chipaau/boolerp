@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -23,6 +24,19 @@ func textOrNull(s string) pgtype.Text {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: s, Valid: true}
+}
+
+// nameI18n marshals a locale map to jsonb bytes, never nil — an empty/absent map becomes '{}' to
+// satisfy users.name_i18n's NOT NULL DEFAULT '{}', not SQL NULL.
+func nameI18n(m map[string]string) []byte {
+	if len(m) == 0 {
+		return []byte("{}")
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return []byte("{}")
+	}
+	return b
 }
 
 // getOK performs a GET and returns nil only on HTTP 200 — used for readiness probes.

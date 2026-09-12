@@ -7,19 +7,30 @@
 - **Verify claims with tools** (docs, code, web) rather than asserting from memory; the user checks.
 - **Design stage: do not create implementation files, migrations, or scaffolding without explicit
   confirmation.** Proposals and inline examples are fine; writing project code is not, until asked.
-- **Always confirm the data model before implementing — no exceptions.** Any schema (new
+- **Always confirm the data model before it exists anywhere — no exceptions.** Any schema (new
   tables/columns, keys, indexes, relationships, enums, migrations) must be presented (tables, types,
-  constraints, relationships) and **explicitly approved** before writing migrations, sqlc queries, or
-  code against it. Confirm it **table-by-table**.
-- **NEVER create a new table without the user's explicit assertion.** Not "probably fine", not
-  "implied by the spec" — every single table needs an explicit yes. This overrides momentum, deadlines,
-  and apparent obviousness. Data models are expensive to change once there is data. Mirror the SRS
-  `DB-*.md` / ADR style the sibling repos use.
+  constraints, relationships) and **explicitly approved** before it's written into **a migration,
+  sqlc query, application code (types, mocks, seed/fixture data) — or documentation** (`DB-*.md`,
+  `srs.md`, `checklist.md`, `use-cases.md`, an ADR, a roadmap line). Confirm it **table-by-table**.
+- **NEVER introduce a new table without the user's explicit assertion — including in docs.** Not
+  "probably fine", not "implied by the spec", not "just a placeholder in the checklist's touchpoints
+  list" — every single table needs an explicit yes **before its name appears anywhere**, docs included.
+  A table sitting in a checklist's "data-model touchpoints" or a draft SRS section is exactly as
+  uncommitted as one in a migration — don't let it acquire the weight of "already decided" just by
+  existing on the page. This overrides momentum, deadlines, and apparent obviousness. Data models are
+  expensive to change once there is data. Mirror the SRS `DB-*.md` / ADR style the sibling repos use.
 
 ## Commit discipline
 
-- **Commit whenever a coherent, commitable unit of work is done** — don't let unrelated changes pile
-  up into one large diff.
+- **Run the affected tests locally before every `git commit`; never commit on a known-failing or
+  unrun suite.** See `testing.md` for the exact commands (Docker-first, per layer) and the 100%
+  coverage gate required before a PR goes up.
+- **Commit whenever a coherent, commitable unit of work is done — proactively, along the way.**
+  Don't let a long session accumulate into one giant diff that only gets committed when the user
+  remembers to ask "commit and push" at the end. As soon as a table, a doc, a feature, or any other
+  self-contained piece finishes, propose the commit message right then and wait for a yes — don't
+  wait to be asked. Still one commit at a time, still confirmed (see below); the discipline is in
+  the timing, not skipping the confirmation.
 - **Keep commits granular:** one logical change per commit (e.g. "migrations for foundation tables",
   not "backend"). Scope each commit tightly.
 - **Always confirm the commit with the user before running `git commit`** — present the message(s) and

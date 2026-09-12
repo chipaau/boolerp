@@ -15,10 +15,10 @@ var ErrNoSession = errors.New("auth: no active session")
 
 // Traits mirrors the Kratos identity schema (docker/kratos/identity.schema.json).
 type Traits struct {
-	Email  string `json:"email"`
-	Name   string `json:"name"`
-	NameDv string `json:"name_dv"`
-	Phone  string `json:"phone"`
+	Email    string            `json:"email"`
+	Name     string            `json:"name"`
+	NameI18n map[string]string `json:"name_i18n"`
+	Phone    string            `json:"phone"`
 }
 
 // KratosSession is the subset of GET /sessions/whoami the API consumes.
