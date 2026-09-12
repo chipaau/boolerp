@@ -4,22 +4,22 @@
 -- +goose Up
 
 -- party_types — legal form. Country-scoped, ADDITIVE resolution (global NULL rows ∪ country rows).
+-- Flat: no parent_id — no confirmed rule ever walks the tree (party_type_class + code are enough).
 CREATE TABLE party_types (
   id                     uuid        PRIMARY KEY DEFAULT uuidv7(),
   country_code           char(2)     REFERENCES countries(code),   -- NULL = universal legal form; set = jurisdiction-specific ('llc' US, 'gmbh' DE)
-  parent_id              uuid        REFERENCES party_types(id),    -- tree edge; NULL for roots (Individual, Organisation)
-  party_type_class       text        NOT NULL,                     -- 'individual' | 'organisation' — denormalised on every row
+  party_type_class       text        NOT NULL,                     -- 'individual' | 'organisation'
   code                   text        NOT NULL,                     -- stable key ('government','private-company','local')
   name                   text        NOT NULL,                     -- English label
-  name_dv                text,                                     -- Dhivehi — nullable (foreign forms may have none)
   allowed_identity_types jsonb       NOT NULL DEFAULT '[]',        -- identity docs required ([] = none, e.g. Government)
-  is_active              boolean     NOT NULL DEFAULT true,
+  active_from            timestamptz NOT NULL DEFAULT now(),       -- seeded rows are active immediately — no pending state
+  active_to              timestamptz,                              -- retired; NULL = still active
   created_at             timestamptz NOT NULL DEFAULT now(),
   updated_at             timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT chk_party_type_class CHECK (party_type_class IN ('individual','organisation')),
-  CONSTRAINT uq_party_types_code  UNIQUE NULLS NOT DISTINCT (country_code, code)
+  CONSTRAINT chk_party_type_class         CHECK (party_type_class IN ('individual','organisation')),
+  CONSTRAINT uq_party_types_code          UNIQUE NULLS NOT DISTINCT (country_code, code),
+  CONSTRAINT chk_party_types_active_order CHECK (active_to IS NULL OR active_to >= active_from)
 );
-CREATE INDEX ON party_types (parent_id);
 CREATE INDEX ON party_types (party_type_class);
 CREATE INDEX ON party_types (country_code);
 
@@ -28,17 +28,14 @@ CREATE INDEX ON party_types (country_code);
 CREATE TABLE institution_types (
   id            uuid        PRIMARY KEY DEFAULT uuidv7(),
   country_code  char(2)     REFERENCES countries(code),        -- NULL = global default; set = country-specific (MV 'council')
-  parent_id     uuid        REFERENCES institution_types(id),  -- optional grouping (Healthcare → {Hospital, Health Centre}); NULL = top-level
   code          text        NOT NULL,                          -- stable key ('ministry','council','hospital','health-centre','school','business')
   name          text        NOT NULL,                          -- English label
-  name_dv       text,                                          -- Dhivehi label — nullable
   template_key  text,                                          -- selects the provisioning template (blueprint of defaults); string selector, NULL = generic default
   is_active     boolean     NOT NULL DEFAULT true,
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT uq_institution_types_code UNIQUE NULLS NOT DISTINCT (country_code, code)
 );
-CREATE INDEX ON institution_types (parent_id);
 CREATE INDEX ON institution_types (country_code);
 
 -- +goose Down
