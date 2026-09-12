@@ -11,23 +11,31 @@ business tables, `timestamptz` times, bilingual `name`/`name_dv`, ltree + `tree_
 
 ## Reference data (global — no `tenant_id`, not RLS-scoped)
 
-### `currencies` — ✅ approved 2026-08-13
-Seeded (MVR, USD). Never hard-deleted (`is_active`). Money columns across the system FK `currencies.code`.
+### `currencies` — ✅ approved 2026-08-13, revised 2026-09-12 (docs/code audit)
+Seeded (MVR, USD). Money columns across the system FK `currencies.code`.
 
 ```sql
 CREATE TABLE currencies (
   code             char(3)     PRIMARY KEY,               -- ISO 4217 code ('MVR','USD') — natural key
   name             text        NOT NULL,                  -- English name ('Maldivian Rufiyaa')
-  name_dv          text        NOT NULL,                  -- Dhivehi (Thaana) name — bilingual pair
   symbol           text        NOT NULL,                  -- Display symbol ('Rf','$')
   decimal_places   smallint    NOT NULL DEFAULT 2,        -- Fraction digits for formatting/rounding
   symbol_position  text        NOT NULL DEFAULT 'before', -- 'before' | 'after' the amount
-  is_active        boolean     NOT NULL DEFAULT true,     -- Soft-retire (reference rows never hard-deleted)
+  active_from      timestamptz NOT NULL DEFAULT now(),
+  active_to        timestamptz,                            -- retired; NULL = still active
   created_at       timestamptz NOT NULL DEFAULT now(),
   updated_at       timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT chk_currencies_symbol_position CHECK (symbol_position IN ('before','after'))
+  CONSTRAINT chk_currencies_symbol_position CHECK (symbol_position IN ('before','after')),
+  CONSTRAINT chk_currencies_active_order    CHECK (active_to IS NULL OR active_to >= active_from)
 );
 ```
+
+> **2026-09-12:** surfaced by a docs/code audit — this table exists in code
+> (`00003_reference.sql`) but had never been through this session's review. Dropped `name_dv`
+> (reference/taxonomy label — a document prints the `symbol`/`code`, not the currency's name
+> spelled out in Dhivehi; same reasoning as `institution_types`/`party_types`/`geography_levels`).
+> Replaced `is_active` with `active_from`/`active_to` for consistency with the other reference
+> tables revised this session.
 
 ### `countries` — ✅ approved 2026-08-13, revised 2026-09-11 (docs consolidation review)
 ~196 real ISO 3166-1 countries seeded. `tenants.country` FKs this. **No `pricelist_id` here** — that
