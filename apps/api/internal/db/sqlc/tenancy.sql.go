@@ -11,6 +11,42 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const archiveTenant = `-- name: ArchiveTenant :one
+UPDATE tenants SET status = 'archived', active_to = now(), updated_at = now() WHERE id = $1 RETURNING id, slug, code, name, name_i18n, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, country, timezone, status, active_from, active_to, created_at, updated_at
+`
+
+// Irreversible in this flat-CRUD pass; active_to marks the tenant as ceased (replaces deleted_at).
+func (q *Queries) ArchiveTenant(ctx context.Context, id pgtype.UUID) (Tenant, error) {
+	row := q.db.QueryRow(ctx, archiveTenant, id)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Code,
+		&i.Name,
+		&i.NameI18n,
+		&i.PartyTypeID,
+		&i.InstitutionTypeID,
+		&i.IdentityType,
+		&i.IdentityNumber,
+		&i.Email,
+		&i.Phone,
+		&i.IsInternal,
+		&i.ParentID,
+		&i.Oversight,
+		&i.TreeKey,
+		&i.Path,
+		&i.Country,
+		&i.Timezone,
+		&i.Status,
+		&i.ActiveFrom,
+		&i.ActiveTo,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createOwnerTenantUser = `-- name: CreateOwnerTenantUser :one
 INSERT INTO tenant_users (user_id, tenant_id, status, is_owner, active_from)
 VALUES ($1, $2, 'active', true, now())
@@ -369,6 +405,41 @@ func (q *Queries) GetRoleByAppTenantCode(ctx context.Context, arg GetRoleByAppTe
 	return i, err
 }
 
+const getTenantByID = `-- name: GetTenantByID :one
+SELECT id, slug, code, name, name_i18n, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, country, timezone, status, active_from, active_to, created_at, updated_at FROM tenants WHERE id = $1
+`
+
+func (q *Queries) GetTenantByID(ctx context.Context, id pgtype.UUID) (Tenant, error) {
+	row := q.db.QueryRow(ctx, getTenantByID, id)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Code,
+		&i.Name,
+		&i.NameI18n,
+		&i.PartyTypeID,
+		&i.InstitutionTypeID,
+		&i.IdentityType,
+		&i.IdentityNumber,
+		&i.Email,
+		&i.Phone,
+		&i.IsInternal,
+		&i.ParentID,
+		&i.Oversight,
+		&i.TreeKey,
+		&i.Path,
+		&i.Country,
+		&i.Timezone,
+		&i.Status,
+		&i.ActiveFrom,
+		&i.ActiveTo,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getTenantBySlug = `-- name: GetTenantBySlug :one
 SELECT id, slug, code, name, name_i18n, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, country, timezone, status, active_from, active_to, created_at, updated_at FROM tenants WHERE slug = $1
 `
@@ -404,6 +475,55 @@ func (q *Queries) GetTenantBySlug(ctx context.Context, slug string) (Tenant, err
 	return i, err
 }
 
+const listTenants = `-- name: ListTenants :many
+SELECT id, slug, code, name, name_i18n, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, country, timezone, status, active_from, active_to, created_at, updated_at FROM tenants ORDER BY created_at DESC
+`
+
+// Operator-facing (apps/admin) tenant list — every tenant, newest first.
+func (q *Queries) ListTenants(ctx context.Context) ([]Tenant, error) {
+	rows, err := q.db.Query(ctx, listTenants)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Tenant{}
+	for rows.Next() {
+		var i Tenant
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Code,
+			&i.Name,
+			&i.NameI18n,
+			&i.PartyTypeID,
+			&i.InstitutionTypeID,
+			&i.IdentityType,
+			&i.IdentityNumber,
+			&i.Email,
+			&i.Phone,
+			&i.IsInternal,
+			&i.ParentID,
+			&i.Oversight,
+			&i.TreeKey,
+			&i.Path,
+			&i.Country,
+			&i.Timezone,
+			&i.Status,
+			&i.ActiveFrom,
+			&i.ActiveTo,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const nextTenantTreeKey = `-- name: NextTenantTreeKey :one
 SELECT (COALESCE(MAX(tree_key), 0) + 1)::bigint FROM tenants
 `
@@ -413,4 +533,45 @@ func (q *Queries) NextTenantTreeKey(ctx context.Context) (int64, error) {
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const setTenantStatus = `-- name: SetTenantStatus :one
+UPDATE tenants SET status = $2, updated_at = now() WHERE id = $1 RETURNING id, slug, code, name, name_i18n, party_type_id, institution_type_id, identity_type, identity_number, email, phone, is_internal, parent_id, oversight, tree_key, path, country, timezone, status, active_from, active_to, created_at, updated_at
+`
+
+type SetTenantStatusParams struct {
+	ID     pgtype.UUID `json:"id"`
+	Status string      `json:"status"`
+}
+
+// Reversible status flip (active <-> suspended); does not touch active_to — that's archival only.
+func (q *Queries) SetTenantStatus(ctx context.Context, arg SetTenantStatusParams) (Tenant, error) {
+	row := q.db.QueryRow(ctx, setTenantStatus, arg.ID, arg.Status)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Code,
+		&i.Name,
+		&i.NameI18n,
+		&i.PartyTypeID,
+		&i.InstitutionTypeID,
+		&i.IdentityType,
+		&i.IdentityNumber,
+		&i.Email,
+		&i.Phone,
+		&i.IsInternal,
+		&i.ParentID,
+		&i.Oversight,
+		&i.TreeKey,
+		&i.Path,
+		&i.Country,
+		&i.Timezone,
+		&i.Status,
+		&i.ActiveFrom,
+		&i.ActiveTo,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

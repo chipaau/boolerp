@@ -14,6 +14,21 @@ SELECT * FROM tenants WHERE slug = $1;
 -- At most one row can ever exist (uq_tenants_one_internal).
 SELECT * FROM tenants WHERE is_internal;
 
+-- name: ListTenants :many
+-- Operator-facing (apps/admin) tenant list — every tenant, newest first.
+SELECT * FROM tenants ORDER BY created_at DESC;
+
+-- name: GetTenantByID :one
+SELECT * FROM tenants WHERE id = $1;
+
+-- name: SetTenantStatus :one
+-- Reversible status flip (active <-> suspended); does not touch active_to — that's archival only.
+UPDATE tenants SET status = $2, updated_at = now() WHERE id = $1 RETURNING *;
+
+-- name: ArchiveTenant :one
+-- Irreversible in this flat-CRUD pass; active_to marks the tenant as ceased (replaces deleted_at).
+UPDATE tenants SET status = 'archived', active_to = now(), updated_at = now() WHERE id = $1 RETURNING *;
+
 -- name: NextTenantTreeKey :one
 SELECT (COALESCE(MAX(tree_key), 0) + 1)::bigint FROM tenants;
 

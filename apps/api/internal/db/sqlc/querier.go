@@ -11,6 +11,8 @@ import (
 )
 
 type Querier interface {
+	// Irreversible in this flat-CRUD pass; active_to marks the tenant as ceased (replaces deleted_at).
+	ArchiveTenant(ctx context.Context, id pgtype.UUID) (Tenant, error)
 	CreateOwnerTenantUser(ctx context.Context, arg CreateOwnerTenantUserParams) (TenantUser, error)
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateRoleCapability(ctx context.Context, arg CreateRoleCapabilityParams) (RoleCapability, error)
@@ -39,6 +41,7 @@ type Querier interface {
 	// constraint. `tenant_id = $2` would silently never match a global role for a NULL argument (SQL's
 	// three-valued logic: NULL = NULL is UNKNOWN, never TRUE).
 	GetRoleByAppTenantCode(ctx context.Context, arg GetRoleByAppTenantCodeParams) (Role, error)
+	GetTenantByID(ctx context.Context, id pgtype.UUID) (Tenant, error)
 	GetTenantBySlug(ctx context.Context, slug string) (Tenant, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	ListCountries(ctx context.Context) ([]Country, error)
@@ -51,7 +54,11 @@ type Querier interface {
 	// Classification reads (global tables). party_types drives tenant legal-form / identity-doc
 	// validation; institution_types selects the provisioning template.
 	ListPartyTypes(ctx context.Context) ([]PartyType, error)
+	// Operator-facing (apps/admin) tenant list — every tenant, newest first.
+	ListTenants(ctx context.Context) ([]Tenant, error)
 	NextTenantTreeKey(ctx context.Context) (int64, error)
+	// Reversible status flip (active <-> suspended); does not touch active_to — that's archival only.
+	SetTenantStatus(ctx context.Context, arg SetTenantStatusParams) (Tenant, error)
 	// Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
 	// JIT-upsert the Kratos identity into platform.users on whoami (self-healing mirror).
 	// Credentials never touch this table — Kratos owns them.

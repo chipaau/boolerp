@@ -21,6 +21,7 @@ import (
 	"github.com/boolmv/goerp/internal/auth"
 	"github.com/boolmv/goerp/internal/config"
 	"github.com/boolmv/goerp/internal/db/sqlc"
+	"github.com/boolmv/goerp/internal/tenancy"
 )
 
 const (
@@ -144,19 +145,13 @@ func createTenant(ctx context.Context, q *sqlc.Queries) (sqlc.Tenant, error) {
 	if err != nil {
 		return sqlc.Tenant{}, fmt.Errorf("get institution type: %w", err)
 	}
-	treeKey, err := q.NextTenantTreeKey(ctx)
-	if err != nil {
-		return sqlc.Tenant{}, fmt.Errorf("next tree key: %w", err)
-	}
 
-	return q.CreateTenant(ctx, sqlc.CreateTenantParams{
+	return tenancy.CreateTenantRow(ctx, q, sqlc.CreateTenantParams{
 		Slug:              tenantSlug,
 		Code:              tenantCode,
 		Name:              tenantName,
 		PartyTypeID:       partyTypeID,
 		InstitutionTypeID: institutionTypeID,
-		TreeKey:           treeKey,
-		Column7:           fmt.Sprintf("%d", treeKey), // ltree path — single-label root, sqlc left the cast param unnamed
 		Country:           "MV",
 		Status:            "active",
 		IsInternal:        false,
@@ -172,16 +167,10 @@ func provisionInternalOperator(ctx context.Context, q *sqlc.Queries, kratos *aut
 	tenant, err := q.GetInternalTenant(ctx)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		treeKey, err := q.NextTenantTreeKey(ctx)
-		if err != nil {
-			return fmt.Errorf("next tree key: %w", err)
-		}
-		tenant, err = q.CreateTenant(ctx, sqlc.CreateTenantParams{
+		tenant, err = tenancy.CreateTenantRow(ctx, q, sqlc.CreateTenantParams{
 			Slug:       internalTenantSlug,
 			Code:       internalTenantCode,
 			Name:       internalTenantName,
-			TreeKey:    treeKey,
-			Column7:    fmt.Sprintf("%d", treeKey),
 			Country:    "MV",
 			Status:     "active",
 			IsInternal: true,
