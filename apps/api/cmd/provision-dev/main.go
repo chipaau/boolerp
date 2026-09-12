@@ -39,11 +39,15 @@ const (
 	internalTenantSlug = "internal"
 	internalTenantCode = "OPS"
 	internalTenantName = "Bool ERP Platform Operations"
-	operatorRoleCode   = "operator"
-	operatorRoleName   = "Operator"
-	operatorEmail      = "user@bool.test"
-	operatorName       = "Dev Operator"
-	operatorPassword   = "dev-operator-12345"
+	// operatorAppCode: roles are app-scoped now (ADR revision, 2026-09-12); control-centre is the
+	// one app seeded so far (00008_authorization.sql) — not a confirmed full app catalog, just
+	// enough for the operator role to have somewhere to belong.
+	operatorAppCode  = "control-centre"
+	operatorRoleCode = "operator"
+	operatorRoleName = "Operator"
+	operatorEmail    = "user@bool.test"
+	operatorName     = "Dev Operator"
+	operatorPassword = "dev-operator-12345"
 )
 
 func main() {
@@ -189,10 +193,15 @@ func provisionInternalOperator(ctx context.Context, q *sqlc.Queries, kratos *aut
 		return fmt.Errorf("get internal tenant: %w", err)
 	}
 
-	role, err := q.GetRoleByTenantCode(ctx, sqlc.GetRoleByTenantCodeParams{TenantID: tenant.ID, Code: operatorRoleCode})
+	app, err := q.GetAppByCode(ctx, operatorAppCode)
+	if err != nil {
+		return fmt.Errorf("get operator app: %w", err)
+	}
+
+	role, err := q.GetRoleByAppTenantCode(ctx, sqlc.GetRoleByAppTenantCodeParams{AppID: app.ID, TenantID: tenant.ID, Code: operatorRoleCode})
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		role, err = q.CreateRole(ctx, sqlc.CreateRoleParams{TenantID: tenant.ID, Code: operatorRoleCode, Name: operatorRoleName})
+		role, err = q.CreateRole(ctx, sqlc.CreateRoleParams{AppID: app.ID, TenantID: tenant.ID, Code: operatorRoleCode, Name: operatorRoleName})
 		if err != nil {
 			return fmt.Errorf("create operator role: %w", err)
 		}
@@ -221,14 +230,13 @@ func provisionInternalOperator(ctx context.Context, q *sqlc.Queries, kratos *aut
 	if _, err := q.CreateUser(ctx, sqlc.CreateUserParams{ID: userID, Email: operatorEmail, Name: operatorName}); err != nil {
 		return fmt.Errorf("create operator user: %w", err)
 	}
-	tenantUser, err := q.CreateOwnerTenantUser(ctx, sqlc.CreateOwnerTenantUserParams{UserID: userID, TenantID: tenant.ID})
-	if err != nil {
+	if _, err := q.CreateOwnerTenantUser(ctx, sqlc.CreateOwnerTenantUserParams{UserID: userID, TenantID: tenant.ID}); err != nil {
 		return fmt.Errorf("create operator membership: %w", err)
 	}
 	if _, err := q.CreateUserRole(ctx, sqlc.CreateUserRoleParams{
-		TenantID:     tenant.ID,
-		TenantUserID: tenantUser.ID,
-		RoleID:       role.ID,
+		TenantID: tenant.ID,
+		UserID:   userID,
+		RoleID:   role.ID,
 	}); err != nil {
 		return fmt.Errorf("assign operator role: %w", err)
 	}

@@ -41,29 +41,37 @@ func (q *Queries) CreateOwnerTenantUser(ctx context.Context, arg CreateOwnerTena
 }
 
 const createRole = `-- name: CreateRole :one
-INSERT INTO roles (tenant_id, code, name)
-VALUES ($1, $2, $3)
-RETURNING id, tenant_id, code, name, name_dv, created_at, updated_at, deleted_at
+INSERT INTO roles (app_id, tenant_id, code, name)
+VALUES ($1, $2, $3, $4)
+RETURNING id, app_id, tenant_id, code, name, is_default, active_from, active_to, created_at, updated_at
 `
 
 type CreateRoleParams struct {
+	AppID    pgtype.UUID `json:"app_id"`
 	TenantID pgtype.UUID `json:"tenant_id"`
 	Code     string      `json:"code"`
 	Name     string      `json:"name"`
 }
 
 func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error) {
-	row := q.db.QueryRow(ctx, createRole, arg.TenantID, arg.Code, arg.Name)
+	row := q.db.QueryRow(ctx, createRole,
+		arg.AppID,
+		arg.TenantID,
+		arg.Code,
+		arg.Name,
+	)
 	var i Role
 	err := row.Scan(
 		&i.ID,
+		&i.AppID,
 		&i.TenantID,
 		&i.Code,
 		&i.Name,
-		&i.NameDv,
+		&i.IsDefault,
+		&i.ActiveFrom,
+		&i.ActiveTo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -157,22 +165,22 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 }
 
 const createUserRole = `-- name: CreateUserRole :one
-INSERT INTO user_roles (tenant_id, tenant_user_id, role_id, assigned_by)
+INSERT INTO user_roles (tenant_id, user_id, role_id, assigned_by)
 VALUES ($1, $2, $3, $4)
-RETURNING id, tenant_id, tenant_user_id, role_id, assigned_by, created_at
+RETURNING id, tenant_id, user_id, role_id, assigned_by, active_from, active_to, created_at, updated_at
 `
 
 type CreateUserRoleParams struct {
-	TenantID     pgtype.UUID `json:"tenant_id"`
-	TenantUserID pgtype.UUID `json:"tenant_user_id"`
-	RoleID       pgtype.UUID `json:"role_id"`
-	AssignedBy   pgtype.UUID `json:"assigned_by"`
+	TenantID   pgtype.UUID `json:"tenant_id"`
+	UserID     pgtype.UUID `json:"user_id"`
+	RoleID     pgtype.UUID `json:"role_id"`
+	AssignedBy pgtype.UUID `json:"assigned_by"`
 }
 
 func (q *Queries) CreateUserRole(ctx context.Context, arg CreateUserRoleParams) (UserRole, error) {
 	row := q.db.QueryRow(ctx, createUserRole,
 		arg.TenantID,
-		arg.TenantUserID,
+		arg.UserID,
 		arg.RoleID,
 		arg.AssignedBy,
 	)
@@ -180,10 +188,33 @@ func (q *Queries) CreateUserRole(ctx context.Context, arg CreateUserRoleParams) 
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
-		&i.TenantUserID,
+		&i.UserID,
 		&i.RoleID,
 		&i.AssignedBy,
+		&i.ActiveFrom,
+		&i.ActiveTo,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getAppByCode = `-- name: GetAppByCode :one
+SELECT id, code, name, requires_role, active_from, active_to, created_at, updated_at FROM apps WHERE code = $1
+`
+
+func (q *Queries) GetAppByCode(ctx context.Context, code string) (App, error) {
+	row := q.db.QueryRow(ctx, getAppByCode, code)
+	var i App
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Name,
+		&i.RequiresRole,
+		&i.ActiveFrom,
+		&i.ActiveTo,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -277,27 +308,30 @@ func (q *Queries) GetPartyTypeIDByCode(ctx context.Context, code string) (pgtype
 	return id, err
 }
 
-const getRoleByTenantCode = `-- name: GetRoleByTenantCode :one
-SELECT id, tenant_id, code, name, name_dv, created_at, updated_at, deleted_at FROM roles WHERE tenant_id = $1 AND code = $2
+const getRoleByAppTenantCode = `-- name: GetRoleByAppTenantCode :one
+SELECT id, app_id, tenant_id, code, name, is_default, active_from, active_to, created_at, updated_at FROM roles WHERE app_id = $1 AND tenant_id = $2 AND code = $3
 `
 
-type GetRoleByTenantCodeParams struct {
+type GetRoleByAppTenantCodeParams struct {
+	AppID    pgtype.UUID `json:"app_id"`
 	TenantID pgtype.UUID `json:"tenant_id"`
 	Code     string      `json:"code"`
 }
 
-func (q *Queries) GetRoleByTenantCode(ctx context.Context, arg GetRoleByTenantCodeParams) (Role, error) {
-	row := q.db.QueryRow(ctx, getRoleByTenantCode, arg.TenantID, arg.Code)
+func (q *Queries) GetRoleByAppTenantCode(ctx context.Context, arg GetRoleByAppTenantCodeParams) (Role, error) {
+	row := q.db.QueryRow(ctx, getRoleByAppTenantCode, arg.AppID, arg.TenantID, arg.Code)
 	var i Role
 	err := row.Scan(
 		&i.ID,
+		&i.AppID,
 		&i.TenantID,
 		&i.Code,
 		&i.Name,
-		&i.NameDv,
+		&i.IsDefault,
+		&i.ActiveFrom,
+		&i.ActiveTo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }

@@ -21,6 +21,7 @@ type Querier interface {
 	// provisioning never sets it, same as it never set name_dv before.
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserRole(ctx context.Context, arg CreateUserRoleParams) (UserRole, error)
+	GetAppByCode(ctx context.Context, code string) (App, error)
 	GetCountry(ctx context.Context, code string) (Country, error)
 	GetCurrency(ctx context.Context, code string) (Currency, error)
 	GetGlobalPartyType(ctx context.Context, code string) (PartyType, error)
@@ -31,7 +32,7 @@ type Querier interface {
 	// Platform tenancy — control-plane (not tenant-scoped). Used by provisioning (cmd/provision-dev).
 	// Global (country_code IS NULL) party types only — the app never provisions a jurisdiction-specific form here.
 	GetPartyTypeIDByCode(ctx context.Context, code string) (pgtype.UUID, error)
-	GetRoleByTenantCode(ctx context.Context, arg GetRoleByTenantCodeParams) (Role, error)
+	GetRoleByAppTenantCode(ctx context.Context, arg GetRoleByAppTenantCodeParams) (Role, error)
 	GetTenantBySlug(ctx context.Context, slug string) (Tenant, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	ListCountries(ctx context.Context) ([]Country, error)

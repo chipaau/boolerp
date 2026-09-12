@@ -35,12 +35,15 @@ RETURNING *;
 SELECT tu.* FROM tenant_users tu
 WHERE tu.tenant_id = $1 AND tu.is_owner AND tu.active_to IS NULL;
 
--- name: GetRoleByTenantCode :one
-SELECT * FROM roles WHERE tenant_id = $1 AND code = $2;
+-- name: GetAppByCode :one
+SELECT * FROM apps WHERE code = $1;
+
+-- name: GetRoleByAppTenantCode :one
+SELECT * FROM roles WHERE app_id = $1 AND tenant_id = $2 AND code = $3;
 
 -- name: CreateRole :one
-INSERT INTO roles (tenant_id, code, name)
-VALUES ($1, $2, $3)
+INSERT INTO roles (app_id, tenant_id, code, name)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: CreateRoleCapability :one
@@ -49,6 +52,6 @@ VALUES ($1, $2)
 RETURNING *;
 
 -- name: CreateUserRole :one
-INSERT INTO user_roles (tenant_id, tenant_user_id, role_id, assigned_by)
+INSERT INTO user_roles (tenant_id, user_id, role_id, assigned_by)
 VALUES ($1, $2, $3, $4)
 RETURNING *;
