@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/boolmv/goerp/internal/audit"
-	"github.com/boolmv/goerp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/audit"
+	"github.com/boolmv/erp/internal/db/sqlc"
 )
 
 // transitionTenant runs apply inside a WithTenant-scoped transaction, then records a "before"/

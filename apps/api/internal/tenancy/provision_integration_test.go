@@ -15,9 +15,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/boolmv/goerp/internal/auth"
-	"github.com/boolmv/goerp/internal/db/sqlc"
-	"github.com/boolmv/goerp/internal/tenancy"
+	"github.com/boolmv/erp/internal/auth"
+	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/tenancy"
 )
 
 // fakeKratosAdmin models just enough of Kratos's admin API for Provision: create identity, issue a

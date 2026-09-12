@@ -1,4 +1,4 @@
-package httpapi
+package tenancy
 
 import (
 	"context"
@@ -7,18 +7,52 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/boolmv/goerp/internal/auth"
-	"github.com/boolmv/goerp/internal/db/sqlc"
-	"github.com/boolmv/goerp/internal/observability"
-	"github.com/boolmv/goerp/internal/tenancy"
+	"github.com/boolmv/erp/internal/auth"
+	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/httpapi"
+	"github.com/boolmv/erp/internal/observability"
+	"github.com/boolmv/erp/internal/respond"
 )
 
-func uuidString(id pgtype.UUID) string { return uuid.UUID(id.Bytes).String() }
+// Deps are the collaborators this package's own HTTP handlers need — narrower than the
+// platform-wide httpapi.PlatformDeps: no Cerbos (httpapi.AdminRoute itself owns the authorization check,
+// taking pool/cerbos directly) and no MetricsEnabled (irrelevant to a handler).
+type Deps struct {
+	Pool   *pgxpool.Pool
+	Kratos *auth.Kratos
+}
+
+// resourceKind is the Cerbos resource every route in this module authorizes against (see
+// docker/cerbos/policies/resource_tenant.yaml).
+const resourceKind = "tenant"
+
+// Register builds this package's httpapi.Module from the platform-wide PlatformDeps: its own path
+// namespace ("/admin"), its own narrowed Deps for its handlers, and the RLS-scoped tables it owns
+// (RLSScopedTables) — the one place all three travel together, so main.go's module list is also the
+// source of truth for the startup RLS coverage guard. main.go passes the whole PlatformDeps once;
+// each module decides for itself what it actually needs from it — nothing is picked apart by hand
+// at the call site.
+func Register(platform httpapi.PlatformDeps) httpapi.Module {
+	deps := Deps{Pool: platform.Pool, Kratos: platform.Kratos}
+	return httpapi.Module{
+		Name:      "tenancy",
+		RLSTables: RLSScopedTables,
+		Mount: func(r chi.Router) {
+			r.Route("/admin", func(r chi.Router) {
+				httpapi.AdminRoute(r, http.MethodGet, "/tenants", resourceKind, "list", platform.Pool, platform.Cerbos, deps, adminListTenants)
+				httpapi.AdminRoute(r, http.MethodGet, "/tenants/{id}", resourceKind, "get", platform.Pool, platform.Cerbos, deps, adminGetTenant)
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants", resourceKind, "provision", platform.Pool, platform.Cerbos, deps, adminCreateTenant)
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/suspend", resourceKind, "suspend", platform.Pool, platform.Cerbos, deps, adminTransitionHandler(SuspendTenant))
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/reactivate", resourceKind, "reactivate", platform.Pool, platform.Cerbos, deps, adminTransitionHandler(ReactivateTenant))
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/archive", resourceKind, "archive", platform.Pool, platform.Cerbos, deps, adminTransitionHandler(ArchiveTenant))
+			})
+		},
+	}
+}
 
 // tenantResponse is the operator-facing tenant shape — a deliberately small projection, not every
 // column on sqlc.Tenant.
@@ -39,51 +73,37 @@ func toTenantResponse(t sqlc.Tenant) tenantResponse {
 	}
 }
 
-// AdminTenantRoutes mounts the operator-facing tenant CRUD (component 04, flat scope) under
-// /v1/admin — every route goes through AdminRoute, never a raw chi method (Phase D's backstop).
-// A Module, registered explicitly in cmd/api/main.go.
-func AdminTenantRoutes(r chi.Router, d Deps) {
-	r.Route("/admin", func(r chi.Router) {
-		AdminRoute(r, http.MethodGet, "/tenants", "list", d, adminListTenants)
-		AdminRoute(r, http.MethodGet, "/tenants/{id}", "get", d, adminGetTenant)
-		AdminRoute(r, http.MethodPost, "/tenants", "provision", d, adminCreateTenant)
-		AdminRoute(r, http.MethodPost, "/tenants/{id}/suspend", "suspend", d, adminTransitionHandler(tenancy.SuspendTenant))
-		AdminRoute(r, http.MethodPost, "/tenants/{id}/reactivate", "reactivate", d, adminTransitionHandler(tenancy.ReactivateTenant))
-		AdminRoute(r, http.MethodPost, "/tenants/{id}/archive", "archive", d, adminTransitionHandler(tenancy.ArchiveTenant))
-	})
-}
-
 func adminListTenants(w http.ResponseWriter, r *http.Request, d Deps, _ auth.AuthzPrincipal) {
 	tenants, err := sqlc.New(d.Pool).ListTenants(r.Context())
 	if err != nil {
 		observability.LoggerFrom(r.Context()).Error("list tenants", "err", err)
-		writeJSON(w, http.StatusInternalServerError, `{"error":"internal"}`)
+		respond.Error(w, http.StatusInternalServerError, "internal")
 		return
 	}
 	resp := make([]tenantResponse, len(tenants))
 	for i, t := range tenants {
 		resp[i] = toTenantResponse(t)
 	}
-	writeJSONBody(w, http.StatusOK, resp)
+	respond.JSONBody(w, http.StatusOK, resp)
 }
 
 func adminGetTenant(w http.ResponseWriter, r *http.Request, d Deps, _ auth.AuthzPrincipal) {
 	id, err := auth.ParseUUID(chi.URLParam(r, "id"))
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, `{"error":"bad tenant id"}`)
+		respond.Error(w, http.StatusBadRequest, "bad tenant id")
 		return
 	}
 	t, err := sqlc.New(d.Pool).GetTenantByID(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
-		writeJSON(w, http.StatusNotFound, `{"error":"not found"}`)
+		respond.Error(w, http.StatusNotFound, "not found")
 		return
 	}
 	if err != nil {
 		observability.LoggerFrom(r.Context()).Error("get tenant", "err", err)
-		writeJSON(w, http.StatusInternalServerError, `{"error":"internal"}`)
+		respond.Error(w, http.StatusInternalServerError, "internal")
 		return
 	}
-	writeJSONBody(w, http.StatusOK, toTenantResponse(t))
+	respond.JSONBody(w, http.StatusOK, toTenantResponse(t))
 }
 
 type createTenantRequest struct {
@@ -100,12 +120,12 @@ type createTenantRequest struct {
 func adminCreateTenant(w http.ResponseWriter, r *http.Request, d Deps, p auth.AuthzPrincipal) {
 	var req createTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, `{"error":"invalid body"}`)
+		respond.Error(w, http.StatusBadRequest, "invalid body")
 		return
 	}
 	if req.Slug == "" || req.Code == "" || req.Name == "" || req.PartyTypeCode == "" ||
 		req.InstitutionTypeCode == "" || req.OwnerEmail == "" || req.OwnerName == "" {
-		writeJSON(w, http.StatusBadRequest, `{"error":"missing required field"}`)
+		respond.Error(w, http.StatusBadRequest, "missing required field")
 		return
 	}
 	if req.Country == "" {
@@ -115,34 +135,34 @@ func adminCreateTenant(w http.ResponseWriter, r *http.Request, d Deps, p auth.Au
 	q := sqlc.New(d.Pool)
 	partyTypeID, err := q.GetPartyTypeIDByCode(r.Context(), req.PartyTypeCode)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, `{"error":"invalid party_type_code"}`)
+		respond.Error(w, http.StatusBadRequest, "invalid party_type_code")
 		return
 	}
 	institutionTypeID, err := q.GetInstitutionTypeIDByCode(r.Context(), sqlc.GetInstitutionTypeIDByCodeParams{
 		CountryCode: pgtype.Text{String: req.Country, Valid: true}, Code: req.InstitutionTypeCode,
 	})
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, `{"error":"invalid institution_type_code for this country"}`)
+		respond.Error(w, http.StatusBadRequest, "invalid institution_type_code for this country")
 		return
 	}
 
 	actorID, err := auth.ParseUUID(p.ID)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, `{"error":"bad principal id"}`)
+		respond.Error(w, http.StatusInternalServerError, "bad principal id")
 		return
 	}
 
-	result, err := tenancy.Provision(r.Context(), d.Pool, d.Kratos, tenancy.ProvisionParams{
+	result, err := Provision(r.Context(), d.Pool, d.Kratos, ProvisionParams{
 		Slug: req.Slug, Code: req.Code, Name: req.Name, Country: req.Country,
 		PartyTypeID: partyTypeID, InstitutionTypeID: institutionTypeID,
 		OwnerEmail: req.OwnerEmail, OwnerName: req.OwnerName, ActorUserID: actorID,
 	})
 	if err != nil {
 		observability.LoggerFrom(r.Context()).Error("provision tenant", "err", err)
-		writeJSON(w, http.StatusConflict, `{"error":"could not provision tenant — slug/code may already be taken"}`)
+		respond.Error(w, http.StatusConflict, "could not provision tenant — slug/code may already be taken")
 		return
 	}
-	writeJSONBody(w, http.StatusCreated, map[string]any{
+	respond.JSONBody(w, http.StatusCreated, map[string]any{
 		"tenant": toTenantResponse(result.Tenant), "recovery_link": result.RecoveryLink,
 	})
 }
@@ -156,26 +176,20 @@ func adminTransitionHandler(
 	return func(w http.ResponseWriter, r *http.Request, d Deps, p auth.AuthzPrincipal) {
 		id, err := auth.ParseUUID(chi.URLParam(r, "id"))
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, `{"error":"bad tenant id"}`)
+			respond.Error(w, http.StatusBadRequest, "bad tenant id")
 			return
 		}
 		actorID, err := auth.ParseUUID(p.ID)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, `{"error":"bad principal id"}`)
+			respond.Error(w, http.StatusInternalServerError, "bad principal id")
 			return
 		}
 		t, err := transition(r.Context(), d.Pool, id, actorID)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("tenant transition", "err", err)
-			writeJSON(w, http.StatusInternalServerError, `{"error":"internal"}`)
+			respond.Error(w, http.StatusInternalServerError, "internal")
 			return
 		}
-		writeJSONBody(w, http.StatusOK, toTenantResponse(t))
+		respond.JSONBody(w, http.StatusOK, toTenantResponse(t))
 	}
-}
-
-func writeJSONBody(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
 }

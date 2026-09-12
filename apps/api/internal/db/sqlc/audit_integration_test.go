@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/boolmv/goerp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/db/sqlc"
 )
 
 func uuidStr(id pgtype.UUID) string { return uuid.UUID(id.Bytes).String() }

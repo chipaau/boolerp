@@ -11,10 +11,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/boolmv/goerp/internal/auth"
-	"github.com/boolmv/goerp/internal/db/sqlc"
-	"github.com/boolmv/goerp/internal/dbtest"
-	"github.com/boolmv/goerp/internal/httpapi"
+	"github.com/boolmv/erp/internal/auth"
+	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/dbtest"
+	"github.com/boolmv/erp/internal/httpapi"
 )
 
 var env *dbtest.Env
@@ -81,12 +81,13 @@ func TestMeEndToEnd(t *testing.T) {
 	defer k.Close()
 	c := fakeCerbos(true)
 	defer c.Close()
+	cerbos := auth.NewCerbos(c.URL)
 
-	h := httpapi.New(httpapi.Deps{
+	h := httpapi.New(httpapi.PlatformDeps{
 		Pool:   env.Pool,
 		Kratos: auth.NewKratos(k.URL, k.URL),
-		Cerbos: auth.NewCerbos(c.URL),
-	})
+		Cerbos: cerbos,
+	}, auth.Register(env.Pool, cerbos))
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
@@ -124,12 +125,13 @@ func TestMeUnauthenticated(t *testing.T) {
 	defer k.Close()
 	c := fakeCerbos(true)
 	defer c.Close()
+	cerbos := auth.NewCerbos(c.URL)
 
-	h := httpapi.New(httpapi.Deps{
+	h := httpapi.New(httpapi.PlatformDeps{
 		Pool:   env.Pool,
 		Kratos: auth.NewKratos(k.URL, k.URL),
-		Cerbos: auth.NewCerbos(c.URL),
-	})
+		Cerbos: cerbos,
+	}, auth.Register(env.Pool, cerbos))
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 

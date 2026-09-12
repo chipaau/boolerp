@@ -13,12 +13,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/boolmv/goerp/internal/auth"
-	"github.com/boolmv/goerp/internal/config"
-	"github.com/boolmv/goerp/internal/httpapi"
-	"github.com/boolmv/goerp/internal/observability"
-	"github.com/boolmv/goerp/internal/server"
-	"github.com/boolmv/goerp/internal/tenancy"
+	"github.com/boolmv/erp/internal/auth"
+	"github.com/boolmv/erp/internal/config"
+	"github.com/boolmv/erp/internal/httpapi"
+	"github.com/boolmv/erp/internal/observability"
+	"github.com/boolmv/erp/internal/server"
+	"github.com/boolmv/erp/internal/tenancy"
 )
 
 func main() {
@@ -75,19 +75,33 @@ func run() error {
 		return fmt.Errorf("register pool metrics: %w", err)
 	}
 
-	// UC-FND-06: refuse to serve if any business/tenant-scoped table lacks RLS coverage.
-	if err := tenancy.CheckRLSCoverage(ctx, pool, tenancy.RLSScopedTables); err != nil {
+	cerbosClient := auth.NewCerbos(cfg.CerbosHTTPURL)
+	platform := httpapi.PlatformDeps{
+		Pool:           pool,
+		Kratos:         auth.NewKratos(cfg.KratosPublicURL, cfg.KratosAdminURL),
+		Cerbos:         cerbosClient,
+		MetricsEnabled: cfg.MetricsEnabled,
+	}
+
+	// Modules mounted on the API — the one place that lists which features are live. Each module's
+	// own Register decides for itself what it needs; a future business module (inventory, hrms,
+	// ...) adds its own Register call here.
+	modules := []httpapi.Module{
+		auth.Register(pool, cerbosClient),
+		tenancy.Register(platform),
+	}
+
+	// UC-FND-06: refuse to serve if any business/tenant-scoped table lacks RLS coverage. The table
+	// list is derived from the modules actually registered above, not maintained separately.
+	var rlsTables []string
+	for _, m := range modules {
+		rlsTables = append(rlsTables, m.RLSTables...)
+	}
+	if err := tenancy.CheckRLSCoverage(ctx, pool, rlsTables); err != nil {
 		return fmt.Errorf("rls coverage guard: %w", err)
 	}
 
-	// Modules mounted on the API — the one place that lists which features are live. A future
-	// business module (inventory, hrms, ...) adds its own Routes function here.
-	handler := httpapi.New(httpapi.Deps{
-		Pool:           pool,
-		Kratos:         auth.NewKratos(cfg.KratosPublicURL, cfg.KratosAdminURL),
-		Cerbos:         auth.NewCerbos(cfg.CerbosHTTPURL),
-		MetricsEnabled: cfg.MetricsEnabled,
-	}, httpapi.AdminTenantRoutes)
+	handler := httpapi.New(platform, modules...)
 
 	ln, err := net.Listen("tcp", ":"+cfg.Port)
 	if err != nil {

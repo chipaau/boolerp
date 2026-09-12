@@ -9,8 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/boolmv/goerp/internal/db/sqlc"
-	"github.com/boolmv/goerp/internal/tenancy"
+	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/tenancy"
 )
 
 // createLifecycleTestTenant commits a tenant via env.Pool (owner role) — tenancy.SuspendTenant etc.

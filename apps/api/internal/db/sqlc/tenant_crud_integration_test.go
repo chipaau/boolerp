@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/boolmv/goerp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/db/sqlc"
 )
 
 func createTestTenantForCRUD(t *testing.T, ctx context.Context, q *sqlc.Queries, slugPrefix string) sqlc.Tenant {
