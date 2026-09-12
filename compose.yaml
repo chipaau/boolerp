@@ -155,6 +155,12 @@ services:
       - traefik.http.routers.goerp-api.priority=20
       - traefik.http.routers.goerp-api.service=goerp-api
       - traefik.http.services.goerp-api.loadbalancer.server.port=8080
+      # fixed host, direct to the API — no /api prefix needed at all here, this host IS the API
+      # (e.g. api.bool.test/v1/me, api.bool.test/healthz); same service as above.
+      - "traefik.http.routers.goerp-api-host.rule=Host(`api.bool.test`)"
+      - traefik.http.routers.goerp-api-host.entrypoints=web
+      - traefik.http.routers.goerp-api-host.priority=10
+      - traefik.http.routers.goerp-api-host.service=goerp-api
 
   # Integration tests (Testcontainers). NOT started by `up` (test profile) — run with:
   #   docker compose run --rm test
