@@ -7,14 +7,18 @@
 - **Verify claims with tools** (docs, code, web) rather than asserting from memory; the user checks.
 - **Design stage: do not create implementation files, migrations, or scaffolding without explicit
   confirmation.** Proposals and inline examples are fine; writing project code is not, until asked.
-- **Always confirm the data model before implementing — no exceptions.** Any schema (new
+- **Always confirm the data model before it exists anywhere — no exceptions.** Any schema (new
   tables/columns, keys, indexes, relationships, enums, migrations) must be presented (tables, types,
-  constraints, relationships) and **explicitly approved** before writing migrations, sqlc queries, or
-  code against it. Confirm it **table-by-table**.
-- **NEVER create a new table without the user's explicit assertion.** Not "probably fine", not
-  "implied by the spec" — every single table needs an explicit yes. This overrides momentum, deadlines,
-  and apparent obviousness. Data models are expensive to change once there is data. Mirror the SRS
-  `DB-*.md` / ADR style the sibling repos use.
+  constraints, relationships) and **explicitly approved** before it's written into **a migration,
+  sqlc query, application code (types, mocks, seed/fixture data) — or documentation** (`DB-*.md`,
+  `srs.md`, `checklist.md`, `use-cases.md`, an ADR, a roadmap line). Confirm it **table-by-table**.
+- **NEVER introduce a new table without the user's explicit assertion — including in docs.** Not
+  "probably fine", not "implied by the spec", not "just a placeholder in the checklist's touchpoints
+  list" — every single table needs an explicit yes **before its name appears anywhere**, docs included.
+  A table sitting in a checklist's "data-model touchpoints" or a draft SRS section is exactly as
+  uncommitted as one in a migration — don't let it acquire the weight of "already decided" just by
+  existing on the page. This overrides momentum, deadlines, and apparent obviousness. Data models are
+  expensive to change once there is data. Mirror the SRS `DB-*.md` / ADR style the sibling repos use.
 
 ## Commit discipline
 
