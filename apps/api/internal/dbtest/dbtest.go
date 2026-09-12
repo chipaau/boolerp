@@ -10,6 +10,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,7 +26,14 @@ import (
 
 // Env is a running test database: a live pool over a throwaway container with the schema applied.
 type Env struct {
-	Pool      *pgxpool.Pool
+	// Pool connects as the migration OWNER role (goerp) — which the Postgres Docker image also
+	// makes a superuser. Fine for fixture setup, but a superuser bypasses Row-Level Security
+	// unconditionally, no matter what FORCE ROW LEVEL SECURITY says — so a test asserting actual
+	// RLS enforcement must use AppPool instead.
+	Pool *pgxpool.Pool
+	// AppPool connects as goerp_app — the same non-owner, non-superuser role the real API uses at
+	// runtime (created by migration 00002_app_role.sql). RLS applies to it for real.
+	AppPool   *pgxpool.Pool
 	DSN       string
 	container *tcpostgres.PostgresContainer
 }
@@ -67,25 +75,49 @@ func Start(ctx context.Context) (*Env, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pool: %w", err)
 	}
-	return &Env{Pool: pool, DSN: dsn, container: ctr}, nil
+
+	// goerp_app is created by migration 00002_app_role.sql, which just ran as part of Migrate above.
+	appDSN := strings.Replace(dsn, "goerp:goerp@", "goerp_app:goerp_app@", 1)
+	appPool, err := pgxpool.New(ctx, appDSN)
+	if err != nil {
+		return nil, fmt.Errorf("app pool: %w", err)
+	}
+
+	return &Env{Pool: pool, AppPool: appPool, DSN: dsn, container: ctr}, nil
 }
 
-// Close tears down the pool and terminates the container.
+// Close tears down the pools and terminates the container.
 func (e *Env) Close(ctx context.Context) {
 	if e.Pool != nil {
 		e.Pool.Close()
+	}
+	if e.AppPool != nil {
+		e.AppPool.Close()
 	}
 	if e.container != nil {
 		_ = testcontainers.TerminateContainer(e.container)
 	}
 }
 
-// Tx opens a transaction that is rolled back when the test ends — every test sees the seeded
-// baseline and its writes never leak to the next test. Pass the returned Tx to sqlc.New.
+// Tx opens a transaction (as the owner/superuser role) that is rolled back when the test ends —
+// every test sees the seeded baseline and its writes never leak to the next test. Pass the
+// returned Tx to sqlc.New.
 func (e *Env) Tx(t *testing.T) pgx.Tx {
 	t.Helper()
+	return beginRollback(t, e.Pool)
+}
+
+// AppTx is Tx but as goerp_app, the same non-superuser role the real API runs as — use this
+// whenever a test needs RLS to actually apply (Tx's owner connection bypasses it unconditionally).
+func (e *Env) AppTx(t *testing.T) pgx.Tx {
+	t.Helper()
+	return beginRollback(t, e.AppPool)
+}
+
+func beginRollback(t *testing.T, pool *pgxpool.Pool) pgx.Tx {
+	t.Helper()
 	ctx := context.Background()
-	tx, err := e.Pool.Begin(ctx)
+	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatalf("begin tx: %v", err)
 	}

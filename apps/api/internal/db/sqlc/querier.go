@@ -13,6 +13,10 @@ import (
 type Querier interface {
 	// Irreversible in this flat-CRUD pass; active_to marks the tenant as ceased (replaces deleted_at).
 	ArchiveTenant(ctx context.Context, id pgtype.UUID) (Tenant, error)
+	// audit_log — append-only (DB-enforced via trg_audit_log_append_only). tenant_id is never passed
+	// explicitly; it resolves from the column DEFAULT (current_setting('app.current_tenant')), so a
+	// caller can only insert while running inside a tenancy.WithTenant-resolved transaction.
+	CreateAuditLogEntry(ctx context.Context, arg CreateAuditLogEntryParams) (AuditLog, error)
 	CreateOwnerTenantUser(ctx context.Context, arg CreateOwnerTenantUserParams) (TenantUser, error)
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateRoleCapability(ctx context.Context, arg CreateRoleCapabilityParams) (RoleCapability, error)

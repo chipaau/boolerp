@@ -5,6 +5,8 @@
 package sqlc
 
 import (
+	"net/netip"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -17,6 +19,20 @@ type App struct {
 	ActiveTo     pgtype.Timestamptz `json:"active_to"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type AuditLog struct {
+	ID             pgtype.UUID        `json:"id"`
+	TenantID       pgtype.UUID        `json:"tenant_id"`
+	ActorUserID    pgtype.UUID        `json:"actor_user_id"`
+	ActingAsUserID pgtype.UUID        `json:"acting_as_user_id"`
+	EntityType     string             `json:"entity_type"`
+	EntityID       pgtype.UUID        `json:"entity_id"`
+	Action         string             `json:"action"`
+	Payload        []byte             `json:"payload"`
+	RequestID      pgtype.Text        `json:"request_id"`
+	Ip             *netip.Addr        `json:"ip"`
+	OccurredAt     pgtype.Timestamptz `json:"occurred_at"`
 }
 
 type Country struct {

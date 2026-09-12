@@ -24,6 +24,20 @@ func WithTenant(ctx context.Context, pool *pgxpool.Pool, tenantID pgtype.UUID, f
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	if err := setCurrentTenant(ctx, tx, tenantID); err != nil {
+		return err
+	}
+
+	if err := fn(ctx, tx); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// setCurrentTenant is WithTenant's session-var setup, factored out so callers managing their own
+// transaction (Provision, which also needs to write an audit_log row for the tenant it just
+// created) can apply the same tenant-scoping without going through WithTenant's callback shape.
+func setCurrentTenant(ctx context.Context, tx pgx.Tx, tenantID pgtype.UUID) error {
 	id := uuidString(tenantID)
 	if _, err := tx.Exec(ctx,
 		`SELECT set_config('app.current_tenant', $1, true), set_config('app.visible_tenants', $2, true)`,
@@ -31,11 +45,7 @@ func WithTenant(ctx context.Context, pool *pgxpool.Pool, tenantID pgtype.UUID, f
 	); err != nil {
 		return fmt.Errorf("tenancy: set current tenant: %w", err)
 	}
-
-	if err := fn(ctx, tx); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 func uuidString(id pgtype.UUID) string {

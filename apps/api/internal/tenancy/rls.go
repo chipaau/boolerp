@@ -9,9 +9,10 @@ import (
 
 // RLSScopedTables lists BUSINESS tables that must carry FORCE ROW LEVEL SECURITY + an isolation
 // policy — never platform/control-plane tables (tenants, tenant_users, roles, ...), which are
-// deliberately cross-tenant by nature and outside the RLS regime (see tenancy.md). Empty today:
-// Phase 1 ships no business/tenant-scoped tables yet. Grows with the first business module.
-var RLSScopedTables = []string{}
+// deliberately cross-tenant by nature and outside the RLS regime (see tenancy.md). audit_log is the
+// first entry: reads are tenant-scoped (FR-AUD-06), so it's RLS-protected like any other business
+// table rather than exempt like the platform tables around it.
+var RLSScopedTables = []string{"audit_log"}
 
 // queryRower is satisfied by both *pgxpool.Pool (startup) and pgx.Tx (tests).
 type queryRower interface {

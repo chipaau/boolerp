@@ -2,11 +2,13 @@ package tenancy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/boolmv/goerp/internal/audit"
 	"github.com/boolmv/goerp/internal/auth"
 	"github.com/boolmv/goerp/internal/db/sqlc"
 )
@@ -41,6 +43,9 @@ type ProvisionParams struct {
 	Country           string
 	OwnerEmail        string
 	OwnerName         string
+	// ActorUserID is who is provisioning this tenant (the operator), for the audit trail — the zero
+	// value (system-initiated: first-run setup, self-serve onboarding) records no actor.
+	ActorUserID pgtype.UUID
 }
 
 // ProvisionResult is the newly created tenant plus the recovery link for its owner.
@@ -100,6 +105,21 @@ func Provision(ctx context.Context, pool *pgxpool.Pool, kratos *auth.Kratos, p P
 	}
 	if _, err = q.CreateOwnerTenantUser(ctx, sqlc.CreateOwnerTenantUserParams{UserID: ownerID, TenantID: tenant.ID}); err != nil {
 		return ProvisionResult{}, fmt.Errorf("tenancy: provision: create owner membership: %w", err)
+	}
+
+	// audit_log is RLS-scoped: set the session vars Provision's own transaction hasn't needed until
+	// now (it doesn't go through WithTenant's callback shape) so the row's tenant_id can resolve.
+	if err = setCurrentTenant(ctx, tx, tenant.ID); err != nil {
+		return ProvisionResult{}, err
+	}
+	auditPayload, err := json.Marshal(map[string]any{"after": map[string]string{"slug": tenant.Slug, "status": tenant.Status}})
+	if err != nil {
+		return ProvisionResult{}, fmt.Errorf("tenancy: provision: marshal audit payload: %w", err)
+	}
+	if err = audit.Record(ctx, tx, audit.Entry{
+		ActorUserID: p.ActorUserID, EntityType: "tenant", EntityID: tenant.ID, Action: "create", Payload: auditPayload,
+	}); err != nil {
+		return ProvisionResult{}, fmt.Errorf("tenancy: provision: %w", err)
 	}
 
 	link, err := kratos.CreateRecoveryLink(ctx, kratosIdentityID)

@@ -107,15 +107,12 @@ func TestCheckRLSCoverage_CatchesMissingRLSAndPassesConfigured(t *testing.T) {
 	}
 }
 
-func TestCheckRLSCoverage_RealScopedTablesListPassesTrivially(t *testing.T) {
-	// Phase 1 ships no business/tenant-scoped tables — the guard must pass on an empty list rather
-	// than mistake platform/control-plane tables (which DO carry a tenant_id column) for business
-	// tables needing RLS.
-	if len(tenancy.RLSScopedTables) != 0 {
-		t.Fatalf("expected RLSScopedTables to still be empty in Phase 1, got %v", tenancy.RLSScopedTables)
-	}
+func TestCheckRLSCoverage_RealScopedTablesListPasses(t *testing.T) {
+	// audit_log (component 06) is the first real entry — proves the guard actually passes against
+	// production migrations, not just synthetic tables. It must never mistake a platform/control-
+	// plane table (tenants, roles, ... which DO carry a tenant_id-shaped column) for one of these.
 	if err := tenancy.CheckRLSCoverage(context.Background(), env.Pool, tenancy.RLSScopedTables); err != nil {
-		t.Fatalf("empty list should pass trivially: %v", err)
+		t.Fatalf("real RLSScopedTables should all be properly configured, got %v", err)
 	}
 }
 

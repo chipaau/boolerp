@@ -663,3 +663,47 @@ CREATE INDEX ON support_access_grants (target_user_id);
 > no confirmed consumer: capabilities are code-seeded, not authored at runtime (see
 > `role_capabilities` above), and no concrete case for dynamically-authored internal roles has come
 > up. Re-add if one does.
+
+## Audit (06) — ✅ approved 2026-09-12
+
+### `audit_log` — ✅ approved 2026-09-12
+
+Immutable, append-only business audit trail — distinct from technical tracing/logging (07).
+**Tenant-scoped and RLS-protected**, unlike the platform/control-plane tables above: this is the
+first table to actually need the `FORCE ROW LEVEL SECURITY` + isolation-policy enforcement
+`00002_app_role.sql` promised would land "with the first tenant-scoped business table." Reads are
+tenant-scoped (FR-AUD-06); a write can only happen inside a `tenancy.WithTenant`-resolved
+transaction, since `tenant_id` resolves from the column default and the `WITH CHECK` clause requires
+it to match the transaction's current tenant.
+
+```sql
+CREATE TABLE audit_log (
+  id                uuid        PRIMARY KEY DEFAULT uuidv7(),
+  tenant_id         uuid        NOT NULL REFERENCES tenants(id) DEFAULT current_setting('app.current_tenant')::uuid,
+  actor_user_id     uuid        REFERENCES users(id),   -- who did it; NULL if system-initiated
+  acting_as_user_id uuid        REFERENCES users(id),   -- FR-AUD-04: the subject being impersonated during a support session (actor_user_id stays the real operator). NULL in ordinary use — not wired yet, no impersonation feature exists.
+  entity_type       text        NOT NULL,                -- e.g. 'tenant'; open vocabulary, app-validated (like role_capabilities.capability)
+  entity_id         uuid        NOT NULL,
+  action            text        NOT NULL,                -- e.g. 'create', 'suspend', 'reactivate', 'archive'
+  payload           jsonb       NOT NULL,                -- changed-column diff for updates; full snapshot for create/delete (FR-AUD-03's "before/after")
+  request_id        text,                                -- correlation id; wired through once 07 (observability) lands
+  ip                inet,
+  occurred_at       timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ON audit_log (tenant_id);
+CREATE INDEX ON audit_log (entity_type, entity_id);
+CREATE INDEX ON audit_log (actor_user_id);
+CREATE INDEX ON audit_log (occurred_at);
+```
+
+Append-only (FR-AUD-01) is **DB-enforced**, not just "no application code path happens to update or
+delete it": a `BEFORE UPDATE OR DELETE` trigger (`trg_audit_log_append_only`) raises an exception
+unconditionally — the same pattern this session already used app-side for four-eyes CHECK
+constraints, but a trigger is what it takes to reject mutation outright.
+
+> **Known simplifications, not silently dropped:** (1) no real Postgres partitioning by
+> `(tenant_id, month)` yet (FR-AUD-07) — a single table for now, disproportionate to build at
+> current data volume; revisit before real production retention matters. (2) No `audit:view`
+> read/search endpoint yet (FR-AUD-06) — this migration is capture-only, wired at the tenant-CRUD
+> transaction boundary (create/suspend/reactivate/archive). (3) `acting_as_user_id` exists in the
+> schema for FR-AUD-04 but nothing sets it — no impersonation feature exists yet.

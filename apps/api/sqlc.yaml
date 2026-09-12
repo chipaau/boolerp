@@ -11,6 +11,7 @@ sql:
       - internal/db/migrations/00005_identity.sql
       - internal/db/migrations/00006_tenancy.sql
       - internal/db/migrations/00008_authorization.sql
+      - internal/db/migrations/00009_audit.sql
     queries: internal/db/query
     gen:
       go:

@@ -96,9 +96,15 @@ func TestProvision_Success(t *testing.T) {
 	defer srv.Close()
 	kratos := auth.NewKratos(srv.URL, srv.URL)
 
-	result, err := tenancy.Provision(ctx, env.Pool, kratos, tenancy.ProvisionParams{
+	actor := newTestUUID(t)
+	if _, err := sqlc.New(env.AppPool).CreateUser(ctx, sqlc.CreateUserParams{ID: actor, Email: "operator-provisioning@example.test", Name: "Operator"}); err != nil {
+		t.Fatalf("CreateUser(actor): %v", err)
+	}
+
+	result, err := tenancy.Provision(ctx, env.AppPool, kratos, tenancy.ProvisionParams{
 		Slug: "test-provision-ok", Code: "TPOK", Name: "Test Provision OK",
 		Country: "MV", OwnerEmail: "owner@test-provision-ok.test", OwnerName: "New Owner",
+		ActorUserID: actor,
 	})
 	if err != nil {
 		t.Fatalf("Provision: %v", err)
@@ -110,15 +116,23 @@ func TestProvision_Success(t *testing.T) {
 		t.Fatal("want a non-empty recovery link")
 	}
 
-	got, err := sqlc.New(env.Pool).GetTenantBySlug(ctx, "test-provision-ok")
+	got, err := sqlc.New(env.AppPool).GetTenantBySlug(ctx, "test-provision-ok")
 	if err != nil {
 		t.Fatalf("GetTenantBySlug: %v", err)
 	}
 	if got.ID != result.Tenant.ID {
 		t.Fatal("provisioned tenant not visible via a fresh query — commit did not happen?")
 	}
-	if _, err := sqlc.New(env.Pool).GetOwnerTenantUser(ctx, got.ID); err != nil {
+	if _, err := sqlc.New(env.AppPool).GetOwnerTenantUser(ctx, got.ID); err != nil {
 		t.Fatalf("GetOwnerTenantUser: want an owner membership, got %v", err)
+	}
+
+	entries := readAuditEntries(t, got.ID, got.ID, "create")
+	if len(entries) != 1 {
+		t.Fatalf("want 1 create audit entry, got %d", len(entries))
+	}
+	if entries[0].ActorUserID != actor {
+		t.Fatalf("want actor %v recorded on the create entry, got %v", actor, entries[0].ActorUserID)
 	}
 }
 
@@ -130,7 +144,7 @@ func TestProvision_RecoveryLinkFailureRollsBackAndDeletesIdentity(t *testing.T) 
 	defer srv.Close()
 	kratos := auth.NewKratos(srv.URL, srv.URL)
 
-	_, err := tenancy.Provision(ctx, env.Pool, kratos, tenancy.ProvisionParams{
+	_, err := tenancy.Provision(ctx, env.AppPool, kratos, tenancy.ProvisionParams{
 		Slug: "test-provision-fail", Code: "TPFAIL", Name: "Test Provision Fail",
 		Country: "MV", OwnerEmail: "owner@test-provision-fail.test", OwnerName: "New Owner",
 	})
@@ -138,7 +152,7 @@ func TestProvision_RecoveryLinkFailureRollsBackAndDeletesIdentity(t *testing.T) 
 		t.Fatal("want an error when the recovery-link step fails")
 	}
 
-	if _, err := sqlc.New(env.Pool).GetTenantBySlug(ctx, "test-provision-fail"); !errors.Is(err, pgx.ErrNoRows) {
+	if _, err := sqlc.New(env.AppPool).GetTenantBySlug(ctx, "test-provision-fail"); !errors.Is(err, pgx.ErrNoRows) {
 		t.Fatalf("want no squatted slug after a failed provision, got tenant lookup error %v", err)
 	}
 
