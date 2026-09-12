@@ -27,8 +27,19 @@ type Deps struct {
 	MetricsEnabled bool
 }
 
-// New builds the API router. Public: /api/healthz, /api/readyz. Authenticated: /api/v1/*.
-func New(d Deps) http.Handler {
+// Module mounts one feature's routes onto the authenticated /v1 group. Each business/platform
+// feature owns its own path namespace (e.g. AdminTenantRoutes mounts "/admin"); main.go composes
+// the running server by listing which modules it wants — that list is the one place "which
+// features exist" is visible, instead of being buried inside this package.
+type Module func(r chi.Router, d Deps)
+
+// New builds the API router with core platform routes (health/ready/metrics/session validation),
+// then mounts each supplied module under the authenticated /v1 group. Public: /, /healthz, /readyz
+// (/ serves the same readiness check — the sane response for whatever hits the API's bare root,
+// e.g. api.bool.test/). Authenticated: /v1/*. The API is reached same-origin as /api/* on every
+// tenant subdomain and directly (no prefix) at api.bool.test — Traefik strips /api before
+// forwarding either way, so this router's own path space never mentions /api (see compose.yaml).
+func New(d Deps, modules ...Module) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -38,27 +49,21 @@ func New(d Deps) http.Handler {
 
 	authmw := auth.NewMiddleware(d.Kratos, d.Pool)
 
-	// Traefik routes <tenant>.bool.test/api/* here (no prefix strip), so routes live under /api.
-	r.Route("/api", func(r chi.Router) {
-		r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(w, http.StatusOK, `{"status":"ok"}`)
-		})
-		r.Get("/readyz", readyz(d))
-		if d.MetricsEnabled {
-			r.Handle("/metrics", observability.MetricsHandler())
+	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, `{"status":"ok"}`)
+	})
+	r.Get("/readyz", readyz(d))
+	r.Get("/", readyz(d))
+	if d.MetricsEnabled {
+		r.Handle("/metrics", observability.MetricsHandler())
+	}
+
+	r.Route("/v1", func(r chi.Router) {
+		r.Use(authmw.RequireSession)
+		r.Get("/me", me(d))
+		for _, m := range modules {
+			m(r, d)
 		}
-
-		r.Route("/v1", func(r chi.Router) {
-			r.Use(authmw.RequireSession)
-			r.Get("/me", me(d))
-
-			// Operator console (apps/admin) surface — same origin, same API, gated per-handler by
-			// AdminRoute's Cerbos check (is_internal_member + the specific platform:* capability),
-			// not by tenant subdomain resolution (operators act across tenants from admin.bool.test).
-			r.Route("/admin", func(r chi.Router) {
-				registerAdminTenantRoutes(r, d)
-			})
-		})
 	})
 	// otelhttp creates the root span per request (UC-OBS-01/02); a no-op wrapper when tracing isn't
 	// configured (SetupTracing left the default no-op TracerProvider in place).

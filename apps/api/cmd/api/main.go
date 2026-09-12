@@ -80,12 +80,14 @@ func run() error {
 		return fmt.Errorf("rls coverage guard: %w", err)
 	}
 
+	// Modules mounted on the API — the one place that lists which features are live. A future
+	// business module (inventory, hrms, ...) adds its own Routes function here.
 	handler := httpapi.New(httpapi.Deps{
 		Pool:           pool,
 		Kratos:         auth.NewKratos(cfg.KratosPublicURL, cfg.KratosAdminURL),
 		Cerbos:         auth.NewCerbos(cfg.CerbosHTTPURL),
 		MetricsEnabled: cfg.MetricsEnabled,
-	})
+	}, httpapi.AdminTenantRoutes)
 
 	ln, err := net.Listen("tcp", ":"+cfg.Port)
 	if err != nil {

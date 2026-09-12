@@ -1,5 +1,6 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { Building2, LayoutDashboard, type LucideIcon } from 'lucide-react'
+import { Building2, LayoutDashboard  } from 'lucide-react'
+import type {LucideIcon} from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,

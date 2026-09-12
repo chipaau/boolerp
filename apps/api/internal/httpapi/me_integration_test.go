@@ -90,7 +90,7 @@ func TestMeEndToEnd(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/me", nil)
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/me", nil)
 	req.Header.Set("Cookie", "ory_kratos_session=abc")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -133,7 +133,7 @@ func TestMeUnauthenticated(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/api/v1/me") // no cookie
+	resp, err := http.Get(srv.URL + "/v1/me") // no cookie
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}

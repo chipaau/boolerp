@@ -39,15 +39,18 @@ func toTenantResponse(t sqlc.Tenant) tenantResponse {
 	}
 }
 
-// registerAdminTenantRoutes mounts the operator-facing tenant CRUD (component 04, flat scope) under
-// /api/v1/admin — every route goes through AdminRoute, never a raw chi method (Phase D's backstop).
-func registerAdminTenantRoutes(r chi.Router, d Deps) {
-	AdminRoute(r, http.MethodGet, "/tenants", "list", d, adminListTenants)
-	AdminRoute(r, http.MethodGet, "/tenants/{id}", "get", d, adminGetTenant)
-	AdminRoute(r, http.MethodPost, "/tenants", "provision", d, adminCreateTenant)
-	AdminRoute(r, http.MethodPost, "/tenants/{id}/suspend", "suspend", d, adminTransitionHandler(tenancy.SuspendTenant))
-	AdminRoute(r, http.MethodPost, "/tenants/{id}/reactivate", "reactivate", d, adminTransitionHandler(tenancy.ReactivateTenant))
-	AdminRoute(r, http.MethodPost, "/tenants/{id}/archive", "archive", d, adminTransitionHandler(tenancy.ArchiveTenant))
+// AdminTenantRoutes mounts the operator-facing tenant CRUD (component 04, flat scope) under
+// /v1/admin — every route goes through AdminRoute, never a raw chi method (Phase D's backstop).
+// A Module, registered explicitly in cmd/api/main.go.
+func AdminTenantRoutes(r chi.Router, d Deps) {
+	r.Route("/admin", func(r chi.Router) {
+		AdminRoute(r, http.MethodGet, "/tenants", "list", d, adminListTenants)
+		AdminRoute(r, http.MethodGet, "/tenants/{id}", "get", d, adminGetTenant)
+		AdminRoute(r, http.MethodPost, "/tenants", "provision", d, adminCreateTenant)
+		AdminRoute(r, http.MethodPost, "/tenants/{id}/suspend", "suspend", d, adminTransitionHandler(tenancy.SuspendTenant))
+		AdminRoute(r, http.MethodPost, "/tenants/{id}/reactivate", "reactivate", d, adminTransitionHandler(tenancy.ReactivateTenant))
+		AdminRoute(r, http.MethodPost, "/tenants/{id}/archive", "archive", d, adminTransitionHandler(tenancy.ArchiveTenant))
+	})
 }
 
 func adminListTenants(w http.ResponseWriter, r *http.Request, d Deps, _ auth.AuthzPrincipal) {
