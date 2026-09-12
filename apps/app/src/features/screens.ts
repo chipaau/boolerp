@@ -1,6 +1,13 @@
 import type { ComponentType } from 'react'
 import { CalendarPage } from './calendar/calendar-page'
 import { MeetingDetailPage } from './calendar/meeting-detail-page'
+import { EmployeesPage } from './control-centre/employees-page'
+import { ControlOverviewPage } from './control-centre/overview-page'
+import { SiteTypesPage } from './control-centre/site-types-page'
+import { SitesPage } from './control-centre/sites-page'
+import { UnitsPage } from './control-centre/units-page'
+import { OrgPage } from './directory/org-page'
+import { PeoplePage } from './directory/people-page'
 import { InventoryItemsPage } from './inventory/items-page'
 import { InventoryOverviewPage } from './inventory/overview-page'
 
@@ -16,6 +23,17 @@ export const SCREENS: Partial<Record<string, Partial<Record<string, ComponentTyp
   calendar: {
     '': CalendarPage,
     meetings: MeetingDetailPage, // /calendar/meetings?id=…
+  },
+  'control-centre': {
+    '': ControlOverviewPage,
+    units: UnitsPage, // ?id=<unit>
+    'site-types': SiteTypesPage, // ?id=<type>
+    sites: SitesPage, // ?id=<site>; ?filter=Paused|Active|new:<type>
+    employees: EmployeesPage, // ?id=<person> opens the record; ?filter=<status>|no-site|new:<unit>
+  },
+  directory: {
+    '': PeoplePage, // ?scope=group:<unit>|mgr:<person>|away&sort=team&q=&id=<person>
+    org: OrgPage, // ?id=<person> reveals them in the chart
   },
 }
 

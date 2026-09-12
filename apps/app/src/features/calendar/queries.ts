@@ -3,6 +3,7 @@
 // cache in place and return an undo, so the toasts can offer one; later they PATCH then invalidate.
 import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
+import { orgMeQuery, peopleQuery as orgPeopleQuery } from '@/features/org/queries'
 import * as mock from './mock'
 import type { CalendarDef, CalendarKey, Meeting, Room, Tone } from './types'
 
@@ -10,9 +11,10 @@ const key = (...parts: string[]) => ['calendar', ...parts] as const
 
 export const calendarsQuery = () => queryOptions({ queryKey: key('calendars'), queryFn: async () => mock.CALENDARS })
 export const roomsQuery = () => queryOptions({ queryKey: key('rooms'), queryFn: async () => mock.ROOMS })
-export const peopleQuery = () => queryOptions({ queryKey: key('people'), queryFn: async () => mock.PEOPLE })
+/** The org's people as the calendar sees them: a key, a name, a role line and a photo. Everyone can be invited, clients included. */
+export const peopleQuery = () => queryOptions({ ...orgPeopleQuery(), select: (list) => list.map((p) => ({ key: p.id, name: p.name, role: p.title, photo: p.photo })) })
 export const meetingsQuery = () => queryOptions({ queryKey: key('meetings'), queryFn: async () => mock.MEETINGS })
-export const meQuery = () => queryOptions({ queryKey: key('me'), queryFn: async () => ({ key: mock.ME, nowMinutes: mock.NOW_MINUTES }) })
+export const meQuery = () => queryOptions({ ...orgMeQuery(), select: (me) => ({ key: me.id, nowMinutes: mock.NOW_MINUTES }) })
 
 export const useCalendars = () => useSuspenseQuery(calendarsQuery()).data
 export const useRooms = () => useSuspenseQuery(roomsQuery()).data

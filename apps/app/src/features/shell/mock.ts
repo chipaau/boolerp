@@ -12,13 +12,13 @@ import type { AvatarChoice, Membership, NavCounts, Notification, SavedView, Supp
 export const NOTIFICATIONS: Notification[] = [
   { id: 'n8', title: 'Northwind quarterly needs your reply', meta: 'Tom Kean · today 11:30am · Atrium', category: 'Meetings', time: '08:12 AM', group: 'Today', unread: true, to: { app: 'calendar', section: 'meetings', id: 'm08' } },
   { id: 'n9', title: 'Priya moved your 1:1 to 5:00 pm', meta: 'Was 4:30pm · Nook', category: 'Meetings', time: '07:40 AM', group: 'Today', unread: true, to: { app: 'calendar', section: 'meetings', id: 'm10' } },
-  { id: 'n1', title: 'Printer toner is below reorder level', meta: '4 of 24 left in Warehouse A · 2 days of cover', category: 'Stock', time: '02:37 PM', group: 'Today', unread: true, to: { app: 'inventory', section: 'low-stock' } },
+  { id: 'n1', title: 'Printer toner is below reorder level', meta: '4 of 24 left in Malé central · 2 days of cover', category: 'Stock', time: '02:37 PM', group: 'Today', unread: true, to: { app: 'inventory', section: 'low-stock' } },
   { id: 'n2', title: 'Goods request awaiting your approval', meta: 'Raised by Joseph Okafor · Finance', category: 'Approvals', time: '08:05 AM', group: 'Today', unread: true, to: { app: 'inventory', section: 'requests' } },
   { id: 'n3', title: 'PO-2214 is overdue', meta: 'Northgate Office Supplies · expected 21 Jul', category: 'Orders', time: '07:10 AM', group: 'Today', unread: false, to: { app: 'inventory', section: 'purchase-orders' } },
   { id: 'n4', title: '3 safety helmets written off', meta: 'Marco Rahman · failed inspection', category: 'Stock', time: '04:12 PM', group: 'Yesterday', unread: false, to: { app: 'inventory', section: 'low-stock' } },
   { id: 'n10', title: 'Interview slot added for Tuesday', meta: 'Elena Marsh · Senior PM, second round', category: 'Meetings', time: '04:15 PM', group: 'Yesterday', unread: false, to: { app: 'calendar', section: 'meetings', id: 'm15' } },
   { id: 'n5', title: 'Reorder rules changed', meta: 'Auto-reorder switched on for 4 items', category: 'Orders', time: '11:40 AM', group: 'Yesterday', unread: false, to: { app: 'inventory', section: 'settings' } },
-  { id: 'n6', title: '52 Logitech MX Master 3S received', meta: 'PO-2201 · into Warehouse B', category: 'Orders', time: '21 Jul', group: 'Earlier', unread: false, to: { app: 'inventory', section: 'purchase-orders' } },
+  { id: 'n6', title: '52 Logitech MX Master 3S received', meta: 'PO-2201 · into Hithadhoo overflow', category: 'Orders', time: '21 Jul', group: 'Earlier', unread: false, to: { app: 'inventory', section: 'purchase-orders' } },
   { id: 'n7', title: 'MacBook Pro 14" issued to Rania Bakr', meta: 'Serial DL7742291 · Design', category: 'Stock', time: '21 Jul', group: 'Earlier', unread: false, to: { app: 'inventory', section: 'items' } },
 ]
 
@@ -38,7 +38,7 @@ export const NAV_COUNTS: Record<string, NavCounts> = {
 /** Per app slug: the "My views" rail group. */
 export const SAVED_VIEWS: Record<string, SavedView[]> = {
   inventory: [
-    { title: 'Site store · below reorder', section: 'items', search: { filter: 'Low stock', q: 'Site store' }, badgeKey: 'view:site-store-below-reorder' },
+    { title: 'Kulhudhuffushi · below reorder', section: 'items', search: { filter: 'Low stock', q: 'Kulhudhuffushi' }, badgeKey: 'view:site-store-below-reorder' },
     { title: 'Issued to my team', section: 'items', search: { filter: 'Issued' }, badgeKey: 'view:issued-to-my-team' },
     { title: 'On order', section: 'items', search: { filter: 'On order' }, badgeKey: 'view:on-order' },
   ],

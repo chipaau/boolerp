@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   SlidersHorizontal,
   Users,
-  UsersRound,
+  Bell,
   UserCog,
   ListTodo,
   Boxes,
@@ -64,25 +64,34 @@ export const APPS: AppDef[] = [
   {
     slug: 'control-centre',
     name: 'Control Centre',
-    description: 'Configure your workspace',
+    description: 'The record every app reads',
     icon: SlidersHorizontal,
     menu: [
       { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
       {
-        title: 'Access',
+        title: 'Organisation',
         items: [
-          { title: 'Users', slug: 'users', icon: Users },
-          { title: 'Roles', slug: 'roles', icon: Shield },
+          { title: 'Admin units', slug: 'units', icon: Building2 },
+          { title: 'Employees', slug: 'employees', icon: Users },
         ],
       },
       {
-        title: 'Organisation',
+        title: 'Inventory',
         items: [
-          { title: 'Org Units', slug: 'org-units', icon: Building2 },
+          { title: 'Site types', slug: 'site-types', icon: Shield },
           { title: 'Sites', slug: 'sites', icon: MapPin },
         ],
       },
-      { items: [{ title: 'Settings', slug: 'settings', icon: Settings }] },
+      {
+        title: 'System',
+        items: [
+          { title: 'Codes & numbering', slug: 'codes', icon: Settings },
+          { title: 'Regions', slug: 'regions', icon: MapPin },
+          { title: 'Public holidays', slug: 'holidays', icon: CalendarDays },
+          { title: 'Notifications', slug: 'notifications', icon: Bell },
+          { title: 'Activity log', slug: 'activity', icon: Activity },
+        ],
+      },
     ],
   },
   {
@@ -180,8 +189,7 @@ export const APPS: AppDef[] = [
       {
         items: [
           { title: 'People', slug: '', icon: Users },
-          { title: 'Teams', slug: 'teams', icon: UsersRound },
-          { title: 'Departments', slug: 'departments', icon: Building2 },
+          { title: 'Org chart', slug: 'org', icon: Building2 },
         ],
       },
     ],
