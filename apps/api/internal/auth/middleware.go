@@ -9,6 +9,7 @@ import (
 
 	"github.com/boolmv/goerp/internal/db/sqlc"
 	"github.com/boolmv/goerp/internal/observability"
+	"github.com/boolmv/goerp/internal/respond"
 )
 
 // Middleware validates the Kratos session on each request and JIT-upserts the users mirror.
@@ -39,7 +40,7 @@ func (m *Middleware) RequireSession(next http.Handler) http.Handler {
 				return
 			}
 			observability.LoggerFrom(r.Context()).Error("whoami failed", "err", err)
-			writeErr(w, http.StatusBadGateway, "auth upstream")
+			respond.Error(w, http.StatusBadGateway, "auth upstream")
 			return
 		}
 		if !sess.Active {
@@ -50,7 +51,7 @@ func (m *Middleware) RequireSession(next http.Handler) http.Handler {
 		user, err := m.upsert(r.Context(), sess)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("jit upsert failed", "err", err)
-			writeErr(w, http.StatusInternalServerError, "internal")
+			respond.Error(w, http.StatusInternalServerError, "internal")
 			return
 		}
 
@@ -76,10 +77,4 @@ func (m *Middleware) upsert(ctx context.Context, sess *KratosSession) (sqlc.User
 	})
 }
 
-func unauthorized(w http.ResponseWriter) { writeErr(w, http.StatusUnauthorized, "unauthenticated") }
-
-func writeErr(w http.ResponseWriter, status int, msg string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_, _ = w.Write([]byte(`{"error":"` + msg + `"}`))
-}
+func unauthorized(w http.ResponseWriter) { respond.Error(w, http.StatusUnauthorized, "unauthenticated") }

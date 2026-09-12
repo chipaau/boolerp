@@ -10,6 +10,7 @@ import (
 	"github.com/boolmv/goerp/internal/db/sqlc"
 	"github.com/boolmv/goerp/internal/module"
 	"github.com/boolmv/goerp/internal/observability"
+	"github.com/boolmv/goerp/internal/respond"
 )
 
 // Register builds this package's own module.Module: GET /me, the current user's own profile.
@@ -41,30 +42,30 @@ func me(pool *pgxpool.Pool, cerbos *Cerbos) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p, ok := PrincipalFrom(r.Context())
 		if !ok {
-			writeErr(w, http.StatusInternalServerError, "no principal")
+			respond.Error(w, http.StatusInternalServerError, "no principal")
 			return
 		}
 
 		allowed, err := cerbos.AllowSelfProfileRead(r.Context(), p.ID)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("cerbos check", "err", err)
-			writeErr(w, http.StatusBadGateway, "authz upstream")
+			respond.Error(w, http.StatusBadGateway, "authz upstream")
 			return
 		}
 		if !allowed {
-			writeErr(w, http.StatusForbidden, "forbidden")
+			respond.Error(w, http.StatusForbidden, "forbidden")
 			return
 		}
 
 		id, err := ParseUUID(p.ID)
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "bad principal id")
+			respond.Error(w, http.StatusInternalServerError, "bad principal id")
 			return
 		}
 		u, err := sqlc.New(pool).GetUserByID(r.Context(), id)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("get user", "err", err)
-			writeErr(w, http.StatusInternalServerError, "internal")
+			respond.Error(w, http.StatusInternalServerError, "internal")
 			return
 		}
 

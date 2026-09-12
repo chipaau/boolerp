@@ -8,6 +8,7 @@ import (
 
 	"github.com/boolmv/goerp/internal/auth"
 	"github.com/boolmv/goerp/internal/observability"
+	"github.com/boolmv/goerp/internal/respond"
 )
 
 // AdminRoute registers an operator/admin-console handler that is authorized against a Cerbos
@@ -17,10 +18,11 @@ import (
 // flagged as an unbuilt gap: a per-handler Cerbos call that's easy to forget).
 //
 // Generic over D — each module's own (narrow) deps type — so AdminRoute stays a single shared
-// platform helper without forcing every module's handlers to accept the whole platform-wide PlatformDeps
-// bag; only pool and cerbos are needed here for the authorization check itself. resourceKind/action
-// name the Cerbos resource + action (see docker/cerbos/policies) — action is typically "list",
-// "get", "provision", "suspend", "reactivate", "archive", but is resource-specific per module.
+// platform helper without forcing every module's handlers to accept the whole platform-wide
+// PlatformDeps bag; only pool and cerbos are needed here for the authorization check itself.
+// resourceKind/action name the Cerbos resource + action (see docker/cerbos/policies) — action is
+// typically "list", "get", "provision", "suspend", "reactivate", "archive", but is resource-specific
+// per module.
 func AdminRoute[D any](
 	r chi.Router, method, pattern, resourceKind, action string,
 	pool *pgxpool.Pool, cerbos *auth.Cerbos, deps D,
@@ -29,18 +31,18 @@ func AdminRoute[D any](
 	r.Method(method, pattern, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		principal, ok := auth.PrincipalFrom(req.Context())
 		if !ok {
-			WriteJSON(w, http.StatusUnauthorized, `{"error":"unauthenticated"}`)
+			respond.Error(w, http.StatusUnauthorized, "unauthenticated")
 			return
 		}
 		userID, err := auth.ParseUUID(principal.ID)
 		if err != nil {
-			WriteJSON(w, http.StatusInternalServerError, `{"error":"bad principal id"}`)
+			respond.Error(w, http.StatusInternalServerError, "bad principal id")
 			return
 		}
 
 		azp, err := auth.BuildOperatorPrincipal(req.Context(), pool, userID)
 		if err != nil {
-			WriteJSON(w, http.StatusInternalServerError, `{"error":"internal"}`)
+			respond.Error(w, http.StatusInternalServerError, "internal")
 			return
 		}
 
@@ -55,11 +57,11 @@ func AdminRoute[D any](
 		allowed, err := cerbos.Authorize(req.Context(), azp, auth.AuthzResource{Kind: resourceKind, ID: resourceID}, action)
 		if err != nil {
 			observability.LoggerFrom(req.Context()).Error("cerbos authorize", "err", err)
-			WriteJSON(w, http.StatusBadGateway, `{"error":"authz upstream"}`)
+			respond.Error(w, http.StatusBadGateway, "authz upstream")
 			return
 		}
 		if !allowed {
-			WriteJSON(w, http.StatusForbidden, `{"error":"forbidden"}`)
+			respond.Error(w, http.StatusForbidden, "forbidden")
 			return
 		}
 

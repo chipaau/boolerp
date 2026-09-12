@@ -4,7 +4,6 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/boolmv/goerp/internal/auth"
 	"github.com/boolmv/goerp/internal/module"
 	"github.com/boolmv/goerp/internal/observability"
+	"github.com/boolmv/goerp/internal/respond"
 )
 
 // PlatformDeps are the collaborators the HTTP layer itself needs — distinct from any module's own
@@ -53,7 +53,7 @@ func New(platform PlatformDeps, modules ...Module) http.Handler {
 	authmw := auth.NewMiddleware(platform.Kratos, platform.Pool)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		WriteJSON(w, http.StatusOK, `{"status":"ok"}`)
+		respond.JSON(w, http.StatusOK, `{"status":"ok"}`)
 	})
 	r.Get("/readyz", readyz(platform))
 	r.Get("/", readyz(platform))
@@ -78,32 +78,17 @@ func readyz(platform PlatformDeps) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
 		defer cancel()
 		if err := platform.Pool.Ping(ctx); err != nil {
-			WriteJSON(w, http.StatusServiceUnavailable, `{"status":"db unreachable"}`)
+			respond.JSON(w, http.StatusServiceUnavailable, `{"status":"db unreachable"}`)
 			return
 		}
 		if err := platform.Kratos.HealthReady(ctx); err != nil {
-			WriteJSON(w, http.StatusServiceUnavailable, `{"status":"kratos unreachable"}`)
+			respond.JSON(w, http.StatusServiceUnavailable, `{"status":"kratos unreachable"}`)
 			return
 		}
 		if err := platform.Cerbos.Health(ctx); err != nil {
-			WriteJSON(w, http.StatusServiceUnavailable, `{"status":"cerbos unreachable"}`)
+			respond.JSON(w, http.StatusServiceUnavailable, `{"status":"cerbos unreachable"}`)
 			return
 		}
-		WriteJSON(w, http.StatusOK, `{"status":"ready"}`)
+		respond.JSON(w, http.StatusOK, `{"status":"ready"}`)
 	}
-}
-
-// WriteJSON writes a literal JSON body — for small fixed responses; see WriteJSONBody to encode a
-// value. Exported so every module gets a consistent response shape without reimplementing it.
-func WriteJSON(w http.ResponseWriter, status int, body string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_, _ = w.Write([]byte(body))
-}
-
-// WriteJSONBody encodes v as the JSON response body.
-func WriteJSONBody(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
 }
