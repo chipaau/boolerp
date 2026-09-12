@@ -213,7 +213,7 @@ importers:
   e2e:
     devDependencies:
       '@playwright/test':
-        specifier: ^1.49.0
+        specifier: 1.63.0
         version: 1.63.0
 
   packages/assets: {}
