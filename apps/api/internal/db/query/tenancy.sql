@@ -35,6 +35,11 @@ RETURNING *;
 SELECT tu.* FROM tenant_users tu
 WHERE tu.tenant_id = $1 AND tu.is_owner AND tu.active_to IS NULL;
 
+-- name: GetActiveTenantMembership :one
+-- Used by the tenant-resolution middleware: is this user a CURRENT member of this tenant?
+SELECT tu.* FROM tenant_users tu
+WHERE tu.tenant_id = $1 AND tu.user_id = $2 AND tu.status = 'active' AND tu.active_to IS NULL;
+
 -- name: GetAppByCode :one
 SELECT * FROM apps WHERE code = $1;
 

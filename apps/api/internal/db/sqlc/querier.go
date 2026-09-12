@@ -21,6 +21,8 @@ type Querier interface {
 	// provisioning never sets it, same as it never set name_dv before.
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserRole(ctx context.Context, arg CreateUserRoleParams) (UserRole, error)
+	// Used by the tenant-resolution middleware: is this user a CURRENT member of this tenant?
+	GetActiveTenantMembership(ctx context.Context, arg GetActiveTenantMembershipParams) (TenantUser, error)
 	GetAppByCode(ctx context.Context, code string) (App, error)
 	GetCountry(ctx context.Context, code string) (Country, error)
 	GetCurrency(ctx context.Context, code string) (Currency, error)

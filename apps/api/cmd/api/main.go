@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/boolmv/goerp/internal/auth"
 	"github.com/boolmv/goerp/internal/config"
 	"github.com/boolmv/goerp/internal/httpapi"
+	"github.com/boolmv/goerp/internal/tenancy"
 )
 
 func main() {
@@ -39,6 +41,11 @@ func run() error {
 		return err
 	}
 	defer pool.Close()
+
+	// UC-FND-06: refuse to serve if any business/tenant-scoped table lacks RLS coverage.
+	if err := tenancy.CheckRLSCoverage(ctx, pool, tenancy.RLSScopedTables); err != nil {
+		return fmt.Errorf("rls coverage guard: %w", err)
+	}
 
 	handler := httpapi.New(httpapi.Deps{
 		Pool:   pool,

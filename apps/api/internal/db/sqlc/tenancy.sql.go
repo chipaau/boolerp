@@ -199,6 +199,35 @@ func (q *Queries) CreateUserRole(ctx context.Context, arg CreateUserRoleParams) 
 	return i, err
 }
 
+const getActiveTenantMembership = `-- name: GetActiveTenantMembership :one
+SELECT tu.id, tu.user_id, tu.tenant_id, tu.status, tu.is_owner, tu.invited_by, tu.active_from, tu.active_to, tu.created_at, tu.updated_at FROM tenant_users tu
+WHERE tu.tenant_id = $1 AND tu.user_id = $2 AND tu.status = 'active' AND tu.active_to IS NULL
+`
+
+type GetActiveTenantMembershipParams struct {
+	TenantID pgtype.UUID `json:"tenant_id"`
+	UserID   pgtype.UUID `json:"user_id"`
+}
+
+// Used by the tenant-resolution middleware: is this user a CURRENT member of this tenant?
+func (q *Queries) GetActiveTenantMembership(ctx context.Context, arg GetActiveTenantMembershipParams) (TenantUser, error) {
+	row := q.db.QueryRow(ctx, getActiveTenantMembership, arg.TenantID, arg.UserID)
+	var i TenantUser
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TenantID,
+		&i.Status,
+		&i.IsOwner,
+		&i.InvitedBy,
+		&i.ActiveFrom,
+		&i.ActiveTo,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAppByCode = `-- name: GetAppByCode :one
 SELECT id, code, name, requires_role, active_from, active_to, created_at, updated_at FROM apps WHERE code = $1
 `
