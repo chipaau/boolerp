@@ -27,13 +27,19 @@ type Deps struct {
 	MetricsEnabled bool
 }
 
-// Module mounts one feature's routes onto the authenticated /v1 group. Each business/platform
-// feature owns its own path namespace AND its own handlers, in its own package (e.g. tenancy.Routes
-// mounts "/admin"); main.go composes the running server by listing which modules it wants — that
-// list is the one place "which features exist" is visible. This package stays the composition root
-// plus genuinely cross-cutting platform pieces (Deps, AdminRoute, health/ready/metrics/session) —
-// it never owns a specific module's handlers itself.
-type Module func(r chi.Router, d Deps)
+// Module describes one feature mounted onto the API. Each module owns its own path namespace,
+// handlers, and dependencies in its own package (e.g. internal/tenancy) — Mount is a closure that
+// module's own constructor builds, already closed over whatever narrow deps it actually needs, so
+// httpapi never needs to know a module's dependency shape. RLSTables lets every business table a
+// module owns feed the startup RLS coverage guard (see cmd/api/main.go) straight from the list of
+// modules actually registered, instead of a separately maintained list that could drift from what's
+// actually mounted. main.go composes the running server by listing which modules it wants — that
+// list is the one place "which features exist" is visible.
+type Module struct {
+	Name      string
+	RLSTables []string
+	Mount     func(r chi.Router)
+}
 
 // New builds the API router with core platform routes (health/ready/metrics/session validation),
 // then mounts each supplied module under the authenticated /v1 group. Public: /, /healthz, /readyz
@@ -64,7 +70,7 @@ func New(d Deps, modules ...Module) http.Handler {
 		r.Use(authmw.RequireSession)
 		r.Get("/me", me(d))
 		for _, m := range modules {
-			m(r, d)
+			m.Mount(r)
 		}
 	})
 	// otelhttp creates the root span per request (UC-OBS-01/02); a no-op wrapper when tracing isn't

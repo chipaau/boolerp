@@ -165,10 +165,10 @@ func buildAdminTestHandler(t *testing.T, action string) (http.Handler, *bool) {
 	cerbosSrv := fakeAuthzCerbos()
 	t.Cleanup(cerbosSrv.Close)
 
-	deps := httpapi.Deps{Pool: env.Pool, Cerbos: auth.NewCerbos(cerbosSrv.URL)}
+	cerbos := auth.NewCerbos(cerbosSrv.URL)
 	called := false
 	r := chi.NewRouter()
-	httpapi.AdminRoute(r, http.MethodGet, "/test", action, deps, func(w http.ResponseWriter, _ *http.Request, _ httpapi.Deps, _ auth.AuthzPrincipal) {
+	httpapi.AdminRoute(r, http.MethodGet, "/test", "tenant", action, env.Pool, cerbos, struct{}{}, func(w http.ResponseWriter, _ *http.Request, _ struct{}, _ auth.AuthzPrincipal) {
 		called = true
 		w.WriteHeader(http.StatusOK)
 	})

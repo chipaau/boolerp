@@ -63,11 +63,13 @@ func newAdminAPITestRouter(t *testing.T, kratosURL string) http.Handler {
 	t.Helper()
 	cerbosSrv := fakeAuthzCerbos()
 	t.Cleanup(cerbosSrv.Close)
+	kratos := auth.NewKratos(kratosURL, kratosURL)
+	cerbos := auth.NewCerbos(cerbosSrv.URL)
 	return httpapi.New(httpapi.Deps{
 		Pool:   env.Pool,
-		Kratos: auth.NewKratos(kratosURL, kratosURL),
-		Cerbos: auth.NewCerbos(cerbosSrv.URL),
-	}, tenancy.Routes)
+		Kratos: kratos,
+		Cerbos: cerbos,
+	}, tenancy.Module(tenancy.Deps{Pool: env.Pool, Kratos: kratos}, env.Pool, cerbos))
 }
 
 func doAsOperator(t *testing.T, h http.Handler, method, path string, body any) *httptest.ResponseRecorder {

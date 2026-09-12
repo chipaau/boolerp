@@ -17,6 +17,38 @@ import (
 	"github.com/boolmv/goerp/internal/observability"
 )
 
+// Deps are the collaborators this package's own HTTP handlers need — narrower than the
+// platform-wide httpapi.Deps: no Cerbos (httpapi.AdminRoute itself owns the authorization check,
+// taking pool/cerbos directly) and no MetricsEnabled (irrelevant to a handler).
+type Deps struct {
+	Pool   *pgxpool.Pool
+	Kratos *auth.Kratos
+}
+
+// resourceKind is the Cerbos resource every route in this module authorizes against (see
+// docker/cerbos/policies/resource_tenant.yaml).
+const resourceKind = "tenant"
+
+// Module builds this package's httpapi.Module: its own path namespace ("/admin"), its own Deps,
+// and the RLS-scoped tables it owns (RLSScopedTables) — the one place all three travel together,
+// so main.go's module list is also the source of truth for the startup RLS coverage guard.
+func Module(deps Deps, pool *pgxpool.Pool, cerbos *auth.Cerbos) httpapi.Module {
+	return httpapi.Module{
+		Name:      "tenancy",
+		RLSTables: RLSScopedTables,
+		Mount: func(r chi.Router) {
+			r.Route("/admin", func(r chi.Router) {
+				httpapi.AdminRoute(r, http.MethodGet, "/tenants", resourceKind, "list", pool, cerbos, deps, adminListTenants)
+				httpapi.AdminRoute(r, http.MethodGet, "/tenants/{id}", resourceKind, "get", pool, cerbos, deps, adminGetTenant)
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants", resourceKind, "provision", pool, cerbos, deps, adminCreateTenant)
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/suspend", resourceKind, "suspend", pool, cerbos, deps, adminTransitionHandler(SuspendTenant))
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/reactivate", resourceKind, "reactivate", pool, cerbos, deps, adminTransitionHandler(ReactivateTenant))
+				httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/archive", resourceKind, "archive", pool, cerbos, deps, adminTransitionHandler(ArchiveTenant))
+			})
+		},
+	}
+}
+
 // tenantResponse is the operator-facing tenant shape — a deliberately small projection, not every
 // column on sqlc.Tenant.
 type tenantResponse struct {
@@ -36,21 +68,7 @@ func toTenantResponse(t sqlc.Tenant) tenantResponse {
 	}
 }
 
-// Routes mounts the operator-facing tenant CRUD (component 04, flat scope) under /v1/admin — every
-// route goes through httpapi.AdminRoute, never a raw chi method (Phase D's backstop). A
-// httpapi.Module, registered explicitly in cmd/api/main.go.
-func Routes(r chi.Router, d httpapi.Deps) {
-	r.Route("/admin", func(r chi.Router) {
-		httpapi.AdminRoute(r, http.MethodGet, "/tenants", "list", d, adminListTenants)
-		httpapi.AdminRoute(r, http.MethodGet, "/tenants/{id}", "get", d, adminGetTenant)
-		httpapi.AdminRoute(r, http.MethodPost, "/tenants", "provision", d, adminCreateTenant)
-		httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/suspend", "suspend", d, adminTransitionHandler(SuspendTenant))
-		httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/reactivate", "reactivate", d, adminTransitionHandler(ReactivateTenant))
-		httpapi.AdminRoute(r, http.MethodPost, "/tenants/{id}/archive", "archive", d, adminTransitionHandler(ArchiveTenant))
-	})
-}
-
-func adminListTenants(w http.ResponseWriter, r *http.Request, d httpapi.Deps, _ auth.AuthzPrincipal) {
+func adminListTenants(w http.ResponseWriter, r *http.Request, d Deps, _ auth.AuthzPrincipal) {
 	tenants, err := sqlc.New(d.Pool).ListTenants(r.Context())
 	if err != nil {
 		observability.LoggerFrom(r.Context()).Error("list tenants", "err", err)
@@ -64,7 +82,7 @@ func adminListTenants(w http.ResponseWriter, r *http.Request, d httpapi.Deps, _ 
 	httpapi.WriteJSONBody(w, http.StatusOK, resp)
 }
 
-func adminGetTenant(w http.ResponseWriter, r *http.Request, d httpapi.Deps, _ auth.AuthzPrincipal) {
+func adminGetTenant(w http.ResponseWriter, r *http.Request, d Deps, _ auth.AuthzPrincipal) {
 	id, err := auth.ParseUUID(chi.URLParam(r, "id"))
 	if err != nil {
 		httpapi.WriteJSON(w, http.StatusBadRequest, `{"error":"bad tenant id"}`)
@@ -94,7 +112,7 @@ type createTenantRequest struct {
 	OwnerName           string `json:"owner_name"`
 }
 
-func adminCreateTenant(w http.ResponseWriter, r *http.Request, d httpapi.Deps, p auth.AuthzPrincipal) {
+func adminCreateTenant(w http.ResponseWriter, r *http.Request, d Deps, p auth.AuthzPrincipal) {
 	var req createTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpapi.WriteJSON(w, http.StatusBadRequest, `{"error":"invalid body"}`)
@@ -149,8 +167,8 @@ func adminCreateTenant(w http.ResponseWriter, r *http.Request, d httpapi.Deps, p
 // so the three routes don't each re-implement the same id/actor parsing + response shape.
 func adminTransitionHandler(
 	transition func(ctx context.Context, pool *pgxpool.Pool, tenantID, actorID pgtype.UUID) (sqlc.Tenant, error),
-) func(w http.ResponseWriter, r *http.Request, d httpapi.Deps, p auth.AuthzPrincipal) {
-	return func(w http.ResponseWriter, r *http.Request, d httpapi.Deps, p auth.AuthzPrincipal) {
+) func(w http.ResponseWriter, r *http.Request, d Deps, p auth.AuthzPrincipal) {
+	return func(w http.ResponseWriter, r *http.Request, d Deps, p auth.AuthzPrincipal) {
 		id, err := auth.ParseUUID(chi.URLParam(r, "id"))
 		if err != nil {
 			httpapi.WriteJSON(w, http.StatusBadRequest, `{"error":"bad tenant id"}`)
