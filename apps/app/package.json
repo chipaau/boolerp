@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite dev --host --port 3000",
     "generate-routes": "tsr generate",
+    "typecheck": "tsc",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint",
