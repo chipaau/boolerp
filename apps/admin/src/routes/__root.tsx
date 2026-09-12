@@ -1,4 +1,5 @@
 import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { ToastProvider } from '@workspace/ui/components/toast'
 import { useScrollbarReveal } from '@workspace/ui/hooks/use-scrollbar-reveal'
 
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
@@ -13,7 +14,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   useScrollbarReveal()
   return (
-    <>
+    <ToastProvider>
       <Outlet />
       <TanStackDevtools
         config={{
@@ -26,6 +27,6 @@ function RootComponent() {
           },
         ]}
       />
-    </>
+    </ToastProvider>
   )
 }

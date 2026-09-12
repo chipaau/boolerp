@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/boolmv/goerp/internal/auth"
+	"github.com/boolmv/goerp/internal/observability"
 )
 
 // AdminRoute registers an operator/admin-console handler that is authorized against the "tenant"
@@ -34,8 +35,17 @@ func AdminRoute(r chi.Router, method, pattern, action string, deps Deps, handler
 			return
 		}
 
-		allowed, err := deps.Cerbos.Authorize(req.Context(), azp, auth.AuthzResource{Kind: "tenant"}, action)
+		// Cerbos requires a non-empty resource id even for collection-level actions (list, provision)
+		// that have no specific instance yet — "collection" is that placeholder; get/suspend/
+		// reactivate/archive pass the real {id} URL param instead.
+		resourceID := chi.URLParam(req, "id")
+		if resourceID == "" {
+			resourceID = "collection"
+		}
+
+		allowed, err := deps.Cerbos.Authorize(req.Context(), azp, auth.AuthzResource{Kind: "tenant", ID: resourceID}, action)
 		if err != nil {
+			observability.LoggerFrom(req.Context()).Error("cerbos authorize", "err", err)
 			writeJSON(w, http.StatusBadGateway, `{"error":"authz upstream"}`)
 			return
 		}

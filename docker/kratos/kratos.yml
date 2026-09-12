@@ -47,8 +47,11 @@ selfservice:
       enabled: true
       config:
         lifespan: 15m
+    # Self-service recovery still defaults to "code" (flows.recovery.use below) — this only enables
+    # the separate admin-triggered link generation (POST /admin/recovery/link), which auth.md's
+    # provisioning flow uses regardless of which method citizens see.
     link:
-      enabled: false
+      enabled: true
     oidc:
       enabled: false
   flows:

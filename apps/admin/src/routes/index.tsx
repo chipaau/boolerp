@@ -1,10 +1,9 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Button } from '@workspace/ui/components/button'
 import { getSession, logout } from '@workspace/auth'
 
-// Operator console (stub). Session guard ONLY for now — operator AUTHORIZATION (is this identity an
-// internal operator?) requires the internal-tenant model (04) + Cerbos (05). Provisioning, suspension,
-// and support/impersonation UIs arrive with those components.
+// Operator console home. Session guard ONLY — operator AUTHORIZATION is Cerbos's job (04 + 05),
+// enforced per-handler server-side, not here.
 export const Route = createFileRoute('/')({
   loader: async () => {
     const state = await getSession()
@@ -27,9 +26,7 @@ function Console() {
     <div className="flex min-h-svh flex-col items-center justify-center gap-4">
       <h1 className="text-2xl font-semibold">go-erp · Operator Console</h1>
       <p className="text-muted-foreground">Signed in as {email}</p>
-      <p className="max-w-xs text-center text-sm text-muted-foreground">
-        Provisioning, suspension, and support tools arrive with components 04 &amp; 05.
-      </p>
+      <Button render={<Link to="/tenants" />}>Manage tenants</Button>
       <Button variant="outline" onClick={() => logout()}>
         Log out
       </Button>
