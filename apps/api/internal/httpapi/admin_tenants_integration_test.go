@@ -63,7 +63,7 @@ func newAdminAPITestRouter(t *testing.T, kratosURL string) http.Handler {
 	t.Helper()
 	cerbosSrv := fakeAuthzCerbos()
 	t.Cleanup(cerbosSrv.Close)
-	deps := httpapi.Deps{
+	deps := httpapi.PlatformDeps{
 		Pool:   env.Pool,
 		Kratos: auth.NewKratos(kratosURL, kratosURL),
 		Cerbos: auth.NewCerbos(cerbosSrv.URL),

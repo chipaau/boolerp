@@ -18,7 +18,7 @@ import (
 )
 
 // Deps are the collaborators this package's own HTTP handlers need — narrower than the
-// platform-wide httpapi.Deps: no Cerbos (httpapi.AdminRoute itself owns the authorization check,
+// platform-wide httpapi.PlatformDeps: no Cerbos (httpapi.AdminRoute itself owns the authorization check,
 // taking pool/cerbos directly) and no MetricsEnabled (irrelevant to a handler).
 type Deps struct {
 	Pool   *pgxpool.Pool
@@ -29,13 +29,13 @@ type Deps struct {
 // docker/cerbos/policies/resource_tenant.yaml).
 const resourceKind = "tenant"
 
-// Register builds this package's httpapi.Module from the platform-wide Deps: its own path
+// Register builds this package's httpapi.Module from the platform-wide PlatformDeps: its own path
 // namespace ("/admin"), its own narrowed Deps for its handlers, and the RLS-scoped tables it owns
 // (RLSScopedTables) — the one place all three travel together, so main.go's module list is also the
-// source of truth for the startup RLS coverage guard. main.go passes the whole platform Deps once;
+// source of truth for the startup RLS coverage guard. main.go passes the whole PlatformDeps once;
 // each module decides for itself what it actually needs from it — nothing is picked apart by hand
 // at the call site.
-func Register(platform httpapi.Deps) httpapi.Module {
+func Register(platform httpapi.PlatformDeps) httpapi.Module {
 	deps := Deps{Pool: platform.Pool, Kratos: platform.Kratos}
 	return httpapi.Module{
 		Name:      "tenancy",

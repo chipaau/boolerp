@@ -75,7 +75,7 @@ func run() error {
 		return fmt.Errorf("register pool metrics: %w", err)
 	}
 
-	platformDeps := httpapi.Deps{
+	platform := httpapi.PlatformDeps{
 		Pool:           pool,
 		Kratos:         auth.NewKratos(cfg.KratosPublicURL, cfg.KratosAdminURL),
 		Cerbos:         auth.NewCerbos(cfg.CerbosHTTPURL),
@@ -83,10 +83,10 @@ func run() error {
 	}
 
 	// Modules mounted on the API — the one place that lists which features are live. Each module's
-	// own Register(deps) decides for itself what it needs from the platform-wide Deps; a future
-	// business module (inventory, hrms, ...) adds its own Register call here.
+	// own Register(platform) decides for itself what it needs from the platform-wide deps; a
+	// future business module (inventory, hrms, ...) adds its own Register call here.
 	modules := []httpapi.Module{
-		tenancy.Register(platformDeps),
+		tenancy.Register(platform),
 	}
 
 	// UC-FND-06: refuse to serve if any business/tenant-scoped table lacks RLS coverage. The table
@@ -99,7 +99,7 @@ func run() error {
 		return fmt.Errorf("rls coverage guard: %w", err)
 	}
 
-	handler := httpapi.New(platformDeps, modules...)
+	handler := httpapi.New(platform, modules...)
 
 	ln, err := net.Listen("tcp", ":"+cfg.Port)
 	if err != nil {

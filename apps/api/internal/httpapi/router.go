@@ -19,8 +19,10 @@ import (
 	"github.com/boolmv/goerp/internal/observability"
 )
 
-// Deps are the collaborators the HTTP layer needs.
-type Deps struct {
+// PlatformDeps are the collaborators the HTTP layer itself needs — distinct from any module's own
+// (narrower) deps type, e.g. tenancy.Deps. Every module's Register(platform PlatformDeps) takes the
+// whole bag and decides for itself what subset it actually needs from it.
+type PlatformDeps struct {
 	Pool           *pgxpool.Pool
 	Kratos         *auth.Kratos
 	Cerbos         *auth.Cerbos
@@ -47,7 +49,9 @@ type Module struct {
 // e.g. api.bool.test/). Authenticated: /v1/*. The API is reached same-origin as /api/* on every
 // tenant subdomain and directly (no prefix) at api.bool.test — Traefik strips /api before
 // forwarding either way, so this router's own path space never mentions /api (see compose.yaml).
-func New(d Deps, modules ...Module) http.Handler {
+// platform is used directly here (session middleware, /me, health/ready, metrics) — these are
+// httpapi's own routes, not any module's; modules bring their own deps via Mount.
+func New(platform PlatformDeps, modules ...Module) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -55,20 +59,20 @@ func New(d Deps, modules ...Module) http.Handler {
 	r.Use(observability.RequestLogger(slog.Default()))
 	r.Use(observability.MetricsMiddleware)
 
-	authmw := auth.NewMiddleware(d.Kratos, d.Pool)
+	authmw := auth.NewMiddleware(platform.Kratos, platform.Pool)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		WriteJSON(w, http.StatusOK, `{"status":"ok"}`)
 	})
-	r.Get("/readyz", readyz(d))
-	r.Get("/", readyz(d))
-	if d.MetricsEnabled {
+	r.Get("/readyz", readyz(platform))
+	r.Get("/", readyz(platform))
+	if platform.MetricsEnabled {
 		r.Handle("/metrics", observability.MetricsHandler())
 	}
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Use(authmw.RequireSession)
-		r.Get("/me", me(d))
+		r.Get("/me", me(platform))
 		for _, m := range modules {
 			m.Mount(r)
 		}
@@ -79,19 +83,19 @@ func New(d Deps, modules ...Module) http.Handler {
 }
 
 // readyz reports readiness only when every dependency is reachable.
-func readyz(d Deps) http.HandlerFunc {
+func readyz(platform PlatformDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
 		defer cancel()
-		if err := d.Pool.Ping(ctx); err != nil {
+		if err := platform.Pool.Ping(ctx); err != nil {
 			WriteJSON(w, http.StatusServiceUnavailable, `{"status":"db unreachable"}`)
 			return
 		}
-		if err := d.Kratos.HealthReady(ctx); err != nil {
+		if err := platform.Kratos.HealthReady(ctx); err != nil {
 			WriteJSON(w, http.StatusServiceUnavailable, `{"status":"kratos unreachable"}`)
 			return
 		}
-		if err := d.Cerbos.Health(ctx); err != nil {
+		if err := platform.Cerbos.Health(ctx); err != nil {
 			WriteJSON(w, http.StatusServiceUnavailable, `{"status":"cerbos unreachable"}`)
 			return
 		}
@@ -110,7 +114,7 @@ type meResponse struct {
 
 // me returns the current user. Exercises the full backbone: session (whoami) → JIT-upsert (in the
 // middleware) → authz (Cerbos scaffold policy) → DB read.
-func me(d Deps) http.HandlerFunc {
+func me(platform PlatformDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p, ok := auth.PrincipalFrom(r.Context())
 		if !ok {
@@ -118,7 +122,7 @@ func me(d Deps) http.HandlerFunc {
 			return
 		}
 
-		allowed, err := d.Cerbos.AllowSelfProfileRead(r.Context(), p.ID)
+		allowed, err := platform.Cerbos.AllowSelfProfileRead(r.Context(), p.ID)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("cerbos check", "err", err)
 			WriteJSON(w, http.StatusBadGateway, `{"error":"authz upstream"}`)
@@ -134,7 +138,7 @@ func me(d Deps) http.HandlerFunc {
 			WriteJSON(w, http.StatusInternalServerError, `{"error":"bad principal id"}`)
 			return
 		}
-		u, err := sqlc.New(d.Pool).GetUserByID(r.Context(), id)
+		u, err := sqlc.New(platform.Pool).GetUserByID(r.Context(), id)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("get user", "err", err)
 			WriteJSON(w, http.StatusInternalServerError, `{"error":"internal"}`)

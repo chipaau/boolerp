@@ -17,7 +17,7 @@ import (
 // flagged as an unbuilt gap: a per-handler Cerbos call that's easy to forget).
 //
 // Generic over D — each module's own (narrow) deps type — so AdminRoute stays a single shared
-// platform helper without forcing every module's handlers to accept the whole platform-wide Deps
+// platform helper without forcing every module's handlers to accept the whole platform-wide PlatformDeps
 // bag; only pool and cerbos are needed here for the authorization check itself. resourceKind/action
 // name the Cerbos resource + action (see docker/cerbos/policies) — action is typically "list",
 // "get", "provision", "suspend", "reactivate", "archive", but is resource-specific per module.
