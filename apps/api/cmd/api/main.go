@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,6 +17,7 @@ import (
 	"github.com/boolmv/goerp/internal/config"
 	"github.com/boolmv/goerp/internal/httpapi"
 	"github.com/boolmv/goerp/internal/observability"
+	"github.com/boolmv/goerp/internal/server"
 	"github.com/boolmv/goerp/internal/tenancy"
 )
 
@@ -43,11 +44,15 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("setup tracing: %w", err)
 	}
+	// Ordered cleanup on every return path, early failures included — one log line per resource.
+	// defer runs LIFO, so this (registered first) flushes the tracer LAST, after the pool closes.
 	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := shutdownTracing(shutdownCtx); err != nil {
-			slog.Error("tracer shutdown", "err", err)
+		if err := shutdownTracing(flushCtx); err != nil {
+			slog.Error("shutdown: tracer flush failed", "err", err)
+		} else {
+			slog.Info("shutdown: tracer flushed")
 		}
 	}()
 
@@ -62,7 +67,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
+	defer func() {
+		pool.Close()
+		slog.Info("shutdown: db pool closed")
+	}()
 	if err := observability.RegisterPoolMetrics(pool); err != nil {
 		return fmt.Errorf("register pool metrics: %w", err)
 	}
@@ -79,21 +87,19 @@ func run() error {
 		MetricsEnabled: cfg.MetricsEnabled,
 	})
 
-	srv := &http.Server{Addr: ":" + cfg.Port, Handler: handler, ReadHeaderTimeout: 5 * time.Second}
-
-	go func() {
-		slog.Info("api listening", "port", cfg.Port, "env", cfg.Env)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("server error", "err", err)
-		}
-	}()
+	ln, err := net.Listen("tcp", ":"+cfg.Port)
+	if err != nil {
+		return fmt.Errorf("listen: %w", err)
+	}
+	srv := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second}
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	<-stop
 
-	slog.Info("shutting down")
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
-	defer cancel()
-	return srv.Shutdown(shutdownCtx)
+	slog.Info("api listening", "port", cfg.Port, "env", cfg.Env)
+	if err := server.Serve(srv, ln, stop, cfg.ShutdownTimeout); err != nil {
+		return fmt.Errorf("serve: %w", err)
+	}
+	slog.Info("shutdown: no longer accepting new connections, in-flight requests drained")
+	return nil
 }
