@@ -75,17 +75,19 @@ func run() error {
 		return fmt.Errorf("register pool metrics: %w", err)
 	}
 
+	cerbosClient := auth.NewCerbos(cfg.CerbosHTTPURL)
 	platform := httpapi.PlatformDeps{
 		Pool:           pool,
 		Kratos:         auth.NewKratos(cfg.KratosPublicURL, cfg.KratosAdminURL),
-		Cerbos:         auth.NewCerbos(cfg.CerbosHTTPURL),
+		Cerbos:         cerbosClient,
 		MetricsEnabled: cfg.MetricsEnabled,
 	}
 
 	// Modules mounted on the API — the one place that lists which features are live. Each module's
-	// own Register(platform) decides for itself what it needs from the platform-wide deps; a
-	// future business module (inventory, hrms, ...) adds its own Register call here.
+	// own Register decides for itself what it needs; a future business module (inventory, hrms,
+	// ...) adds its own Register call here.
 	modules := []httpapi.Module{
+		auth.Register(pool, cerbosClient),
 		tenancy.Register(platform),
 	}
 

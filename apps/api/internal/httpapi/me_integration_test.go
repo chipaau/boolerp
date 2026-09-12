@@ -81,12 +81,13 @@ func TestMeEndToEnd(t *testing.T) {
 	defer k.Close()
 	c := fakeCerbos(true)
 	defer c.Close()
+	cerbos := auth.NewCerbos(c.URL)
 
 	h := httpapi.New(httpapi.PlatformDeps{
 		Pool:   env.Pool,
 		Kratos: auth.NewKratos(k.URL, k.URL),
-		Cerbos: auth.NewCerbos(c.URL),
-	})
+		Cerbos: cerbos,
+	}, auth.Register(env.Pool, cerbos))
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
@@ -124,12 +125,13 @@ func TestMeUnauthenticated(t *testing.T) {
 	defer k.Close()
 	c := fakeCerbos(true)
 	defer c.Close()
+	cerbos := auth.NewCerbos(c.URL)
 
 	h := httpapi.New(httpapi.PlatformDeps{
 		Pool:   env.Pool,
 		Kratos: auth.NewKratos(k.URL, k.URL),
-		Cerbos: auth.NewCerbos(c.URL),
-	})
+		Cerbos: cerbos,
+	}, auth.Register(env.Pool, cerbos))
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 

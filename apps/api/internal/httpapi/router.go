@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/boolmv/goerp/internal/auth"
-	"github.com/boolmv/goerp/internal/db/sqlc"
+	"github.com/boolmv/goerp/internal/module"
 	"github.com/boolmv/goerp/internal/observability"
 )
 
@@ -29,19 +29,10 @@ type PlatformDeps struct {
 	MetricsEnabled bool
 }
 
-// Module describes one feature mounted onto the API. Each module owns its own path namespace,
-// handlers, and dependencies in its own package (e.g. internal/tenancy) — Mount is a closure that
-// module's own constructor builds, already closed over whatever narrow deps it actually needs, so
-// httpapi never needs to know a module's dependency shape. RLSTables lets every business table a
-// module owns feed the startup RLS coverage guard (see cmd/api/main.go) straight from the list of
-// modules actually registered, instead of a separately maintained list that could drift from what's
-// actually mounted. main.go composes the running server by listing which modules it wants — that
-// list is the one place "which features exist" is visible.
-type Module struct {
-	Name      string
-	RLSTables []string
-	Mount     func(r chi.Router)
-}
+// Module is an alias for module.Module, kept here so existing call sites keep writing
+// httpapi.Module — the type itself lives in its own tiny package so packages httpapi depends on
+// (internal/auth) can build one too without an import cycle (see internal/module's doc comment).
+type Module = module.Module
 
 // New builds the API router with core platform routes (health/ready/metrics/session validation),
 // then mounts each supplied module under the authenticated /v1 group. Public: /, /healthz, /readyz
@@ -49,8 +40,8 @@ type Module struct {
 // e.g. api.bool.test/). Authenticated: /v1/*. The API is reached same-origin as /api/* on every
 // tenant subdomain and directly (no prefix) at api.bool.test — Traefik strips /api before
 // forwarding either way, so this router's own path space never mentions /api (see compose.yaml).
-// platform is used directly here (session middleware, /me, health/ready, metrics) — these are
-// httpapi's own routes, not any module's; modules bring their own deps via Mount.
+// platform is used directly here (session middleware, health/ready, metrics) — these are httpapi's
+// own routes, not any module's; every feature route, /me included, comes from a Module now.
 func New(platform PlatformDeps, modules ...Module) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -72,7 +63,6 @@ func New(platform PlatformDeps, modules ...Module) http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Use(authmw.RequireSession)
-		r.Get("/me", me(platform))
 		for _, m := range modules {
 			m.Mount(r)
 		}
@@ -100,57 +90,6 @@ func readyz(platform PlatformDeps) http.HandlerFunc {
 			return
 		}
 		WriteJSON(w, http.StatusOK, `{"status":"ready"}`)
-	}
-}
-
-type meResponse struct {
-	ID       string          `json:"id"`
-	Email    string          `json:"email"`
-	Name     string          `json:"name"`
-	NameI18n json.RawMessage `json:"name_i18n"`
-	Phone    *string         `json:"phone,omitempty"`
-	Status   string          `json:"status"`
-}
-
-// me returns the current user. Exercises the full backbone: session (whoami) → JIT-upsert (in the
-// middleware) → authz (Cerbos scaffold policy) → DB read.
-func me(platform PlatformDeps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		p, ok := auth.PrincipalFrom(r.Context())
-		if !ok {
-			WriteJSON(w, http.StatusInternalServerError, `{"error":"no principal"}`)
-			return
-		}
-
-		allowed, err := platform.Cerbos.AllowSelfProfileRead(r.Context(), p.ID)
-		if err != nil {
-			observability.LoggerFrom(r.Context()).Error("cerbos check", "err", err)
-			WriteJSON(w, http.StatusBadGateway, `{"error":"authz upstream"}`)
-			return
-		}
-		if !allowed {
-			WriteJSON(w, http.StatusForbidden, `{"error":"forbidden"}`)
-			return
-		}
-
-		id, err := auth.ParseUUID(p.ID)
-		if err != nil {
-			WriteJSON(w, http.StatusInternalServerError, `{"error":"bad principal id"}`)
-			return
-		}
-		u, err := sqlc.New(platform.Pool).GetUserByID(r.Context(), id)
-		if err != nil {
-			observability.LoggerFrom(r.Context()).Error("get user", "err", err)
-			WriteJSON(w, http.StatusInternalServerError, `{"error":"internal"}`)
-			return
-		}
-
-		resp := meResponse{ID: p.ID, Email: u.Email, Name: u.Name, NameI18n: u.NameI18n, Status: u.Status}
-		if u.Phone.Valid {
-			resp.Phone = &u.Phone.String
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(resp)
 	}
 }
 
