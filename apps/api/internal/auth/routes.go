@@ -15,8 +15,7 @@ import (
 
 // Register builds this package's own module.Module: GET /me, the current user's own profile.
 // Takes pool + cerbos directly (mirrors httpapi.AdminRoute's own shape) — that's all this handler
-// needs, no platform-wide deps bag required. RLSTables is empty: users is a platform table, outside
-// the tenant RLS regime (see .claude/rules/tenancy.md).
+// needs, no platform-wide deps bag required.
 func Register(pool *pgxpool.Pool, cerbos *Cerbos) module.Module {
 	return module.Module{
 		Name: "auth",

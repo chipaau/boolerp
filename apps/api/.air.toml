@@ -1,10 +1,19 @@
 root = "."
-tmp_dir = "tmp"
+tmp_dir = "/tmp/air"
 
 [build]
-  cmd = "go build -o ./tmp/api ./cmd/api"
-  bin = "./tmp/api"
+  cmd = "go build -buildvcs=false -o /tmp/goerp-api ./cmd/api"
+  bin = "/tmp/goerp-api"
   include_ext = ["go"]
-  exclude_dir = ["tmp"]
-  delay = 500
+  delay = 200
+  # Sends SIGINT (not SIGKILL) to the running binary before rebuilding, so internal/server's
+  # graceful shutdown path runs on every hot-reload, not just on container stop.
+  send_interrupt = true
+  kill_delay = "5s"
   stop_on_error = true
+
+[log]
+  time = true
+
+[misc]
+  clean_on_exit = false

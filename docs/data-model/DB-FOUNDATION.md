@@ -533,6 +533,8 @@ CREATE INDEX ON role_capabilities (role_id);
 ```
 
 ### `user_roles` — ✅ approved 2026-09-02, revised 2026-09-12 (app-scoped roles; time-bounded)
+**RLS-scoped** (00010_authorization_rls.sql) — unlike `roles` itself, every row here belongs to
+exactly one real tenant (no global-template case), so it fits the standard visible-set policy.
 Assigns a user a role, within a tenant. Both integrity checks the old composite FKs used to provide
 are now **app-enforced** (documented, not DB-guaranteed) — necessary once `roles.tenant_id` became
 nullable, since a composite FK can't match a real tenant id against a global role's `NULL`:
@@ -566,6 +568,8 @@ CREATE INDEX ON user_roles (tenant_id);
 ```
 
 ### `role_requests` — ✅ approved 2026-09-12
+**RLS-scoped** (00010_authorization_rls.sql) — `tenant_id` is `NOT NULL` on every row, same reasoning
+as `user_roles` above.
 The 4-eyes path into `user_roles`, opt-in per the tenant-wide `tenant_settings` key
 `requires_role_approval`. When that setting is `false` (or unset) for a tenant, an admin inserts
 into `user_roles` directly (unchanged). When `true`, a grant must pass through here first —
@@ -603,6 +607,8 @@ CREATE INDEX ON role_requests (review_deadline_at);
 ```
 
 ### `support_access_grants` — ✅ approved 2026-09-02, revised 2026-09-12 (renamed, two-stage, tenant-facing)
+**RLS-scoped** (00010_authorization_rls.sql) — `tenant_id` is `NOT NULL` on every row, same reasoning
+as `user_roles` above.
 Support access / impersonation (UC-AUTHZ-07 → UC-AUTH-14) — an operator getting time-boxed,
 audited access into a *different* tenant's data. Renamed from `access_grants` to match the term
 already used in `auth.md`/the glossary ("support-access grant"). Deliberately **not** shared with

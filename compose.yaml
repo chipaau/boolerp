@@ -116,12 +116,16 @@ services:
       context: .
       dockerfile: docker/go.Dockerfile
     working_dir: /w/apps/api
-    # `go run` never forwards SIGTERM to the compiled binary it spawns as a child process — Docker
-    # stop/compose down would silently skip the whole graceful-shutdown path (proven correct in
-    # internal/server's own tests, but never exercised here). Build once, then `exec` the binary so
-    # it becomes PID 1 and receives the signal directly.
-    # -buildvcs=false: see the migrate service's comment above — same bind-mounted-checkout issue.
-    command: sh -c "go build -buildvcs=false -o /tmp/goerp-api ./cmd/api && exec /tmp/goerp-api"
+    # Hot reload: air watches apps/api/**/*.go, rebuilds, and restarts the process (see
+    # apps/api/.air.toml). Dev-only — scaling to multiple replicas uses docker/api.Dockerfile's
+    # prebuilt static binary instead, never this rebuild-on-boot image.
+    command: air
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 60s
     environment:
       APP_ENV: ${APP_ENV:-dev}
       # API connects as the NON-OWNER goerp_app role (created by the migrate step).

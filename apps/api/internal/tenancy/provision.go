@@ -11,6 +11,7 @@ import (
 	"github.com/boolmv/erp/internal/audit"
 	"github.com/boolmv/erp/internal/auth"
 	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/rls"
 )
 
 // CreateTenantRow computes the next tree_key and inserts a root tenant row — the piece shared by
@@ -109,7 +110,7 @@ func Provision(ctx context.Context, pool *pgxpool.Pool, kratos *auth.Kratos, p P
 
 	// audit_log is RLS-scoped: set the session vars Provision's own transaction hasn't needed until
 	// now (it doesn't go through WithTenant's callback shape) so the row's tenant_id can resolve.
-	if err = setCurrentTenant(ctx, tx, tenant.ID); err != nil {
+	if err = rls.SetCurrentTenant(ctx, tx, tenant.ID); err != nil {
 		return ProvisionResult{}, err
 	}
 	auditPayload, err := json.Marshal(map[string]any{"after": map[string]string{"slug": tenant.Slug, "status": tenant.Status}})

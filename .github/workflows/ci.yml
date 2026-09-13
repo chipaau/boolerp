@@ -77,10 +77,10 @@ jobs:
       - name: Wait for the API to start
         run: |
           for i in $(seq 1 60); do
-            docker compose logs api 2>&1 | grep -q "api listening" && exit 0
+            [ "$(docker inspect --format='{{.State.Health.Status}}' go-erp-api-1 2>/dev/null)" = "healthy" ] && exit 0
             sleep 2
           done
-          echo "api never became ready" >&2
+          echo "api never became healthy" >&2
           docker compose logs
           exit 1
 
