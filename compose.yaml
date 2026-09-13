@@ -146,6 +146,11 @@ services:
       APP_KRATOS_PUBLIC_URL: ${APP_KRATOS_PUBLIC_URL:-http://kratos:4433}
       APP_KRATOS_ADMIN_URL: ${APP_KRATOS_ADMIN_URL:-http://kratos:4434}
       APP_CERBOS_HTTP_URL: ${APP_CERBOS_HTTP_URL:-http://cerbos:3592}
+      # On by default in dev now that somewhere to send them actually exists locally (tempo/
+      # prometheus below) — see internal/observability's tracing.go/metrics.go for the opt-in,
+      # no-op-when-unset behavior this relies on.
+      APP_OTLP_ENDPOINT: ${APP_OTLP_ENDPOINT:-tempo:4318}
+      APP_METRICS_ENABLED: ${APP_METRICS_ENABLED:-true}
     volumes:
       - .:/w
       - gocache:/root/.cache/go-build
@@ -313,6 +318,80 @@ services:
       - traefik.http.routers.goerp-kratos.service=goerp-kratos
       - traefik.http.services.goerp-kratos.loadbalancer.server.port=4433
 
+  # --- Local observability stack (component 07) --------------------------------------------------
+  # Mirrors the recommended SaaS/self-host backend (Grafana Loki + Tempo + Prometheus — see
+  # docs/srs/phase-1/07-observability/checklist.md's still-open "SaaS backend choice"; this is what
+  # that choice would look like, not a commitment to it) so tracing/logging/metrics are actually
+  # visible locally, not just wired in code with nowhere to send them. Internal-only except Grafana.
+
+  # Scrapes the API's own /metrics (APP_METRICS_ENABLED, opt-in — on by default in this dev stack).
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - internal
+
+  # Accepts OTLP traces from the API (APP_OTLP_ENDPOINT, opt-in — on by default in this dev stack).
+  tempo:
+    image: grafana/tempo:3.0.0
+    command: ["-config.file=/etc/tempo.yml"]
+    volumes:
+      - ./docker/tempo/tempo.yml:/etc/tempo.yml:ro
+      - tempo-data:/var/tempo
+    networks:
+      - internal
+
+  # Log storage — promtail below ships every container's stdout here.
+  loki:
+    image: grafana/loki:3.7.7
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./docker/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    networks:
+      - internal
+
+  # Ships every container's stdout to Loki via Docker service discovery — the api container's JSON
+  # log lines are parsed so request_id/trace_id (see internal/respond.Error, internal/observability's
+  # RequestLogger) are queryable fields, not just raw text.
+  promtail:
+    image: grafana/promtail:3.6.8
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./docker/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - internal
+
+  # Single pane of glass over all three — provisioned datasources, no manual setup. Tempo's "view
+  # logs for this trace" jumps straight to the matching Loki lines via trace_id.
+  grafana:
+    image: grafana/grafana:13.2.1
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - "traefik.http.routers.goerp-grafana.rule=Host(`grafana.bool.test`)"
+      - traefik.http.routers.goerp-grafana.entrypoints=web
+      - traefik.http.routers.goerp-grafana.priority=10
+      - traefik.http.routers.goerp-grafana.service=goerp-grafana
+      - traefik.http.services.goerp-grafana.loadbalancer.server.port=3000
+
 networks:
   proxy:
     external: true
@@ -324,3 +403,7 @@ volumes:
   gocache:
   gomod:
   pnpm-store:
+  prometheus-data:
+  tempo-data:
+  loki-data:
+  grafana-data:
