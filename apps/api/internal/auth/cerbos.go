@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/rls"
 )
 
 // Cerbos is a thin client over the Cerbos PDP HTTP API — consulted live per request (FR-AUTHZ-01),
@@ -140,7 +142,15 @@ func (c *Cerbos) Health(ctx context.Context) error {
 // (FR-AUTHZ-04 — platform:* capabilities only act platform-wide via such a role). A non-member gets
 // IsInternalMember=false and no capabilities, so any platform:* check denies by default. Takes
 // sqlc.DBTX (not concretely *pgxpool.Pool) so it can run inside a caller's transaction too.
-func BuildOperatorPrincipal(ctx context.Context, db sqlc.DBTX, userID pgtype.UUID) (AuthzPrincipal, error) {
+// dbTxBeginner is satisfied by both *pgxpool.Pool and pgx.Tx — everything BuildOperatorPrincipal
+// needs: sqlc.DBTX's query methods for the (platform-table, non-RLS) membership checks, plus Begin
+// to scope the RLS-protected user_roles lookup to the internal tenant via rls.WithTenant.
+type dbTxBeginner interface {
+	sqlc.DBTX
+	rls.Beginner
+}
+
+func BuildOperatorPrincipal(ctx context.Context, db dbTxBeginner, userID pgtype.UUID) (AuthzPrincipal, error) {
 	q := sqlc.New(db)
 
 	isInternal, err := q.IsInternalTenantMember(ctx, userID)
@@ -156,9 +166,21 @@ func BuildOperatorPrincipal(ctx context.Context, db sqlc.DBTX, userID pgtype.UUI
 	if err != nil {
 		return AuthzPrincipal{}, fmt.Errorf("auth: get internal tenant: %w", err)
 	}
-	caps, err := q.ListActiveCapabilitiesForUserInTenant(ctx, sqlc.ListActiveCapabilitiesForUserInTenantParams{
-		UserID:   userID,
-		TenantID: internalTenant.ID,
+
+	// user_roles is RLS-scoped (00010_authorization_rls.sql), so this read needs app.current_tenant
+	// set to the internal tenant — a plain query through db would see zero rows and silently
+	// resolve every operator as capability-less.
+	var caps []string
+	err = rls.WithTenant(ctx, db, internalTenant.ID, func(ctx context.Context, tx pgx.Tx) error {
+		c, err := sqlc.New(tx).ListActiveCapabilitiesForUserInTenant(ctx, sqlc.ListActiveCapabilitiesForUserInTenantParams{
+			UserID:   userID,
+			TenantID: internalTenant.ID,
+		})
+		if err != nil {
+			return err
+		}
+		caps = c
+		return nil
 	})
 	if err != nil {
 		return AuthzPrincipal{}, fmt.Errorf("auth: list capabilities: %w", err)

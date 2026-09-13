@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +18,8 @@ import (
 	"github.com/boolmv/erp/internal/observability"
 	"github.com/boolmv/erp/internal/respond"
 )
+
+func uuidString(id pgtype.UUID) string { return uuid.UUID(id.Bytes).String() }
 
 // Deps are the collaborators this package's own HTTP handlers need — narrower than the
 // platform-wide httpapi.PlatformDeps: no Cerbos (httpapi.AdminRoute itself owns the authorization check,
@@ -31,16 +34,13 @@ type Deps struct {
 const resourceKind = "tenant"
 
 // Register builds this package's httpapi.Module from the platform-wide PlatformDeps: its own path
-// namespace ("/admin"), its own narrowed Deps for its handlers, and the RLS-scoped tables it owns
-// (RLSScopedTables) — the one place all three travel together, so main.go's module list is also the
-// source of truth for the startup RLS coverage guard. main.go passes the whole PlatformDeps once;
-// each module decides for itself what it actually needs from it — nothing is picked apart by hand
-// at the call site.
+// namespace ("/admin") and its own narrowed Deps for its handlers. main.go passes the whole
+// PlatformDeps once; each module decides for itself what it actually needs from it — nothing is
+// picked apart by hand at the call site.
 func Register(platform httpapi.PlatformDeps) httpapi.Module {
 	deps := Deps{Pool: platform.Pool, Kratos: platform.Kratos}
 	return httpapi.Module{
-		Name:      "tenancy",
-		RLSTables: RLSScopedTables,
+		Name: "tenancy",
 		Mount: func(r chi.Router) {
 			r.Route("/admin", func(r chi.Router) {
 				httpapi.AdminRoute(r, http.MethodGet, "/tenants", resourceKind, "list", platform.Pool, platform.Cerbos, deps, adminListTenants)

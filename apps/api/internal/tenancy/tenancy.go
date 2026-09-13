@@ -6,50 +6,19 @@ package tenancy
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/boolmv/erp/internal/rls"
 )
 
-// WithTenant opens a transaction, sets app.current_tenant (+ a single-tenant app.visible_tenants)
-// LOCAL to it — never leaking across a pooled/PgBouncer'd connection — then runs fn. Every handler
-// and background job that touches tenant-scoped data goes through this (FR-FND-04).
+// WithTenant re-exports rls.WithTenant so existing callers here (Provision, lifecycle.go) and in
+// tests don't change — the mechanics live in internal/rls so internal/auth can use them too (see
+// that package's doc comment for why).
 func WithTenant(ctx context.Context, pool *pgxpool.Pool, tenantID pgtype.UUID, fn func(ctx context.Context, tx pgx.Tx) error) error {
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("tenancy: begin tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	if err := setCurrentTenant(ctx, tx, tenantID); err != nil {
-		return err
-	}
-
-	if err := fn(ctx, tx); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
-}
-
-// setCurrentTenant is WithTenant's session-var setup, factored out so callers managing their own
-// transaction (Provision, which also needs to write an audit_log row for the tenant it just
-// created) can apply the same tenant-scoping without going through WithTenant's callback shape.
-func setCurrentTenant(ctx context.Context, tx pgx.Tx, tenantID pgtype.UUID) error {
-	id := uuidString(tenantID)
-	if _, err := tx.Exec(ctx,
-		`SELECT set_config('app.current_tenant', $1, true), set_config('app.visible_tenants', $2, true)`,
-		id, "{"+id+"}",
-	); err != nil {
-		return fmt.Errorf("tenancy: set current tenant: %w", err)
-	}
-	return nil
-}
-
-func uuidString(id pgtype.UUID) string {
-	return uuid.UUID(id.Bytes).String()
+	return rls.WithTenant(ctx, pool, tenantID, fn)
 }
 
 type ctxKey int

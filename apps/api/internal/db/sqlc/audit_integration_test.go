@@ -15,8 +15,8 @@ import (
 
 func uuidStr(id pgtype.UUID) string { return uuid.UUID(id.Bytes).String() }
 
-// setTenantConfig mirrors tenancy.setCurrentTenant (unexported, different package) — this package's
-// tests exercise the raw schema/RLS directly rather than through the tenancy package.
+// setTenantConfig mirrors rls.SetCurrentTenant — this package's tests exercise the raw schema/RLS
+// directly rather than through the rls/tenancy packages.
 func setTenantConfig(t *testing.T, ctx context.Context, tx pgx.Tx, id pgtype.UUID) {
 	t.Helper()
 	s := uuidStr(id)

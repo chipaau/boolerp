@@ -77,7 +77,7 @@ func run(ctx context.Context) error {
 	if err := provisionMalecouncilOwner(ctx, q, kratos); err != nil {
 		return err
 	}
-	return provisionInternalOperator(ctx, q, kratos)
+	return provisionInternalOperator(ctx, pool, q, kratos)
 }
 
 func provisionMalecouncilOwner(ctx context.Context, q *sqlc.Queries, kratos *auth.Kratos) error {
@@ -163,7 +163,7 @@ func createTenant(ctx context.Context, q *sqlc.Queries) (sqlc.Tenant, error) {
 // and one operator owner so admin.bool.test has a real, DB-backed login. This provisions the
 // identity only — actual operator-only enforcement (Cerbos is_internal_member + the real principal
 // in Chi middleware) is separate follow-up work; apps/admin today only checks for ANY valid session.
-func provisionInternalOperator(ctx context.Context, q *sqlc.Queries, kratos *auth.Kratos) error {
+func provisionInternalOperator(ctx context.Context, pool *pgxpool.Pool, q *sqlc.Queries, kratos *auth.Kratos) error {
 	tenant, err := q.GetInternalTenant(ctx)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
@@ -222,10 +222,15 @@ func provisionInternalOperator(ctx context.Context, q *sqlc.Queries, kratos *aut
 	if _, err := q.CreateOwnerTenantUser(ctx, sqlc.CreateOwnerTenantUserParams{UserID: userID, TenantID: tenant.ID}); err != nil {
 		return fmt.Errorf("create operator membership: %w", err)
 	}
-	if _, err := q.CreateUserRole(ctx, sqlc.CreateUserRoleParams{
-		TenantID: tenant.ID,
-		UserID:   userID,
-		RoleID:   role.ID,
+	// user_roles is RLS-scoped (00010_authorization_rls.sql) — the insert needs app.current_tenant
+	// set to this tenant, hence WithTenant rather than a plain q.CreateUserRole.
+	if err := tenancy.WithTenant(ctx, pool, tenant.ID, func(ctx context.Context, tx pgx.Tx) error {
+		_, err := sqlc.New(tx).CreateUserRole(ctx, sqlc.CreateUserRoleParams{
+			TenantID: tenant.ID,
+			UserID:   userID,
+			RoleID:   role.ID,
+		})
+		return err
 	}); err != nil {
 		return fmt.Errorf("assign operator role: %w", err)
 	}

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -77,42 +78,44 @@ func TestCheckRLSCoverage_CatchesMissingRLSAndPassesConfigured(t *testing.T) {
 	ctx := context.Background()
 	tx := env.Tx(t)
 
+	// Discovery is schema-driven now (no explicit table list) — a synthetic, non-exempt table with
+	// a tenant_id column is found and checked automatically, same as any real business table would be.
 	if _, err := tx.Exec(ctx, `CREATE TABLE test_unprotected (id uuid PRIMARY KEY, tenant_id uuid NOT NULL)`); err != nil {
 		t.Fatalf("create unprotected table: %v", err)
 	}
-	if err := tenancy.CheckRLSCoverage(ctx, tx, []string{"test_unprotected"}); err == nil {
-		t.Fatal("want an error for a table with no RLS at all")
+	err := tenancy.CheckRLSCoverage(ctx, tx)
+	if err == nil || !strings.Contains(err.Error(), "test_unprotected") {
+		t.Fatalf("want an error naming test_unprotected (no RLS at all), got %v", err)
 	}
 
-	if _, err := tx.Exec(ctx, `CREATE TABLE test_protected (id uuid PRIMARY KEY, tenant_id uuid NOT NULL)`); err != nil {
-		t.Fatalf("create protected table: %v", err)
-	}
-	if _, err := tx.Exec(ctx, `ALTER TABLE test_protected ENABLE ROW LEVEL SECURITY`); err != nil {
+	if _, err := tx.Exec(ctx, `ALTER TABLE test_unprotected ENABLE ROW LEVEL SECURITY`); err != nil {
 		t.Fatalf("enable rls: %v", err)
 	}
-	if err := tenancy.CheckRLSCoverage(ctx, tx, []string{"test_protected"}); err == nil {
-		t.Fatal("want an error: RLS enabled but not FORCED and no policy yet")
+	err = tenancy.CheckRLSCoverage(ctx, tx)
+	if err == nil || !strings.Contains(err.Error(), "test_unprotected") {
+		t.Fatalf("want an error: RLS enabled but not FORCED and no policy yet, got %v", err)
 	}
-	if _, err := tx.Exec(ctx, `ALTER TABLE test_protected FORCE ROW LEVEL SECURITY`); err != nil {
+	if _, err := tx.Exec(ctx, `ALTER TABLE test_unprotected FORCE ROW LEVEL SECURITY`); err != nil {
 		t.Fatalf("force rls: %v", err)
 	}
-	if err := tenancy.CheckRLSCoverage(ctx, tx, []string{"test_protected"}); err == nil {
-		t.Fatal("want an error: forced but still no policy")
+	err = tenancy.CheckRLSCoverage(ctx, tx)
+	if err == nil || !strings.Contains(err.Error(), "test_unprotected") {
+		t.Fatalf("want an error: forced but still no policy, got %v", err)
 	}
-	if _, err := tx.Exec(ctx, `CREATE POLICY test_protected_isolation ON test_protected USING (tenant_id = current_setting('app.current_tenant')::uuid)`); err != nil {
+	if _, err := tx.Exec(ctx, `CREATE POLICY test_unprotected_isolation ON test_unprotected USING (tenant_id = current_setting('app.current_tenant')::uuid)`); err != nil {
 		t.Fatalf("create policy: %v", err)
 	}
-	if err := tenancy.CheckRLSCoverage(ctx, tx, []string{"test_protected"}); err != nil {
-		t.Fatalf("want no error once forced + policied, got %v", err)
+	if err := tenancy.CheckRLSCoverage(ctx, tx); err != nil {
+		t.Fatalf("want no error once forced + policied (rest of the real schema already passes), got %v", err)
 	}
 }
 
-func TestCheckRLSCoverage_RealScopedTablesListPasses(t *testing.T) {
-	// audit_log (component 06) is the first real entry — proves the guard actually passes against
-	// production migrations, not just synthetic tables. It must never mistake a platform/control-
-	// plane table (tenants, roles, ... which DO carry a tenant_id-shaped column) for one of these.
-	if err := tenancy.CheckRLSCoverage(context.Background(), env.Pool, tenancy.RLSScopedTables); err != nil {
-		t.Fatalf("real RLSScopedTables should all be properly configured, got %v", err)
+func TestCheckRLSCoverage_RealSchemaPasses(t *testing.T) {
+	// Proves the guard passes against production migrations, not just synthetic tables — and that
+	// it correctly exempts platform/control-plane tables (tenants, roles, ... which DO carry a
+	// tenant_id-shaped column) rather than mistaking them for tenant-isolated business data.
+	if err := tenancy.CheckRLSCoverage(context.Background(), env.Pool); err != nil {
+		t.Fatalf("real schema should be fully RLS-covered (or exempt), got %v", err)
 	}
 }
 

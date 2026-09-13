@@ -10,10 +10,10 @@ import "github.com/go-chi/chi/v5"
 // Module describes one feature mounted onto the API. Each module owns its own path namespace,
 // handlers, and dependencies in its own package — Mount is a closure that module's own constructor
 // (e.g. tenancy.Register, auth.Register) builds, already closed over whatever narrow deps it
-// actually needs. RLSTables lets every business table a module owns feed the startup RLS coverage
-// guard straight from the modules actually registered, instead of a separately maintained list.
+// actually needs. The startup RLS coverage guard (internal/tenancy.CheckRLSCoverage) is schema-
+// driven, not module-driven — it discovers tables directly from Postgres rather than depending on
+// modules to self-report, so Module doesn't carry an RLS-related field.
 type Module struct {
-	Name      string
-	RLSTables []string
-	Mount     func(r chi.Router)
+	Name  string
+	Mount func(r chi.Router)
 }

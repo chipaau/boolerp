@@ -91,13 +91,10 @@ func run() error {
 		tenancy.Register(platform),
 	}
 
-	// UC-FND-06: refuse to serve if any business/tenant-scoped table lacks RLS coverage. The table
-	// list is derived from the modules actually registered above, not maintained separately.
-	var rlsTables []string
-	for _, m := range modules {
-		rlsTables = append(rlsTables, m.RLSTables...)
-	}
-	if err := tenancy.CheckRLSCoverage(ctx, pool, rlsTables); err != nil {
+	// UC-FND-06: refuse to serve if any business/tenant-scoped table lacks RLS coverage. Schema-
+	// driven (see tenancy.CheckRLSCoverage) — every table needs RLS unless explicitly exempted as
+	// platform data, not the other way around.
+	if err := tenancy.CheckRLSCoverage(ctx, pool); err != nil {
 		return fmt.Errorf("rls coverage guard: %w", err)
 	}
 
