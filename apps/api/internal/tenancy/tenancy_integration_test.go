@@ -206,6 +206,51 @@ func TestRequireTenant_NonMemberIsNotFound(t *testing.T) {
 	}
 }
 
+// Membership is a validity window, not just a status flag: a row still marked 'active' whose
+// active_to has passed must no longer grant access.
+func TestRequireTenant_EndedMembershipIsNotFound(t *testing.T) {
+	tenant, ownerID := setupMiddlewareFixture(t, "test-mw-ended")
+	if _, err := env.Pool.Exec(context.Background(),
+		`UPDATE tenant_users SET active_to = now() - interval '1 day' WHERE tenant_id = $1 AND user_id = $2`,
+		tenant.ID, ownerID); err != nil {
+		t.Fatalf("end membership: %v", err)
+	}
+
+	mw := tenancy.NewMiddleware(env.Pool)
+	h := mw.RequireTenant(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+
+	req := httptest.NewRequest(http.MethodGet, "http://test-mw-ended.bool.test/v1/x", nil)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), &auth.Principal{ID: uuidToString(ownerID)}))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("want 404 for an ended membership, got %d", rec.Code)
+	}
+}
+
+// The mirror image: a membership whose start is in the future doesn't grant access yet.
+func TestRequireTenant_NotYetStartedMembershipIsNotFound(t *testing.T) {
+	tenant, ownerID := setupMiddlewareFixture(t, "test-mw-future")
+	if _, err := env.Pool.Exec(context.Background(),
+		`UPDATE tenant_users SET active_from = now() + interval '1 day' WHERE tenant_id = $1 AND user_id = $2`,
+		tenant.ID, ownerID); err != nil {
+		t.Fatalf("future-date membership: %v", err)
+	}
+
+	mw := tenancy.NewMiddleware(env.Pool)
+	h := mw.RequireTenant(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+
+	req := httptest.NewRequest(http.MethodGet, "http://test-mw-future.bool.test/v1/x", nil)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), &auth.Principal{ID: uuidToString(ownerID)}))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("want 404 for a not-yet-started membership, got %d", rec.Code)
+	}
+}
+
 func TestRequireTenant_SuspendedTenantIsForbidden(t *testing.T) {
 	tenant, ownerID := setupMiddlewareFixture(t, "test-mw-suspended")
 	if _, err := env.Pool.Exec(context.Background(), `UPDATE tenants SET status = 'suspended' WHERE id = $1`, tenant.ID); err != nil {

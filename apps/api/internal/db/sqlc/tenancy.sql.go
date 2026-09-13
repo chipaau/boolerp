@@ -237,7 +237,10 @@ func (q *Queries) CreateUserRole(ctx context.Context, arg CreateUserRoleParams) 
 
 const getActiveTenantMembership = `-- name: GetActiveTenantMembership :one
 SELECT tu.id, tu.user_id, tu.tenant_id, tu.status, tu.is_owner, tu.invited_by, tu.active_from, tu.active_to, tu.created_at, tu.updated_at FROM tenant_users tu
-WHERE tu.tenant_id = $1 AND tu.user_id = $2 AND tu.status = 'active' AND tu.active_to IS NULL
+WHERE tu.tenant_id = $1 AND tu.user_id = $2
+  AND tu.status = 'active'
+  AND tu.active_from IS NOT NULL AND tu.active_from <= now()
+  AND (tu.active_to IS NULL OR tu.active_to > now())
 `
 
 type GetActiveTenantMembershipParams struct {
@@ -246,6 +249,9 @@ type GetActiveTenantMembershipParams struct {
 }
 
 // Used by the tenant-resolution middleware: is this user a CURRENT member of this tenant?
+// "Current" is the full validity window, not just the status flag: an 'active' row whose start hasn't
+// arrived (or was never stamped) doesn't grant access yet, and one whose end has passed no longer
+// does. active_to IS NULL means "no end set" — still a member.
 func (q *Queries) GetActiveTenantMembership(ctx context.Context, arg GetActiveTenantMembershipParams) (TenantUser, error) {
 	row := q.db.QueryRow(ctx, getActiveTenantMembership, arg.TenantID, arg.UserID)
 	var i TenantUser
@@ -486,12 +492,17 @@ const isInternalTenantMember = `-- name: IsInternalTenantMember :one
 SELECT EXISTS (
   SELECT 1 FROM tenant_users tu
   JOIN tenants t ON t.id = tu.tenant_id
-  WHERE tu.user_id = $1 AND t.is_internal AND tu.status = 'active' AND tu.active_to IS NULL
+  WHERE tu.user_id = $1 AND t.is_internal
+    AND tu.status = 'active'
+    AND tu.active_from IS NOT NULL AND tu.active_from <= now()
+    AND (tu.active_to IS NULL OR tu.active_to > now())
 )
 `
 
 // FR-AUTHZ-04: platform:* capabilities only act platform-wide when held via a role on the ONE
 // internal/operator tenant, and only when the caller is genuinely a member of it.
+// Same validity window as GetActiveTenantMembership: an operator whose internal-tenant membership
+// hasn't started or has ended holds no platform-wide capabilities.
 func (q *Queries) IsInternalTenantMember(ctx context.Context, userID pgtype.UUID) (bool, error) {
 	row := q.db.QueryRow(ctx, isInternalTenantMember, userID)
 	var exists bool
@@ -503,7 +514,9 @@ const listActiveCapabilitiesForUserInTenant = `-- name: ListActiveCapabilitiesFo
 SELECT DISTINCT rc.capability
 FROM user_roles ur
 JOIN role_capabilities rc ON rc.role_id = ur.role_id
-WHERE ur.user_id = $1 AND ur.tenant_id = $2 AND ur.active_to IS NULL
+WHERE ur.user_id = $1 AND ur.tenant_id = $2
+  AND ur.active_from <= now()
+  AND (ur.active_to IS NULL OR ur.active_to > now())
 `
 
 type ListActiveCapabilitiesForUserInTenantParams struct {
@@ -513,6 +526,10 @@ type ListActiveCapabilitiesForUserInTenantParams struct {
 
 // The capability slugs a user currently holds via CURRENT role assignments in one tenant — the
 // principal-building query behind authz.Authorize.
+//
+// Grants are time-bounded by design (DB-FOUNDATION: acting appointments can be scheduled ahead), so
+// "current" is the window, not just "has no end date": a grant starting next month must not confer
+// capabilities today, and one with an end date still confers them until that date arrives.
 func (q *Queries) ListActiveCapabilitiesForUserInTenant(ctx context.Context, arg ListActiveCapabilitiesForUserInTenantParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, listActiveCapabilitiesForUserInTenant, arg.UserID, arg.TenantID)
 	if err != nil {

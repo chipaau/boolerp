@@ -13,7 +13,7 @@ Tenant-facing UI lives in **Control Centre** (`apps/app`); operator provisioning
 ## Functional requirements
 | ID | Requirement |
 |---|---|
-| FR-MEM-01 | Mirror the Kratos identity into `platform.users` (`id` = subject); **JIT-upsert** in middleware if missing. |
+| FR-MEM-01 | Mirror the Kratos identity into `platform.users` (`id` = subject). Rows are created **only** by provisioning/invite (FR-MEM-03); middleware **refreshes** the mirror from the identity traits on each `whoami` but **never inserts** — an unknown subject is refused (403), not admitted. |
 | FR-MEM-02 | `tenant_users` membership: `user_id` + `tenant_id`, `status` (invited/active/disabled), `is_owner`, `joined_at`; `unique(user_id, tenant_id)`. |
 | FR-MEM-03 | **Invite** a member (Control Centre): create the identity if new (Kratos admin API) + membership `invited` + activation link; existing user → membership `invited` directly. |
 | FR-MEM-04 | **Activate** membership (via UC-AUTH-01) → `active`. |

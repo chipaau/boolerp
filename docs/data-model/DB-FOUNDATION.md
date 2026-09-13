@@ -221,7 +221,8 @@ Global: one identity spans all tenants; `users.id` = the Kratos subject. Verifie
 future national eIDs) hangs off `users` in separate 1:1 tables so the core stays lean.
 
 ### `users` — ✅ approved 2026-08-13, revised 2026-09-11 (docs consolidation review)
-Lean projection of the Kratos identity (JIT-upserted on `whoami`). **No credentials** (Kratos owns them).
+Lean projection of the Kratos identity. Rows are created **only** by provisioning/invite — never by signing in;
+`whoami` refreshes an existing row but never inserts one. **No credentials** (Kratos owns them).
 
 ```sql
 CREATE TABLE users (
@@ -538,7 +539,9 @@ exactly one real tenant (no global-template case), so it fits the standard visib
 Assigns a user a role, within a tenant. Both integrity checks the old composite FKs used to provide
 are now **app-enforced** (documented, not DB-guaranteed) — necessary once `roles.tenant_id` became
 nullable, since a composite FK can't match a real tenant id against a global role's `NULL`:
-1. `user_id` must be an active member of `tenant_id` (`tenant_users` row, `active_to IS NULL`, `status = 'active'`).
+1. `user_id` must be a **current** member of `tenant_id` — a `tenant_users` row with `status = 'active'`
+   and `now()` inside `[active_from, active_to)`. The same window gates the grant itself: a scheduled
+   acting appointment confers nothing before `active_from`, and nothing from `active_to` onward.
 2. `role_id`'s role must be visible to `tenant_id` — global (`roles.tenant_id IS NULL`) or owned by this exact tenant.
 
 `active_from`/`active_to` make a grant **time-bounded** — covers acting appointments (a temporary

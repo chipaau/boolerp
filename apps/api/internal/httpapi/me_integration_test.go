@@ -5,11 +5,14 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/boolmv/erp/internal/auth"
 	"github.com/boolmv/erp/internal/db/sqlc"
@@ -75,13 +78,22 @@ func fakeCerbos(allow bool) *httptest.Server {
 	}))
 }
 
-// TestMeEndToEnd exercises the full backbone: whoami → JIT-upsert → Cerbos allow → DB read.
+// TestMeEndToEnd exercises the full backbone: whoami → mirror refresh → Cerbos allow → DB read.
 func TestMeEndToEnd(t *testing.T) {
 	k := fakeKratos(true)
 	defer k.Close()
 	c := fakeCerbos(true)
 	defer c.Close()
 	cerbos := auth.NewCerbos(c.URL)
+
+	// The user must already exist — sign-in refreshes the mirror, it never creates it. Seed with a
+	// stale name so the refresh from the Kratos traits is observable.
+	id, _ := auth.ParseUUID(testUID)
+	if _, err := sqlc.New(env.Pool).CreateUser(context.Background(), sqlc.CreateUserParams{
+		ID: id, Email: "owner@malecouncil.mv", Name: "Stale Name",
+	}); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
 
 	h := httpapi.New(httpapi.PlatformDeps{
 		Pool:   env.Pool,
@@ -109,14 +121,89 @@ func TestMeEndToEnd(t *testing.T) {
 		t.Fatalf("body: %+v", body)
 	}
 
-	// JIT-upsert persisted the user mirror.
-	id, _ := auth.ParseUUID(testUID)
+	// Sign-in refreshed the mirror from the Kratos traits and stamped the login.
 	u, err := sqlc.New(env.Pool).GetUserByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetUserByID: %v", err)
 	}
-	if u.Email != "owner@malecouncil.mv" || !u.LastLoginAt.Valid {
-		t.Fatalf("upserted user: %+v", u)
+	if u.Email != "owner@malecouncil.mv" || u.Name != "Owner" || !u.LastLoginAt.Valid {
+		t.Fatalf("synced user: %+v", u)
+	}
+}
+
+// A valid Kratos session for an identity nobody provisioned must be refused, and must not bring a
+// user into existence — there is no self-registration, whatever method Kratos authenticated them by.
+func TestMeUnprovisionedIdentityIsRefused(t *testing.T) {
+	const unknownUID = "018f7d3a-0000-7000-8000-0000000000ff"
+	k := fakeKratosFor(unknownUID, "stranger@gmail.com")
+	defer k.Close()
+	c := fakeCerbos(true)
+	defer c.Close()
+	cerbos := auth.NewCerbos(c.URL)
+
+	h := httpapi.New(httpapi.PlatformDeps{
+		Pool:   env.Pool,
+		Kratos: auth.NewKratos(k.URL, k.URL),
+		Cerbos: cerbos,
+	}, auth.Register(env.Pool, cerbos))
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/me", nil)
+	req.Header.Set("Cookie", "ory_kratos_session=abc")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status: want 403, got %d", resp.StatusCode)
+	}
+
+	id, _ := auth.ParseUUID(unknownUID)
+	if _, err := sqlc.New(env.Pool).GetUserByID(context.Background(), id); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("a refused sign-in created a user row: err=%v", err)
+	}
+}
+
+// A disabled account is refused by our own check, not merely by Kratos session revocation having
+// worked — a still-live session must not get through.
+func TestMeDisabledUserIsRefused(t *testing.T) {
+	const disabledUID = "018f7d3a-0000-7000-8000-0000000000fe"
+	id, _ := auth.ParseUUID(disabledUID)
+	ctx := context.Background()
+	if _, err := sqlc.New(env.Pool).CreateUser(ctx, sqlc.CreateUserParams{
+		ID: id, Email: "disabled@malecouncil.mv", Name: "Disabled",
+	}); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	if _, err := env.Pool.Exec(ctx, "UPDATE users SET status = 'disabled' WHERE id = $1", id); err != nil {
+		t.Fatalf("disable user: %v", err)
+	}
+
+	k := fakeKratosFor(disabledUID, "disabled@malecouncil.mv")
+	defer k.Close()
+	c := fakeCerbos(true)
+	defer c.Close()
+	cerbos := auth.NewCerbos(c.URL)
+
+	h := httpapi.New(httpapi.PlatformDeps{
+		Pool:   env.Pool,
+		Kratos: auth.NewKratos(k.URL, k.URL),
+		Cerbos: cerbos,
+	}, auth.Register(env.Pool, cerbos))
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/me", nil)
+	req.Header.Set("Cookie", "ory_kratos_session=abc")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status: want 403, got %d", resp.StatusCode)
 	}
 }
 

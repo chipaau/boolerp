@@ -4,7 +4,8 @@
 
 ## Scope
 - **In:** global `users` (mirror of Kratos identity), `tenant_users` memberships, member invite +
-  lifecycle (invited → active → disabled), the tenant **owner**, JIT-upsert of `users` in middleware.
+  lifecycle (invited → active → disabled), the tenant **owner**, refresh of the `users` mirror in middleware
+  (verify-only — middleware never creates a user).
 - **Out:** login/sessions (→ 02); roles/permissions (→ 05); tenant creation (→ 04).
 
 ## Candidate use cases
@@ -13,7 +14,7 @@
 - UC-MEM-03 — Accept invite / activate
 - UC-MEM-04 — Disable / re-enable a member (triggers session revocation via 02)
 - UC-MEM-05 — A user switches active tenant (multi-tenant membership)
-- UC-MEM-06 — JIT-upsert `users` on first `whoami` for an unknown identity
+- UC-MEM-08 — Refresh the `users` mirror on sign-in; **refuse (403) an identity with no `users` row**
 
 ## ⚠️ Likely-missing / confirm
 - Seat enforcement (committed prepaid seats — or is that Phase 2 billing?)

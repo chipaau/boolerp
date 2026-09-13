@@ -41,9 +41,13 @@
   active member → `is_owner` moves; audited. · **Exceptions:** target not active → blocked. · **Postcondition:**
   exactly one owner; the change is in the audit trail.
 
-## UC-MEM-08 — JIT-upsert user *(system)*
-- **Trigger:** first `whoami` for an identity with no `platform.users` row (e.g. OIDC signup). · **Main flow:**
-  Chi upserts `users` from the identity traits. · **Postcondition:** `users` self-heals; no drift vs Kratos.
+## UC-MEM-08 — Refresh the user mirror on sign-in *(system)*
+- **Trigger:** `whoami` succeeds for a session. · **Main flow:** Chi looks up `users` by subject; on a hit it
+  refreshes `email`/`name`/`name_i18n`/`phone` from the identity traits and stamps `last_login_at`. **No row is
+  ever inserted** — there is no self-registration, so an account exists only because provisioning (UC-MEM-01) or
+  an invite (UC-MEM-02) created it. · **Exceptions:** no row for the subject → **403**, logged as an
+  unprovisioned-identity attempt; the request never reaches tenant resolution or Cerbos. · **Postcondition:**
+  mirror matches Kratos for known users; unknown identities gain nothing by authenticating.
 
 ## UC-MEM-09 — View seat usage *(Tenant admin, Control Centre)*
 - **Trigger:** admin opens members/seat view. · **Main flow:** show **used** (invited + active) vs

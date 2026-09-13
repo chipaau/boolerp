@@ -22,12 +22,16 @@ type Querier interface {
 	CreateRoleCapability(ctx context.Context, arg CreateRoleCapabilityParams) (RoleCapability, error)
 	// Root tenant only (parent_id/oversight NULL) — path is a single-label ltree of its own tree_key.
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
-	// Provisioning-created user (owner). Distinct from UpsertUser (JIT whoami mirror): no
+	// Provisioning-created user (owner) — the only path that brings a user into existence, alongside
+	// the invite flow. Distinct from SyncUserOnLogin (the whoami mirror refresh): no
 	// last_login_at — the user hasn't signed in yet. name_i18n omitted — defaults to '{}';
 	// provisioning never sets it, same as it never set name_dv before.
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserRole(ctx context.Context, arg CreateUserRoleParams) (UserRole, error)
 	// Used by the tenant-resolution middleware: is this user a CURRENT member of this tenant?
+	// "Current" is the full validity window, not just the status flag: an 'active' row whose start hasn't
+	// arrived (or was never stamped) doesn't grant access yet, and one whose end has passed no longer
+	// does. active_to IS NULL means "no end set" — still a member.
 	GetActiveTenantMembership(ctx context.Context, arg GetActiveTenantMembershipParams) (TenantUser, error)
 	GetAppByCode(ctx context.Context, code string) (App, error)
 	GetCountry(ctx context.Context, code string) (Country, error)
@@ -54,9 +58,15 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	// FR-AUTHZ-04: platform:* capabilities only act platform-wide when held via a role on the ONE
 	// internal/operator tenant, and only when the caller is genuinely a member of it.
+	// Same validity window as GetActiveTenantMembership: an operator whose internal-tenant membership
+	// hasn't started or has ended holds no platform-wide capabilities.
 	IsInternalTenantMember(ctx context.Context, userID pgtype.UUID) (bool, error)
 	// The capability slugs a user currently holds via CURRENT role assignments in one tenant — the
 	// principal-building query behind authz.Authorize.
+	//
+	// Grants are time-bounded by design (DB-FOUNDATION: acting appointments can be scheduled ahead), so
+	// "current" is the window, not just "has no end date": a grant starting next month must not confer
+	// capabilities today, and one with an end date still confers them until that date arrives.
 	ListActiveCapabilitiesForUserInTenant(ctx context.Context, arg ListActiveCapabilitiesForUserInTenantParams) ([]string, error)
 	ListCountries(ctx context.Context) ([]Country, error)
 	// Reference-data reads (global tables — no tenant scope). Starter query set to wire sqlc.
@@ -74,9 +84,17 @@ type Querier interface {
 	// Reversible status flip (active <-> suspended); does not touch active_to — that's archival only.
 	SetTenantStatus(ctx context.Context, arg SetTenantStatusParams) (Tenant, error)
 	// Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
-	// JIT-upsert the Kratos identity into platform.users on whoami (self-healing mirror).
+	// Refresh the mirror from the Kratos identity traits and stamp the sign-in (UC-MEM-08).
+	// UPDATE-only on purpose: there is no self-registration, so a user exists only because provisioning
+	// or an invite created it. An unknown subject matches no row and returns pgx.ErrNoRows, which the
+	// caller turns into 403 — authenticating with Kratos (password, passkey, or a future OIDC provider)
+	// must never be enough to become a user of this system.
+	//
+	// `status = 'active'` is enforced here too, so a disabled account is refused by our own check rather
+	// than only by Kratos session revocation having worked (FR-MEM-05 / UC-AUTH-11). A live session for
+	// a since-disabled user matches no row and is denied.
 	// Credentials never touch this table — Kratos owns them.
-	UpsertUser(ctx context.Context, arg UpsertUserParams) (User, error)
+	SyncUserOnLogin(ctx context.Context, arg SyncUserOnLoginParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)

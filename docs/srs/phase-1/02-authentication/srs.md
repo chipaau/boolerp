@@ -15,11 +15,11 @@
 | FR-AUTH-01 | Log in with email + password → Kratos issues the httpOnly session cookie. |
 | FR-AUTH-02 | Log in with a **passkey** (WebAuthn), passwordless. |
 | FR-AUTH-03 | Prompt a **TOTP** second factor when the identity has MFA enrolled/required. |
-| FR-AUTH-04 | Log in via **OIDC** provider; JIT-upsert `platform.users` from the identity. |
+| FR-AUTH-04 | Log in via **OIDC** provider, as a credential **linked to an already-provisioned identity**. An OIDC login for an unknown subject is refused — it never creates an identity or a `platform.users` row. |
 | FR-AUTH-05 | **Activate** an account: owner/member sets their first credential via an emailed recovery link. |
 | FR-AUTH-06 | **Recover** access (forgot password) via one-time code/link. |
 | FR-AUTH-07 | **Verify** email address. |
-| FR-AUTH-08 | Validate the session on every API request via `whoami`; 401 → redirect to login. |
+| FR-AUTH-08 | Validate the session on every API request via `whoami`; 401 → redirect to login. A valid session whose subject has no `platform.users` row → **403** (never auto-created). |
 | FR-AUTH-09 | **Log out** current session; **log out everywhere** (revoke all sessions for the identity). |
 | FR-AUTH-10 | **Instant revocation** when an identity is disabled or its tenant is suspended (Kratos admin API → next `whoami` fails). |
 | FR-AUTH-11 | Preserve the requested deep link through login via `return_to`, **validated** against `allowed_return_urls` (`https://*.bool.mv`). |
