@@ -17,7 +17,7 @@ import (
 	"github.com/boolmv/erp/internal/db"
 )
 
-const defaultDSN = "postgres://goerp:goerp@postgres:5432/goerp?sslmode=disable"
+const defaultDSN = "postgres://erp:erp@postgres:5432/erp?sslmode=disable"
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))

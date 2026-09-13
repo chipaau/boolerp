@@ -77,7 +77,7 @@ func adminListTenants(w http.ResponseWriter, r *http.Request, d Deps, _ auth.Aut
 	tenants, err := sqlc.New(d.Pool).ListTenants(r.Context())
 	if err != nil {
 		observability.LoggerFrom(r.Context()).Error("list tenants", "err", err)
-		respond.Error(w, http.StatusInternalServerError, "internal")
+		respond.Error(r.Context(), w, http.StatusInternalServerError, "internal")
 		return
 	}
 	resp := make([]tenantResponse, len(tenants))
@@ -90,17 +90,17 @@ func adminListTenants(w http.ResponseWriter, r *http.Request, d Deps, _ auth.Aut
 func adminGetTenant(w http.ResponseWriter, r *http.Request, d Deps, _ auth.AuthzPrincipal) {
 	id, err := auth.ParseUUID(chi.URLParam(r, "id"))
 	if err != nil {
-		respond.Error(w, http.StatusBadRequest, "bad tenant id")
+		respond.Error(r.Context(), w, http.StatusBadRequest, "bad tenant id")
 		return
 	}
 	t, err := sqlc.New(d.Pool).GetTenantByID(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
-		respond.Error(w, http.StatusNotFound, "not found")
+		respond.Error(r.Context(), w, http.StatusNotFound, "not found")
 		return
 	}
 	if err != nil {
 		observability.LoggerFrom(r.Context()).Error("get tenant", "err", err)
-		respond.Error(w, http.StatusInternalServerError, "internal")
+		respond.Error(r.Context(), w, http.StatusInternalServerError, "internal")
 		return
 	}
 	respond.JSONBody(w, http.StatusOK, toTenantResponse(t))
@@ -120,12 +120,12 @@ type createTenantRequest struct {
 func adminCreateTenant(w http.ResponseWriter, r *http.Request, d Deps, p auth.AuthzPrincipal) {
 	var req createTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respond.Error(w, http.StatusBadRequest, "invalid body")
+		respond.Error(r.Context(), w, http.StatusBadRequest, "invalid body")
 		return
 	}
 	if req.Slug == "" || req.Code == "" || req.Name == "" || req.PartyTypeCode == "" ||
 		req.InstitutionTypeCode == "" || req.OwnerEmail == "" || req.OwnerName == "" {
-		respond.Error(w, http.StatusBadRequest, "missing required field")
+		respond.Error(r.Context(), w, http.StatusBadRequest, "missing required field")
 		return
 	}
 	if req.Country == "" {
@@ -135,20 +135,20 @@ func adminCreateTenant(w http.ResponseWriter, r *http.Request, d Deps, p auth.Au
 	q := sqlc.New(d.Pool)
 	partyTypeID, err := q.GetPartyTypeIDByCode(r.Context(), req.PartyTypeCode)
 	if err != nil {
-		respond.Error(w, http.StatusBadRequest, "invalid party_type_code")
+		respond.Error(r.Context(), w, http.StatusBadRequest, "invalid party_type_code")
 		return
 	}
 	institutionTypeID, err := q.GetInstitutionTypeIDByCode(r.Context(), sqlc.GetInstitutionTypeIDByCodeParams{
 		CountryCode: pgtype.Text{String: req.Country, Valid: true}, Code: req.InstitutionTypeCode,
 	})
 	if err != nil {
-		respond.Error(w, http.StatusBadRequest, "invalid institution_type_code for this country")
+		respond.Error(r.Context(), w, http.StatusBadRequest, "invalid institution_type_code for this country")
 		return
 	}
 
 	actorID, err := auth.ParseUUID(p.ID)
 	if err != nil {
-		respond.Error(w, http.StatusInternalServerError, "bad principal id")
+		respond.Error(r.Context(), w, http.StatusInternalServerError, "bad principal id")
 		return
 	}
 
@@ -159,7 +159,7 @@ func adminCreateTenant(w http.ResponseWriter, r *http.Request, d Deps, p auth.Au
 	})
 	if err != nil {
 		observability.LoggerFrom(r.Context()).Error("provision tenant", "err", err)
-		respond.Error(w, http.StatusConflict, "could not provision tenant — slug/code may already be taken")
+		respond.Error(r.Context(), w, http.StatusConflict, "could not provision tenant — slug/code may already be taken")
 		return
 	}
 	respond.JSONBody(w, http.StatusCreated, map[string]any{
@@ -176,18 +176,18 @@ func adminTransitionHandler(
 	return func(w http.ResponseWriter, r *http.Request, d Deps, p auth.AuthzPrincipal) {
 		id, err := auth.ParseUUID(chi.URLParam(r, "id"))
 		if err != nil {
-			respond.Error(w, http.StatusBadRequest, "bad tenant id")
+			respond.Error(r.Context(), w, http.StatusBadRequest, "bad tenant id")
 			return
 		}
 		actorID, err := auth.ParseUUID(p.ID)
 		if err != nil {
-			respond.Error(w, http.StatusInternalServerError, "bad principal id")
+			respond.Error(r.Context(), w, http.StatusInternalServerError, "bad principal id")
 			return
 		}
 		t, err := transition(r.Context(), d.Pool, id, actorID)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("tenant transition", "err", err)
-			respond.Error(w, http.StatusInternalServerError, "internal")
+			respond.Error(r.Context(), w, http.StatusInternalServerError, "internal")
 			return
 		}
 		respond.JSONBody(w, http.StatusOK, toTenantResponse(t))

@@ -3,7 +3,7 @@
 # and hot-reloads via air) for anything meant to scale to multiple replicas: fast, consistent boot
 # regardless of replica count, no per-replica recompilation, smaller image.
 #
-# Build from the repo root: docker build -f docker/api.Dockerfile -t goerp-api .
+# Build from the repo root: docker build -f docker/api.Dockerfile -t erp-api .
 
 FROM golang:1.27-alpine AS build
 RUN apk add --no-cache git

@@ -1,6 +1,6 @@
 # Tenancy
 
-> **Decided 2026-08-13 (go-erp ADR 0001): pooled multi-tenancy + Postgres RLS; grain = `tenant_id` only.**
+> **Decided 2026-08-13 (erp ADR 0001): pooled multi-tenancy + Postgres RLS; grain = `tenant_id` only.**
 > This reverses `../erp`'s schema-per-tenant choice. Rationale: we want **live parent→child
 > aggregation** like `../workspace` (native to pooled); `set_config` LOCAL works **through PgBouncer**
 > (schema-per-tenant's `search_path` fights the pooler); and **self-host simplicity** (one DB, one

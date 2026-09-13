@@ -69,7 +69,7 @@ func New(platform PlatformDeps, modules ...Module) http.Handler {
 	})
 	// otelhttp creates the root span per request (UC-OBS-01/02); a no-op wrapper when tracing isn't
 	// configured (SetupTracing left the default no-op TracerProvider in place).
-	return otelhttp.NewHandler(r, "goerp-api")
+	return otelhttp.NewHandler(r, "erp-api")
 }
 
 // readyz reports readiness only when every dependency is reachable.

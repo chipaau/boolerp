@@ -18,8 +18,8 @@ type Config struct {
 	// Port is the HTTP port the API listens on.
 	Port string `env:"APP_PORT" envDefault:"8080"`
 	// DSN is the Postgres connection string. The app connects as the NON-OWNER
-	// goerp_app role (created by cmd/migrate); the default here is for local dev.
-	DSN string `env:"APP_DSN" envDefault:"postgres://goerp_app:goerp_app@postgres:5432/goerp?sslmode=disable"`
+	// erp_app role (created by cmd/migrate); the default here is for local dev.
+	DSN string `env:"APP_DSN" envDefault:"postgres://erp_app:erp_app@postgres:5432/erp?sslmode=disable"`
 	// RedisURL is the cache + rate-limit backend.
 	RedisURL string `env:"APP_REDIS_URL" envDefault:"redis://redis:6379"`
 	// KratosPublicURL is the Kratos public API (session validation via whoami).

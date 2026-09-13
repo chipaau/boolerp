@@ -41,30 +41,30 @@ func me(pool *pgxpool.Pool, cerbos *Cerbos) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p, ok := PrincipalFrom(r.Context())
 		if !ok {
-			respond.Error(w, http.StatusInternalServerError, "no principal")
+			respond.Error(r.Context(), w, http.StatusInternalServerError, "no principal")
 			return
 		}
 
 		allowed, err := cerbos.AllowSelfProfileRead(r.Context(), p.ID)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("cerbos check", "err", err)
-			respond.Error(w, http.StatusBadGateway, "authz upstream")
+			respond.Error(r.Context(), w, http.StatusBadGateway, "authz upstream")
 			return
 		}
 		if !allowed {
-			respond.Error(w, http.StatusForbidden, "forbidden")
+			respond.Error(r.Context(), w, http.StatusForbidden, "forbidden")
 			return
 		}
 
 		id, err := ParseUUID(p.ID)
 		if err != nil {
-			respond.Error(w, http.StatusInternalServerError, "bad principal id")
+			respond.Error(r.Context(), w, http.StatusInternalServerError, "bad principal id")
 			return
 		}
 		u, err := sqlc.New(pool).GetUserByID(r.Context(), id)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("get user", "err", err)
-			respond.Error(w, http.StatusInternalServerError, "internal")
+			respond.Error(r.Context(), w, http.StatusInternalServerError, "internal")
 			return
 		}
 

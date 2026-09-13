@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5/middleware"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type ctxKey int
@@ -28,13 +30,27 @@ func LoggerFrom(ctx context.Context) *slog.Logger {
 }
 
 // RequestLogger attaches a request-scoped logger carrying the correlation/request id (chi's
-// RequestID middleware must run before this) to the context (FR-OBS-01/UC-OBS-01). Handlers and
-// deeper layers add tenant_id/user_id as they become known (see auth.Middleware.RequireSession)
-// rather than this middleware guessing at them.
+// RequestID middleware must run before this) to the context (FR-OBS-01/UC-OBS-01). It also
+// correlates the two halves of observability that otherwise never meet: request_id is attached to
+// the active span (set by otelhttp, which wraps this whole router — see httpapi.New) as an
+// attribute, so a trace can be found by request_id; and if tracing is actually configured, the
+// span's trace_id is added to the logger too, so a log line can point back to its trace. request_id
+// is the one identifier that's always present — an OTel trace_id only exists when OTLP is
+// configured — which is why it's the id shown to callers (see respond.Error), not the trace_id.
+// Handlers and deeper layers add tenant_id/user_id as they become known (see
+// auth.Middleware.RequireSession) rather than this middleware guessing at them.
 func RequestLogger(base *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			l := base.With("request_id", middleware.GetReqID(r.Context()))
+			reqID := middleware.GetReqID(r.Context())
+			l := base.With("request_id", reqID)
+
+			span := trace.SpanFromContext(r.Context())
+			span.SetAttributes(attribute.String("request_id", reqID))
+			if sc := span.SpanContext(); sc.IsValid() {
+				l = l.With("trace_id", sc.TraceID().String())
+			}
+
 			next.ServeHTTP(w, r.WithContext(WithLogger(r.Context(), l)))
 		})
 	}

@@ -6,7 +6,7 @@
 # follow-ups. Secrets here are throwaway dev values.
 version: v1.3.1
 
-dsn: postgres://goerp:goerp@postgres:5432/kratos?sslmode=disable
+dsn: postgres://erp:erp@postgres:5432/kratos?sslmode=disable
 
 serve:
   public:

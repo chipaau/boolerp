@@ -2,8 +2,8 @@ root = "."
 tmp_dir = "/tmp/air"
 
 [build]
-  cmd = "go build -buildvcs=false -o /tmp/goerp-api ./cmd/api"
-  bin = "/tmp/goerp-api"
+  cmd = "go build -buildvcs=false -o /tmp/erp-api ./cmd/api"
+  bin = "/tmp/erp-api"
   include_ext = ["go"]
   delay = 200
   # Sends SIGINT (not SIGKILL) to the running binary before rebuilding, so internal/server's

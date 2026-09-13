@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 export type Theme = 'light' | 'dark'
-const KEY = 'goerp-theme'
+const KEY = 'erp-theme'
 
 function applyTheme(t: Theme) {
   document.documentElement.classList.toggle('dark', t === 'dark')

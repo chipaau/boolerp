@@ -33,13 +33,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build the shared Node dev image
-        run: docker build -f docker/node.Dockerfile -t goerp-node .
+        run: docker build -f docker/node.Dockerfile -t erp-node .
       - name: Install workspace dependencies
-        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w goerp-node pnpm install --frozen-lockfile
+        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm install --frozen-lockfile
       - name: Typecheck
-        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w goerp-node pnpm --filter ${{ matrix.app }} run typecheck
+        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm --filter ${{ matrix.app }} run typecheck
       - name: Build
-        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w goerp-node pnpm --filter ${{ matrix.app }} run build
+        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm --filter ${{ matrix.app }} run build
 
   # Playwright against the real compose stack — mirrors local dev exactly (e2e/run.sh resolves
   # Traefik's IP off the shared `proxy` network and maps *.bool.test to it), except the `proxy`
@@ -68,8 +68,8 @@ jobs:
 
       - name: Install JS dependencies (populates e2e/node_modules for run.sh)
         run: |
-          docker build -f docker/node.Dockerfile -t goerp-node .
-          docker run --rm -v "${{ github.workspace }}:/w" -w /w goerp-node pnpm install --frozen-lockfile
+          docker build -f docker/node.Dockerfile -t erp-node .
+          docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm install --frozen-lockfile
 
       - name: Bring up the dev stack
         run: docker compose up -d --build
@@ -77,7 +77,7 @@ jobs:
       - name: Wait for the API to start
         run: |
           for i in $(seq 1 60); do
-            [ "$(docker inspect --format='{{.State.Health.Status}}' go-erp-api-1 2>/dev/null)" = "healthy" ] && exit 0
+            [ "$(docker inspect --format='{{.State.Health.Status}}' erp-api-1 2>/dev/null)" = "healthy" ] && exit 0
             sleep 2
           done
           echo "api never became healthy" >&2

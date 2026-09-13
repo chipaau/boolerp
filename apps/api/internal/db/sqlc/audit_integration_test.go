@@ -28,8 +28,8 @@ func setTenantConfig(t *testing.T, ctx context.Context, tx pgx.Tx, id pgtype.UUI
 	}
 }
 
-// These audit_log tests use env.AppTx (the goerp_app role, same as the real API at runtime), not
-// env.Tx (goerp, the migration owner — which the Postgres Docker image also makes a superuser).
+// These audit_log tests use env.AppTx (the erp_app role, same as the real API at runtime), not
+// env.Tx (erp, the migration owner — which the Postgres Docker image also makes a superuser).
 // A superuser bypasses Row-Level Security unconditionally regardless of FORCE ROW LEVEL SECURITY,
 // so testing RLS enforcement through the owner connection would silently prove nothing.
 
