@@ -31,18 +31,18 @@ func AdminRoute[D any](
 	r.Method(method, pattern, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		principal, ok := auth.PrincipalFrom(req.Context())
 		if !ok {
-			respond.Error(w, http.StatusUnauthorized, "unauthenticated")
+			respond.Error(req.Context(), w, http.StatusUnauthorized, "unauthenticated")
 			return
 		}
 		userID, err := auth.ParseUUID(principal.ID)
 		if err != nil {
-			respond.Error(w, http.StatusInternalServerError, "bad principal id")
+			respond.Error(req.Context(), w, http.StatusInternalServerError, "bad principal id")
 			return
 		}
 
 		azp, err := auth.BuildOperatorPrincipal(req.Context(), pool, userID)
 		if err != nil {
-			respond.Error(w, http.StatusInternalServerError, "internal")
+			respond.Error(req.Context(), w, http.StatusInternalServerError, "internal")
 			return
 		}
 
@@ -57,11 +57,11 @@ func AdminRoute[D any](
 		allowed, err := cerbos.Authorize(req.Context(), azp, auth.AuthzResource{Kind: resourceKind, ID: resourceID}, action)
 		if err != nil {
 			observability.LoggerFrom(req.Context()).Error("cerbos authorize", "err", err)
-			respond.Error(w, http.StatusBadGateway, "authz upstream")
+			respond.Error(req.Context(), w, http.StatusBadGateway, "authz upstream")
 			return
 		}
 		if !allowed {
-			respond.Error(w, http.StatusForbidden, "forbidden")
+			respond.Error(req.Context(), w, http.StatusForbidden, "forbidden")
 			return
 		}
 

@@ -126,6 +126,16 @@ services:
       timeout: 3s
       retries: 5
       start_period: 60s
+    # Self-host default is stdout structured logs, zero external backends (see internal/observability's
+    # own doc comment) — but stdout alone isn't durable: Docker's json-file driver keeps it on disk
+    # (docker compose logs api works after a restart) as long as it's bounded, so cap it here rather
+    # than leaving it to grow forever. A request_id in an error response (see internal/respond.Error)
+    # is enough to grep these files for its matching log line even without any log aggregator.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     environment:
       APP_ENV: ${APP_ENV:-dev}
       # API connects as the NON-OWNER goerp_app role (created by the migrate step).

@@ -29,29 +29,29 @@ func (m *Middleware) RequireSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie := r.Header.Get("Cookie")
 		if cookie == "" {
-			unauthorized(w)
+			unauthorized(r.Context(), w)
 			return
 		}
 
 		sess, err := m.kratos.Whoami(r.Context(), cookie)
 		if err != nil {
 			if errors.Is(err, ErrNoSession) {
-				unauthorized(w)
+				unauthorized(r.Context(), w)
 				return
 			}
 			observability.LoggerFrom(r.Context()).Error("whoami failed", "err", err)
-			respond.Error(w, http.StatusBadGateway, "auth upstream")
+			respond.Error(r.Context(), w, http.StatusBadGateway, "auth upstream")
 			return
 		}
 		if !sess.Active {
-			unauthorized(w)
+			unauthorized(r.Context(), w)
 			return
 		}
 
 		user, err := m.upsert(r.Context(), sess)
 		if err != nil {
 			observability.LoggerFrom(r.Context()).Error("jit upsert failed", "err", err)
-			respond.Error(w, http.StatusInternalServerError, "internal")
+			respond.Error(r.Context(), w, http.StatusInternalServerError, "internal")
 			return
 		}
 
@@ -77,4 +77,6 @@ func (m *Middleware) upsert(ctx context.Context, sess *KratosSession) (sqlc.User
 	})
 }
 
-func unauthorized(w http.ResponseWriter) { respond.Error(w, http.StatusUnauthorized, "unauthenticated") }
+func unauthorized(ctx context.Context, w http.ResponseWriter) {
+	respond.Error(ctx, w, http.StatusUnauthorized, "unauthenticated")
+}
