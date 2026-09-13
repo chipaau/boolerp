@@ -16,7 +16,7 @@ import (
 type DBTracer struct{}
 
 func (DBTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
-	ctx, span := otel.Tracer("goerp/db").Start(ctx, "db.query")
+	ctx, span := otel.Tracer("erp/db").Start(ctx, "db.query")
 	span.SetAttributes(attribute.String("db.system", "postgresql"), attribute.String("db.statement", data.SQL))
 	return ctx
 }

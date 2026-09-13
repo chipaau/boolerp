@@ -1,4 +1,4 @@
-# go-erp docs
+# erp docs
 
 Confirmation-driven specs. **Nothing is implemented until its use cases and data model are
 `Confirmed`** (see `.claude/rules/conventions.md`).

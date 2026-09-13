@@ -39,7 +39,7 @@ func run() error {
 	}
 
 	shutdownTracing, err := observability.SetupTracing(ctx, observability.TracingConfig{
-		OTLPEndpoint: cfg.OTLPEndpoint, ServiceName: "goerp-api",
+		OTLPEndpoint: cfg.OTLPEndpoint, ServiceName: "erp-api",
 	})
 	if err != nil {
 		return fmt.Errorf("setup tracing: %w", err)

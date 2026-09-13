@@ -1,6 +1,6 @@
 # Project context
 
-**What:** `go-erp` is a from-scratch Go rewrite of the existing Laravel **Bool ERP**. The product
+**What:** `erp` is a from-scratch Go rewrite of the existing Laravel **Bool ERP**. The product
 is a multi-tenant ERP (inventory/IMS, HRMS, procurement, performance, …) sold as global SaaS and
 also self-hostable by a single institution (e.g. a ministry) that runs it for itself and its
 subordinate facilities.
@@ -22,6 +22,6 @@ prompt access revocation matter.
    See `tenancy.md`.
 2. **Grain: `tenant_id` only** — no `company_id`; multi-entity = the tenant hierarchy. See `tenancy.md`.
 
-Next order of work: write go-erp **ADR 0001** (tenancy, mirroring the `../erp` ADR format) →
+Next order of work: write erp **ADR 0001** (tenancy, mirroring the `../erp` ADR format) →
 **confirm the tenancy-spine table DDL** (`tenants`, `tenant_users`, `tenant_visibility_grants`,
 `users`, roles) per the data-model rule → scaffold the `docker/` unit + minimal Chi skeleton.

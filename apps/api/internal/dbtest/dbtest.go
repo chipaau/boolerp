@@ -26,12 +26,12 @@ import (
 
 // Env is a running test database: a live pool over a throwaway container with the schema applied.
 type Env struct {
-	// Pool connects as the migration OWNER role (goerp) — which the Postgres Docker image also
+	// Pool connects as the migration OWNER role (erp) — which the Postgres Docker image also
 	// makes a superuser. Fine for fixture setup, but a superuser bypasses Row-Level Security
 	// unconditionally, no matter what FORCE ROW LEVEL SECURITY says — so a test asserting actual
 	// RLS enforcement must use AppPool instead.
 	Pool *pgxpool.Pool
-	// AppPool connects as goerp_app — the same non-owner, non-superuser role the real API uses at
+	// AppPool connects as erp_app — the same non-owner, non-superuser role the real API uses at
 	// runtime (created by migration 00002_app_role.sql). RLS applies to it for real.
 	AppPool   *pgxpool.Pool
 	DSN       string
@@ -42,9 +42,9 @@ type Env struct {
 // pool. Call Close when done (typically from TestMain). One container serves a whole test package.
 func Start(ctx context.Context) (*Env, error) {
 	ctr, err := tcpostgres.Run(ctx, "postgres:18",
-		tcpostgres.WithDatabase("goerp"),
-		tcpostgres.WithUsername("goerp"),
-		tcpostgres.WithPassword("goerp"),
+		tcpostgres.WithDatabase("erp"),
+		tcpostgres.WithUsername("erp"),
+		tcpostgres.WithPassword("erp"),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
@@ -76,8 +76,8 @@ func Start(ctx context.Context) (*Env, error) {
 		return nil, fmt.Errorf("pool: %w", err)
 	}
 
-	// goerp_app is created by migration 00002_app_role.sql, which just ran as part of Migrate above.
-	appDSN := strings.Replace(dsn, "goerp:goerp@", "goerp_app:goerp_app@", 1)
+	// erp_app is created by migration 00002_app_role.sql, which just ran as part of Migrate above.
+	appDSN := strings.Replace(dsn, "erp:erp@", "erp_app:erp_app@", 1)
 	appPool, err := pgxpool.New(ctx, appDSN)
 	if err != nil {
 		return nil, fmt.Errorf("app pool: %w", err)
@@ -107,7 +107,7 @@ func (e *Env) Tx(t *testing.T) pgx.Tx {
 	return beginRollback(t, e.Pool)
 }
 
-// AppTx is Tx but as goerp_app, the same non-superuser role the real API runs as — use this
+// AppTx is Tx but as erp_app, the same non-superuser role the real API runs as — use this
 // whenever a test needs RLS to actually apply (Tx's owner connection bypasses it unconditionally).
 func (e *Env) AppTx(t *testing.T) pgx.Tx {
 	t.Helper()

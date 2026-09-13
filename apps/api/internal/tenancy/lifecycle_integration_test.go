@@ -14,9 +14,9 @@ import (
 )
 
 // createLifecycleTestTenant commits a tenant via env.Pool (owner role) — tenancy.SuspendTenant etc.
-// run their DB work as the real API pool passed to them, which in production is the goerp_app pool;
+// run their DB work as the real API pool passed to them, which in production is the erp_app pool;
 // here we still pass env.Pool since that's what production wiring would hand these functions
-// (cmd/api's pgxpool connects as goerp_app already — see config.go's default DSN), so this
+// (cmd/api's pgxpool connects as erp_app already — see config.go's default DSN), so this
 // exercises the exact same non-superuser path the audit RLS tests needed AppTx for.
 func createLifecycleTestTenant(t *testing.T, slug string) sqlc.Tenant {
 	t.Helper()

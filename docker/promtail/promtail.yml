@@ -22,7 +22,7 @@ scrape_configs:
         # the machine (other projects included), not just this compose stack.
         filters:
           - name: label
-            values: ["com.docker.compose.project=go-erp"]
+            values: ["com.docker.compose.project=erp"]
     relabel_configs:
       - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
         target_label: "service"

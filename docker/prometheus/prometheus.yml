@@ -2,7 +2,7 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: goerp-api
+  - job_name: erp-api
     static_configs:
       - targets: ["api:8080"]
     metrics_path: /metrics

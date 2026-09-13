@@ -1,4 +1,4 @@
-# go-erp
+# erp
 
 Greenfield **Go rewrite** of the Laravel "Bool ERP" — a multi-tenant SaaS ERP for Maldivian
 councils, ministries, health facilities, and private companies. **Dual deployment target:**

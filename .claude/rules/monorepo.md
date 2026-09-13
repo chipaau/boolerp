@@ -6,7 +6,7 @@ and shadcn/ui's official monorepo tooling.
 ## Layout
 
 ```
-go-erp/
+erp/
 ├── apps/
 │   ├── app/                 # TanStack Router (React, Vite SPA) — the ERP app (behind login), per-tenant subdomain; embedded. Modular: Control Centre (tenant admin) + business modules
 │   #                          Control Centre = the tenant's OWN admin (their users/roles/org-units/sites/settings) — distinct from apps/admin (operator console)
