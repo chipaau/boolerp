@@ -83,7 +83,13 @@ services:
     networks:
       - internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U erp -d erp"]
+      # -h 127.0.0.1 forces the check over TCP, which is what every dependent actually uses. Without
+      # it pg_isready probes the unix socket, and the entrypoint's bootstrap server (initdb, started
+      # with listen_addresses='') answers there — so the healthcheck went green mid-init, dependents
+      # started, and postgres then restarted for real underneath them: "the database system is
+      # starting up" / "database erp does not exist" / connection refused. The bootstrap server never
+      # listens on TCP, so this stays unhealthy until the real one is up.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U erp -d erp"]
       interval: 5s
       timeout: 3s
       retries: 10
