@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -16,6 +17,11 @@ import (
 // a raw r.Get/r.Post — the capability check is inside the wrapper itself, so a route added the
 // ordinary chi way simply has no way to skip it (the fail-closed backstop sentinel-api's own ADR
 // flagged as an unbuilt gap: a per-handler Cerbos call that's easy to forget).
+//
+// The handler signature below makes that a compile error for handlers written in this shape, but it
+// can't stop a plain http.HandlerFunc being mounted alongside them, so the guarantee is enforced
+// behaviourally instead: TestEveryAdminRouteIsAuthorizationGated walks each module's real route tree
+// and fails if any /admin route answers a capability-less caller with anything but 403.
 //
 // Generic over D — each module's own (narrow) deps type — so AdminRoute stays a single shared
 // platform helper without forcing every module's handlers to accept the whole platform-wide
@@ -54,14 +60,15 @@ func AdminRoute[D any](
 			resourceID = "collection"
 		}
 
-		allowed, err := cerbos.Authorize(req.Context(), azp, auth.AuthzResource{Kind: resourceKind, ID: resourceID}, action)
-		if err != nil {
+		switch err := cerbos.Authorize(req.Context(), azp, auth.AuthzResource{Kind: resourceKind, ID: resourceID}, action); {
+		case errors.Is(err, auth.ErrForbidden):
+			respond.Error(req.Context(), w, http.StatusForbidden, "forbidden")
+			return
+		case err != nil:
+			// The policy didn't decide "no" — we failed to ask. Reporting that as 403 would tell the
+			// operator they lack a permission they may well hold.
 			observability.LoggerFrom(req.Context()).Error("cerbos authorize", "err", err)
 			respond.Error(req.Context(), w, http.StatusBadGateway, "authz upstream")
-			return
-		}
-		if !allowed {
-			respond.Error(req.Context(), w, http.StatusForbidden, "forbidden")
 			return
 		}
 

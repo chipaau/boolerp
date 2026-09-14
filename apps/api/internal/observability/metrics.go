@@ -17,29 +17,44 @@ var (
 		Name: "http_requests_total", Help: "Total HTTP requests by method, route, and status.",
 	}, []string{"method", "route", "status"})
 
+	// status is a label here too, not just on the counter: "p99 latency of the requests that failed"
+	// is the question you ask when errors and slowness turn out to be the same incident. Cardinality
+	// is already bounded by the route pattern, so this adds no meaningful growth.
 	httpRequestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name: "http_request_duration_seconds", Help: "HTTP request latency by method and route.",
-	}, []string{"method", "route"})
+		Name: "http_request_duration_seconds", Help: "HTTP request latency by method, route, and status.",
+	}, []string{"method", "route", "status"})
 )
 
 func init() {
 	prometheus.MustRegister(httpRequestsTotal, httpRequestDuration)
 }
 
-// MetricsMiddleware records request rate/latency by method + matched route pattern (not the raw
-// path, which would blow up cardinality on any path with an id segment).
+// routePattern is the matched chi pattern, e.g. "/v1/admin/tenants/{id}/suspend" — never the raw
+// path, which would mint a fresh time series per tenant id and blow up Prometheus cardinality. It's
+// only populated once chi has matched, hence read after the handler rather than before.
+func routePattern(r *http.Request) string {
+	if rc := chi.RouteContext(r.Context()); rc != nil && rc.RoutePattern() != "" {
+		return rc.RoutePattern()
+	}
+	return "unmatched"
+}
+
+// MetricsMiddleware records request rate/latency by method + matched route pattern.
+//
+// The recording is deferred so a panic still counts. Recording after next.ServeHTTP means a panicking
+// handler unwinds straight past it, so the requests that matter most — the ones that blew up — were
+// the only ones absent from the metrics. Recoverer turns the panic into a 500 below this middleware,
+// so ww observes that status.
 func MetricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		defer func() {
+			route, status := routePattern(r), strconv.Itoa(ww.Status())
+			httpRequestsTotal.WithLabelValues(r.Method, route, status).Inc()
+			httpRequestDuration.WithLabelValues(r.Method, route, status).Observe(time.Since(start).Seconds())
+		}()
 		next.ServeHTTP(ww, r)
-
-		route := "unmatched"
-		if rc := chi.RouteContext(r.Context()); rc != nil && rc.RoutePattern() != "" {
-			route = rc.RoutePattern()
-		}
-		httpRequestsTotal.WithLabelValues(r.Method, route, strconv.Itoa(ww.Status())).Inc()
-		httpRequestDuration.WithLabelValues(r.Method, route).Observe(time.Since(start).Seconds())
 	})
 }
 

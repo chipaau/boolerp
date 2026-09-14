@@ -11,7 +11,7 @@ CREATE TABLE audit_log (
   entity_id         uuid        NOT NULL,
   action            text        NOT NULL,                -- e.g. 'create', 'suspend', 'reactivate', 'archive'
   payload           jsonb       NOT NULL,                -- changed-column diff for updates; full snapshot for create/delete (FR-AUD-03's "before/after")
-  request_id        text,                                -- correlation id; wired through once 07 (observability) lands
+  request_id        text,                                -- correlation id: the same id in the API's logs, traces, Cerbos's decision log and any error response the caller saw. NULL when no request drove the change (CLI provisioning, first-run)
   ip                inet,
   occurred_at       timestamptz NOT NULL DEFAULT now()
 );

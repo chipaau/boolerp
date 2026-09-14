@@ -5,8 +5,10 @@
 package respond
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -20,10 +22,24 @@ func JSON(w http.ResponseWriter, status int, body string) {
 }
 
 // JSONBody encodes v as the JSON response body.
+//
+// It encodes into a buffer BEFORE touching the ResponseWriter. Encoding straight into w commits the
+// status line first, so a value that fails to marshal — an unmarshalable type, a NaN float, anything
+// reachable through the map[string]any payloads handlers build — would send "200 OK" followed by a
+// truncated body, with the error silently discarded. Buffering keeps that failure recoverable into
+// an honest 500.
 func JSONBody(w http.ResponseWriter, status int, v any) {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(v); err != nil {
+		slog.Default().Error("response encoding failed", "err", err, "intended_status", status)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}` + "\n"))
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	_, _ = w.Write(buf.Bytes())
 }
 
 // Error writes {"error": msg, "request_id": ...} at the given status. request_id is chi's own
@@ -35,4 +51,32 @@ func JSONBody(w http.ResponseWriter, status int, v any) {
 // works the other direction too when tracing is on.
 func Error(ctx context.Context, w http.ResponseWriter, status int, msg string) {
 	JSONBody(w, status, map[string]string{"error": msg, "request_id": middleware.GetReqID(ctx)})
+}
+
+// FieldErrors maps a request field name to everything wrong with it. Several problems per field,
+// and several fields at once, so one round-trip tells the caller everything to fix rather than
+// revealing the next fault only after correcting the last.
+type FieldErrors map[string][]string
+
+// Add records a problem with one field.
+func (f FieldErrors) Add(field, msg string) { f[field] = append(f[field], msg) }
+
+// Any reports whether anything failed validation.
+func (f FieldErrors) Any() bool { return len(f) > 0 }
+
+// Invalid writes a 422 whose body is the standard {"error", "request_id"} envelope plus an "errors"
+// map of field -> messages:
+//
+//	{"error":"validation failed","request_id":"…","errors":{"slug":["is reserved"]}}
+//
+// 422 (not 400) means "well-formed request, semantically unacceptable content" — a body that isn't
+// JSON at all stays a 400, since there were no fields to validate. The envelope keeps `error` and
+// `request_id` so existing clients keep working; `errors` follows Laravel's field->messages shape
+// the frontend already knows how to render.
+func Invalid(ctx context.Context, w http.ResponseWriter, errs FieldErrors) {
+	JSONBody(w, http.StatusUnprocessableEntity, map[string]any{
+		"error":      "validation failed",
+		"request_id": middleware.GetReqID(ctx),
+		"errors":     errs,
+	})
 }

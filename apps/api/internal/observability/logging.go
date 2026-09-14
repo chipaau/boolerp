@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"go.opentelemetry.io/otel/attribute"
@@ -54,6 +55,43 @@ func RequestLogger(base *slog.Logger) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(WithLogger(r.Context(), l)))
 		})
 	}
+}
+
+// AccessLog emits one line per completed request. Without it a successful request produced no log
+// line at all: the request id was threaded into the response, the trace, Cerbos's decision log and
+// the audit row, yet the API's own log had nothing to grep for it — so "what happened in request X?"
+// could only be answered for requests that failed loudly enough to log something themselves.
+//
+// Must run inside RequestLogger, so the line inherits request_id (and trace_id when tracing is on).
+// Deferred, so a panicking handler is still recorded rather than vanishing — Recoverer converts it
+// to a 500 below this middleware, which is what ww then reports.
+//
+// Health probes are logged only when they fail: the container healthcheck polls /healthz constantly,
+// and thousands of identical 200s a day would bury the requests worth reading.
+func AccessLog(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		defer func() {
+			status := ww.Status()
+			if isHealthProbe(r.URL.Path) && status < http.StatusBadRequest {
+				return
+			}
+			LoggerFrom(r.Context()).Info("request",
+				"method", r.Method,
+				"path", r.URL.Path,
+				"route", routePattern(r),
+				"status", status,
+				"bytes", ww.BytesWritten(),
+				"duration_ms", float64(time.Since(start).Microseconds())/1000,
+			)
+		}()
+		next.ServeHTTP(ww, r)
+	})
+}
+
+func isHealthProbe(path string) bool {
+	return path == "/healthz" || path == "/readyz" || path == "/"
 }
 
 // sensitiveKeys are attribute keys never allowed to reach a log line unredacted (FR-OBS-06) —

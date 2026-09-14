@@ -106,6 +106,9 @@ func adminGetTenant(w http.ResponseWriter, r *http.Request, d Deps, _ auth.Authz
 	respond.JSONBody(w, http.StatusOK, toTenantResponse(t))
 }
 
+// maxCreateTenantBody bounds the request body — generous for this payload, finite for the server.
+const maxCreateTenantBody = 64 << 10
+
 type createTenantRequest struct {
 	Slug                string `json:"slug"`
 	Code                string `json:"code"`
@@ -119,30 +122,46 @@ type createTenantRequest struct {
 
 func adminCreateTenant(w http.ResponseWriter, r *http.Request, d Deps, p auth.AuthzPrincipal) {
 	var req createTenantRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	// Cap the body: this is an admin endpoint, but an unbounded decode is an unbounded allocation.
+	// A body that isn't JSON at all is a 400 — there are no fields to report problems against.
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxCreateTenantBody)).Decode(&req); err != nil {
 		respond.Error(r.Context(), w, http.StatusBadRequest, "invalid body")
-		return
-	}
-	if req.Slug == "" || req.Code == "" || req.Name == "" || req.PartyTypeCode == "" ||
-		req.InstitutionTypeCode == "" || req.OwnerEmail == "" || req.OwnerName == "" {
-		respond.Error(r.Context(), w, http.StatusBadRequest, "missing required field")
 		return
 	}
 	if req.Country == "" {
 		req.Country = "MV"
 	}
+	if errs := validateCreateTenant(&req); errs.Any() {
+		respond.Invalid(r.Context(), w, errs)
+		return
+	}
 
+	// The two codes are caller-supplied values that must resolve to real rows, so "no such row" is
+	// that field's problem (422) while any other error is ours (500) — never a 4xx blaming the
+	// caller for a database that happened to be unreachable.
 	q := sqlc.New(d.Pool)
 	partyTypeID, err := q.GetPartyTypeIDByCode(r.Context(), req.PartyTypeCode)
 	if err != nil {
-		respond.Error(r.Context(), w, http.StatusBadRequest, "invalid party_type_code")
+		if !errors.Is(err, pgx.ErrNoRows) {
+			observability.LoggerFrom(r.Context()).Error("lookup party type", "err", err)
+			respond.Error(r.Context(), w, http.StatusInternalServerError, "internal")
+			return
+		}
+		respond.Invalid(r.Context(), w, respond.FieldErrors{"party_type_code": {"is not a known party type"}})
 		return
 	}
 	institutionTypeID, err := q.GetInstitutionTypeIDByCode(r.Context(), sqlc.GetInstitutionTypeIDByCodeParams{
 		CountryCode: pgtype.Text{String: req.Country, Valid: true}, Code: req.InstitutionTypeCode,
 	})
 	if err != nil {
-		respond.Error(r.Context(), w, http.StatusBadRequest, "invalid institution_type_code for this country")
+		if !errors.Is(err, pgx.ErrNoRows) {
+			observability.LoggerFrom(r.Context()).Error("lookup institution type", "err", err)
+			respond.Error(r.Context(), w, http.StatusInternalServerError, "internal")
+			return
+		}
+		respond.Invalid(r.Context(), w, respond.FieldErrors{
+			"institution_type_code": {"is not a known institution type for country " + req.Country},
+		})
 		return
 	}
 
@@ -158,8 +177,15 @@ func adminCreateTenant(w http.ResponseWriter, r *http.Request, d Deps, p auth.Au
 		OwnerEmail: req.OwnerEmail, OwnerName: req.OwnerName, ActorUserID: actorID,
 	})
 	if err != nil {
+		// Only an actual uniqueness conflict is the caller's to fix, and we can say WHICH field
+		// collided. Everything else — Kratos unreachable, audit write failed, tx rolled back — is a
+		// server fault that used to be reported as "slug/code may already be taken".
+		if field := uniqueViolationField(err); field != "" {
+			respond.Invalid(r.Context(), w, respond.FieldErrors{field: {"is already taken"}})
+			return
+		}
 		observability.LoggerFrom(r.Context()).Error("provision tenant", "err", err)
-		respond.Error(r.Context(), w, http.StatusConflict, "could not provision tenant — slug/code may already be taken")
+		respond.Error(r.Context(), w, http.StatusInternalServerError, "internal")
 		return
 	}
 	respond.JSONBody(w, http.StatusCreated, map[string]any{
