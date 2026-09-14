@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/boolmv/erp/internal/auth"
@@ -19,13 +19,17 @@ import (
 	"github.com/boolmv/erp/internal/tenancy"
 )
 
+// fakeIdentityCounter is package-level so minted ids stay unique across every fake server in the
+// package. Per-server counters each restarted at 1, so any two tests that provisioned a tenant
+// minted the SAME identity id and collided on users_pkey — which the old blanket "slug/code may
+// already be taken" response quietly disguised as an expected conflict.
+var fakeIdentityCounter atomic.Uint64
+
 // fakeKratosFor serves whoami for one fixed identity — parameterised (unlike me_integration_test.go's
 // fakeKratos, which always answers as the one testUID) so each test can act as its own seeded
 // operator. Also serves the admin identity/recovery-link endpoints tenancy.Provision calls when a
 // test actually provisions a new tenant.
 func fakeKratosFor(userID, email string) *httptest.Server {
-	var mu sync.Mutex
-	newIdentityCounter := 0
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/sessions/whoami":
@@ -42,10 +46,7 @@ func fakeKratosFor(userID, email string) *httptest.Server {
 				},
 			})
 		case r.Method == http.MethodPost && r.URL.Path == "/admin/identities":
-			mu.Lock()
-			newIdentityCounter++
-			id := fmt.Sprintf("%08d-0000-7000-8000-000000000000", newIdentityCounter)
-			mu.Unlock()
+			id := fmt.Sprintf("%08d-0000-7000-8000-000000000000", fakeIdentityCounter.Add(1))
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]string{"id": id})
 		case r.Method == http.MethodPost && r.URL.Path == "/admin/recovery/link":
@@ -142,6 +143,75 @@ func TestAdminTenants_CreateProvisionsARealTenant(t *testing.T) {
 	}
 	if resp.RecoveryLink == "" {
 		t.Fatal("want a non-empty recovery link")
+	}
+}
+
+// Validation failures answer 422 with a field -> messages map, reporting every problem at once.
+func TestAdminTenants_CreateInvalidReturns422WithFieldErrors(t *testing.T) {
+	userID := setupOperatorFixture(t, "create-invalid", "platform:tenants:provision")
+	kratos := fakeKratosFor(uuidToStringAdmin(userID), "create-invalid@example.test")
+	defer kratos.Close()
+	h := newAdminAPITestRouter(t, kratos.URL)
+
+	rec := doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants", map[string]string{
+		"slug": "admin", "code": "", "name": "Reserved Slug Co", "country": "MV",
+		"party_type_code": "private-company", "institution_type_code": "business",
+		"owner_email": "not-an-email", "owner_name": "Owner",
+	})
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("want 422, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp struct {
+		Error     string              `json:"error"`
+		RequestID string              `json:"request_id"`
+		Errors    map[string][]string `json:"errors"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Error != "validation failed" || resp.RequestID == "" {
+		t.Fatalf("want the standard error envelope, got %+v", resp)
+	}
+	// Reserved slug, missing code and malformed email all reported together.
+	for _, field := range []string{"slug", "code", "owner_email"} {
+		if len(resp.Errors[field]) == 0 {
+			t.Errorf("want %q reported, got %v", field, resp.Errors)
+		}
+	}
+}
+
+// A duplicate is the caller's to fix and we can name the colliding field — unlike a Kratos or DB
+// failure, which must not be reported as "already taken".
+func TestAdminTenants_CreateDuplicateSlugIsAFieldError(t *testing.T) {
+	userID := setupOperatorFixture(t, "create-dup", "platform:tenants:provision")
+	kratos := fakeKratosFor(uuidToStringAdmin(userID), "create-dup@example.test")
+	defer kratos.Close()
+	h := newAdminAPITestRouter(t, kratos.URL)
+
+	body := map[string]string{
+		"slug": "e2e-dup-co", "code": "E2EDUP", "name": "E2E Dup Co",
+		"country": "MV", "party_type_code": "private-company", "institution_type_code": "business",
+		"owner_email": "owner@e2e-dup-co.test", "owner_name": "Owner",
+	}
+	if rec := doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants", body); rec.Code != http.StatusCreated {
+		t.Fatalf("seed create: want 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	body["code"] = "E2EDUP2" // same slug, different code: the slug is what must collide
+	body["owner_email"] = "owner2@e2e-dup-co.test"
+	rec := doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants", body)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("want 422 for a duplicate slug, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var resp struct {
+		Errors map[string][]string `json:"errors"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Errors["slug"]) == 0 {
+		t.Fatalf("want the duplicate attributed to slug, got %v", resp.Errors)
 	}
 }
 

@@ -9,7 +9,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => null)
-    const message = body && typeof body === 'object' && 'error' in body ? String((body).error) : `Request failed (${res.status})`
+    const obj = body && typeof body === 'object' ? (body as Record<string, unknown>) : null
+    const message = obj && 'error' in obj ? String(obj.error) : `Request failed (${res.status})`
+    // A 422 carries an `errors` map of field -> messages (see internal/respond.Invalid). Surface
+    // those instead of the bare "validation failed", which says nothing the operator can act on.
+    const fields = obj?.errors
+    if (fields && typeof fields === 'object') {
+      const detail = Object.entries(fields as Record<string, string[]>)
+        .map(([field, msgs]) => `${field} ${msgs.join(', ')}`)
+        .join('; ')
+      if (detail) throw new Error(`${message}: ${detail}`)
+    }
     throw new Error(message)
   }
   if (res.status === 204) return undefined as T

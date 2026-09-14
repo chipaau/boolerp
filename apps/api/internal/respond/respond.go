@@ -36,3 +36,31 @@ func JSONBody(w http.ResponseWriter, status int, v any) {
 func Error(ctx context.Context, w http.ResponseWriter, status int, msg string) {
 	JSONBody(w, status, map[string]string{"error": msg, "request_id": middleware.GetReqID(ctx)})
 }
+
+// FieldErrors maps a request field name to everything wrong with it. Several problems per field,
+// and several fields at once, so one round-trip tells the caller everything to fix rather than
+// revealing the next fault only after correcting the last.
+type FieldErrors map[string][]string
+
+// Add records a problem with one field.
+func (f FieldErrors) Add(field, msg string) { f[field] = append(f[field], msg) }
+
+// Any reports whether anything failed validation.
+func (f FieldErrors) Any() bool { return len(f) > 0 }
+
+// Invalid writes a 422 whose body is the standard {"error", "request_id"} envelope plus an "errors"
+// map of field -> messages:
+//
+//	{"error":"validation failed","request_id":"…","errors":{"slug":["is reserved"]}}
+//
+// 422 (not 400) means "well-formed request, semantically unacceptable content" — a body that isn't
+// JSON at all stays a 400, since there were no fields to validate. The envelope keeps `error` and
+// `request_id` so existing clients keep working; `errors` follows Laravel's field->messages shape
+// the frontend already knows how to render.
+func Invalid(ctx context.Context, w http.ResponseWriter, errs FieldErrors) {
+	JSONBody(w, http.StatusUnprocessableEntity, map[string]any{
+		"error":      "validation failed",
+		"request_id": middleware.GetReqID(ctx),
+		"errors":     errs,
+	})
+}
