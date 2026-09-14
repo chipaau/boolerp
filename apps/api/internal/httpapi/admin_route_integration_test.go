@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -19,6 +20,7 @@ import (
 	"github.com/boolmv/erp/internal/auth"
 	"github.com/boolmv/erp/internal/db/sqlc"
 	"github.com/boolmv/erp/internal/httpapi"
+	"github.com/boolmv/erp/internal/tenancy"
 )
 
 // fakeAuthzCerbos mirrors resource_tenant.yaml's actual rule shape in Go, so this test proves
@@ -250,5 +252,59 @@ func TestAdminRoute_AllowsMatchingCapability(t *testing.T) {
 	}
 	if !*called {
 		t.Fatal("handler should run when the specific capability matches")
+	}
+}
+
+// Every route a module mounts under /admin must be gated by AdminRoute. The handler signature
+// AdminRoute requires already makes a raw r.Get/r.Post rejection a compile error for handlers written
+// in that shape — but nothing stops someone registering a differently-shaped plain http.HandlerFunc
+// alongside them. So rather than trust the registration mechanism, this asserts the property itself:
+// walk the module's real route tree and prove each route denies a caller who holds no capabilities.
+// A route that skipped the gate would run its handler and answer something other than 403.
+func TestEveryAdminRouteIsAuthorizationGated(t *testing.T) {
+	userID := setupNonMemberFixture(t, "route-tree-audit")
+	kratos := fakeKratosFor(uuidToStringAdmin(userID), "route-tree-audit@example.test")
+	defer kratos.Close()
+
+	cerbosSrv := fakeAuthzCerbos()
+	defer cerbosSrv.Close()
+	deps := httpapi.PlatformDeps{
+		Pool:   env.Pool,
+		Kratos: auth.NewKratos(kratos.URL, kratos.URL),
+		Cerbos: auth.NewCerbos(cerbosSrv.URL),
+	}
+	module := tenancy.Register(deps)
+
+	// Discover what the module actually mounts, rather than hardcoding a list a new route could be
+	// added without touching.
+	discover := chi.NewRouter()
+	module.Mount(discover)
+	type route struct{ method, pattern string }
+	var routes []route
+	if err := chi.Walk(discover, func(method, pattern string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		routes = append(routes, route{method, pattern})
+		return nil
+	}); err != nil {
+		t.Fatalf("walk routes: %v", err)
+	}
+	if len(routes) == 0 {
+		t.Fatal("no routes discovered — the walk found nothing to audit")
+	}
+
+	// Exercise each discovered route through the REAL router (session middleware included), as a
+	// signed-in user who is not an operator.
+	h := httpapi.New(deps, module)
+	for _, rt := range routes {
+		if !strings.HasPrefix(rt.pattern, "/admin") {
+			continue
+		}
+		path := "/v1" + strings.ReplaceAll(rt.pattern, "{id}", uuidToStringAdmin(newAdminTestUUID(t)))
+		t.Run(rt.method+" "+rt.pattern, func(t *testing.T) {
+			rec := doAsOperator(t, h, rt.method, path, nil)
+			if rec.Code != http.StatusForbidden {
+				t.Fatalf("want 403 for a caller with no capabilities, got %d: %s\n"+
+					"this route appears not to go through httpapi.AdminRoute", rec.Code, rec.Body.String())
+			}
+		})
 	}
 }

@@ -17,6 +17,11 @@ import (
 // ordinary chi way simply has no way to skip it (the fail-closed backstop sentinel-api's own ADR
 // flagged as an unbuilt gap: a per-handler Cerbos call that's easy to forget).
 //
+// The handler signature below makes that a compile error for handlers written in this shape, but it
+// can't stop a plain http.HandlerFunc being mounted alongside them, so the guarantee is enforced
+// behaviourally instead: TestEveryAdminRouteIsAuthorizationGated walks each module's real route tree
+// and fails if any /admin route answers a capability-less caller with anything but 403.
+//
 // Generic over D — each module's own (narrow) deps type — so AdminRoute stays a single shared
 // platform helper without forcing every module's handlers to accept the whole platform-wide
 // PlatformDeps bag; only pool and cerbos are needed here for the authorization check itself.
