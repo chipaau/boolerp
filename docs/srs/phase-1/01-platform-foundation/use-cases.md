@@ -31,7 +31,8 @@
 ## UC-FND-03 — Tenant-scoped request lifecycle *(system)*
 - **Trigger:** any `/api/v1/*` request on a tenant subdomain. · **Main flow:**
   1. Authenticate (`whoami`, UC-AUTH-08).
-  2. Resolve tenant from the forwarded Host; verify active membership (404 if not).
+  2. Resolve tenant from the forwarded Host; verify a **current** membership — `status = 'active'` *and*
+     now within `[active_from, active_to)` (404 if not).
   3. `WithTenant` opens a tx, sets `app.current_tenant` (+ `app.visible_tenants`) LOCAL.
   4. Cerbos authorizes the action.
   5. Handler runs queries — **RLS auto-scopes**; queries never mention `tenant_id`.

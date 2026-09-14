@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -99,6 +100,71 @@ func TestBuildOperatorPrincipal_InternalMemberWithCapabilities(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("want platform:tenants:provision in capabilities, got %v", p.Capabilities)
+	}
+}
+
+// Role grants are time-bounded (acting appointments can be scheduled ahead), so a grant that hasn't
+// started confers nothing yet, and one that has ended confers nothing any more — while a grant with
+// a future end date still confers its capabilities today.
+func TestBuildOperatorPrincipal_GrantWindowIsEnforced(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		from, to  string
+		wantCapab bool
+	}{
+		{"not yet started", "now() + interval '1 day'", "NULL", false},
+		{"already ended", "now() - interval '2 days'", "now() - interval '1 day'", false},
+		{"within a bounded window", "now() - interval '1 day'", "now() + interval '1 day'", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			tx := env.Tx(t)
+			q := sqlc.New(tx)
+
+			treeKey, err := q.NextTenantTreeKey(ctx)
+			if err != nil {
+				t.Fatalf("NextTenantTreeKey: %v", err)
+			}
+			tenant, err := q.CreateTenant(ctx, sqlc.CreateTenantParams{
+				Slug: fmt.Sprintf("test-window-%d", treeKey), Code: fmt.Sprintf("TW%d", treeKey), Name: "Test Window",
+				TreeKey: treeKey, Column7: fmt.Sprintf("%d", treeKey), Country: "MV", Status: "active", IsInternal: true,
+			})
+			if err != nil {
+				t.Fatalf("CreateTenant: %v", err)
+			}
+			app, err := q.GetAppByCode(ctx, "control-centre")
+			if err != nil {
+				t.Fatalf("GetAppByCode: %v", err)
+			}
+			role, err := q.CreateRole(ctx, sqlc.CreateRoleParams{AppID: app.ID, TenantID: tenant.ID, Code: "test-acting", Name: "Test Acting"})
+			if err != nil {
+				t.Fatalf("CreateRole: %v", err)
+			}
+			if _, err := q.CreateRoleCapability(ctx, sqlc.CreateRoleCapabilityParams{RoleID: role.ID, Capability: "platform:tenants:provision"}); err != nil {
+				t.Fatalf("CreateRoleCapability: %v", err)
+			}
+			userID := newTestUUID(t)
+			if _, err := q.CreateUser(ctx, sqlc.CreateUserParams{ID: userID, Email: fmt.Sprintf("acting-%d@example.test", treeKey), Name: "Acting"}); err != nil {
+				t.Fatalf("CreateUser: %v", err)
+			}
+			if _, err := q.CreateOwnerTenantUser(ctx, sqlc.CreateOwnerTenantUserParams{UserID: userID, TenantID: tenant.ID}); err != nil {
+				t.Fatalf("CreateOwnerTenantUser: %v", err)
+			}
+			if _, err := tx.Exec(ctx, fmt.Sprintf(
+				`INSERT INTO user_roles (tenant_id, user_id, role_id, active_from, active_to) VALUES ($1, $2, $3, %s, %s)`,
+				tc.from, tc.to), tenant.ID, userID, role.ID); err != nil {
+				t.Fatalf("insert user_role: %v", err)
+			}
+
+			p, err := auth.BuildOperatorPrincipal(ctx, tx, userID)
+			if err != nil {
+				t.Fatalf("BuildOperatorPrincipal: %v", err)
+			}
+			got := slices.Contains(p.Capabilities, "platform:tenants:provision")
+			if got != tc.wantCapab {
+				t.Fatalf("capability held = %v, want %v (capabilities: %v)", got, tc.wantCapab, p.Capabilities)
+			}
+		})
 	}
 }
 

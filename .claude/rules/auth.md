@@ -15,7 +15,14 @@ to be an OAuth2 server). No Node BFF.
 - **Onboarding** (matches `../erp` "nothing exists before payment"): self-service registration
   **disabled**; provisioning creates the identity via the Kratos **admin API**, mirrors to
   `platform.users`, creates the membership, and emails a **recovery link** for the owner to set
-  their password. JIT-upsert `platform.users` in middleware as a self-healing fallback.
+  their password.
+- **Authentication is not admission.** A valid Kratos session proves only that someone controls an
+  identity — never that they may use this system. Middleware **verifies** `platform.users` already
+  has a row for the subject and **never creates one**: accounts exist solely because an operator or
+  tenant admin provisioned them. An authenticated subject with no row gets **403** (not 401 — the
+  session is valid, so 401 would loop them through a login that keeps succeeding). This holds
+  independently of Kratos config, so enabling OIDC — or a mis-set `registration.enabled` — can
+  never turn "can log in with Google" into "is a user of the ERP".
 
 ## API — Chi, stateless
 

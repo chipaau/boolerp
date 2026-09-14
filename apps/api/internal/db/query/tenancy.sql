@@ -30,11 +30,20 @@ SELECT * FROM tenants WHERE id = $1;
 
 -- name: SetTenantStatus :one
 -- Reversible status flip (active <-> suspended); does not touch active_to — that's archival only.
-UPDATE tenants SET status = $2, updated_at = now() WHERE id = $1 RETURNING *;
+-- Guarded on the CURRENT status ($3) so the legal-transition check is atomic rather than a
+-- read-then-write two concurrent operators could both win (FR-TEN-03's lifecycle order). No row
+-- comes back when the tenant is not in that status — notably, an archived tenant can never be
+-- flipped back to active, because archived ends the lifecycle.
+UPDATE tenants SET status = sqlc.arg(new_status), updated_at = now()
+WHERE id = sqlc.arg(id) AND status = sqlc.arg(current_status)
+RETURNING *;
 
 -- name: ArchiveTenant :one
 -- Irreversible in this flat-CRUD pass; active_to marks the tenant as ceased (replaces deleted_at).
-UPDATE tenants SET status = 'archived', active_to = now(), updated_at = now() WHERE id = $1 RETURNING *;
+-- Only a live tenant can be archived: re-archiving would re-stamp active_to and move the ceased date.
+UPDATE tenants SET status = 'archived', active_to = now(), updated_at = now()
+WHERE id = $1 AND status IN ('active', 'suspended')
+RETURNING *;
 
 -- name: NextTenantTreeKey :one
 SELECT (COALESCE(MAX(tree_key), 0) + 1)::bigint FROM tenants;
@@ -59,25 +68,42 @@ WHERE tu.tenant_id = $1 AND tu.is_owner AND tu.active_to IS NULL;
 
 -- name: GetActiveTenantMembership :one
 -- Used by the tenant-resolution middleware: is this user a CURRENT member of this tenant?
+-- "Current" is the full validity window, not just the status flag: an 'active' row whose start hasn't
+-- arrived (or was never stamped) doesn't grant access yet, and one whose end has passed no longer
+-- does. active_to IS NULL means "no end set" — still a member.
 SELECT tu.* FROM tenant_users tu
-WHERE tu.tenant_id = $1 AND tu.user_id = $2 AND tu.status = 'active' AND tu.active_to IS NULL;
+WHERE tu.tenant_id = $1 AND tu.user_id = $2
+  AND tu.status = 'active'
+  AND tu.active_from IS NOT NULL AND tu.active_from <= now()
+  AND (tu.active_to IS NULL OR tu.active_to > now());
 
 -- name: IsInternalTenantMember :one
 -- FR-AUTHZ-04: platform:* capabilities only act platform-wide when held via a role on the ONE
 -- internal/operator tenant, and only when the caller is genuinely a member of it.
+-- Same validity window as GetActiveTenantMembership: an operator whose internal-tenant membership
+-- hasn't started or has ended holds no platform-wide capabilities.
 SELECT EXISTS (
   SELECT 1 FROM tenant_users tu
   JOIN tenants t ON t.id = tu.tenant_id
-  WHERE tu.user_id = $1 AND t.is_internal AND tu.status = 'active' AND tu.active_to IS NULL
+  WHERE tu.user_id = $1 AND t.is_internal
+    AND tu.status = 'active'
+    AND tu.active_from IS NOT NULL AND tu.active_from <= now()
+    AND (tu.active_to IS NULL OR tu.active_to > now())
 );
 
 -- name: ListActiveCapabilitiesForUserInTenant :many
 -- The capability slugs a user currently holds via CURRENT role assignments in one tenant — the
 -- principal-building query behind authz.Authorize.
+--
+-- Grants are time-bounded by design (DB-FOUNDATION: acting appointments can be scheduled ahead), so
+-- "current" is the window, not just "has no end date": a grant starting next month must not confer
+-- capabilities today, and one with an end date still confers them until that date arrives.
 SELECT DISTINCT rc.capability
 FROM user_roles ur
 JOIN role_capabilities rc ON rc.role_id = ur.role_id
-WHERE ur.user_id = $1 AND ur.tenant_id = $2 AND ur.active_to IS NULL;
+WHERE ur.user_id = $1 AND ur.tenant_id = $2
+  AND ur.active_from <= now()
+  AND (ur.active_to IS NULL OR ur.active_to > now());
 
 -- name: GetAppByCode :one
 SELECT * FROM apps WHERE code = $1;

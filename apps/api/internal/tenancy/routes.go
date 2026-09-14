@@ -185,7 +185,18 @@ func adminTransitionHandler(
 			return
 		}
 		t, err := transition(r.Context(), d.Pool, id, actorID)
-		if err != nil {
+		switch {
+		case errors.Is(err, ErrTenantNotFound):
+			respond.Error(r.Context(), w, http.StatusNotFound, "not found")
+			return
+		case err != nil:
+			// The tenant exists but its status forbids this action — a client error, not ours, and
+			// the operator is told which status blocked it rather than getting a bare "internal".
+			var illegal *IllegalTransitionError
+			if errors.As(err, &illegal) {
+				respond.Error(r.Context(), w, http.StatusConflict, illegal.Error())
+				return
+			}
 			observability.LoggerFrom(r.Context()).Error("tenant transition", "err", err)
 			respond.Error(r.Context(), w, http.StatusInternalServerError, "internal")
 			return

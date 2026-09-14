@@ -24,7 +24,8 @@ type CreateUserParams struct {
 	Phone pgtype.Text `json:"phone"`
 }
 
-// Provisioning-created user (owner). Distinct from UpsertUser (JIT whoami mirror): no
+// Provisioning-created user (owner) — the only path that brings a user into existence, alongside
+// the invite flow. Distinct from SyncUserOnLogin (the whoami mirror refresh): no
 // last_login_at — the user hasn't signed in yet. name_i18n omitted — defaults to '{}';
 // provisioning never sets it, same as it never set name_dv before.
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -70,21 +71,20 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	return i, err
 }
 
-const upsertUser = `-- name: UpsertUser :one
+const syncUserOnLogin = `-- name: SyncUserOnLogin :one
 
-INSERT INTO users (id, email, name, name_i18n, phone, last_login_at)
-VALUES ($1, $2, $3, $4, $5, now())
-ON CONFLICT (id) DO UPDATE SET
-  email         = EXCLUDED.email,
-  name          = EXCLUDED.name,
-  name_i18n     = EXCLUDED.name_i18n,
-  phone         = EXCLUDED.phone,
+UPDATE users SET
+  email         = $2,
+  name          = $3,
+  name_i18n     = $4,
+  phone         = $5,
   last_login_at = now(),
   updated_at    = now()
+WHERE id = $1 AND status = 'active'
 RETURNING id, email, name, name_i18n, phone, status, last_login_at, created_at, updated_at
 `
 
-type UpsertUserParams struct {
+type SyncUserOnLoginParams struct {
 	ID       pgtype.UUID `json:"id"`
 	Email    string      `json:"email"`
 	Name     string      `json:"name"`
@@ -93,10 +93,18 @@ type UpsertUserParams struct {
 }
 
 // Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
-// JIT-upsert the Kratos identity into platform.users on whoami (self-healing mirror).
+// Refresh the mirror from the Kratos identity traits and stamp the sign-in (UC-MEM-08).
+// UPDATE-only on purpose: there is no self-registration, so a user exists only because provisioning
+// or an invite created it. An unknown subject matches no row and returns pgx.ErrNoRows, which the
+// caller turns into 403 — authenticating with Kratos (password, passkey, or a future OIDC provider)
+// must never be enough to become a user of this system.
+//
+// `status = 'active'` is enforced here too, so a disabled account is refused by our own check rather
+// than only by Kratos session revocation having worked (FR-MEM-05 / UC-AUTH-11). A live session for
+// a since-disabled user matches no row and is denied.
 // Credentials never touch this table — Kratos owns them.
-func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, upsertUser,
+func (q *Queries) SyncUserOnLogin(ctx context.Context, arg SyncUserOnLoginParams) (User, error) {
+	row := q.db.QueryRow(ctx, syncUserOnLogin,
 		arg.ID,
 		arg.Email,
 		arg.Name,

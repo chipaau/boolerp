@@ -18,7 +18,10 @@
 
 ## UC-TEN-03 — Suspend / reactivate / archive *(Operator)*
 - **Main flow:** operator changes status; **suspend** blocks access + revokes sessions (UC-AUTH-11);
-  **archive** ends the lifecycle (retention per policy). · **Postcondition:** access reflects status within one request cycle.
+  **archive** ends the lifecycle (retention per policy). · **Exceptions:** the tenant's current status
+  doesn't permit the action (e.g. reactivating an archived tenant) → **409**, naming the blocking status;
+  unknown tenant id → **404**. Neither is reported as a server error. · **Postcondition:** access reflects
+  status within one request cycle.
 
 ## UC-TEN-04 — Place a tenant under a parent *(Operator)*
 - **Main flow:** set `parent_id` + `oversight`; build `path` from `tree_key`s. If `subordinate` →

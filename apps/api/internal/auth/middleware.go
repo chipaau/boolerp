@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/boolmv/erp/internal/db/sqlc"
@@ -23,8 +24,13 @@ func NewMiddleware(kratos *Kratos, pool *pgxpool.Pool) *Middleware {
 	return &Middleware{kratos: kratos, pool: pool}
 }
 
-// RequireSession rejects unauthenticated requests (401). On success it JIT-upserts the user and
-// puts the Principal into the request context (UC-AUTH-08).
+// RequireSession rejects unauthenticated requests (401) and authenticated-but-unknown ones (403),
+// then puts the Principal into the request context (UC-AUTH-08).
+//
+// Authenticating with Kratos is not admission to this system: there is no self-registration, so a
+// user exists only because provisioning or an invite created it. The mirror is refreshed here, never
+// created — an identity Kratos happily issued a session for (today password/passkey/code, tomorrow
+// an OIDC provider) gets 403 unless an operator or tenant admin already put them in platform.users.
 func (m *Middleware) RequireSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie := r.Header.Get("Cookie")
@@ -48,9 +54,13 @@ func (m *Middleware) RequireSession(next http.Handler) http.Handler {
 			return
 		}
 
-		user, err := m.upsert(r.Context(), sess)
+		user, err := m.sync(r.Context(), sess)
 		if err != nil {
-			observability.LoggerFrom(r.Context()).Error("jit upsert failed", "err", err)
+			if errors.Is(err, pgx.ErrNoRows) {
+				m.denyUnadmitted(r.Context(), w, sess.Identity.ID)
+				return
+			}
+			observability.LoggerFrom(r.Context()).Error("user mirror sync failed", "err", err)
 			respond.Error(r.Context(), w, http.StatusInternalServerError, "internal")
 			return
 		}
@@ -62,13 +72,29 @@ func (m *Middleware) RequireSession(next http.Handler) http.Handler {
 	})
 }
 
-func (m *Middleware) upsert(ctx context.Context, sess *KratosSession) (sqlc.User, error) {
+// denyUnadmitted answers 403 for a valid session whose subject is not an active platform user. Both
+// causes are anomalies worth seeing in logs, and they mean different things operationally: "disabled"
+// is a live session for an account someone switched off (session revocation didn't take, or hasn't
+// yet), while a missing row means an identity exists that provisioning never created.
+func (m *Middleware) denyUnadmitted(ctx context.Context, w http.ResponseWriter, identityID string) {
+	reason := "not provisioned"
+	if id, err := ParseUUID(identityID); err == nil {
+		if u, err := sqlc.New(m.pool).GetUserByID(ctx, id); err == nil {
+			reason = "user " + u.Status
+		}
+	}
+	observability.LoggerFrom(ctx).Warn("session denied for unadmitted identity",
+		"kratos_identity_id", identityID, "reason", reason)
+	respond.Error(ctx, w, http.StatusForbidden, "no access")
+}
+
+func (m *Middleware) sync(ctx context.Context, sess *KratosSession) (sqlc.User, error) {
 	id, err := ParseUUID(sess.Identity.ID)
 	if err != nil {
 		return sqlc.User{}, err
 	}
 	t := sess.Identity.Traits
-	return sqlc.New(m.pool).UpsertUser(ctx, sqlc.UpsertUserParams{
+	return sqlc.New(m.pool).SyncUserOnLogin(ctx, sqlc.SyncUserOnLoginParams{
 		ID:       id,
 		Email:    t.Email,
 		Name:     t.Name,

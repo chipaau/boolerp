@@ -47,10 +47,12 @@ validates sessions (`whoami`) and never sees credentials.
 - **Preconditions:** provider configured in Kratos.
 - **Main flow:**
   1. App starts the OIDC login flow; Kratos redirects to the provider.
-  2. Person authenticates at the provider; returns to Kratos; Kratos verifies + creates/links the identity.
-  3. Session cookie issued; Chi **JIT-upserts** `platform.users` on first `whoami`.
-- **Exceptions:** provider denies/cancels → back to login; email already exists → link vs. error (**confirm linking policy**).
-- **Postcondition:** authenticated session; identity linked to the OIDC provider.
+  2. Person authenticates at the provider; returns to Kratos; Kratos verifies and **links the credential to the
+     already-provisioned identity**. OIDC is a way to sign in to an existing account — never a way to create one.
+  3. Session cookie issued; Chi **verifies** the subject has a `platform.users` row on `whoami` (UC-AUTH-08).
+- **Exceptions:** provider denies/cancels → back to login; **subject not provisioned → 403 no-access** (the person
+  authenticated successfully at Google/Microsoft but is not a user of this system, and no account is created).
+- **Postcondition:** authenticated session for an existing user; identity linked to the OIDC provider.
 
 ## UC-AUTH-06 — Recover access (forgot password)
 - **Actor:** Person · **Trigger:** "Forgot password".
@@ -65,8 +67,11 @@ validates sessions (`whoami`) and never sees credentials.
 
 ## UC-AUTH-08 — Validate session on each API request *(system)*
 - **Actor:** Chi · **Trigger:** any `/api/*` request.
-- **Main flow:** Chi forwards the session cookie to `whoami`; 200 → identity into `context.Context`; then tenant resolution + RLS + Cerbos.
-- **Exceptions:** 401 → App redirects to login preserving the deep link (**UC-AUTH-12**).
+- **Main flow:** Chi forwards the session cookie to `whoami`; 200 → Chi looks the subject up in `platform.users`
+  (**verify only — never create**) → identity into `context.Context`; then tenant resolution + RLS + Cerbos.
+- **Exceptions:** 401 → App redirects to login preserving the deep link (**UC-AUTH-12**). Valid session, but the
+  subject has no `users` row → **403 no-access**; the attempt is logged (it means an identity exists that
+  provisioning never created).
 - **Postcondition:** request proceeds with an authenticated principal, or is rejected.
 
 ## UC-AUTH-09 — Log out (current session)
