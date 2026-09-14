@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/boolmv/erp/internal/observability"
@@ -70,5 +71,46 @@ func TestRegisterPoolMetrics_ExposesDBPoolGauges(t *testing.T) {
 		if !contains(body, name) {
 			t.Fatalf("want %s in the exposition output, got:\n%s", name, body)
 		}
+	}
+}
+
+// A panicking handler used to vanish from the metrics entirely: the recording ran after
+// next.ServeHTTP, so the panic unwound straight past it. The requests most worth counting were the
+// only ones never counted. Recoverer mounted inside turns the panic into a 500, which is what the
+// wrapped writer reports.
+func TestMetricsMiddleware_RecordsPanickingRequestsAs500(t *testing.T) {
+	r := chi.NewRouter()
+	r.Use(observability.MetricsMiddleware)
+	r.Use(middleware.Recoverer)
+	r.Get("/boom/{id}", func(http.ResponseWriter, *http.Request) { panic("handler exploded") })
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/boom/7", nil))
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("want the panic turned into a 500, got %d", rec.Code)
+	}
+
+	exposition := httptest.NewRecorder()
+	observability.MetricsHandler().ServeHTTP(exposition, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	body := exposition.Body.String()
+	if !contains(body, `route="/boom/{id}"`) || !contains(body, `status="500"`) {
+		t.Fatalf("want the panicking request counted as a 500, got:\n%s", body)
+	}
+}
+
+// Latency is labelled by status too, so "how slow were the requests that failed?" is answerable.
+func TestMetricsMiddleware_DurationCarriesTheStatusLabel(t *testing.T) {
+	r := chi.NewRouter()
+	r.Use(observability.MetricsMiddleware)
+	r.Get("/gone/{id}", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNotFound) })
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/gone/1", nil))
+
+	exposition := httptest.NewRecorder()
+	observability.MetricsHandler().ServeHTTP(exposition, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	body := exposition.Body.String()
+	if !contains(body, `http_request_duration_seconds_count{method="GET",route="/gone/{id}",status="404"}`) {
+		t.Fatalf("want duration labelled by status, got:\n%s", body)
 	}
 }

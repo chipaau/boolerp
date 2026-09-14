@@ -47,9 +47,13 @@ func New(platform PlatformDeps, modules ...Module) http.Handler {
 	r.Use(middleware.RequestID)
 	r.Use(echoRequestID)
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Recoverer)
 	r.Use(observability.RequestLogger(slog.Default()))
+	r.Use(observability.AccessLog)
 	r.Use(observability.MetricsMiddleware)
+	// Recoverer sits INNERMOST on purpose: it converts a panic into a 500 written through the
+	// response writers AccessLog and MetricsMiddleware wrapped, so a panicking request is recorded
+	// as a 500 instead of going unobserved. Outside them, its 500 bypassed both.
+	r.Use(middleware.Recoverer)
 
 	authmw := auth.NewMiddleware(platform.Kratos, platform.Pool)
 
