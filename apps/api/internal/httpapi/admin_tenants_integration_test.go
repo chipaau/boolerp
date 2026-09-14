@@ -362,3 +362,41 @@ func TestAdminTenants_AuditRowCarriesTheRequestID(t *testing.T) {
 		t.Fatalf("audit row request id = %q, want %q", *storedRequestID, wantRequestID)
 	}
 }
+
+// Every response carries the request id, success included — otherwise a caller reporting "this did
+// the wrong thing" about a 200 has no id to quote, even though that id keys the logs, the trace,
+// Cerbos's decision and the audit row.
+func TestAdminAPI_EveryResponseEchoesTheRequestID(t *testing.T) {
+	userID := setupOperatorFixture(t, "reqid-header", "")
+	kratos := fakeKratosFor(uuidToStringAdmin(userID), "reqid-header@example.test")
+	defer kratos.Close()
+	h := newAdminAPITestRouter(t, kratos.URL)
+
+	// Success path.
+	rec := doAsOperator(t, h, http.MethodGet, "/v1/admin/tenants", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list: want 200, got %d", rec.Code)
+	}
+	if rec.Header().Get("X-Request-Id") == "" {
+		t.Fatal("want the request id echoed on a successful response")
+	}
+
+	// Unauthenticated path — no session, so it never reaches a handler.
+	unauth := httptest.NewRequest(http.MethodGet, "/v1/admin/tenants", nil)
+	unauthRec := httptest.NewRecorder()
+	h.ServeHTTP(unauthRec, unauth)
+	if unauthRec.Header().Get("X-Request-Id") == "" {
+		t.Fatal("want the request id echoed even when the request is rejected before any handler")
+	}
+
+	// An inbound id is adopted and echoed back unchanged, so correlation survives across services.
+	const supplied = "caller-supplied-id-7"
+	req := httptest.NewRequest(http.MethodGet, "/v1/admin/tenants", nil)
+	req.Header.Set("Cookie", "ory_kratos_session=abc")
+	req.Header.Set("X-Request-Id", supplied)
+	echoed := httptest.NewRecorder()
+	h.ServeHTTP(echoed, req)
+	if got := echoed.Header().Get("X-Request-Id"); got != supplied {
+		t.Fatalf("want the caller's id %q echoed back, got %q", supplied, got)
+	}
+}

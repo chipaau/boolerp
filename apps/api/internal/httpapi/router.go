@@ -45,6 +45,7 @@ type Module = module.Module
 func New(platform PlatformDeps, modules ...Module) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
+	r.Use(echoRequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 	r.Use(observability.RequestLogger(slog.Default()))
@@ -70,6 +71,21 @@ func New(platform PlatformDeps, modules ...Module) http.Handler {
 	// otelhttp creates the root span per request (UC-OBS-01/02); a no-op wrapper when tracing isn't
 	// configured (SetupTracing left the default no-op TracerProvider in place).
 	return otelhttp.NewHandler(r, "erp-api")
+}
+
+// echoRequestID returns the request id on EVERY response, not just the failures respond.Error
+// already puts it in the body of. Without it a caller reporting "this did the wrong thing" about a
+// 200 has no id to quote, even though that id keys the request's logs, its trace, Cerbos's decision
+// and the audit row. Set before the handler runs, since headers can't be added once it writes the
+// status. chi's RequestID adopts an inbound X-Request-Id, so a caller-supplied id is echoed back
+// unchanged and correlation survives across service boundaries.
+func echoRequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if id := middleware.GetReqID(r.Context()); id != "" {
+			w.Header().Set(middleware.RequestIDHeader, id)
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // readyz reports readiness only when every dependency is reachable.

@@ -5,8 +5,10 @@
 package respond
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -20,10 +22,24 @@ func JSON(w http.ResponseWriter, status int, body string) {
 }
 
 // JSONBody encodes v as the JSON response body.
+//
+// It encodes into a buffer BEFORE touching the ResponseWriter. Encoding straight into w commits the
+// status line first, so a value that fails to marshal — an unmarshalable type, a NaN float, anything
+// reachable through the map[string]any payloads handlers build — would send "200 OK" followed by a
+// truncated body, with the error silently discarded. Buffering keeps that failure recoverable into
+// an honest 500.
 func JSONBody(w http.ResponseWriter, status int, v any) {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(v); err != nil {
+		slog.Default().Error("response encoding failed", "err", err, "intended_status", status)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}` + "\n"))
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	_, _ = w.Write(buf.Bytes())
 }
 
 // Error writes {"error": msg, "request_id": ...} at the given status. request_id is chi's own
