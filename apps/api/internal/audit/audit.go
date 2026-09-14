@@ -8,13 +8,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/boolmv/erp/internal/db/sqlc"
 )
 
-// Entry is one audit_log row's content, before FR-AUD-04 impersonation context or request
-// correlation are wired (neither exists yet — see the migration's column comments).
+// Entry is one audit_log row's content, before FR-AUD-04 impersonation context is wired (no
+// impersonation feature exists yet — see the migration's column comments). The request id isn't
+// here: Record reads it from the context so no caller has to pass it (or can omit it).
 type Entry struct {
 	ActorUserID pgtype.UUID // NULL (zero value) if system-initiated
 	EntityType  string
@@ -26,13 +28,23 @@ type Entry struct {
 // Record inserts one audit_log row. db must be a transaction already running inside
 // tenancy.WithTenant for the affected tenant — the row's tenant_id resolves from the column
 // default, and the RLS WITH CHECK would reject a mismatched or absent current tenant.
+//
+// The request id is taken from ctx rather than from Entry, so every caller correlates for free and
+// none can forget to: the audited change, the logs, the trace, Cerbos's decision, and the id the
+// caller saw in an error response all carry the same value. Work with no request behind it (CLI
+// provisioning, first-run setup) records NULL.
 func Record(ctx context.Context, db sqlc.DBTX, e Entry) error {
+	var requestID pgtype.Text
+	if id := middleware.GetReqID(ctx); id != "" {
+		requestID = pgtype.Text{String: id, Valid: true}
+	}
 	if _, err := sqlc.New(db).CreateAuditLogEntry(ctx, sqlc.CreateAuditLogEntryParams{
 		ActorUserID: e.ActorUserID,
 		EntityType:  e.EntityType,
 		EntityID:    e.EntityID,
 		Action:      e.Action,
 		Payload:     e.Payload,
+		RequestID:   requestID,
 	}); err != nil {
 		return fmt.Errorf("audit: record: %w", err)
 	}

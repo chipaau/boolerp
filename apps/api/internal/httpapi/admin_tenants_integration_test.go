@@ -323,3 +323,42 @@ func createLifecycleTargetTenant(t *testing.T, slug string) string {
 	}
 	return uuidToStringAdmin(tenant.ID)
 }
+
+// The audited change must be reachable from the request that made it. chi's RequestID middleware
+// adopts an incoming X-Request-Id, so this drives a known id through and requires that exact value
+// on the audit row — proving the correlation rather than just that the column is non-null.
+func TestAdminTenants_AuditRowCarriesTheRequestID(t *testing.T) {
+	userID := setupOperatorFixture(t, "audit-reqid", "platform:tenants:suspend")
+	kratos := fakeKratosFor(uuidToStringAdmin(userID), "audit-reqid@example.test")
+	defer kratos.Close()
+	h := newAdminAPITestRouter(t, kratos.URL)
+
+	target := createLifecycleTargetTenant(t, "e2e-audit-reqid")
+	const wantRequestID = "test-correlation-id-42"
+
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/suspend", target), bytes.NewReader(nil))
+	req.Header.Set("Cookie", "ory_kratos_session=abc")
+	req.Header.Set("X-Request-Id", wantRequestID)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("suspend: want 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	tenantID, err := auth.ParseUUID(target)
+	if err != nil {
+		t.Fatalf("parse tenant id: %v", err)
+	}
+	var storedRequestID *string
+	if err := env.Pool.QueryRow(context.Background(),
+		`SELECT request_id FROM audit_log WHERE entity_id = $1 AND action = 'suspend'`,
+		tenantID).Scan(&storedRequestID); err != nil {
+		t.Fatalf("read audit row: %v", err)
+	}
+	if storedRequestID == nil {
+		t.Fatal("audit row stored no request id — the change can't be traced back to its request")
+	}
+	if *storedRequestID != wantRequestID {
+		t.Fatalf("audit row request id = %q, want %q", *storedRequestID, wantRequestID)
+	}
+}

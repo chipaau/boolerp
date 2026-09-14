@@ -13,8 +13,8 @@ import (
 
 const createAuditLogEntry = `-- name: CreateAuditLogEntry :one
 
-INSERT INTO audit_log (actor_user_id, entity_type, entity_id, action, payload)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO audit_log (actor_user_id, entity_type, entity_id, action, payload, request_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, tenant_id, actor_user_id, acting_as_user_id, entity_type, entity_id, action, payload, request_id, ip, occurred_at
 `
 
@@ -24,11 +24,15 @@ type CreateAuditLogEntryParams struct {
 	EntityID    pgtype.UUID `json:"entity_id"`
 	Action      string      `json:"action"`
 	Payload     []byte      `json:"payload"`
+	RequestID   pgtype.Text `json:"request_id"`
 }
 
 // audit_log — append-only (DB-enforced via trg_audit_log_append_only). tenant_id is never passed
 // explicitly; it resolves from the column DEFAULT (current_setting('app.current_tenant')), so a
 // caller can only insert while running inside a tenancy.WithTenant-resolved transaction.
+// request_id ties the audited change to the request that made it — the same id in the API's logs,
+// its traces, Cerbos's decision log, and any error response the caller saw. NULL for changes with no
+// request behind them (CLI provisioning, first-run setup).
 func (q *Queries) CreateAuditLogEntry(ctx context.Context, arg CreateAuditLogEntryParams) (AuditLog, error) {
 	row := q.db.QueryRow(ctx, createAuditLogEntry,
 		arg.ActorUserID,
@@ -36,6 +40,7 @@ func (q *Queries) CreateAuditLogEntry(ctx context.Context, arg CreateAuditLogEnt
 		arg.EntityID,
 		arg.Action,
 		arg.Payload,
+		arg.RequestID,
 	)
 	var i AuditLog
 	err := row.Scan(
