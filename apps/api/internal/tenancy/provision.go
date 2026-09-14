@@ -11,6 +11,7 @@ import (
 	"github.com/boolmv/erp/internal/audit"
 	"github.com/boolmv/erp/internal/auth"
 	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/observability"
 	"github.com/boolmv/erp/internal/rls"
 )
 
@@ -72,13 +73,30 @@ func Provision(ctx context.Context, pool *pgxpool.Pool, kratos *auth.Kratos, p P
 	if err != nil {
 		return ProvisionResult{}, fmt.Errorf("tenancy: provision: begin tx: %w", err)
 	}
-	var kratosIdentityID string
+	var (
+		kratosIdentityID string
+		committed        bool
+	)
 	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-			if kratosIdentityID != "" {
-				_ = kratos.DeleteIdentity(context.Background(), kratosIdentityID)
-			}
+		// Compensation is valid ONLY while the transaction is still open. Once committed the tenant
+		// is real, and deleting its owner identity would strand a live tenant nobody can sign in to —
+		// so `committed` gates this, not `err` alone, and a later failure added after the commit
+		// can't spring that trap.
+		if err == nil || committed {
+			return
+		}
+		_ = tx.Rollback(ctx)
+		if kratosIdentityID == "" {
+			return
+		}
+		// Deliberately NOT ctx: the request context may already be cancelled (that may be why we're
+		// here), and the compensating delete has to run anyway.
+		if delErr := kratos.DeleteIdentity(context.Background(), kratosIdentityID); delErr != nil {
+			// The identity is now orphaned in Kratos and holds an email address no retry can reuse,
+			// so name it — this is the one failure an operator must clean up by hand.
+			observability.LoggerFrom(ctx).Error("orphaned kratos identity after failed provisioning",
+				"kratos_identity_id", kratosIdentityID, "owner_email", p.OwnerEmail,
+				"delete_err", delErr, "cause", err)
 		}
 	}()
 
@@ -123,6 +141,11 @@ func Provision(ctx context.Context, pool *pgxpool.Pool, kratos *auth.Kratos, p P
 		return ProvisionResult{}, fmt.Errorf("tenancy: provision: %w", err)
 	}
 
+	// Minted BEFORE the commit on purpose. The link is just a generated URL (Kratos's admin endpoint
+	// returns it; it emails nothing), so if the commit then fails the link dies with the identity we
+	// delete — no harm. Minting it after the commit would invert that: a failure there leaves a
+	// committed, live tenant whose owner has no way to set a credential, and by then the tenant is
+	// real so we can't undo it either.
 	link, err := kratos.CreateRecoveryLink(ctx, kratosIdentityID)
 	if err != nil {
 		return ProvisionResult{}, fmt.Errorf("tenancy: provision: create recovery link: %w", err)
@@ -131,5 +154,6 @@ func Provision(ctx context.Context, pool *pgxpool.Pool, kratos *auth.Kratos, p P
 	if err = tx.Commit(ctx); err != nil {
 		return ProvisionResult{}, fmt.Errorf("tenancy: provision: commit: %w", err)
 	}
+	committed = true
 	return ProvisionResult{Tenant: tenant, RecoveryLink: link}, nil
 }

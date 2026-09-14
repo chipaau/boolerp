@@ -3,10 +3,12 @@
 package tenancy_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,6 +19,7 @@ import (
 
 	"github.com/boolmv/erp/internal/auth"
 	"github.com/boolmv/erp/internal/db/sqlc"
+	"github.com/boolmv/erp/internal/observability"
 	"github.com/boolmv/erp/internal/tenancy"
 )
 
@@ -26,6 +29,7 @@ type fakeKratosAdmin struct {
 	mu               sync.Mutex
 	identities       map[string]bool
 	failRecoveryLink bool
+	failDelete       bool
 	deletedIDs       []string
 }
 
@@ -45,6 +49,10 @@ func (f *fakeKratosAdmin) server() *httptest.Server {
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]string{"id": id})
 		case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, "/admin/identities/"):
+			if f.failDelete {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 			id := strings.TrimPrefix(r.URL.Path, "/admin/identities/")
 			delete(f.identities, id)
 			f.deletedIDs = append(f.deletedIDs, id)
@@ -161,5 +169,54 @@ func TestProvision_RecoveryLinkFailureRollsBackAndDeletesIdentity(t *testing.T) 
 	fk.mu.Unlock()
 	if !deleted {
 		t.Fatal("want the orphaned Kratos identity to be deleted as compensation")
+	}
+}
+
+// When the compensating delete ITSELF fails, the identity is stranded in Kratos holding an email
+// address no retry can reuse. That is the one failure an operator has to clean up by hand, so it
+// must be reported by id rather than swallowed — and the original cause must still be returned.
+func TestProvision_FailedCompensationIsLoggedWithTheOrphanedIdentity(t *testing.T) {
+	fk := newFakeKratosAdmin()
+	fk.failRecoveryLink = true // make provisioning fail...
+	fk.failDelete = true       // ...and make the cleanup fail too
+	srv := fk.server()
+	defer srv.Close()
+	kratos := auth.NewKratos(srv.URL, srv.URL)
+
+	var logged bytes.Buffer
+	ctx := observability.WithLogger(context.Background(),
+		slog.New(slog.NewJSONHandler(&logged, &slog.HandlerOptions{Level: slog.LevelError})))
+
+	_, err := tenancy.Provision(ctx, env.AppPool, kratos, tenancy.ProvisionParams{
+		Slug: "test-provision-orphan", Code: "TPORPH", Name: "Test Provision Orphan",
+		Country: "MV", OwnerEmail: "owner@test-provision-orphan.test", OwnerName: "New Owner",
+	})
+	if err == nil {
+		t.Fatal("want the original failure to be returned")
+	}
+	if !strings.Contains(err.Error(), "recovery link") {
+		t.Fatalf("want the ORIGINAL cause returned, not the cleanup error, got: %v", err)
+	}
+
+	// The tenant is still rolled back — a failed cleanup must not leave a half-built tenant.
+	if _, err := sqlc.New(env.AppPool).GetTenantBySlug(context.Background(), "test-provision-orphan"); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("want no tenant row after a failed provision, got %v", err)
+	}
+
+	out := logged.String()
+	if !strings.Contains(out, "orphaned kratos identity") {
+		t.Fatalf("want the stranded identity reported, got log output: %s", out)
+	}
+	fk.mu.Lock()
+	var orphan string
+	for id := range fk.identities {
+		orphan = id
+	}
+	fk.mu.Unlock()
+	if orphan == "" {
+		t.Fatal("want the identity to still exist in Kratos (the delete failed)")
+	}
+	if !strings.Contains(out, orphan) {
+		t.Fatalf("want the orphaned identity id %q named in the log, got: %s", orphan, out)
 	}
 }
