@@ -34,9 +34,9 @@ type meResponse struct {
 	Status   string          `json:"status"`
 }
 
-// me returns the current user. Exercises the full backbone: session (whoami) → JIT-upsert (in the
-// session middleware) → authz (Cerbos scaffold policy) → DB read — this handler owns the read that
-// mirrors what Middleware.upsert already writes to the same users table.
+// me returns the current user. Exercises the full backbone: session (whoami) → mirror verify +
+// refresh (in the session middleware) → authz (Cerbos scaffold policy) → DB read — this handler
+// re-reads the same users row the middleware already refreshed.
 func me(pool *pgxpool.Pool, cerbos *Cerbos) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p, ok := PrincipalFrom(r.Context())

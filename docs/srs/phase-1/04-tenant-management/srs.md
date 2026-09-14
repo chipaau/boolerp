@@ -17,7 +17,7 @@ website onboarding (08), and on-prem first-run (01).
 |---|---|
 | FR-TEN-01 | **Provisioning engine:** create tenant → owner identity (03) → owner membership (03) → seed default roles (05); transactional, rolls back fully on failure. |
 | FR-TEN-02 | Triggerable by operator (`apps/admin`), onboarding (08), and first-run (01) — one engine, three callers. |
-| FR-TEN-03 | Status lifecycle `provisioning → active → suspended → archived`; suspension blocks access + revokes sessions (UC-AUTH-11); middleware rejects non-active. |
+| FR-TEN-03 | Status lifecycle `provisioning → active → suspended → archived`; suspension blocks access + revokes sessions (UC-AUTH-11); middleware rejects non-active. Transitions are **enforced**, each legal only from its predecessor — suspend from `active`, reactivate from `suspended`, archive from `active`/`suspended`. **`archived` is terminal**: nothing reactivates or re-archives it. The guard lives in the UPDATE's `WHERE`, so concurrent operators can't both win. |
 | FR-TEN-04 | Tenant profile: `slug` (immutable after go-live), `code`, `party_type` classification, country/locale/timezone, `settings`. |
 | FR-TEN-05 | Hierarchy: `parent_id` + immutable `tree_key` + `path` ltree; place under a parent; **re-parent** (ltree prefix swap) with a cycle guard; operator-driven. |
 | FR-TEN-06 | `oversight` per parent edge (`subordinate` \| `affiliated`), derived at provisioning, overridable. |

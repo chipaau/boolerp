@@ -63,7 +63,7 @@ func TestSetTenantStatus_SuspendAndReactivate(t *testing.T) {
 
 	tenant := createTestTenantForCRUD(t, ctx, q, "suspend-test")
 
-	suspended, err := q.SetTenantStatus(ctx, sqlc.SetTenantStatusParams{ID: tenant.ID, Status: "suspended"})
+	suspended, err := q.SetTenantStatus(ctx, sqlc.SetTenantStatusParams{ID: tenant.ID, CurrentStatus: "active", NewStatus: "suspended"})
 	if err != nil {
 		t.Fatalf("SetTenantStatus(suspended): %v", err)
 	}
@@ -74,7 +74,7 @@ func TestSetTenantStatus_SuspendAndReactivate(t *testing.T) {
 		t.Fatalf("suspend must not set active_to (reversible) — got %v", suspended.ActiveTo)
 	}
 
-	reactivated, err := q.SetTenantStatus(ctx, sqlc.SetTenantStatusParams{ID: tenant.ID, Status: "active"})
+	reactivated, err := q.SetTenantStatus(ctx, sqlc.SetTenantStatusParams{ID: tenant.ID, CurrentStatus: "suspended", NewStatus: "active"})
 	if err != nil {
 		t.Fatalf("SetTenantStatus(active): %v", err)
 	}

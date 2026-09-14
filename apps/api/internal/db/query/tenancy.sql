@@ -30,11 +30,20 @@ SELECT * FROM tenants WHERE id = $1;
 
 -- name: SetTenantStatus :one
 -- Reversible status flip (active <-> suspended); does not touch active_to — that's archival only.
-UPDATE tenants SET status = $2, updated_at = now() WHERE id = $1 RETURNING *;
+-- Guarded on the CURRENT status ($3) so the legal-transition check is atomic rather than a
+-- read-then-write two concurrent operators could both win (FR-TEN-03's lifecycle order). No row
+-- comes back when the tenant is not in that status — notably, an archived tenant can never be
+-- flipped back to active, because archived ends the lifecycle.
+UPDATE tenants SET status = sqlc.arg(new_status), updated_at = now()
+WHERE id = sqlc.arg(id) AND status = sqlc.arg(current_status)
+RETURNING *;
 
 -- name: ArchiveTenant :one
 -- Irreversible in this flat-CRUD pass; active_to marks the tenant as ceased (replaces deleted_at).
-UPDATE tenants SET status = 'archived', active_to = now(), updated_at = now() WHERE id = $1 RETURNING *;
+-- Only a live tenant can be archived: re-archiving would re-stamp active_to and move the ceased date.
+UPDATE tenants SET status = 'archived', active_to = now(), updated_at = now()
+WHERE id = $1 AND status IN ('active', 'suspended')
+RETURNING *;
 
 -- name: NextTenantTreeKey :one
 SELECT (COALESCE(MAX(tree_key), 0) + 1)::bigint FROM tenants;

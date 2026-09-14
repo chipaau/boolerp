@@ -12,6 +12,7 @@ import (
 
 type Querier interface {
 	// Irreversible in this flat-CRUD pass; active_to marks the tenant as ceased (replaces deleted_at).
+	// Only a live tenant can be archived: re-archiving would re-stamp active_to and move the ceased date.
 	ArchiveTenant(ctx context.Context, id pgtype.UUID) (Tenant, error)
 	// audit_log — append-only (DB-enforced via trg_audit_log_append_only). tenant_id is never passed
 	// explicitly; it resolves from the column DEFAULT (current_setting('app.current_tenant')), so a
@@ -82,6 +83,10 @@ type Querier interface {
 	ListTenants(ctx context.Context) ([]Tenant, error)
 	NextTenantTreeKey(ctx context.Context) (int64, error)
 	// Reversible status flip (active <-> suspended); does not touch active_to — that's archival only.
+	// Guarded on the CURRENT status ($3) so the legal-transition check is atomic rather than a
+	// read-then-write two concurrent operators could both win (FR-TEN-03's lifecycle order). No row
+	// comes back when the tenant is not in that status — notably, an archived tenant can never be
+	// flipped back to active, because archived ends the lifecycle.
 	SetTenantStatus(ctx context.Context, arg SetTenantStatusParams) (Tenant, error)
 	// Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
 	// Refresh the mirror from the Kratos identity traits and stamp the sign-in (UC-MEM-08).

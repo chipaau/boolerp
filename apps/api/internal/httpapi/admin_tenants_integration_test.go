@@ -190,6 +190,41 @@ func TestAdminTenants_SuspendReactivateArchive(t *testing.T) {
 	assertTenantStatus(t, rec, "archived")
 }
 
+// A transition the tenant's current status forbids is a client error (409), and an unknown tenant is
+// a 404 — neither is an "internal" 500. Archived ends the lifecycle (FR-TEN-03), so nothing reopens it.
+func TestAdminTenants_IllegalTransitionsAndUnknownTenant(t *testing.T) {
+	userID := setupOperatorFixture(t, "lifecycle-illegal", "platform:tenants:suspend")
+	kratos := fakeKratosFor(uuidToStringAdmin(userID), "lifecycle-illegal@example.test")
+	defer kratos.Close()
+	h := newAdminAPITestRouter(t, kratos.URL)
+
+	target := createLifecycleTargetTenant(t, "e2e-illegal-target")
+
+	// Reactivating a tenant that is active (not suspended) is not a legal transition.
+	rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/reactivate", target), nil)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("reactivate an active tenant: want 409, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	if rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/archive", target), nil); rec.Code != http.StatusOK {
+		t.Fatalf("archive: want 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Archived is terminal: it can be neither resurrected nor re-archived.
+	for _, action := range []string{"reactivate", "suspend", "archive"} {
+		rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/%s", target, action), nil)
+		if rec.Code != http.StatusConflict {
+			t.Fatalf("%s an archived tenant: want 409, got %d: %s", action, rec.Code, rec.Body.String())
+		}
+	}
+
+	// A well-formed id that matches no tenant is a 404, not a 500.
+	rec = doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants/018f7d3a-0000-7000-8000-0000000000aa/suspend", nil)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("suspend an unknown tenant: want 404, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
 func assertTenantStatus(t *testing.T, rec *httptest.ResponseRecorder, want string) {
 	t.Helper()
 	var resp map[string]any
