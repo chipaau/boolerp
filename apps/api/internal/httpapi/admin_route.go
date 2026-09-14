@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -59,14 +60,15 @@ func AdminRoute[D any](
 			resourceID = "collection"
 		}
 
-		allowed, err := cerbos.Authorize(req.Context(), azp, auth.AuthzResource{Kind: resourceKind, ID: resourceID}, action)
-		if err != nil {
+		switch err := cerbos.Authorize(req.Context(), azp, auth.AuthzResource{Kind: resourceKind, ID: resourceID}, action); {
+		case errors.Is(err, auth.ErrForbidden):
+			respond.Error(req.Context(), w, http.StatusForbidden, "forbidden")
+			return
+		case err != nil:
+			// The policy didn't decide "no" — we failed to ask. Reporting that as 403 would tell the
+			// operator they lack a permission they may well hold.
 			observability.LoggerFrom(req.Context()).Error("cerbos authorize", "err", err)
 			respond.Error(req.Context(), w, http.StatusBadGateway, "authz upstream")
-			return
-		}
-		if !allowed {
-			respond.Error(req.Context(), w, http.StatusForbidden, "forbidden")
 			return
 		}
 

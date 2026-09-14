@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -45,14 +46,13 @@ func me(pool *pgxpool.Pool, cerbos *Cerbos) http.HandlerFunc {
 			return
 		}
 
-		allowed, err := cerbos.AllowSelfProfileRead(r.Context(), p.ID)
-		if err != nil {
+		switch err := cerbos.AllowSelfProfileRead(r.Context(), p.ID); {
+		case errors.Is(err, ErrForbidden):
+			respond.Error(r.Context(), w, http.StatusForbidden, "forbidden")
+			return
+		case err != nil:
 			observability.LoggerFrom(r.Context()).Error("cerbos check", "err", err)
 			respond.Error(r.Context(), w, http.StatusBadGateway, "authz upstream")
-			return
-		}
-		if !allowed {
-			respond.Error(r.Context(), w, http.StatusForbidden, "forbidden")
 			return
 		}
 

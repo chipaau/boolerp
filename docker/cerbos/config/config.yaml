@@ -8,3 +8,14 @@ storage:
   disk:
     directory: /policies
     watchForChanges: true
+# Decision logs to stdout, so every authz decision is visible in `docker compose logs cerbos` and
+# shipped to Loki by promtail like any other container. Each entry carries the callId plus the
+# request id the API passes through (auth.Cerbos.isAllowed), so a decision here joins up with the
+# same request_id in the API's own logs, traces, and error responses.
+audit:
+  enabled: true
+  accessLogsEnabled: false
+  decisionLogsEnabled: true
+  backend: file
+  file:
+    path: stdout

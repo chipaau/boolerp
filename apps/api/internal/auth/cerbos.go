@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -75,11 +77,22 @@ type checkResp struct {
 	} `json:"results"`
 }
 
+// ErrForbidden is the policy answering "no" — the decision itself, not a malfunction. Any OTHER
+// error from Authorize means the decision could not be made at all (Cerbos unreachable, non-200,
+// undecodable body), which is a 502 rather than a 403.
+var ErrForbidden = errors.New("auth: forbidden")
+
 // Authorize asks Cerbos whether p may perform action on r — the one general-purpose enforcement
 // point, called per-handler (not a blanket middleware: a check with no resource loaded can't
 // evaluate attribute-based grants, e.g. "is this your own record" — see docs/roadmap.md's component
-// 05 notes). Deny-by-default: any transport/decode error is treated as NOT allowed.
-func (c *Cerbos) Authorize(ctx context.Context, p AuthzPrincipal, r AuthzResource, action string) (bool, error) {
+// 05 notes).
+//
+// It returns ONLY an error — nil to allow, ErrForbidden to deny, anything else for an authz that
+// could not be decided — deliberately, rather than (bool, error). With a separate bool, a caller
+// writing `allowed, _ :=` reports a Cerbos outage as "forbidden", which is fail-closed but lies
+// about why. Here the sole way to proceed is err == nil, so there is no bool to misread: a caller
+// that ignores the error cannot accidentally treat an outage as a decision.
+func (c *Cerbos) Authorize(ctx context.Context, p AuthzPrincipal, r AuthzResource, action string) error {
 	roles := append([]string{"user"}, p.Capabilities...)
 	principal := cerbosPrincipal{
 		ID:    p.ID,
@@ -89,42 +102,52 @@ func (c *Cerbos) Authorize(ctx context.Context, p AuthzPrincipal, r AuthzResourc
 	return c.isAllowed(ctx, principal, resourceObj{Kind: r.Kind, ID: r.ID, Attr: r.Attr}, action)
 }
 
-func (c *Cerbos) isAllowed(ctx context.Context, p cerbosPrincipal, res resourceObj, action string) (bool, error) {
+func (c *Cerbos) isAllowed(ctx context.Context, p cerbosPrincipal, res resourceObj, action string) error {
+	// Carry OUR request id into Cerbos's own audit log, so a decision recorded there joins up with
+	// the same id in our logs, traces, and error responses (see respond.Error) instead of every
+	// decision being labelled identically.
+	requestID := middleware.GetReqID(ctx)
+	if requestID == "" {
+		requestID = "chk"
+	}
 	body, err := json.Marshal(checkReq{
-		RequestID: "chk",
+		RequestID: requestID,
 		Principal: p,
 		Resources: []cerbosResource{{Resource: res, Actions: []string{action}}},
 	})
 	if err != nil {
-		return false, err
+		return err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/check/resources", bytes.NewReader(body))
 	if err != nil {
-		return false, err
+		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.hc.Do(req)
 	if err != nil {
-		return false, fmt.Errorf("auth: cerbos check: %w", err)
+		return fmt.Errorf("auth: cerbos check: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("auth: cerbos status %d", resp.StatusCode)
+		return fmt.Errorf("auth: cerbos status %d", resp.StatusCode)
 	}
 	var cr checkResp
 	if err := json.NewDecoder(resp.Body).Decode(&cr); err != nil {
-		return false, err
+		return err
 	}
-	if len(cr.Results) == 0 {
-		return false, nil
+	// No result, or any effect other than an explicit allow, is a denial — deny-by-default is the
+	// shape of this function, not a branch someone has to remember to write.
+	if len(cr.Results) == 0 || cr.Results[0].Actions[action] != "EFFECT_ALLOW" {
+		return ErrForbidden
 	}
-	return cr.Results[0].Actions[action] == "EFFECT_ALLOW", nil
+	return nil
 }
 
 // AllowSelfProfileRead checks the scaffold "self" policy (resource "profile", action "read").
-// Kept as a thin wrapper over Authorize for the existing /me endpoint.
-func (c *Cerbos) AllowSelfProfileRead(ctx context.Context, userID string) (bool, error) {
+// Kept as a thin wrapper over Authorize for the existing /me endpoint; same error contract —
+// nil allows, ErrForbidden denies, anything else means no decision was reached.
+func (c *Cerbos) AllowSelfProfileRead(ctx context.Context, userID string) error {
 	return c.Authorize(ctx,
 		AuthzPrincipal{ID: userID},
 		AuthzResource{Kind: "profile", ID: userID, Attr: map[string]any{"owner_id": userID}},
