@@ -3,7 +3,6 @@ package tenancy
 import (
 	"errors"
 	"regexp"
-	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
@@ -73,23 +72,14 @@ var notReserved = validation.By(func(value any) error {
 // validateCreateTenant reports everything wrong with the request at once, rather than rejecting the
 // first fault and making the caller discover the rest one round-trip at a time.
 //
+// Strings arrive already trimmed — httpapi.SanitizeBody does that for every route — so Required
+// correctly treats a whitespace-only field as absent rather than present-but-blank.
+//
 // ozzo states rules as ordinary Go against real struct fields — no tags — so a renamed field is a
 // compile error rather than a rule that silently stops running, and a domain rule like notReserved
 // is just a func. Rules that need the database (does this country exist, is this institution type
 // valid for it) stay in the handler: they need a querier, and validation here is pure.
 func validateCreateTenant(req *createTenantRequest) respond.FieldErrors {
-	// Trim before validating: "   " is not a name, and ozzo's Required sees any non-empty string as
-	// present. Normalising here also keeps surrounding whitespace out of the database, since the
-	// handler provisions from this same struct.
-	req.Slug = strings.TrimSpace(req.Slug)
-	req.Code = strings.TrimSpace(req.Code)
-	req.Name = strings.TrimSpace(req.Name)
-	req.Country = strings.TrimSpace(req.Country)
-	req.PartyTypeCode = strings.TrimSpace(req.PartyTypeCode)
-	req.InstitutionTypeCode = strings.TrimSpace(req.InstitutionTypeCode)
-	req.OwnerEmail = strings.TrimSpace(req.OwnerEmail)
-	req.OwnerName = strings.TrimSpace(req.OwnerName)
-
 	err := validation.ValidateStruct(req,
 		validation.Field(&req.Slug,
 			validation.Required,

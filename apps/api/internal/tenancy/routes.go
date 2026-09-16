@@ -114,9 +114,6 @@ func (h tenantRoutes) get(w http.ResponseWriter, r *http.Request) {
 	respond.JSONBody(w, http.StatusOK, toTenantResponse(t))
 }
 
-// maxCreateTenantBody bounds the request body — generous for this payload, finite for the server.
-const maxCreateTenantBody = 64 << 10
-
 type createTenantRequest struct {
 	Slug                string `json:"slug"`
 	Code                string `json:"code"`
@@ -130,9 +127,9 @@ type createTenantRequest struct {
 
 func (h tenantRoutes) create(w http.ResponseWriter, r *http.Request) {
 	var req createTenantRequest
-	// Cap the body: this is an admin endpoint, but an unbounded decode is an unbounded allocation.
-	// A body that isn't JSON at all is a 400 — there are no fields to report problems against.
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxCreateTenantBody)).Decode(&req); err != nil {
+	// The body is already size-capped and its strings trimmed by httpapi.SanitizeBody, so this only
+	// decodes. A body that isn't JSON at all is a 400 — there are no fields to report problems about.
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respond.Error(r.Context(), w, http.StatusBadRequest, "invalid body")
 		return
 	}

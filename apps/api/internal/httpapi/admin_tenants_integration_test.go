@@ -433,3 +433,36 @@ func TestAdminTenants_UnknownCountryIsAFieldError(t *testing.T) {
 		t.Fatalf("want institution_type_code NOT blamed for a bad country, got %v", resp.Errors)
 	}
 }
+
+// The sanitizing middleware and the validator have to meet correctly: a whitespace-only value is
+// trimmed to empty on the way in, so it must be reported as the missing field it is rather than
+// slipping through as a present-but-blank one (and being stored as "   ").
+func TestAdminTenants_WhitespaceOnlyFieldIsBlank(t *testing.T) {
+	userID := setupOperatorFixture(t, "blank-name", "platform:tenants:provision")
+	kratos := fakeKratosFor(uuidToStringAdmin(userID), "blank-name@example.test")
+	defer kratos.Close()
+	h := newAdminAPITestRouter(t, kratos.URL)
+
+	rec := doAsOperator(t, h, http.MethodPost, "/v1/tenants", map[string]string{
+		"slug": "  e2e-blank-name  ", // also proves trimming reaches a field that must match a pattern
+		"code": "E2EBLANK", "name": "   ", "country": "MV",
+		"party_type_code": "private-company", "institution_type_code": "business",
+		"owner_email": "owner@e2e-blank-name.test", "owner_name": "Owner",
+	})
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("want 422, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var resp struct {
+		Errors map[string][]string `json:"errors"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Errors["name"]) == 0 {
+		t.Fatalf("want a whitespace-only name reported as blank, got %v", resp.Errors)
+	}
+	// The padded slug was trimmed before validation, so it must NOT be reported as malformed.
+	if len(resp.Errors["slug"]) != 0 {
+		t.Fatalf("a padded slug should be trimmed, not rejected: %v", resp.Errors)
+	}
+}

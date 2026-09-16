@@ -21,7 +21,7 @@ func TestValidateCreateTenant(t *testing.T) {
 		{"accepts digits in the slug", func(r *createTenantRequest) { r.Slug = "council2" }, ""},
 
 		{"rejects a missing slug", func(r *createTenantRequest) { r.Slug = "" }, "slug"},
-		{"rejects a whitespace-only name", func(r *createTenantRequest) { r.Name = "   " }, "name"},
+		{"rejects an empty name", func(r *createTenantRequest) { r.Name = "" }, "name"},
 		{"rejects uppercase in the slug", func(r *createTenantRequest) { r.Slug = "MaleCouncil" }, "slug"},
 		{"rejects spaces in the slug", func(r *createTenantRequest) { r.Slug = "male council" }, "slug"},
 		{"rejects non-ascii in the slug", func(r *createTenantRequest) { r.Slug = "malé" }, "slug"},
@@ -70,27 +70,23 @@ func TestValidateCreateTenant_ReportsEveryFieldAtOnce(t *testing.T) {
 	}
 }
 
-// ozzo's Required sees any non-empty string as present, so "   " would pass a bare Required check.
-// Fields are trimmed before validating, which also keeps surrounding whitespace out of the database
-// since the handler provisions from this same struct.
-func TestValidateCreateTenant_TrimsAndRejectsWhitespaceOnly(t *testing.T) {
+// The validator assumes its input arrives trimmed — httpapi.SanitizeBody does that for every route
+// — so it treats a blank field as absent. TestAdminTenants_WhitespaceOnlyFieldIsBlank proves the two
+// halves meet: a whitespace-only value posted over HTTP is reported as the missing field it is.
+func TestValidateCreateTenant_TreatsBlankAsMissing(t *testing.T) {
 	req := createTenantRequest{
-		Slug: "  malecouncil  ", Code: " MCC ", Name: "   ", Country: " MV ",
-		PartyTypeCode: " government ", InstitutionTypeCode: " council ",
-		OwnerEmail: "  owner@malecouncil.mv  ", OwnerName: " Owner ",
+		Slug: "malecouncil", Code: "MCC", Name: "", Country: "MV",
+		PartyTypeCode: "government", InstitutionTypeCode: "council",
+		OwnerEmail: "owner@malecouncil.mv", OwnerName: "Owner",
 	}
 	errs := validateCreateTenant(&req)
 
 	if len(errs["name"]) == 0 {
-		t.Fatalf("want a whitespace-only name rejected, got %v", errs)
+		t.Fatalf("want a blank name rejected, got %v", errs)
 	}
 	for field, msgs := range errs {
 		if field != "name" {
 			t.Fatalf("only name should fail; %q also did: %v", field, msgs)
 		}
-	}
-	// Normalisation is visible to the caller: these values are what get provisioned.
-	if req.Slug != "malecouncil" || req.Code != "MCC" || req.Country != "MV" || req.OwnerEmail != "owner@malecouncil.mv" {
-		t.Fatalf("want fields trimmed in place, got %+v", req)
 	}
 }

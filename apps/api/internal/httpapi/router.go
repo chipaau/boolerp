@@ -50,6 +50,9 @@ func New(platform PlatformDeps, modules ...Module) http.Handler {
 	r.Use(observability.RequestLogger(slog.Default()))
 	r.Use(observability.AccessLog)
 	r.Use(observability.MetricsMiddleware)
+	// Root-level, so no handler can be reached with untrimmed strings or an unbounded body — a
+	// handler that forgets is not a way to bypass it.
+	r.Use(SanitizeBody)
 	// Recoverer sits INNERMOST on purpose: it converts a panic into a 500 written through the
 	// response writers AccessLog and MetricsMiddleware wrapped, so a panicking request is recorded
 	// as a 500 instead of going unobserved. Outside them, its 500 bypassed both.
