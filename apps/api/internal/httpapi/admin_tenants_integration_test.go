@@ -413,7 +413,7 @@ func TestAdminTenants_UnknownCountryIsAFieldError(t *testing.T) {
 
 	rec := doAsOperator(t, h, http.MethodPost, "/v1/tenants", map[string]string{
 		"slug": "e2e-bad-country", "code": "E2EBADC", "name": "E2E Bad Country Co",
-		"country": "ZZ", // well-formed ISO shape, not a real country
+		"country":         "ZZ", // well-formed ISO shape, not a real country
 		"party_type_code": "private-company", "institution_type_code": "business",
 		"owner_email": "owner@e2e-bad-country.test", "owner_name": "Owner",
 	})

@@ -2,10 +2,11 @@ package tenancy
 
 import (
 	"errors"
-	"net/mail"
 	"regexp"
 	"strings"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/boolmv/erp/internal/respond"
@@ -43,7 +44,9 @@ var slugPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 // maxSlugLen is the DNS label limit; a longer slug can't be a hostname.
 const maxSlugLen = 63
 
-// countryPattern is the char(2) ISO shape the countries FK expects.
+// countryPattern is the char(2) ISO shape the countries FK expects. Shape only — whether the code
+// names a real, still-active country is checked against the countries table in the handler, since
+// "ZZ" satisfies this pattern and is not a country.
 var countryPattern = regexp.MustCompile(`^[A-Z]{2}$`)
 
 // reservedSlugs are subdomains the platform itself serves, so no tenant may take one. A tenant
@@ -58,44 +61,70 @@ var reservedSlugs = map[string]bool{
 	"status": true, "docs": true, "support": true, "help": true,
 }
 
-// validateCreateTenant collects everything wrong with the request at once, rather than rejecting the
+// notReserved rejects a slug the platform itself serves. A domain rule, so it's a plain Go func
+// rather than anything the rule vocabulary could express.
+var notReserved = validation.By(func(value any) error {
+	if slug, _ := value.(string); reservedSlugs[slug] {
+		return errors.New("is reserved by the platform")
+	}
+	return nil
+})
+
+// validateCreateTenant reports everything wrong with the request at once, rather than rejecting the
 // first fault and making the caller discover the rest one round-trip at a time.
+//
+// ozzo states rules as ordinary Go against real struct fields — no tags — so a renamed field is a
+// compile error rather than a rule that silently stops running, and a domain rule like notReserved
+// is just a func. Rules that need the database (does this country exist, is this institution type
+// valid for it) stay in the handler: they need a querier, and validation here is pure.
 func validateCreateTenant(req *createTenantRequest) respond.FieldErrors {
+	// Trim before validating: "   " is not a name, and ozzo's Required sees any non-empty string as
+	// present. Normalising here also keeps surrounding whitespace out of the database, since the
+	// handler provisions from this same struct.
+	req.Slug = strings.TrimSpace(req.Slug)
+	req.Code = strings.TrimSpace(req.Code)
+	req.Name = strings.TrimSpace(req.Name)
+	req.Country = strings.TrimSpace(req.Country)
+	req.PartyTypeCode = strings.TrimSpace(req.PartyTypeCode)
+	req.InstitutionTypeCode = strings.TrimSpace(req.InstitutionTypeCode)
+	req.OwnerEmail = strings.TrimSpace(req.OwnerEmail)
+	req.OwnerName = strings.TrimSpace(req.OwnerName)
+
+	err := validation.ValidateStruct(req,
+		validation.Field(&req.Slug,
+			validation.Required,
+			validation.Length(1, maxSlugLen),
+			validation.Match(slugPattern).Error("must be lowercase letters, digits and hyphens, and may not start or end with a hyphen"),
+			notReserved,
+		),
+		validation.Field(&req.Code, validation.Required),
+		validation.Field(&req.Name, validation.Required),
+		validation.Field(&req.Country, validation.Required,
+			validation.Match(countryPattern).Error("must be a 2-letter uppercase ISO country code")),
+		validation.Field(&req.PartyTypeCode, validation.Required),
+		validation.Field(&req.InstitutionTypeCode, validation.Required),
+		validation.Field(&req.OwnerEmail, validation.Required, is.EmailFormat),
+		validation.Field(&req.OwnerName, validation.Required),
+	)
+	return toFieldErrors(err)
+}
+
+// toFieldErrors converts ozzo's field -> error map into the response shape (respond.Invalid writes
+// it as Laravel's field -> messages). Field names come from the json tags, so what the caller is
+// told to fix matches what they sent. A non-validation error would mean the rules themselves are
+// broken, so it surfaces as an unattributed message rather than being silently dropped.
+func toFieldErrors(err error) respond.FieldErrors {
 	errs := respond.FieldErrors{}
-
-	required := []struct{ field, value string }{
-		{"slug", req.Slug}, {"code", req.Code}, {"name", req.Name},
-		{"party_type_code", req.PartyTypeCode}, {"institution_type_code", req.InstitutionTypeCode},
-		{"owner_email", req.OwnerEmail}, {"owner_name", req.OwnerName},
+	if err == nil {
+		return errs
 	}
-	for _, r := range required {
-		if strings.TrimSpace(r.value) == "" {
-			errs.Add(r.field, "is required")
-		}
+	var verrs validation.Errors
+	if !errors.As(err, &verrs) {
+		errs.Add("_", err.Error())
+		return errs
 	}
-
-	if req.Slug != "" {
-		switch {
-		case len(req.Slug) > maxSlugLen:
-			errs.Add("slug", "must be at most 63 characters")
-		case !slugPattern.MatchString(req.Slug):
-			errs.Add("slug", "must be lowercase letters, digits and hyphens, and may not start or end with a hyphen")
-		case reservedSlugs[req.Slug]:
-			errs.Add("slug", "is reserved by the platform")
-		}
+	for field, fieldErr := range verrs {
+		errs.Add(field, fieldErr.Error())
 	}
-
-	if req.OwnerEmail != "" {
-		if _, err := mail.ParseAddress(req.OwnerEmail); err != nil {
-			errs.Add("owner_email", "must be a valid email address")
-		}
-	}
-
-	// Shape only — whether the code names a real, still-active country is checked against the
-	// countries table in the handler, since "ZZ" satisfies this pattern and is not a country.
-	if req.Country != "" && !countryPattern.MatchString(req.Country) {
-		errs.Add("country", "must be a 2-letter uppercase ISO country code")
-	}
-
 	return errs
 }

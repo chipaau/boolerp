@@ -76,6 +76,16 @@ implement that component → next. Do not batch-confirm across components.
 - Explicit dependency passing; **no DI framework**. Wire dependencies in `main.go`.
 - Organize by feature/module, not by `controllers/`/`models/`/`services/` layers.
 - Errors wrapped with context; structured logging via `log/slog`.
+- **Request validation: `ozzo-validation`** (decided 2026-09-17), not `go-playground/validator`.
+  Rules are ordinary Go against real struct fields, so a renamed field is a compile error rather than
+  a tag that silently stops matching — struct-tag validation is exactly the stringly-typed magic this
+  section rules out. Every handler returns the same 422 shape via `respond.Invalid`, and reports
+  **every** bad field at once rather than one per round-trip.
+- **Validate data against the database, not a pattern.** Reference codes (country, party type,
+  institution type) are foreign keys: check the row exists and is current. A regex that accepts `ZZ`
+  turns a bad field into a foreign-key violation surfacing as a 500 from deep inside a transaction.
+  Format rules stay in the validator as a cheap guard ahead of the round-trip; existence lives in the
+  handler, where a querier is available.
 
 ## Inherited house conventions (from `../workspace` & `../erp`)
 

@@ -69,3 +69,28 @@ func TestValidateCreateTenant_ReportsEveryFieldAtOnce(t *testing.T) {
 		}
 	}
 }
+
+// ozzo's Required sees any non-empty string as present, so "   " would pass a bare Required check.
+// Fields are trimmed before validating, which also keeps surrounding whitespace out of the database
+// since the handler provisions from this same struct.
+func TestValidateCreateTenant_TrimsAndRejectsWhitespaceOnly(t *testing.T) {
+	req := createTenantRequest{
+		Slug: "  malecouncil  ", Code: " MCC ", Name: "   ", Country: " MV ",
+		PartyTypeCode: " government ", InstitutionTypeCode: " council ",
+		OwnerEmail: "  owner@malecouncil.mv  ", OwnerName: " Owner ",
+	}
+	errs := validateCreateTenant(&req)
+
+	if len(errs["name"]) == 0 {
+		t.Fatalf("want a whitespace-only name rejected, got %v", errs)
+	}
+	for field, msgs := range errs {
+		if field != "name" {
+			t.Fatalf("only name should fail; %q also did: %v", field, msgs)
+		}
+	}
+	// Normalisation is visible to the caller: these values are what get provisioned.
+	if req.Slug != "malecouncil" || req.Code != "MCC" || req.Country != "MV" || req.OwnerEmail != "owner@malecouncil.mv" {
+		t.Fatalf("want fields trimmed in place, got %+v", req)
+	}
+}
