@@ -97,7 +97,7 @@ func TestAdminTenants_ListAndGet(t *testing.T) {
 	defer kratos.Close()
 	h := newAdminAPITestRouter(t, kratos.URL)
 
-	rec := doAsOperator(t, h, http.MethodGet, "/v1/admin/tenants", nil)
+	rec := doAsOperator(t, h, http.MethodGet, "/v1/tenants", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list: want 200, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -110,7 +110,7 @@ func TestAdminTenants_ListAndGet(t *testing.T) {
 	}
 
 	id, _ := list[0]["id"].(string)
-	rec2 := doAsOperator(t, h, http.MethodGet, "/v1/admin/tenants/"+id, nil)
+	rec2 := doAsOperator(t, h, http.MethodGet, "/v1/tenants/"+id, nil)
 	if rec2.Code != http.StatusOK {
 		t.Fatalf("get: want 200, got %d: %s", rec2.Code, rec2.Body.String())
 	}
@@ -127,7 +127,7 @@ func TestAdminTenants_CreateProvisionsARealTenant(t *testing.T) {
 		"country": "MV", "party_type_code": "private-company", "institution_type_code": "business",
 		"owner_email": "owner@e2e-created-co.test", "owner_name": "New Owner",
 	}
-	rec := doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants", body)
+	rec := doAsOperator(t, h, http.MethodPost, "/v1/tenants", body)
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("want 201, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -153,7 +153,7 @@ func TestAdminTenants_CreateInvalidReturns422WithFieldErrors(t *testing.T) {
 	defer kratos.Close()
 	h := newAdminAPITestRouter(t, kratos.URL)
 
-	rec := doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants", map[string]string{
+	rec := doAsOperator(t, h, http.MethodPost, "/v1/tenants", map[string]string{
 		"slug": "admin", "code": "", "name": "Reserved Slug Co", "country": "MV",
 		"party_type_code": "private-company", "institution_type_code": "business",
 		"owner_email": "not-an-email", "owner_name": "Owner",
@@ -194,13 +194,13 @@ func TestAdminTenants_CreateDuplicateSlugIsAFieldError(t *testing.T) {
 		"country": "MV", "party_type_code": "private-company", "institution_type_code": "business",
 		"owner_email": "owner@e2e-dup-co.test", "owner_name": "Owner",
 	}
-	if rec := doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants", body); rec.Code != http.StatusCreated {
+	if rec := doAsOperator(t, h, http.MethodPost, "/v1/tenants", body); rec.Code != http.StatusCreated {
 		t.Fatalf("seed create: want 201, got %d: %s", rec.Code, rec.Body.String())
 	}
 
 	body["code"] = "E2EDUP2" // same slug, different code: the slug is what must collide
 	body["owner_email"] = "owner2@e2e-dup-co.test"
-	rec := doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants", body)
+	rec := doAsOperator(t, h, http.MethodPost, "/v1/tenants", body)
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("want 422 for a duplicate slug, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -226,7 +226,7 @@ func TestAdminTenants_CreateDeniedWithoutProvisionCapability(t *testing.T) {
 		"country": "MV", "party_type_code": "private-company", "institution_type_code": "business",
 		"owner_email": "owner@should-not-exist.test", "owner_name": "Nobody",
 	}
-	rec := doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants", body)
+	rec := doAsOperator(t, h, http.MethodPost, "/v1/tenants", body)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("want 403, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -241,19 +241,19 @@ func TestAdminTenants_SuspendReactivateArchive(t *testing.T) {
 	// Create the target tenant directly (not through the API — that's covered by the create test).
 	target := createLifecycleTargetTenant(t, "e2e-lifecycle-target")
 
-	rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/suspend", target), nil)
+	rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/tenants/%s/suspend", target), nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("suspend: want 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 	assertTenantStatus(t, rec, "suspended")
 
-	rec = doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/reactivate", target), nil)
+	rec = doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/tenants/%s/reactivate", target), nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("reactivate: want 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 	assertTenantStatus(t, rec, "active")
 
-	rec = doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/archive", target), nil)
+	rec = doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/tenants/%s/archive", target), nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("archive: want 200, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -271,25 +271,25 @@ func TestAdminTenants_IllegalTransitionsAndUnknownTenant(t *testing.T) {
 	target := createLifecycleTargetTenant(t, "e2e-illegal-target")
 
 	// Reactivating a tenant that is active (not suspended) is not a legal transition.
-	rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/reactivate", target), nil)
+	rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/tenants/%s/reactivate", target), nil)
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("reactivate an active tenant: want 409, got %d: %s", rec.Code, rec.Body.String())
 	}
 
-	if rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/archive", target), nil); rec.Code != http.StatusOK {
+	if rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/tenants/%s/archive", target), nil); rec.Code != http.StatusOK {
 		t.Fatalf("archive: want 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 
 	// Archived is terminal: it can be neither resurrected nor re-archived.
 	for _, action := range []string{"reactivate", "suspend", "archive"} {
-		rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/%s", target, action), nil)
+		rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/tenants/%s/%s", target, action), nil)
 		if rec.Code != http.StatusConflict {
 			t.Fatalf("%s an archived tenant: want 409, got %d: %s", action, rec.Code, rec.Body.String())
 		}
 	}
 
 	// A well-formed id that matches no tenant is a 404, not a 500.
-	rec = doAsOperator(t, h, http.MethodPost, "/v1/admin/tenants/018f7d3a-0000-7000-8000-0000000000aa/suspend", nil)
+	rec = doAsOperator(t, h, http.MethodPost, "/v1/tenants/018f7d3a-0000-7000-8000-0000000000aa/suspend", nil)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("suspend an unknown tenant: want 404, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -336,7 +336,7 @@ func TestAdminTenants_AuditRowCarriesTheRequestID(t *testing.T) {
 	target := createLifecycleTargetTenant(t, "e2e-audit-reqid")
 	const wantRequestID = "test-correlation-id-42"
 
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/v1/admin/tenants/%s/suspend", target), bytes.NewReader(nil))
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/v1/tenants/%s/suspend", target), bytes.NewReader(nil))
 	req.Header.Set("Cookie", "ory_kratos_session=abc")
 	req.Header.Set("X-Request-Id", wantRequestID)
 	rec := httptest.NewRecorder()
@@ -373,7 +373,7 @@ func TestAdminAPI_EveryResponseEchoesTheRequestID(t *testing.T) {
 	h := newAdminAPITestRouter(t, kratos.URL)
 
 	// Success path.
-	rec := doAsOperator(t, h, http.MethodGet, "/v1/admin/tenants", nil)
+	rec := doAsOperator(t, h, http.MethodGet, "/v1/tenants", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list: want 200, got %d", rec.Code)
 	}
@@ -382,7 +382,7 @@ func TestAdminAPI_EveryResponseEchoesTheRequestID(t *testing.T) {
 	}
 
 	// Unauthenticated path — no session, so it never reaches a handler.
-	unauth := httptest.NewRequest(http.MethodGet, "/v1/admin/tenants", nil)
+	unauth := httptest.NewRequest(http.MethodGet, "/v1/tenants", nil)
 	unauthRec := httptest.NewRecorder()
 	h.ServeHTTP(unauthRec, unauth)
 	if unauthRec.Header().Get("X-Request-Id") == "" {
@@ -391,7 +391,7 @@ func TestAdminAPI_EveryResponseEchoesTheRequestID(t *testing.T) {
 
 	// An inbound id is adopted and echoed back unchanged, so correlation survives across services.
 	const supplied = "caller-supplied-id-7"
-	req := httptest.NewRequest(http.MethodGet, "/v1/admin/tenants", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/tenants", nil)
 	req.Header.Set("Cookie", "ory_kratos_session=abc")
 	req.Header.Set("X-Request-Id", supplied)
 	echoed := httptest.NewRecorder()
