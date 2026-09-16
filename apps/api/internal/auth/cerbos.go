@@ -160,20 +160,23 @@ func (c *Cerbos) Health(ctx context.Context) error {
 	return getOK(ctx, c.hc, c.baseURL+"/_cerbos/health")
 }
 
-// BuildOperatorPrincipal builds the AuthzPrincipal for an operator/admin action: is this user a
-// member of the ONE internal tenant, and if so, what capabilities do their roles there grant them
-// (FR-AUTHZ-04 — platform:* capabilities only act platform-wide via such a role). A non-member gets
-// IsInternalMember=false and no capabilities, so any platform:* check denies by default. Takes
-// sqlc.DBTX (not concretely *pgxpool.Pool) so it can run inside a caller's transaction too.
-// dbTxBeginner is satisfied by both *pgxpool.Pool and pgx.Tx — everything BuildOperatorPrincipal
-// needs: sqlc.DBTX's query methods for the (platform-table, non-RLS) membership checks, plus Begin
-// to scope the RLS-protected user_roles lookup to the internal tenant via rls.WithTenant.
-type dbTxBeginner interface {
+// DBTX is what BuildOperatorPrincipal needs from a database handle: sqlc.DBTX's query methods for
+// the (platform-table, non-RLS) membership checks, plus Begin, to scope the RLS-protected user_roles
+// lookup to the internal tenant via rls.WithTenant. Both *pgxpool.Pool and pgx.Tx satisfy it, so the
+// function runs against a pool in production and inside a caller's transaction in tests.
+//
+// Exported because BuildOperatorPrincipal is: a parameter type callers cannot name is one they
+// cannot declare a variable of, or deliberately implement.
+type DBTX interface {
 	sqlc.DBTX
 	rls.Beginner
 }
 
-func BuildOperatorPrincipal(ctx context.Context, db dbTxBeginner, userID pgtype.UUID) (AuthzPrincipal, error) {
+// BuildOperatorPrincipal builds the AuthzPrincipal for an operator/admin action: is this user a
+// member of the ONE internal tenant, and if so, what capabilities do their roles there grant them
+// (FR-AUTHZ-04 — platform:* capabilities only act platform-wide via such a role). A non-member gets
+// IsInternalMember=false and no capabilities, so any platform:* check denies by default.
+func BuildOperatorPrincipal(ctx context.Context, db DBTX, userID pgtype.UUID) (AuthzPrincipal, error) {
 	q := sqlc.New(db)
 
 	isInternal, err := q.IsInternalTenantMember(ctx, userID)
