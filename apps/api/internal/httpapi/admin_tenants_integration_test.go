@@ -400,3 +400,36 @@ func TestAdminAPI_EveryResponseEchoesTheRequestID(t *testing.T) {
 		t.Fatalf("want the caller's id %q echoed back, got %q", supplied, got)
 	}
 }
+
+// A syntactically valid but non-existent country is a bad field, not a server error: tenants.country
+// is an FK, so without an up-front check it surfaced as a foreign-key violation from inside
+// provisioning. It must also be attributed to `country` rather than to the institution type, whose
+// lookup is scoped by country and would otherwise take the blame.
+func TestAdminTenants_UnknownCountryIsAFieldError(t *testing.T) {
+	userID := setupOperatorFixture(t, "bad-country", "platform:tenants:provision")
+	kratos := fakeKratosFor(uuidToStringAdmin(userID), "bad-country@example.test")
+	defer kratos.Close()
+	h := newAdminAPITestRouter(t, kratos.URL)
+
+	rec := doAsOperator(t, h, http.MethodPost, "/v1/tenants", map[string]string{
+		"slug": "e2e-bad-country", "code": "E2EBADC", "name": "E2E Bad Country Co",
+		"country": "ZZ", // well-formed ISO shape, not a real country
+		"party_type_code": "private-company", "institution_type_code": "business",
+		"owner_email": "owner@e2e-bad-country.test", "owner_name": "Owner",
+	})
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("want 422 for an unknown country, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var resp struct {
+		Errors map[string][]string `json:"errors"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Errors["country"]) == 0 {
+		t.Fatalf("want the failure attributed to country, got %v", resp.Errors)
+	}
+	if len(resp.Errors["institution_type_code"]) != 0 {
+		t.Fatalf("want institution_type_code NOT blamed for a bad country, got %v", resp.Errors)
+	}
+}

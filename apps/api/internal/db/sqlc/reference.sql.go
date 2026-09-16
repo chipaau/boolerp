@@ -9,6 +9,22 @@ import (
 	"context"
 )
 
+const activeCountryExists = `-- name: ActiveCountryExists :one
+SELECT EXISTS (SELECT 1 FROM countries WHERE code = $1 AND active_to IS NULL)
+`
+
+// Validates a caller-supplied country code against the reference table rather than a regex: a
+// well-formed pair of letters like 'ZZ' is not a country. Requires the row to be CURRENT (active_to
+// IS NULL), so a retired country can't be chosen for something new. tenants.country is an FK to this
+// table, so without this an unknown code surfaces as a foreign-key violation from deep inside
+// provisioning — a 500 for what is really a bad field.
+func (q *Queries) ActiveCountryExists(ctx context.Context, code string) (bool, error) {
+	row := q.db.QueryRow(ctx, activeCountryExists, code)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const getCountry = `-- name: GetCountry :one
 SELECT code, name, name_i18n, dial_code, active_from, active_to, created_at, updated_at FROM countries WHERE code = $1
 `

@@ -148,6 +148,21 @@ func (h tenantRoutes) create(w http.ResponseWriter, r *http.Request) {
 	// that field's problem (422) while any other error is ours (500) — never a 4xx blaming the
 	// caller for a database that happened to be unreachable.
 	q := sqlc.New(h.pool)
+
+	// Checked before the institution-type lookup below, which is scoped BY country: an unknown
+	// country would otherwise be reported as "not a known institution type for country XX", blaming
+	// the wrong field.
+	knownCountry, err := q.ActiveCountryExists(r.Context(), req.Country)
+	if err != nil {
+		observability.LoggerFrom(r.Context()).Error("lookup country", "err", err)
+		respond.Error(r.Context(), w, http.StatusInternalServerError, "internal")
+		return
+	}
+	if !knownCountry {
+		respond.Invalid(r.Context(), w, respond.FieldErrors{"country": {"is not a known country"}})
+		return
+	}
+
 	partyTypeID, err := q.GetPartyTypeIDByCode(r.Context(), req.PartyTypeCode)
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {

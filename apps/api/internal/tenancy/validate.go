@@ -91,8 +91,8 @@ func validateCreateTenant(req *createTenantRequest) respond.FieldErrors {
 		}
 	}
 
-	// country is a char(2) FK to countries; checking the shape here turns what would surface as an
-	// opaque FK violation from deep inside provisioning into a field the caller can fix.
+	// Shape only — whether the code names a real, still-active country is checked against the
+	// countries table in the handler, since "ZZ" satisfies this pattern and is not a country.
 	if req.Country != "" && !countryPattern.MatchString(req.Country) {
 		errs.Add("country", "must be a 2-letter uppercase ISO country code")
 	}
