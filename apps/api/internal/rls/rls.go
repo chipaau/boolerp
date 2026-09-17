@@ -32,13 +32,49 @@ func WithTenant(ctx context.Context, db Beginner, tenantID pgtype.UUID, fn func(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// What the surrounding scope was set to, if anything. Empty at the top level (a fresh connection
+	// from the pool); populated when db is already a pgx.Tx and this Begin made a savepoint inside it.
+	var outerTenant, outerVisible string
+	// COALESCE: the missing_ok form of current_setting returns NULL, not an empty string, when the
+	// setting has never been applied on this connection.
+	if err := tx.QueryRow(ctx, `
+		SELECT COALESCE(current_setting('app.current_tenant', true), ''),
+		       COALESCE(current_setting('app.visible_tenants', true), '')`,
+	).Scan(&outerTenant, &outerVisible); err != nil {
+		return fmt.Errorf("rls: read enclosing tenant scope: %w", err)
+	}
+
 	if err := SetCurrentTenant(ctx, tx, tenantID); err != nil {
 		return err
 	}
 	if err := fn(ctx, tx); err != nil {
 		return err
 	}
+
+	// Put the enclosing scope back before releasing the savepoint. set_config LOCAL is scoped to the
+	// TRANSACTION, not the savepoint: a rollback (including to a savepoint) undoes it, but a release
+	// does not — so a committed inner scope would leave the outer transaction running as this tenant
+	// for everything that follows. That is a silent cross-tenant leak, and the type signatures invite
+	// it: auth.DBTX accepts a pgx.Tx, so BuildOperatorPrincipal can be called inside another tenant's
+	// transaction.
+	if outerTenant != "" {
+		if err := restoreTenantScope(ctx, tx, outerTenant, outerVisible); err != nil {
+			return err
+		}
+	}
 	return tx.Commit(ctx)
+}
+
+// restoreTenantScope re-applies a previously captured scope. Values come from current_setting on the
+// same transaction, never from a caller.
+func restoreTenantScope(ctx context.Context, tx pgx.Tx, tenant, visible string) error {
+	if _, err := tx.Exec(ctx,
+		`SELECT set_config('app.current_tenant', $1, true), set_config('app.visible_tenants', $2, true)`,
+		tenant, visible,
+	); err != nil {
+		return fmt.Errorf("rls: restore enclosing tenant scope: %w", err)
+	}
+	return nil
 }
 
 // SetCurrentTenant is WithTenant's session-var setup, exported so callers managing their own

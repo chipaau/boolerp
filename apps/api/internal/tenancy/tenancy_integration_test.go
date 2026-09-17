@@ -20,6 +20,7 @@ import (
 	"github.com/boolmv/erp/internal/auth"
 	"github.com/boolmv/erp/internal/db/sqlc"
 	"github.com/boolmv/erp/internal/dbtest"
+	"github.com/boolmv/erp/internal/rls"
 	"github.com/boolmv/erp/internal/tenancy"
 )
 
@@ -349,5 +350,55 @@ func TestRequireTenant_NonMemberCannotTellSuspendedFromNonexistent(t *testing.T)
 	if suspendedRec.Code != absentRec.Code {
 		t.Fatalf("suspended (%d) and nonexistent (%d) must be indistinguishable to a non-member",
 			suspendedRec.Code, absentRec.Code)
+	}
+}
+
+// A nested WithTenant must not change the tenant the ENCLOSING transaction is running as.
+//
+// set_config LOCAL is scoped to the transaction, not the savepoint that pgx makes for a nested
+// Begin. A rollback undoes it, but a successful release does not — so an inner scope that commits
+// used to leave the outer transaction running as the inner tenant for everything afterwards. Nothing
+// calls it that way today, but auth.DBTX accepts a pgx.Tx, so BuildOperatorPrincipal can be invoked
+// inside another tenant's transaction, and the leak would be silent.
+func TestWithTenant_NestedScopeDoesNotLeakIntoTheOuterTransaction(t *testing.T) {
+	ctx := context.Background()
+	outer := newTestUUID(t)
+	inner := newTestUUID(t)
+
+	err := tenancy.WithTenant(ctx, env.Pool, outer, func(ctx context.Context, tx pgx.Tx) error {
+		// Nest a second scope on the SAME transaction and let it succeed. rls.WithTenant is the
+		// nestable one — it takes any Beginner, which is how auth.BuildOperatorPrincipal ends up
+		// running inside a transaction a handler already opened.
+		if err := rls.WithTenant(ctx, tx, inner, func(ctx context.Context, tx pgx.Tx) error {
+			var got string
+			if err := tx.QueryRow(ctx, `SELECT current_setting('app.current_tenant')`).Scan(&got); err != nil {
+				return err
+			}
+			if got != uuidToString(inner) {
+				t.Errorf("inner scope: want %s, got %s", uuidToString(inner), got)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		// Back outside it, the outer tenant must still be in force.
+		var after, visible string
+		if err := tx.QueryRow(ctx,
+			`SELECT current_setting('app.current_tenant'), current_setting('app.visible_tenants')`,
+		).Scan(&after, &visible); err != nil {
+			return err
+		}
+		if after != uuidToString(outer) {
+			t.Errorf("the inner scope leaked: outer transaction is now running as %s, want %s",
+				after, uuidToString(outer))
+		}
+		if visible != "{"+uuidToString(outer)+"}" {
+			t.Errorf("visible_tenants leaked: %s", visible)
+		}
+		return errRollbackOnly
+	})
+	if err != errRollbackOnly {
+		t.Fatalf("WithTenant: unexpected error %v", err)
 	}
 }

@@ -55,6 +55,9 @@ func New(platform PlatformDeps, modules ...Module) http.Handler {
 	// Root-level, so no handler can be reached with untrimmed strings or an unbounded body — a
 	// handler that forgets is not a way to bypass it.
 	r.Use(SanitizeBody)
+	// The session cookie spans *.bool.mv, so SameSite=Lax treats sibling subdomains as same-site and
+	// cannot protect one tenant's host from another's. This refuses cross-origin writes outright.
+	r.Use(RequireSameOrigin)
 	// Recoverer sits INNERMOST on purpose: it converts a panic into a 500 written through the
 	// response writers AccessLog and MetricsMiddleware wrapped, so a panicking request is recorded
 	// as a 500 instead of going unobserved. Outside them, its 500 bypassed both.
