@@ -48,7 +48,7 @@ export function DashboardPage() {
       <div className="px-8 pt-7 pb-24">
         <PageTitle overline="Admin" title="Dashboard" meta="Every tenant on the platform at a glance: who is live, what they pay, and what needs you next." />
 
-        <div className="flex flex-wrap items-end gap-x-10 gap-y-5">
+        <div className="flex flex-wrap items-start gap-x-12 gap-y-5">
           {figures.map((f) => (
             <button key={f.label} type="button" onClick={f.run} className="group rounded-[10px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background">
               <div className="text-overline text-faint">{f.label}</div>
@@ -56,8 +56,7 @@ export function DashboardPage() {
               <div className={cn('mt-1 text-compact', f.flag ? 'text-tone-warning-foreground' : 'text-faint')}>{f.sub}</div>
             </button>
           ))}
-          <span className="flex-1" />
-          <div className="w-[180px]">
+          <div className="ml-auto w-[180px] pl-8">
             <Sparkline values={d.runRate.series} className="h-9 text-sage" role="img" aria-hidden={false} aria-label="Monthly run rate, last 12 months" />
             <div className="mt-1.5 text-caption text-faint">
               Run rate, last 12 months{growth !== null && <span className="text-link"> · {growth >= 0 ? '+' : ''}{growth}%</span>}
@@ -74,8 +73,8 @@ export function DashboardPage() {
                 <li key={a.key} className="flex items-center gap-[11px] border-b border-divider py-[11px] last:border-b-0">
                   <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', DOT[a.tone])} />
                   <span className="min-w-0 flex-1 text-ui-sm font-bold text-foreground">{a.label}</span>
-                  <span className="text-ui-sm font-bold text-foreground tabular-nums">{a.count}</span>
-                  <ArrowButton small aria-label={`Review ${a.label.toLowerCase()}`} onClick={() => go(a.target.to, a.target.search)} />
+                  <span className="w-8 shrink-0 text-center text-ui-sm font-bold text-foreground tabular-nums">{a.count}</span>
+                  <ArrowButton small className="shrink-0" aria-label={`Review ${a.label.toLowerCase()}`} onClick={() => go(a.target.to, a.target.search)} />
                 </li>
               ))}
             </ul>

@@ -10,6 +10,8 @@ import {
   ThemeToggle,
   WorkspaceHeader,
 } from '@workspace/ui/components/workspace-header'
+import { NotificationsBell } from '@workspace/ui/components/notifications-bell'
+import { useAttentionNotifications } from '@/features/attention/queries'
 import { UserMenu } from './nav-user'
 import { useAdminSearch } from './search-context'
 
@@ -24,6 +26,7 @@ export function SiteHeader() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  const notifications = useAttentionNotifications()
 
   function change(q: string) {
     setQuery(q)
@@ -39,6 +42,12 @@ export function SiteHeader() {
           <>
             <ThemeToggle />
             <HeaderDivider />
+            <NotificationsBell
+              items={notifications.items}
+              onMarkAllRead={notifications.markAllRead}
+              onItemClick={(n) => notifications.markRead(n.id)}
+              renderItem={(n) => <Link to={n.target.to} search={n.target.search} />}
+            />
             <UserMenu />
           </>
         }

@@ -71,7 +71,7 @@ export function ControlOverviewPage() {
       <div className="px-8 pt-7 pb-24">
         <ControlTitle overline="Control Centre" title="Overview" description="The record every other Bool app reads. Change it once here and it lands everywhere." />
 
-        <div className="grid grid-cols-2 items-start gap-x-6 gap-y-5 sm:grid-cols-3 xl:grid-cols-6">
+        <div className="flex flex-wrap items-start gap-x-12 gap-y-5">
           {figures.map((f) => (
             <Link key={f.label} to="/$app/$section" params={{ app: 'control-centre', section: f.section }} className="group rounded-[10px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background">
               <div className="text-overline text-faint">{f.label}</div>
@@ -84,7 +84,7 @@ export function ControlOverviewPage() {
               </div>
             </Link>
           ))}
-          <div className="min-w-0">
+          <div className="ml-auto w-[180px] pl-8">
             <svg viewBox="0 0 120 34" preserveAspectRatio="none" role="img" aria-label="Headcount, last 12 months" className="block h-9 w-full overflow-visible">
               <path d={spark} fill="none" className="stroke-sage" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
             </svg>
@@ -101,23 +101,22 @@ export function ControlOverviewPage() {
                 <li key={a.label} className="flex items-center gap-[11px] border-b border-divider py-[11px] last:border-b-0">
                   <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', a.tone === 'warning' ? 'bg-brand-soft' : a.tone === 'risk' ? 'bg-tone-risk' : 'bg-tone-neutral')} />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="min-w-0 flex-1 text-ui-sm font-bold text-foreground">{a.label}</span>
-                      <span className="text-ui-sm font-bold text-foreground tabular-nums">{a.count}</span>
-                    </div>
+                    <div className="text-ui-sm font-bold text-foreground">{a.label}</div>
                     <div className="mt-0.5 text-compact leading-[1.45] text-faint">
                       {a.items.slice(0, 3).map((i) => i.name).join(', ')}
                       {a.items.length > 3 && ` +${a.items.length - 3} more`}
                     </div>
                   </div>
-                  <span className="flex shrink-0 items-center gap-1.5">
+                  {/* fixed columns so counts, fixes and Review line up row to row */}
+                  <span className="w-8 shrink-0 text-center text-ui-sm font-bold text-foreground tabular-nums">{a.count}</span>
+                  <span className="flex w-[124px] shrink-0 justify-end">
                     {a.fix && (
-                      <Button variant="outline" size="xs" className="rounded-full font-bold" onClick={() => a.fix && runFix(a.fix)}>
+                      <Button variant="outline" size="sm" onClick={() => a.fix && runFix(a.fix)}>
                         {a.fix.label}
                       </Button>
                     )}
-                    <ArrowButton small aria-label={`Review ${a.label.toLowerCase()}`} render={<Link to="/$app/$section" params={{ app: 'control-centre', section: a.to.section }} search={a.to.search} />} />
                   </span>
+                  <ArrowButton small className="shrink-0" aria-label={`Review ${a.label.toLowerCase()}`} render={<Link to="/$app/$section" params={{ app: 'control-centre', section: a.to.section }} search={a.to.search} />} />
                 </li>
               ))}
             </ul>
