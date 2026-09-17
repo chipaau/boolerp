@@ -2,7 +2,9 @@
 -- users.id = the Kratos subject. Verified-identity data (eFaas) hangs off users 1:1 so core stays lean.
 -- +goose Up
 
--- users — lean projection of the Kratos identity (JIT-upserted on whoami). No credentials (Kratos owns them).
+-- users — lean projection of the Kratos identity. A row exists only because an operator or tenant admin
+-- provisioned it: sign-in VERIFIES this row, never creates it (authentication is not admission).
+-- No credentials (Kratos owns them).
 CREATE TABLE users (
   id            uuid        PRIMARY KEY,               -- = Kratos identity id (IdP subject); no DEFAULT — supplied by Kratos
   email         text        NOT NULL UNIQUE,           -- mirror of Kratos email trait; one global identity per email
