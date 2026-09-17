@@ -145,7 +145,8 @@ function TableBulkBar({
     <div
       data-slot="table-bulk-bar"
       className={cn(
-        "flex animate-rise items-center gap-2.5 bg-surface-inverted px-[22px] py-3 text-surface-inverted-foreground",
+        // light: a soft sage band that stays part of the table; dark: the inverted tile, which reads well there
+        "flex animate-rise items-center gap-2.5 bg-sage-soft px-[22px] py-3 text-sage-soft-foreground dark:bg-surface-inverted dark:text-surface-inverted-foreground",
         className
       )}
       {...props}
@@ -168,8 +169,8 @@ function TableBulkAction({
       type="button"
       data-slot="table-bulk-action"
       className={cn(
-        "rounded-full px-3.5 py-1.5 text-ui-sm font-bold text-surface-inverted-foreground transition-colors duration-instant ease-hexa hover:bg-surface-inverted-foreground/25",
-        emphasis ? "bg-surface-inverted-foreground/25" : "bg-surface-inverted-foreground/15",
+        "rounded-full px-3.5 py-1.5 text-ui-sm font-bold text-foreground shadow-[inset_0_0_0_1px_var(--divider)] transition-colors duration-instant ease-hexa hover:bg-card dark:text-surface-inverted-foreground dark:shadow-none dark:hover:bg-surface-inverted-foreground/25",
+        emphasis ? "bg-card dark:bg-surface-inverted-foreground/25" : "bg-card/60 dark:bg-surface-inverted-foreground/15",
         className
       )}
       {...props}
