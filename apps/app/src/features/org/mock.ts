@@ -150,6 +150,8 @@ const P: Row[] = [
   ['EMP-089', 'Ola Adeyinka', 'People Partner', 'people-ops', 'EMP-014', 'Active', '9 Aug 2022', 'Full-time', 'Staff', '', []],
 ]
 const PHOTOS: Partial<Record<string, string>> = { 'EMP-017': avatar5, 'EMP-018': avatar2, 'EMP-022': avatar1, 'EMP-019': avatar4, 'EMP-041': avatar6, 'EMP-078': avatar7 }
+// everyone else borrows from the same seven sample photos, so no list reads as a wall of initials
+const SAMPLE_PHOTOS = [avatar1, avatar2, avatar3, avatar4, avatar5, avatar6, avatar7]
 const ENDS: Partial<Record<string, string>> = { 'EMP-020': '31 Jul 2026' }
 const BADGES: Partial<Record<string, string>> = { 'EMP-003': 'NFC-3A91', 'EMP-011': 'NFC-3B04', 'EMP-012': 'NFC-3B22', 'EMP-004': 'NFC-2C17' }
 const EMERGENCY: Partial<Record<string, Person['emergency']>> = {
@@ -189,7 +191,7 @@ export const PEOPLE: Person[] = P.map(([id, name, title, unitId, managerId, stat
     id, name, title, unitId, managerId: managerId || null, status, start, end: ENDS[id] ?? '', contract,
     role: deriveRole(perms), primarySite: primary || null, access,
     phone: `+960 ${n} 1${n}`, email: slugMail(name), chat: chatHandle(name),
-    photo: PHOTOS[id], perms, badge: BADGES[id], emergency: EMERGENCY[id],
+    photo: PHOTOS[id] ?? SAMPLE_PHOTOS[i % SAMPLE_PHOTOS.length], perms, badge: BADGES[id], emergency: EMERGENCY[id],
     away: away ? { from: rel(away[0]), to: rel(away[1]), type: away[2] } : undefined,
   }
 }).concat(EXTERNAL)
