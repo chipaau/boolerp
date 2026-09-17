@@ -53,6 +53,18 @@ func Error(ctx context.Context, w http.ResponseWriter, status int, msg string) {
 	JSONBody(w, status, map[string]string{"error": msg, "request_id": middleware.GetReqID(ctx)})
 }
 
+// ErrorCode is Error plus a stable, machine-readable code, for the few refusals where the client has
+// to DO something specific rather than just display the message — e.g. a suspended workspace, where
+// the SPA offers "switch tenant" or "sign out" instead of a dead end.
+//
+// The message is for humans and may be reworded freely; the code is the contract and must not be.
+// Most refusals need no code: if the client's only sane response is to show the message, use Error.
+func ErrorCode(ctx context.Context, w http.ResponseWriter, status int, code, msg string) {
+	JSONBody(w, status, map[string]string{
+		"error": msg, "code": code, "request_id": middleware.GetReqID(ctx),
+	})
+}
+
 // FieldErrors maps a request field name to everything wrong with it. Several problems per field,
 // and several fields at once, so one round-trip tells the caller everything to fix rather than
 // revealing the next fault only after correcting the last.

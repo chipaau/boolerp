@@ -21,7 +21,7 @@
 | FR-AUTH-07 | **Verify** email address. |
 | FR-AUTH-08 | Validate the session on every API request via `whoami`; 401 → redirect to login. A valid session whose subject has no `platform.users` row → **403** (never auto-created). |
 | FR-AUTH-09 | **Log out** current session; **log out everywhere** (revoke all sessions for the identity). |
-| FR-AUTH-10 | **Instant revocation** when an identity is disabled or its tenant is suspended (Kratos admin API → next `whoami` fails). |
+| FR-AUTH-10 | **Instant revocation** when an **identity** is disabled (Kratos admin API → next `whoami` fails). A **suspended tenant** is enforced differently — per request by the tenant-resolution middleware, not by revoking sessions (FR-TEN-03, decided 2026-09-18): sessions belong to an identity, not a tenant, so revoking them would sign a multi-tenant member out of tenants that are still active. |
 | FR-AUTH-11 | Preserve the requested deep link through login via `return_to`, **validated** against `allowed_return_urls` (`https://*.bool.mv`). |
 | FR-AUTH-12 | Self-service **settings**: change password, enroll/remove TOTP, add/remove passkeys, link/unlink OIDC. |
 | FR-AUTH-13 | **Operator impersonation** (from `apps/admin`): time-boxed, four-eyes, fully audited support access acting as a user. |

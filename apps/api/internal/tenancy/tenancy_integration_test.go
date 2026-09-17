@@ -5,6 +5,7 @@ package tenancy_test
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -251,22 +252,82 @@ func TestRequireTenant_NotYetStartedMembershipIsNotFound(t *testing.T) {
 	}
 }
 
-func TestRequireTenant_SuspendedTenantIsForbidden(t *testing.T) {
-	tenant, ownerID := setupMiddlewareFixture(t, "test-mw-suspended")
-	if _, err := env.Pool.Exec(context.Background(), `UPDATE tenants SET status = 'suspended' WHERE id = $1`, tenant.ID); err != nil {
+// A MEMBER of a non-active tenant already knows it exists, so they get a machine-readable code the
+// SPA can branch on — offering "switch tenant" or "sign out" instead of a dead end. Sessions are NOT
+// revoked: they're per identity, so revoking would sign a multi-tenant member out of tenants that
+// are still perfectly active.
+func TestRequireTenant_MemberOfInactiveTenantGetsACode(t *testing.T) {
+	for _, tc := range []struct{ status, wantCode string }{
+		{"suspended", "tenant_suspended"},
+		{"archived", "tenant_archived"},
+	} {
+		t.Run(tc.status, func(t *testing.T) {
+			tenant, ownerID := setupMiddlewareFixture(t, "test-mw-"+tc.status)
+			if _, err := env.Pool.Exec(context.Background(),
+				`UPDATE tenants SET status = $2 WHERE id = $1`, tenant.ID, tc.status); err != nil {
+				t.Fatalf("set status: %v", err)
+			}
+
+			mw := tenancy.NewMiddleware(env.Pool)
+			h := mw.RequireTenant(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
+
+			req := httptest.NewRequest(http.MethodGet, "http://test-mw-"+tc.status+".bool.test/v1/x", nil)
+			req = req.WithContext(auth.WithPrincipal(req.Context(), &auth.Principal{ID: uuidToString(ownerID)}))
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusForbidden {
+				t.Fatalf("want 403 for a %s tenant, got %d", tc.status, rec.Code)
+			}
+			var body struct {
+				Code      string `json:"code"`
+				RequestID string `json:"request_id"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decode %q: %v", rec.Body.String(), err)
+			}
+			if body.Code != tc.wantCode {
+				t.Fatalf("want code %q so the SPA can act on it, got %q", tc.wantCode, body.Code)
+			}
+		})
+	}
+}
+
+// The disclosure rule: a NON-member must not be able to tell a suspended tenant from one that never
+// existed. Checking status before membership answered 403 here, confirming the slug to anyone who
+// asked — which is precisely what the 404s elsewhere in this middleware exist to prevent.
+func TestRequireTenant_NonMemberCannotTellSuspendedFromNonexistent(t *testing.T) {
+	tenant, _ := setupMiddlewareFixture(t, "test-mw-suspended-private")
+	if _, err := env.Pool.Exec(context.Background(),
+		`UPDATE tenants SET status = 'suspended' WHERE id = $1`, tenant.ID); err != nil {
 		t.Fatalf("suspend tenant: %v", err)
 	}
-	principalID := uuidToString(ownerID)
+	stranger := newTestUUID(t)
+	if _, err := sqlc.New(env.Pool).CreateUser(context.Background(), sqlc.CreateUserParams{
+		ID: stranger, Email: "stranger-suspended@example.test", Name: "Stranger",
+	}); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
 
 	mw := tenancy.NewMiddleware(env.Pool)
-	h := mw.RequireTenant(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	h := mw.RequireTenant(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
 
-	req := httptest.NewRequest(http.MethodGet, "http://test-mw-suspended.bool.test/v1/x", nil)
-	req = req.WithContext(auth.WithPrincipal(req.Context(), &auth.Principal{ID: principalID}))
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	suspended := httptest.NewRequest(http.MethodGet, "http://test-mw-suspended-private.bool.test/v1/x", nil)
+	suspended = suspended.WithContext(auth.WithPrincipal(suspended.Context(), &auth.Principal{ID: uuidToString(stranger)}))
+	suspendedRec := httptest.NewRecorder()
+	h.ServeHTTP(suspendedRec, suspended)
 
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("want 403 for a suspended tenant, got %d", rec.Code)
+	absent := httptest.NewRequest(http.MethodGet, "http://test-mw-no-such-tenant-at-all.bool.test/v1/x", nil)
+	absent = absent.WithContext(auth.WithPrincipal(absent.Context(), &auth.Principal{ID: uuidToString(stranger)}))
+	absentRec := httptest.NewRecorder()
+	h.ServeHTTP(absentRec, absent)
+
+	if suspendedRec.Code != http.StatusNotFound {
+		t.Fatalf("a non-member must get 404 for a suspended tenant, got %d: %s",
+			suspendedRec.Code, suspendedRec.Body.String())
+	}
+	if suspendedRec.Code != absentRec.Code {
+		t.Fatalf("suspended (%d) and nonexistent (%d) must be indistinguishable to a non-member",
+			suspendedRec.Code, absentRec.Code)
 	}
 }

@@ -93,9 +93,11 @@ func Provision(ctx context.Context, pool *pgxpool.Pool, kratos *auth.Kratos, p P
 		// here), and the compensating delete has to run anyway.
 		if delErr := kratos.DeleteIdentity(context.Background(), kratosIdentityID); delErr != nil {
 			// The identity is now orphaned in Kratos and holds an email address no retry can reuse,
-			// so name it — this is the one failure an operator must clean up by hand.
+			// so name it — this is the one failure an operator must clean up by hand. The identity id
+			// is enough to find it; the address itself is PII and stays out of the log (FR-OBS-06:
+			// never PII beyond IDs).
 			observability.LoggerFrom(ctx).Error("orphaned kratos identity after failed provisioning",
-				"kratos_identity_id", kratosIdentityID, "owner_email", p.OwnerEmail,
+				"kratos_identity_id", kratosIdentityID,
 				"delete_err", delErr, "cause", err)
 		}
 	}()
