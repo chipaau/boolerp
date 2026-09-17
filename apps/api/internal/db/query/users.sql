@@ -1,7 +1,19 @@
 -- Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
 
+-- name: GetActiveUserForSession :one
+-- The admission check run on EVERY authenticated request: does this Kratos subject have a row, and
+-- is that account still active? A read, deliberately — the identical check used to be an UPDATE, so
+-- every request took a row lock, left a dead tuple behind, and made the API unable to serve reads
+-- from a replica. The write it replaced now happens only when there is something to write (see
+-- SyncUserOnLogin).
+--
+-- status = 'active' is enforced here rather than left to Kratos session revocation having worked
+-- (FR-MEM-05 / UC-AUTH-11): a live session for a since-disabled user matches no row and is refused.
+SELECT * FROM users WHERE id = $1 AND status = 'active';
+
 -- name: SyncUserOnLogin :one
--- Refresh the mirror from the Kratos identity traits and stamp the sign-in (UC-MEM-08).
+-- Refresh the mirror from the Kratos identity traits and stamp the sign-in (UC-MEM-08). Run only
+-- when the traits have actually drifted or the stamp has gone stale — not on every request.
 -- UPDATE-only on purpose: there is no self-registration, so a user exists only because provisioning
 -- or an invite created it. An unknown subject matches no row and returns pgx.ErrNoRows, which the
 -- caller turns into 403 — authenticating with Kratos (password, passkey, or a future OIDC provider)

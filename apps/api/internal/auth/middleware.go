@@ -1,9 +1,11 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,7 +15,8 @@ import (
 	"github.com/boolmv/erp/internal/respond"
 )
 
-// Middleware validates the Kratos session on each request and JIT-upserts the users mirror.
+// Middleware validates the Kratos session on each request and resolves the caller's users mirror —
+// verifying it, never creating it (there is no self-registration; see RequireSession).
 type Middleware struct {
 	kratos *Kratos
 	pool   *pgxpool.Pool
@@ -88,19 +91,56 @@ func (m *Middleware) denyUnadmitted(ctx context.Context, w http.ResponseWriter, 
 	respond.Error(ctx, w, http.StatusForbidden, "no access")
 }
 
+// loginStampInterval is how coarse last_login_at is allowed to be. The column answers "when was this
+// account last used", which nothing needs to the second — so the stamp is refreshed at most this
+// often, and the overwhelming majority of requests do no write at all.
+const loginStampInterval = 5 * time.Minute
+
+// sync resolves the caller's mirror row, and writes ONLY when there is something to write.
+//
+// Admission is a question — does this subject have an active row — so it is asked with a SELECT. It
+// used to be an UPDATE, which meant every authenticated request took a row lock (serialising a
+// user's own concurrent requests), produced a dead tuple for vacuum, and made the API unable to
+// serve reads against a replica. The write remains for the two cases that genuinely need it: the
+// Kratos traits have drifted from the mirror, or the login stamp has gone stale.
 func (m *Middleware) sync(ctx context.Context, sess *KratosSession) (sqlc.User, error) {
 	id, err := ParseUUID(sess.Identity.ID)
 	if err != nil {
 		return sqlc.User{}, err
 	}
+	q := sqlc.New(m.pool)
+
+	user, err := q.GetActiveUserForSession(ctx, id)
+	if err != nil {
+		return sqlc.User{}, err
+	}
+
 	t := sess.Identity.Traits
-	return sqlc.New(m.pool).SyncUserOnLogin(ctx, sqlc.SyncUserOnLoginParams{
+	params := sqlc.SyncUserOnLoginParams{
 		ID:       id,
 		Email:    t.Email,
 		Name:     t.Name,
 		NameI18n: nameI18n(t.NameI18n),
 		Phone:    textOrNull(t.Phone),
-	})
+	}
+	if !needsSync(user, params) {
+		return user, nil
+	}
+	// A racing request may do this too; the update is idempotent, so the loser simply rewrites the
+	// same values.
+	return q.SyncUserOnLogin(ctx, params)
+}
+
+// needsSync reports whether the stored mirror still matches Kratos, and whether the login stamp is
+// fresh enough to leave alone.
+func needsSync(user sqlc.User, fresh sqlc.SyncUserOnLoginParams) bool {
+	if !user.LastLoginAt.Valid || time.Since(user.LastLoginAt.Time) > loginStampInterval {
+		return true
+	}
+	return user.Email != fresh.Email ||
+		user.Name != fresh.Name ||
+		user.Phone != fresh.Phone ||
+		!bytes.Equal(user.NameI18n, fresh.NameI18n)
 }
 
 func unauthorized(ctx context.Context, w http.ResponseWriter) {

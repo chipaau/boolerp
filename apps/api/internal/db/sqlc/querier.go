@@ -43,6 +43,16 @@ type Querier interface {
 	// arrived (or was never stamped) doesn't grant access yet, and one whose end has passed no longer
 	// does. active_to IS NULL means "no end set" — still a member.
 	GetActiveTenantMembership(ctx context.Context, arg GetActiveTenantMembershipParams) (TenantUser, error)
+	// Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
+	// The admission check run on EVERY authenticated request: does this Kratos subject have a row, and
+	// is that account still active? A read, deliberately — the identical check used to be an UPDATE, so
+	// every request took a row lock, left a dead tuple behind, and made the API unable to serve reads
+	// from a replica. The write it replaced now happens only when there is something to write (see
+	// SyncUserOnLogin).
+	//
+	// status = 'active' is enforced here rather than left to Kratos session revocation having worked
+	// (FR-MEM-05 / UC-AUTH-11): a live session for a since-disabled user matches no row and is refused.
+	GetActiveUserForSession(ctx context.Context, id pgtype.UUID) (User, error)
 	GetAppByCode(ctx context.Context, code string) (App, error)
 	GetCountry(ctx context.Context, code string) (Country, error)
 	GetCurrency(ctx context.Context, code string) (Currency, error)
@@ -97,8 +107,8 @@ type Querier interface {
 	// comes back when the tenant is not in that status — notably, an archived tenant can never be
 	// flipped back to active, because archived ends the lifecycle.
 	SetTenantStatus(ctx context.Context, arg SetTenantStatusParams) (Tenant, error)
-	// Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
-	// Refresh the mirror from the Kratos identity traits and stamp the sign-in (UC-MEM-08).
+	// Refresh the mirror from the Kratos identity traits and stamp the sign-in (UC-MEM-08). Run only
+	// when the traits have actually drifted or the stamp has gone stale — not on every request.
 	// UPDATE-only on purpose: there is no self-registration, so a user exists only because provisioning
 	// or an invite created it. An unknown subject matches no row and returns pgx.ErrNoRows, which the
 	// caller turns into 403 — authenticating with Kratos (password, passkey, or a future OIDC provider)

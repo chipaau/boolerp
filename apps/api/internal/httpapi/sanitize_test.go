@@ -144,6 +144,47 @@ func TestSanitizeBody_SkipsStreamedContentTypes(t *testing.T) {
 	}
 }
 
+// Streamed bodies are not buffered, but they are still bounded — skipping the cap along with the
+// inspection left uploads, the largest bodies of all, as the only unbounded ones.
+func TestSanitizeBody_StreamedBodiesAreStillCapped(t *testing.T) {
+	// Larger than the 16 MiB streamed ceiling.
+	huge := strings.Repeat("a", (16<<20)+1024)
+	var readErr error
+	h := httpapi.SanitizeBody(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, readErr = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/upload", strings.NewReader(huge))
+	req.Header.Set("Content-Type", "application/octet-stream")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	if readErr == nil {
+		t.Fatal("an oversized upload must be cut off by the cap, not read in full")
+	}
+}
+
+// ...and an upload comfortably under the ceiling still reaches the handler intact, so the cap does
+// not simply make uploads impossible.
+func TestSanitizeBody_StreamedBodyUnderTheCapArrivesWhole(t *testing.T) {
+	payload := strings.Repeat("b", 2<<20) // 2 MiB: over the inspectable limit, well under the streamed one
+	var got int
+	h := httpapi.SanitizeBody(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read upload: %v", err)
+		}
+		got = len(b)
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/upload", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/octet-stream")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	if got != len(payload) {
+		t.Fatalf("want the whole %d-byte upload delivered, got %d", len(payload), got)
+	}
+}
+
 // No handler can be made to buffer an unbounded body by forgetting its own limit.
 func TestSanitizeBody_RejectsOversizedBodies(t *testing.T) {
 	huge := `{"name":"` + strings.Repeat("a", 2<<20) + `"}`
@@ -174,5 +215,48 @@ func TestSanitizeBody_IgnoresEmptyBodies(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("want 200 for a bodyless request, got %d", rec.Code)
+	}
+}
+
+// A caller's own correlation id is welcome — it lets their id flow through our logs, traces and
+// audit rows. Taking it verbatim was not: it reached audit_log.request_id at any length and with any
+// content, so an audit trail's correlation key could be forged or made to collide.
+func TestInboundRequestID_ImplausibleValuesAreReplaced(t *testing.T) {
+	router := httpapi.New(httpapi.PlatformDeps{})
+
+	for _, tc := range []struct {
+		name     string
+		sent     string
+		wantKept bool
+	}{
+		{"uuid", "018f7d3a-0000-7000-8000-000000000001", true},
+		{"w3c trace id", "4bf92f3577b34da6a3ce929d0e0e4736", true},
+		{"chi's own shape", "ec9e92ac4e63/QcWXQq9noI-000028", true},
+		{"newline injection", "abc\ndef", false},
+		{"quote injection", `abc","evil":"x`, false},
+		{"whitespace", "abc def", false},
+		{"control character", "abc\x00def", false},
+		{"absurdly long", strings.Repeat("a", 300), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+			// Set directly: http.Header.Set would reject some of these itself.
+			req.Header["X-Request-Id"] = []string{tc.sent}
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+
+			got := rec.Header().Get("X-Request-Id")
+			if tc.wantKept && got != tc.sent {
+				t.Fatalf("want a plausible id adopted, sent %q got %q", tc.sent, got)
+			}
+			if !tc.wantKept {
+				if got == tc.sent {
+					t.Fatalf("an implausible id was adopted verbatim: %q", tc.sent)
+				}
+				if got == "" {
+					t.Fatal("want a generated id to replace the rejected one, got none")
+				}
+			}
+		})
 	}
 }
