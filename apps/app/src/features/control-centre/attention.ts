@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { APP_KEYS, appRoleRank, binFills, holidayOn, isOnBooks, liveUnits, nextCountDue, siteRegionId, siteStaff, siteTypeById, unitMembers } from '@/features/org/logic'
-import { useHolidays, usePeople, usePersonActions, useRegions, useSiteActions, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
+import { APP_KEYS, appRoleRank, binFills, holidayOn, isOnBooks, liveUnits, nextCountDue, siteStaff, siteTypeById, unitMembers } from '@/features/org/logic'
+import { useHolidays, usePeople, usePersonActions, useSiteActions, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
 import type { Person } from '@/features/org/types'
 
 /** A one-click repair across every affected item; `apply` returns the undo. */
@@ -23,7 +23,7 @@ const undoAll = (undos: (() => void)[]) => () => [...undos].reverse().forEach((u
  * `clear` names the checks that currently pass, so the overview never reads as empty.
  */
 export function useAttentionReport(): { open: Attention[]; clear: string[] } {
-  const units = useUnits(), people = usePeople(), sites = useSites(), types = useSiteTypes(), holidays = useHolidays(), regions = useRegions()
+  const units = useUnits(), people = usePeople(), sites = useSites(), types = useSiteTypes(), holidays = useHolidays()
   const siteActions = useSiteActions(), personActions = usePersonActions()
   return useMemo(() => {
     const open: Attention[] = [], clear: string[] = []
@@ -44,7 +44,7 @@ export function useAttentionReport(): { open: Attention[]; clear: string[] } {
     check(nearFull, 'No bins are near capacity', { label: 'Bins near capacity', tone: 'warning', to: { section: 'sites', search: { id: nearFull[0]?.id ?? '' } } })
     const uncounted = sites.filter((s) => siteTypeById(types, s.typeId).cadence !== 'None' && s.counted === '—')
     check(uncounted, 'Every counted site has had a count', { label: 'Never counted', tone: 'warning', to: { section: 'sites', search: { id: uncounted[0]?.id ?? '' } } })
-    const onHoliday = sites.filter((s) => { const due = nextCountDue(s, siteTypeById(types, s.typeId), today); return s.status === 'Active' && !!due && !!holidayOn(holidays, due, siteRegionId(regions, s)) })
+    const onHoliday = sites.filter((s) => { const due = nextCountDue(s, siteTypeById(types, s.typeId), today); return s.status === 'Active' && !!due && !!holidayOn(holidays, due, { site: s.id }) })
     check(onHoliday, 'No count falls due on a holiday', { label: 'Count due on a holiday', tone: 'warning', to: { section: 'sites', search: { id: onHoliday[0]?.id ?? '' } } })
     const unused = types.filter((t) => !sites.some((s) => s.typeId === t.id))
     check(unused, 'Every site type is in use', { label: 'Types with no sites', tone: 'neutral', to: { section: 'site-types', search: { id: unused[0]?.id ?? '' } } })
@@ -63,7 +63,7 @@ export function useAttentionReport(): { open: Attention[]; clear: string[] } {
     const uncovered = sites.filter((s) => !siteStaff(people, s.id).length)
     check(uncovered, 'Every site has someone assigned', { label: 'Sites with nobody assigned', tone: 'warning', to: { section: 'sites', search: { id: uncovered[0]?.id ?? '' } } })
     return { open, clear }
-  }, [units, people, sites, types, holidays, regions, siteActions, personActions])
+  }, [units, people, sites, types, holidays, siteActions, personActions])
 }
 
 /** What in the record would stop another app working, worst first. Shared by the rail and the overview. */
