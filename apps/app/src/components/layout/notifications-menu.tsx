@@ -10,11 +10,12 @@ import {
 } from '@workspace/ui/components/dropdown-menu'
 import { HexGlyph } from '@workspace/ui/components/hex-glyph'
 import { cn } from '@workspace/ui/lib/utils'
-import { useMarkAllRead, useNotifications } from '@/features/shell/queries'
+import { useMyNotifications } from '@/features/notifications/queries'
+import { useMarkAllRead } from '@/features/shell/queries'
 
 /** The bell with its unread dot and the notifications dropdown from the design. */
 export function NotificationsMenu() {
-  const notifications = useNotifications()
+  const notifications = useMyNotifications()
   const markAllRead = useMarkAllRead()
   const hasUnread = notifications.some((n) => n.unread)
   // the bell shows the three most recent; the page has them all

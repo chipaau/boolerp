@@ -287,16 +287,16 @@ export const APPROVAL_CHAINS: ApprovalChain[] = [
   { id: 'c-4', name: 'New site approval', threshold: 'Any', steps: ['EMP-002'], used: [] },
 ]
 export const NOTIFICATION_RULES: NotificationRule[] = [
-  { id: 'n-1', sourceApp: 'Inventory', event: 'Stock falls below minimum', recipients: 'Site manager, Procurement', inApp: true, email: true },
-  { id: 'n-2', sourceApp: 'Inventory', event: 'Cycle count due', recipients: 'Site manager', inApp: true, email: false },
-  { id: 'n-3', sourceApp: 'Inventory', event: 'Count variance over threshold', recipients: 'Director of Operations', inApp: true, email: true },
-  { id: 'n-4', sourceApp: 'Control Centre', event: 'Site paused or reopened', recipients: 'All Admins', inApp: true, email: true },
-  { id: 'n-5', sourceApp: 'Control Centre', event: 'Employee added or exited', recipients: 'People Operations', inApp: false, email: true },
-  { id: 'n-6', sourceApp: 'Inventory', event: 'Bin utilisation over 90%', recipients: 'Site manager', inApp: true, email: false },
-  { id: 'n-7', sourceApp: 'Control Centre', event: 'Approval waiting more than 2 days', recipients: 'Requester, next approver', inApp: true, email: true },
-  { id: 'n-8', sourceApp: 'Calendar', event: 'Shift published or changed', recipients: 'Everyone on the shift', inApp: true, email: false },
-  { id: 'n-9', sourceApp: 'Calendar', event: 'Public holiday added', recipients: 'Site managers', inApp: true, email: true },
-  { id: 'n-10', sourceApp: 'Scan', event: 'Handheld offline for over an hour', recipients: 'Site manager', inApp: false, email: false },
+  { id: 'n-1', eventKey: 'inventory.stock_below_min', sourceApp: 'Inventory', event: 'Stock falls below minimum', recipientRoles: ['site_manager', 'procurement'], inApp: true, email: true },
+  { id: 'n-2', eventKey: 'inventory.count_due', sourceApp: 'Inventory', event: 'Cycle count due', recipientRoles: ['site_manager'], inApp: true, email: false },
+  { id: 'n-3', eventKey: 'inventory.count_variance', sourceApp: 'Inventory', event: 'Count variance over threshold', recipientRoles: ['director_of_operations'], inApp: true, email: true },
+  { id: 'n-4', eventKey: 'controlcentre.site_paused', sourceApp: 'Control Centre', event: 'Site paused or reopened', recipientRoles: ['admins'], inApp: true, email: true },
+  { id: 'n-5', eventKey: 'controlcentre.employee_changed', sourceApp: 'Control Centre', event: 'Employee added or exited', recipientRoles: ['people_ops'], inApp: false, email: true },
+  { id: 'n-6', eventKey: 'inventory.bin_utilisation_high', sourceApp: 'Inventory', event: 'Bin utilisation over 90%', recipientRoles: ['site_manager'], inApp: true, email: false },
+  { id: 'n-7', eventKey: 'approvals.waiting', sourceApp: 'Control Centre', event: 'Approval waiting more than 2 days', recipientRoles: ['requester', 'next_approver'], inApp: true, email: true },
+  { id: 'n-8', eventKey: 'calendar.shift_changed', sourceApp: 'Calendar', event: 'Shift published or changed', recipientRoles: ['everyone_on_shift'], inApp: true, email: false },
+  { id: 'n-9', eventKey: 'calendar.holiday_added', sourceApp: 'Calendar', event: 'Public holiday added', recipientRoles: ['site_managers'], inApp: true, email: true },
+  { id: 'n-10', eventKey: 'scan.device_offline', sourceApp: 'Scan', event: 'Handheld offline for over an hour', recipientRoles: ['site_manager'], inApp: false, email: false },
 ]
 export const AUDIT: AuditEntry[] = [
   { id: 'a-1', scope: 'Sites', app: 'Control Centre', sev: 'normal', days: 1, text: 'Eydhafushi counter paused', who: 'Claudia Reyes', when: 'Yesterday, 16:40' },

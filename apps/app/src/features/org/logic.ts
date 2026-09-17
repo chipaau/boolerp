@@ -1,6 +1,6 @@
 // Pure helpers over the org record. No React, no fixtures: components and queries call these.
 import { isoDate, parseIsoDate, weekdayShort } from '@/lib/dates'
-import type { AppKey, Cadence, Holiday, Perms, Person, PersonRole, PersonStatus, Site, SiteType, StorageMode, Tone, Unit } from './types'
+import type { AppKey, Cadence, Holiday, NotificationRule, Perms, Person, PersonRole, PersonStatus, RecipientRole, Site, SiteType, StorageMode, Tone, Unit } from './types'
 
 // ---------- units
 export const UNIT_KINDS: Unit['kind'][] = ['Division', 'Department', 'Team']
@@ -220,4 +220,72 @@ export function nextCountDue(site: Site, type: SiteType, today: Date): string | 
   const floor = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   while (due < floor) due = step(due)
   return isoDate(due)
+}
+
+// ---- notification recipients
+/** The fixed catalogue of who a notification rule can reach, with the label Control Centre shows. */
+export const RECIPIENT_ROLES: { k: RecipientRole; label: string }[] = [
+  { k: 'site_manager', label: 'Site manager' },
+  { k: 'site_managers', label: 'Site managers' },
+  { k: 'unit_lead', label: 'Unit lead' },
+  { k: 'admins', label: 'All Admins' },
+  { k: 'people_ops', label: 'People Operations' },
+  { k: 'procurement', label: 'Procurement' },
+  { k: 'director_of_operations', label: 'Director of Operations' },
+  { k: 'requester', label: 'Requester' },
+  { k: 'next_approver', label: 'Next approver' },
+  { k: 'everyone_on_shift', label: 'Everyone on the shift' },
+]
+export const recipientRoleLabel = (k: RecipientRole) => RECIPIENT_ROLES.find((r) => r.k === k)?.label ?? k
+export const ruleForEvent = (rules: NotificationRule[], eventKey: string) => rules.find((r) => r.eventKey === eventKey)
+
+/** What an event is about, so roles such as "site manager" know whose to pick. */
+export type EventSubject = { siteId?: string | null; siteIds?: string[]; unitId?: string | null; requesterId?: string | null; nextApproverId?: string | null }
+type OrgData = { people: Person[]; units: Unit[]; sites: Site[] }
+
+const membersOfNamedUnit = (org: OrgData, name: string) =>
+  org.units.filter((u) => !u.archived && u.name === name).flatMap((u) => unitMembers(org.people, org.units, u.id, true))
+
+/** One role to person ids for an event. Site staff are on-shift for a site through its primary site or access. */
+export function resolveRole(role: RecipientRole, subject: EventSubject, org: OrgData): string[] {
+  const { people, units, sites } = org
+  switch (role) {
+    case 'site_manager':
+      return [siteById(sites, subject.siteId)?.ownerId].filter((x): x is string => !!x)
+    case 'site_managers': {
+      const scoped = subject.siteIds?.length ? sites.filter((s) => subject.siteIds?.includes(s.id)) : subject.siteId ? sites.filter((s) => s.id === subject.siteId) : sites.filter((s) => s.status === 'Active')
+      return scoped.map((s) => s.ownerId).filter((x): x is string => !!x)
+    }
+    case 'unit_lead':
+      return subject.unitId ? [unitLead(units, people, subject.unitId)?.id].filter((x): x is string => !!x) : []
+    case 'admins':
+      return people.filter((p) => isOnBooks(p) && p.role === 'Admin').map((p) => p.id)
+    case 'people_ops':
+      return membersOfNamedUnit(org, 'People').map((p) => p.id)
+    case 'procurement':
+      return membersOfNamedUnit(org, 'Procurement').map((p) => p.id)
+    case 'director_of_operations':
+      return people.filter((p) => isOnBooks(p) && p.title === 'Director of Operations').map((p) => p.id)
+    case 'requester':
+      return subject.requesterId ? [subject.requesterId] : []
+    case 'next_approver':
+      return subject.nextApproverId ? [subject.nextApproverId] : []
+    case 'everyone_on_shift':
+      return subject.siteId ? siteStaff(people, subject.siteId).map((p) => p.id) : []
+  }
+}
+
+/** Every person a rule reaches for an event, once each, leaving out anyone who has exited. */
+export function resolveRecipients(roles: RecipientRole[], subject: EventSubject, org: OrgData): string[] {
+  const live = new Set(org.people.filter(isOnBooks).map((p) => p.id))
+  return [...new Set(roles.flatMap((r) => resolveRole(r, subject, org)))].filter((id) => live.has(id))
+}
+
+/** The notifications a person sees in-app: addressed to them, and not silenced in-app by their event's rule. */
+export function inAppFor<T extends { eventKey: string; recipientIds: string[] }>(list: T[], rules: NotificationRule[], personId: string | undefined): (T & { emailed: boolean })[] {
+  if (!personId) return []
+  return list.flatMap((n) => {
+    const rule = ruleForEvent(rules, n.eventKey)
+    return (!rule || rule.inApp) && n.recipientIds.includes(personId) ? [{ ...n, emailed: !!rule?.email }] : []
+  })
 }

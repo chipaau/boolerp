@@ -3,7 +3,8 @@
 // mutations update the cache in place and write an audit entry; later they PATCH then invalidate.
 import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { fmtDate, nextCode, personById, unitKids, unitPath } from './logic'
+import { useNotify } from '@/features/notifications/notify'
+import { fmtDate, fmtIsoDay, nextCode, nextCountDue, personById, siteTypeById, unitKids, unitPath } from './logic'
 import * as mock from './mock'
 import type { ApprovalChain, AuditEntry, NotificationRule, Country, Holiday, Me, NumberingRule, Person, Region, Site, SiteType, Unit } from './types'
 
@@ -119,6 +120,15 @@ export function usePersonActions() {
   const qc = useQueryClient()
   const log = useAuditLog()
   const people = () => qc.getQueryData<Person[]>(key('people')) ?? []
+  const notify = useNotify()
+  const announce = (p: Person, what: 'added' | 'exited') =>
+    notify('controlcentre.employee_changed', {
+      title: `${p.name} ${what === 'added' ? 'joined' : 'exited'}`,
+      meta: `${p.title} · ${unitPath(qc.getQueryData<Unit[]>(key('units')) ?? [], p.unitId)}`,
+      category: 'Setup',
+      to: { app: 'control-centre', section: 'employees', id: p.id },
+      subject: { unitId: p.unitId },
+    })
   const bumpEmployeeId = () =>
     qc.setQueryData<NumberingRule[]>(key('numbering'), (list) => (list ?? []).map((r) => (r.id === 'k-2' ? { ...r, next: nextCode(r.next) } : r)))
   return {
@@ -128,6 +138,7 @@ export function usePersonActions() {
       set((list) => [...list, p])
       bumpEmployeeId()
       log('Employees', `${p.name} added to ${unitPath(qc.getQueryData<Unit[]>(key('units')) ?? [], p.unitId)}`)
+      announce(p, 'added')
     },
     update: (id: string, changes: Partial<Person>) => {
       const was = people().find((x) => x.id === id)
@@ -136,14 +147,17 @@ export function usePersonActions() {
         const renamed = changes.name !== undefined && changes.name !== was.name
         const exited = changes.status === 'Exited' && was.status !== 'Exited'
         log('Employees', renamed ? `${was.name} renamed to ${changes.name}` : `${was.name} updated${exited ? ', access revoked' : ''}`, exited ? 'high' : 'normal')
+        if (exited) { const unnotify = announce({ ...was, ...changes }, 'exited'); return () => { undo(); unnotify() } }
       }
       return undo
     },
     exit: (id: string, perms: Person['perms']) => {
       const p = people().find((x) => x.id === id)
       const undo = patch(id, { status: 'Exited', end: p?.end || fmtDate(new Date()), primarySite: null, access: [], perms, role: 'Staff' })
-      if (p) log('Employees', `${p.name} marked as exited, access revoked`, 'high')
-      return undo
+      if (!p) return undo
+      log('Employees', `${p.name} marked as exited, access revoked`, 'high')
+      const unnotify = announce(p, 'exited')
+      return () => { undo(); unnotify() }
     },
     /** One change across many people; the caller says what changed for the log. */
     bulk: (ids: string[], fn: (p: Person) => Person, what: string) => {
@@ -189,6 +203,7 @@ export function useSiteActions() {
   const qc = useQueryClient()
   const log = useAuditLog()
   const sites = () => qc.getQueryData<Site[]>(key('sites')) ?? []
+  const notify = useNotify()
   return {
     create: (s: Omit<Site, 'id'>) => {
       const id = `s-${Date.now().toString(36)}`
@@ -205,8 +220,16 @@ export function useSiteActions() {
     setStatus: (id: string, status: Site['status']) => {
       const s = sites().find((x) => x.id === id)
       const undo = patch(id, { status })
-      if (s) log('Sites', status === 'Paused' ? `${s.name} paused — stock frozen` : `${s.name} reactivated`)
-      return undo
+      if (!s || s.status === status) return undo
+      log('Sites', status === 'Paused' ? `${s.name} paused — stock frozen` : `${s.name} reactivated`)
+      const unnotify = notify('controlcentre.site_paused', {
+        title: `${s.name} ${status === 'Paused' ? 'paused' : 'reactivated'}`,
+        meta: status === 'Paused' ? `${s.code} · stock frozen` : `${s.code} · taking stock actions again`,
+        category: 'Setup',
+        to: { app: 'control-centre', section: 'sites', id: s.id },
+        subject: { siteId: s.id },
+      })
+      return () => { undo(); unnotify() }
     },
     setBins: (id: string, aisles: number, per: number) => {
       const s = sites().find((x) => x.id === id)
@@ -232,11 +255,41 @@ export function useHolidayActions() {
   const qc = useQueryClient()
   const log = useAuditLog()
   const find = (id: string) => (qc.getQueryData<Holiday[]>(key('holidays')) ?? []).find((h) => h.id === id)
+  const notify = useNotify()
+  /** Tells site managers about a closure, and warns the managers whose count falls due that day. */
+  const announce = (h: Pick<Holiday, 'id' | 'name' | 'date' | 'appliesTo'>) => {
+    const all = qc.getQueryData<Site[]>(key('sites')) ?? []
+    const types = qc.getQueryData<SiteType[]>(key('site-types')) ?? []
+    const undos = [
+      notify('calendar.holiday_added', {
+        title: `${h.name} is a holiday`,
+        meta: `${fmtIsoDay(h.date)}${h.appliesTo.sites.length || h.appliesTo.units.length ? ' · some units and sites' : ' · everyone'}`,
+        category: 'Setup',
+        to: { app: 'control-centre', section: 'holidays', id: h.id },
+        subject: { siteIds: h.appliesTo.sites },
+      }),
+    ]
+    const scoped = h.appliesTo.sites.length ? all.filter((s) => h.appliesTo.sites.includes(s.id)) : h.appliesTo.units.length ? [] : all
+    for (const s of scoped) {
+      if (s.status !== 'Active' || !types.length || nextCountDue(s, siteTypeById(types, s.typeId), new Date()) !== h.date) continue
+      undos.push(
+        notify('inventory.count_due', {
+          title: `${s.name} count falls on ${h.name}`,
+          meta: `${fmtIsoDay(h.date)} · move the count or plan cover`,
+          category: 'Stock',
+          to: { app: 'control-centre', section: 'sites', id: s.id },
+          subject: { siteId: s.id },
+        })
+      )
+    }
+    return () => undos.forEach((u) => u())
+  }
   return {
     create: (h: Omit<Holiday, 'id' | 'origin' | 'on'>) => {
       const id = `h-${Date.now().toString(36)}`
       set((list) => [...list, { ...h, id, origin: 'custom', on: true }])
       log('Public holidays', `${h.name} added on ${h.date}`)
+      announce({ ...h, id })
       return id
     },
     update: (id: string, changes: Partial<Holiday>) => {
@@ -250,6 +303,7 @@ export function useHolidayActions() {
       if (!h) return
       patch(id, { on: !h.on })
       log('Public holidays', `${h.name} switched ${h.on ? 'off' : 'on'}`)
+      if (!h.on) announce(h)
     },
     remove: (id: string): Undo => {
       const h = find(id)

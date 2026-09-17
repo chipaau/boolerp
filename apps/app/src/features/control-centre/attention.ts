@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { APP_KEYS, appRoleRank, binFills, holidayOn, isOnBooks, liveUnits, nextCountDue, siteStaff, siteTypeById, unitMembers } from '@/features/org/logic'
 import { useHolidays, usePeople, usePersonActions, useSiteActions, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
+import { useInvoices } from '@/features/billing/queries'
 import type { Person } from '@/features/org/types'
 
 /** A one-click repair across every affected item; `apply` returns the undo. */
@@ -25,6 +26,7 @@ const undoAll = (undos: (() => void)[]) => () => [...undos].reverse().forEach((u
 export function useAttentionReport(): { open: Attention[]; clear: string[] } {
   const units = useUnits(), people = usePeople(), sites = useSites(), types = useSiteTypes(), holidays = useHolidays()
   const siteActions = useSiteActions(), personActions = usePersonActions()
+  const invoices = useInvoices()
   return useMemo(() => {
     const open: Attention[] = [], clear: string[] = []
     const check = (list: { id: string; name: string }[], pass: string, a: Omit<Attention, 'count' | 'items'>) => {
@@ -62,8 +64,10 @@ export function useAttentionReport(): { open: Attention[]; clear: string[] } {
     })
     const uncovered = sites.filter((s) => !siteStaff(people, s.id).length)
     check(uncovered, 'Every site has someone assigned', { label: 'Sites with nobody assigned', tone: 'warning', to: { section: 'sites', search: { id: uncovered[0]?.id ?? '' } } })
+    const overdueInvoices = invoices.filter((i) => i.status === 'Overdue').map((i) => ({ id: i.id, name: i.number }))
+    check(overdueInvoices, 'No invoices are overdue', { label: 'Overdue invoices', tone: 'risk', to: { section: 'billing' } })
     return { open, clear }
-  }, [units, people, sites, types, holidays, siteActions, personActions])
+  }, [units, people, sites, types, holidays, siteActions, personActions, invoices])
 }
 
 /** What in the record would stop another app working, worst first. Shared by the rail and the overview. */

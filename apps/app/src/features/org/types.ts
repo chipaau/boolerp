@@ -136,8 +136,13 @@ export type ApprovalChain = {
   /** Local ISO day the stand-in covers until. */
   standInUntil?: string
 }
-/** One event an app raises, who it reaches (resolved live through the org tree) and on which channels. */
-export type NotificationRule = { id: string; sourceApp: string; event: string; recipients: string; inApp: boolean; email: boolean }
+/** Who a notification rule reaches; each resolves live through the org tree (see RECIPIENT_ROLES in logic.ts). */
+export type RecipientRole = 'site_manager' | 'site_managers' | 'unit_lead' | 'admins' | 'people_ops' | 'procurement' | 'director_of_operations' | 'requester' | 'next_approver' | 'everyone_on_shift'
+/**
+ * One event an app raises, who it reaches and on which channels. `eventKey` is the dot-namespaced
+ * id the app raises it by (`inventory.stock_below_min`).
+ */
+export type NotificationRule = { id: string; eventKey: string; sourceApp: string; event: string; recipientRoles: RecipientRole[]; inApp: boolean; email: boolean }
 export type NumberingRule = { id: string; app: string; label: string; pattern: string; next: string; note: string }
 export type AuditEntry = {
   id: string

@@ -7,13 +7,14 @@ import { Card } from '@workspace/ui/components/card'
 import { HexGlyph } from '@workspace/ui/components/hex-glyph'
 import { cn } from '@workspace/ui/lib/utils'
 import { PageTitle } from '@/components/layout/page'
-import { useMarkAllRead, useNotifications } from './queries'
+import { useMyNotifications } from '@/features/notifications/queries'
+import { useMarkAllRead } from './queries'
 import type { Notification, NotificationCategory, NotificationGroup } from './types'
 
-const FILTERS = ['All', 'Unread', 'Meetings', 'Stock', 'Approvals', 'Orders'] as const
+const FILTERS = ['All', 'Unread', 'Meetings', 'Stock', 'Approvals', 'Orders', 'Setup'] as const
 type Filter = (typeof FILTERS)[number]
 const GROUPS: NotificationGroup[] = ['Today', 'Yesterday', 'Earlier']
-const CATEGORY_TONE: Record<NotificationCategory, BadgeTone> = { Meetings: 'slate', Stock: 'risk', Approvals: 'warning', Orders: 'plum' }
+const CATEGORY_TONE: Record<NotificationCategory, BadgeTone> = { Meetings: 'slate', Stock: 'risk', Approvals: 'warning', Orders: 'plum', Setup: 'neutral' }
 
 function matches(n: Notification, f: Filter) {
   if (f === 'All') return true
@@ -27,7 +28,7 @@ function matches(n: Notification, f: Filter) {
  * category pill and the time. Rows lead to the screen the event belongs to.
  */
 export function NotificationsPage() {
-  const notifications = useNotifications()
+  const notifications = useMyNotifications()
   const markAllRead = useMarkAllRead()
   const [filter, setFilter] = useState<Filter>('All')
   const unread = notifications.filter((n) => n.unread).length
@@ -38,7 +39,7 @@ export function NotificationsPage() {
         <PageTitle
           className="mb-[26px]"
           title="Notifications"
-          meta={<span>{unread ? `${unread} unread` : 'All caught up'} · meetings, stock, approvals and orders</span>}
+          meta={<span>{unread ? `${unread} unread` : 'All caught up'} · meetings, stock, approvals, orders and setup</span>}
           actions={
             <>
               <Button variant="outline">Preferences</Button>
@@ -78,7 +79,7 @@ export function NotificationsPage() {
                         <HexGlyph size={10} className={cn('mt-1', n.unread ? 'text-brand-soft' : 'text-border')} />
                         <span className="min-w-0">
                           <span className={cn('block text-sm text-foreground', n.unread && 'font-bold')}>{n.title}</span>
-                          <span className="mt-1 block text-meta text-muted-foreground">{n.meta}</span>
+                          <span className="mt-1 block text-meta text-muted-foreground">{n.meta}{n.emailed && ' · Also emailed'}</span>
                         </span>
                         <span className="flex shrink-0 items-center gap-3">
                           <Badge variant={CATEGORY_TONE[n.category]} size="sm">

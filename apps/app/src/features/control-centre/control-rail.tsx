@@ -3,6 +3,8 @@ import { Badge } from '@workspace/ui/components/badge'
 import { useSidebar } from '@workspace/ui/components/sidebar'
 import { cn } from '@workspace/ui/lib/utils'
 import type { AppDef } from '@/lib/apps'
+import { isOpenInvoice } from '@/features/billing/logic'
+import { useInvoices } from '@/features/billing/queries'
 import { isOnBooks, liveUnits } from '@/features/org/logic'
 import { useApprovalChains, useAudit, useCountries, useHolidays, useNotificationRules, useNumbering, usePeople, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
 import { useAttention } from './attention'
@@ -19,6 +21,8 @@ export function ControlRail({ app }: { app: AppDef }) {
   const units = useUnits(), people = usePeople(), sites = useSites(), types = useSiteTypes(), holidays = useHolidays()
   const chains = useApprovalChains(), codes = useNumbering(), countries = useCountries(), rules = useNotificationRules(), audit = useAudit()
   const attention = useAttention()
+  const invoices = useInvoices()
+  const unpaid = invoices.filter((i) => isOpenInvoice(i.status)), overdue = unpaid.some((i) => i.status === 'Overdue')
   // one number, like the bell: the overview lists what it is
   const open = attention.reduce((n, a) => n + a.count, 0), risky = attention.some((a) => a.tone === 'risk')
   const collapsed = useSidebar().state === 'collapsed'
@@ -50,6 +54,11 @@ export function ControlRail({ app }: { app: AppDef }) {
                 <Link to="/$app/$section" params={{ app: app.slug, section: it.slug }} className={row(section === it.slug)}>
                   <span className="flex-1">{it.title}</span>
                   {counts[it.slug] !== undefined && <span className="text-fine tabular-nums text-faint">{counts[it.slug]}</span>}
+                  {it.slug === 'billing' && unpaid.length > 0 && (
+                    <Badge variant={overdue ? 'risk' : 'warning'} size="sm" aria-label={`${unpaid.length} ${unpaid.length === 1 ? 'invoice' : 'invoices'} ${overdue ? 'overdue' : 'due'}`}>
+                      {unpaid.length}
+                    </Badge>
+                  )}
                 </Link>
               </li>
             ))}

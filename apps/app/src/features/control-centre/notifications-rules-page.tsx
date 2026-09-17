@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { Badge } from '@workspace/ui/components/badge'
 import { Card } from '@workspace/ui/components/card'
 import { Switch } from '@workspace/ui/components/switch'
 import { useToast } from '@workspace/ui/components/toast'
+import { recipientRoleLabel } from '@/features/org/logic'
 import { useNotificationRuleActions, useNotificationRules } from '@/features/org/queries'
 import { AppTabs } from './codes-page'
 import { ControlTitle, RuleStrip, useCanEdit } from './control-bits'
@@ -38,7 +40,13 @@ export function NotificationRulesPage() {
                 <span className="block text-ui-sm font-bold text-foreground">{n.event}</span>
                 <span className="mt-[3px] block text-caption text-faint">{n.sourceApp}</span>
               </span>
-              <span className="min-w-0 text-compact text-body">{n.recipients}</span>
+              <span className="flex min-w-0 flex-wrap gap-1.5">
+                {n.recipientRoles.map((r) => (
+                  <Badge key={r} variant="neutral" size="sm">
+                    {recipientRoleLabel(r)}
+                  </Badge>
+                ))}
+              </span>
               <Switch className="justify-self-center" checked={n.inApp} onCheckedChange={() => toggle(n.id, 'inApp')} aria-label={`${n.event} in-app`} />
               <Switch className="justify-self-center" checked={n.email} onCheckedChange={() => toggle(n.id, 'email')} aria-label={`${n.event} email`} />
             </div>
