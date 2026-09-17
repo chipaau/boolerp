@@ -10,6 +10,9 @@ Confirmation-driven specs. **Nothing is implemented until its use cases and data
 - `roadmap.md` — phases and per-component status.
 - `adr/` — architecture decision records (`0001-tenancy-pooled-rls.md`, `0002-pricing-and-promotions.md`, …).
   `adr/history/` holds superseded decisions kept for context, outside this repo's ADR sequence.
+- `review-<date>.md` — full-repo review punch lists: ranked, verified findings with the fix for each.
+  Working documents, not specs — an item is closed by fixing the code (and the doc it drifted from),
+  not by editing the list.
 - `data-model/` — `DB-*.md` (tables, columns, constraints). Confirmed before any migration.
 - `srs/phase-<n>/<NN-component>/` — per component:
   - `checklist.md` — scope, open questions, candidate use-case inventory, sign-off. Drives
