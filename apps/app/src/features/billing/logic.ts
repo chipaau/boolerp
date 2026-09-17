@@ -76,7 +76,7 @@ export function billingPeriods(s: Pick<Subscription, 'cycle' | 'renewsOn'>, toda
 
 /** Next number in the year's INV series, continuing the highest one on record: INV-2026-0915. */
 export function nextInvoiceNumber(existing: Pick<TenantInvoice, 'number'>[], year: string) {
-  const re = new RegExp(`^INV-${year}-(\d+)$`)
+  const re = new RegExp(`^INV-${year}-(\\d+)$`)
   const max = existing.reduce((n, i) => Math.max(n, Number(re.exec(i.number)?.[1] ?? 0)), 0)
   return `INV-${year}-${String(max + 1).padStart(4, '0')}`
 }

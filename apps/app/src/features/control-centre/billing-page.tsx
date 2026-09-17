@@ -18,6 +18,29 @@ import { usePeople } from '@/features/org/queries'
 import { ControlTitle, FieldLabel, KeyValue, Panel, RuleStrip, fieldClass, useIsAdmin } from './control-bits'
 
 const READ_ONLY = 'Only an Admin can change billing'
+const DISMISS_PREFIX = 'bool.billing.dismissed.'
+
+/** Notices this viewer closed, remembered in this browser only. Storage failures just forget. */
+function useDismissedNotices(): [(key: string) => boolean, (key: string) => void] {
+  const [keys, setKeys] = useState<Set<string>>(() => new Set())
+  const read = (key: string) => {
+    try {
+      return localStorage.getItem(DISMISS_PREFIX + key) === '1'
+    } catch {
+      return false
+    }
+  }
+  const dismiss = (key: string) => {
+    try {
+      localStorage.setItem(DISMISS_PREFIX + key, '1')
+    } catch {
+      // private window or blocked storage: dismiss for this visit only
+    }
+    setKeys((s) => new Set(s).add(key))
+  }
+  const isDismissed = (key: string) => keys.has(key) || read(key)
+  return [isDismissed, dismiss]
+}
 
 /**
  * The organisation's plan, seats, invoices and billing contact. Payment is by invoice and bank
@@ -49,6 +72,10 @@ export function BillingPage() {
   const today = isoDate(new Date())
   const current = billingPeriods(sub, today, 0, 0)[0]
   const next = draftInvoice(sub, current, sub.seatsUsed, gstRate, invoices)
+  // notice keys carry what they are about, so a new overdue invoice or plan change shows again
+  const overdueKey = `overdue:${overdue.map((i) => i.number).join(',')}`
+  const pendingKey = sub.pendingChange && `pending:${sub.pendingChange.plan}-${sub.pendingChange.seats}-${sub.pendingChange.effectiveOn}`
+  const [isDismissed, dismiss] = useDismissedNotices()
 
   function cancel(id: string) {
     const undo = actions.cancelRequest(id)
@@ -68,22 +95,22 @@ export function BillingPage() {
           {sub.plan} · {sub.cycle.toLowerCase()} · renews {fmtIso(sub.renewsOn)} · {open.length ? <span className={cn(overdue.length && 'text-tone-risk-foreground')}>{formatMoney(owed, sub.currency)} outstanding{overdue.length ? `, ${overdue.length} overdue` : ''}</span> : 'nothing outstanding'}
         </RuleStrip>
 
-        {overdue.length > 0 && (
-          <Alert variant="warning" className="mb-5">
+        {overdue.length > 0 && !isDismissed(overdueKey) && (
+          <Alert variant="warning" className="mb-5" onDismiss={() => dismiss(overdueKey)}>
             <AlertDescription>
               {overdue.map((i) => i.number).join(', ')} {overdue.length === 1 ? 'is' : 'are'} past due. Pay by bank transfer quoting the invoice number, or tell Bool if it has been paid.
             </AlertDescription>
           </Alert>
         )}
-        {sub.pendingChange && (
-          <Alert className="mb-5">
+        {sub.pendingChange && pendingKey && !isDismissed(pendingKey) && (
+          <Alert className="mb-5" onDismiss={() => dismiss(pendingKey)}>
             <AlertDescription>
               Moving to {sub.pendingChange.plan} with {sub.pendingChange.seats} seats on {fmtIso(sub.pendingChange.effectiveOn)}.
             </AlertDescription>
           </Alert>
         )}
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 [&>*]:h-full">
           <Panel heading="Plan" aside={<Badge variant="filter-active" size="sm">{sub.cycle}</Badge>}>
             <div className="text-[34px] leading-[1.05] font-bold tracking-[-0.03em] text-foreground">{sub.plan}</div>
             <div className="mt-1 text-compact text-faint">
@@ -108,18 +135,19 @@ export function BillingPage() {
           <Panel heading="Seats" aside={<span className="text-caption text-faint">counted from people on the books</span>}>
             <div className="flex items-baseline gap-2">
               <span className={cn('text-[34px] leading-[1.05] font-bold tracking-[-0.03em] tabular-nums', state === 'over' ? 'text-tone-risk-foreground' : 'text-foreground')}>{sub.seatsUsed}</span>
-              <span className="text-compact text-faint">of {sub.seatsIncluded} used</span>
+              <span className="text-compact text-faint">of {sub.seatsIncluded} seats</span>
             </div>
-            <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted" role="meter" aria-valuemin={0} aria-valuemax={sub.seatsIncluded} aria-valuenow={sub.seatsUsed} aria-label="Seats used">
-              <div className={cn('h-full rounded-full', state === 'ok' ? 'bg-chart-1' : state === 'near' ? 'bg-chart-3' : 'bg-chart-risk')} style={{ width: `${pct}%` }} />
+            <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted" role="meter" aria-valuemin={0} aria-valuemax={sub.seatsIncluded} aria-valuenow={sub.seatsUsed} aria-label={`${sub.seatsUsed} of ${sub.seatsIncluded} seats used`}>
+              <div className={cn('h-full rounded-full transition-[width] duration-considered ease-bool', state === 'ok' ? 'bg-chart-1' : state === 'near' ? 'bg-chart-3' : 'bg-chart-risk')} style={{ width: `${pct}%` }} />
             </div>
-            <div className="mt-2 text-compact text-faint">{Math.max(0, sub.seatsIncluded - sub.seatsUsed)} seats free</div>
+            <div className="mt-2 flex flex-wrap justify-between gap-x-3 gap-y-1 text-compact text-faint">
+              <span className="tabular-nums">{state === 'over' ? `${sub.seatsUsed - sub.seatsIncluded} over` : `${sub.seatsIncluded - sub.seatsUsed} free`}</span>
+              <span>Extra seats billed at {formatMoney(sub.pricePerSeat, sub.currency)}</span>
+            </div>
             {state !== 'ok' && (
-              <Alert variant="warning" className="mt-4">
-                <AlertDescription>
-                  {state === 'over' ? `${sub.seatsUsed - sub.seatsIncluded} more people than your plan covers. Request more seats so nobody loses access at renewal.` : 'Nearly at your seat allowance. Request more seats before adding many more people.'}
-                </AlertDescription>
-              </Alert>
+              <p className={cn('mt-3 text-compact leading-[1.5]', state === 'over' ? 'text-tone-risk-foreground' : 'text-tone-warning-foreground')}>
+                {state === 'over' ? 'More people than your plan covers; the extra seats are added to your next invoice. Request more seats to fold them into your plan.' : 'Nearly at your allowance. Request more seats before adding many more people.'}
+              </p>
             )}
           </Panel>
 
@@ -128,10 +156,10 @@ export function BillingPage() {
           </Panel>
         </div>
 
-        <Panel heading="Next invoice" className="mt-4" aside={<span className="text-caption text-faint">Generated automatically on {fmtIso(current.to)}</span>}>
+        <Panel heading="Next invoice" className="mt-4" aside={<span className="text-caption text-faint">Generated automatically on {fmtIso(next.issuedOn)}</span>}>
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <span className="text-compact text-faint">
-              {fmtIso(next.periodFrom)} � {fmtIso(next.periodTo)} � estimate from today's seats
+              {fmtIso(next.periodFrom)} – {fmtIso(next.periodTo)} · estimate from current seats
             </span>
             <span className="text-xl font-bold tracking-[-0.01em] text-foreground tabular-nums">{formatMoney(next.total, next.currency)}</span>
           </div>
@@ -139,7 +167,7 @@ export function BillingPage() {
             {next.lines.map((l, n) => (
               <li key={n} className="flex items-baseline justify-between gap-3 border-b border-divider py-2 text-compact last:border-b-0">
                 <span className="min-w-0 text-body">
-                  {l.label} <span className="text-faint tabular-nums">� {l.qty}</span>
+                  {l.label} <span className="text-faint tabular-nums">× {l.qty}</span>
                 </span>
                 <span className="tabular-nums text-foreground">{formatMoney(lineTotal(l), next.currency)}</span>
               </li>
