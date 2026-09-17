@@ -245,7 +245,7 @@ export function ImportEmployeesDialog({ open, onClose }: { open: boolean; onClos
   }
   function template() {
     const u = liveUnits(units).at(0), s = sites.at(0)
-    downloadCsv('hexa-employees-template.csv', [[...IMPORT_COLUMNS], ['Priya Nair', 'priya.nair@hexa.co', 'Stock Controller', u?.name ?? '', s?.name ?? '', '', fmtDate(new Date())]])
+    downloadCsv('bool-employees-template.csv', [[...IMPORT_COLUMNS], ['Priya Nair', 'priya.nair@bool.co', 'Stock Controller', u?.name ?? '', s?.name ?? '', '', fmtDate(new Date())]])
   }
   function run() {
     if (!ok.length) return

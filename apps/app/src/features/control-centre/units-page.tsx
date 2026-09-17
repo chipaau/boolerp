@@ -83,7 +83,7 @@ export function UnitsPage() {
   function exportCsv() {
     const rows = [['Code', 'Name', 'Type', 'Parent'], ...liveUnits(units).map((u) => [u.code, u.name, u.kind, u.parent ? unitPath(units, u.parent) : ''])]
     const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(',')).join('\n')
-    const name = 'hexa-admin-units.csv'
+    const name = 'bool-admin-units.csv'
     try {
       const a = document.createElement('a')
       a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))

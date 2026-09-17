@@ -1,9 +1,11 @@
 // The billing data seam. Components read only through these hooks; the query functions are the
 // single place that changes at integration. Mutations update the cache in place and return undo.
 import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
+import { useNotify } from '@/features/notifications/notify'
 import { isOnBooks } from '@/features/org/logic'
-import { useAuditLog, useOrgMe, usePeople } from '@/features/org/queries'
+import { useAudit, useAuditLog, useOrgMe, usePeople } from '@/features/org/queries'
+import { autoIssuedNumbers, autoIssuedText, fmtIso, formatMoney, invoicesToGenerate } from './logic'
 import { isoDate } from '@/lib/dates'
 import * as mock from './mock'
 import type { BillingContact, PlanChangeRequest, PlanName, Subscription, TenantInvoice } from './types'
@@ -62,3 +64,39 @@ export function useBillingActions() {
   )
   return useMemo(() => ({ updateContact, requestChange, cancelRequest }), [updateContact, requestChange, cancelRequest])
 }
+
+/**
+ * Issues every invoice whose period has ended and has none yet, once on load: into the cache,
+ * the audit and the admins' notifications. Idempotent, so mounting it twice issues nothing twice.
+ * At integration this goes away: a scheduled API job issues invoices and the query just reads them.
+ */
+export function useAutoInvoicing() {
+  const qc = useQueryClient()
+  const sub = useSubscription()
+  const log = useAuditLog()
+  const notify = useNotify()
+  useEffect(() => {
+    const existing = qc.getQueryData<TenantInvoice[]>(key('invoices')) ?? []
+    const fresh = invoicesToGenerate(existing, sub, isoDate(new Date()), mock.TENANT_GST_RATE)
+    if (!fresh.length) return
+    qc.setQueryData<TenantInvoice[]>(key('invoices'), (list) => [...fresh].reverse().concat(list ?? []))
+    for (const inv of fresh) {
+      log('Billing', autoIssuedText(inv.number))
+      notify('billing.invoice_issued', {
+        title: `Invoice ${inv.number} issued`,
+        meta: `${formatMoney(inv.total, inv.currency)} · due ${fmtIso(inv.dueOn)}`,
+        category: 'Setup',
+        to: { app: 'control-centre', section: 'billing', id: inv.id },
+      })
+    }
+  }, [qc, sub, log, notify])
+}
+
+/** Numbers of invoices that were issued automatically, read back from the audit. */
+export function useAutoIssuedNumbers() {
+  const audit = useAudit()
+  return useMemo(() => autoIssuedNumbers(audit.filter((a) => a.scope === 'Billing').map((a) => a.text)), [audit])
+}
+
+/** The GST percent this tenant's invoices carry. */
+export const useGstRate = () => mock.TENANT_GST_RATE

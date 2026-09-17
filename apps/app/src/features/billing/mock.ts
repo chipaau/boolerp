@@ -48,3 +48,6 @@ export const CONTACT: BillingContact = {
 export const PLAN_REQUESTS: PlanChangeRequest[] = [
   { id: 'pcr-1', plan: 'Basic', seats: 120, note: 'Moving Inventory to every site.', requestedBy: 'EMP-017', requestedOn: '2026-07-14', status: 'Approved' },
 ]
+
+/** GST percent on this tenant's invoices: a government council, so exempt. */
+export const TENANT_GST_RATE = 0

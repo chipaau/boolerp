@@ -47,7 +47,7 @@ export function AgendaList({ meetings, today, awaiting, emptyNote, onReply }: { 
             <ul>
               {items.map((m) => (
                 <li key={m.id} className="border-b border-divider last:border-b-0">
-                  <MeetingLink m={m} className="grid grid-cols-[132px_9px_minmax(0,1fr)_auto] items-center gap-3.5 px-[22px] py-3.5 outline-none transition-colors duration-instant ease-hexa hover:bg-surface-soft focus-visible:bg-surface-soft">
+                  <MeetingLink m={m} className="grid grid-cols-[132px_9px_minmax(0,1fr)_auto] items-center gap-3.5 px-[22px] py-3.5 outline-none transition-colors duration-instant ease-bool hover:bg-surface-soft focus-visible:bg-surface-soft">
                     <span className="text-compact font-bold tabular-nums text-muted-foreground">{fmtRange(m.start, m.end)}</span>
                     <HexDot tone={cals[m.calendar].tone} />
                     <span className="min-w-0">

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import logo from '@workspace/assets/logos/hexa-logo.png'
+import logo from '@workspace/assets/logos/bool-logo.png'
 import { BRAND } from '@/lib/brand'
 
 // The bee-in-hexagon logo (38px) + product name; links home.

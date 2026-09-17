@@ -76,7 +76,7 @@ function EmployeeList() {
   const guard = (fn: () => void) => () => (canEdit ? fn() : toast('Read only as Staff — ask an Admin to change setup', { ok: false }))
   const open = (id: string) => void navigate({ to: '/$app/$section', params: { app: 'control-centre', section: 'employees' }, search: { id } })
   function exportCsv() {
-    const name = 'hexa-employees.csv'
+    const name = 'bool-employees.csv'
     downloadCsv(name, [['Code', 'Name', 'Job title', 'Unit', 'Status', 'Contract', 'Email'], ...internal.map((p) => [p.id, p.name, p.title, unitPath(units, p.unitId), p.status, p.contract, p.email])])
     log('Export', `${name} downloaded`)
     toast(`${name} downloaded`)

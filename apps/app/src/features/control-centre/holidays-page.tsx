@@ -19,7 +19,7 @@ const READ_ONLY = 'Read only as Staff — ask an Admin to change setup'
 
 /**
  * The days the organisation is closed, Maldives only for now, grouped by month so the pattern of
- * holidays is visible. Hexa keeps the public holidays current: they can only be switched off.
+ * holidays is visible. Bool keeps the public holidays current: they can only be switched off.
  * Holidays added here (shutdowns, stock-take days) can be edited, deleted, and narrowed to units or sites.
  */
 export function HolidaysPage() {
@@ -74,7 +74,7 @@ export function HolidaysPage() {
         <ControlTitle
           overline="System"
           title="Public holidays"
-          description="Hexa keeps Maldives public holidays current. Turn off any that don't apply to you, and add your own holidays, for everyone or just some units and sites."
+          description="Bool keeps Maldives public holidays current. Turn off any that don't apply to you, and add your own holidays, for everyone or just some units and sites."
           actions={
             <Button onClick={guard(() => setDraft({}))}>
               Add holiday
@@ -85,7 +85,7 @@ export function HolidaysPage() {
           }
         />
         <RuleStrip>
-          {holidays.filter((h) => h.on).length} dates active · Hexa keeps the public ones current · {holidays.filter((h) => h.origin === 'custom').length} added by you
+          {holidays.filter((h) => h.on).length} dates active · Bool keeps the public ones current · {holidays.filter((h) => h.origin === 'custom').length} added by you
         </RuleStrip>
 
         <Card className="gap-0 overflow-clip py-0">

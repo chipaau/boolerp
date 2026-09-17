@@ -370,7 +370,7 @@ export function useNumberingActions() {
   }
 }
 
-/** Countries switch on and off; regions Hexa surveyed stay as shipped, custom ones are editable. */
+/** Countries switch on and off; regions Bool surveyed stay as shipped, custom ones are editable. */
 export function useRegionActions() {
   const regions = useListWriter<Region>(key('regions'))
   const countries = useListWriter<Country>(key('countries'))

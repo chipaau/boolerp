@@ -61,7 +61,7 @@ function SiteTypeList() {
   const count = (id: string) => sites.filter((s) => s.typeId === id).length
   const log = useAuditLog()
   function exportCsv() {
-    const name = 'hexa-site-types.csv'
+    const name = 'bool-site-types.csv'
     downloadCsv(name, [['Name', 'Storage', 'Can issue', 'Bins', 'Counting', 'Sites'], ...types.map((t) => [t.name, t.mode, t.issue ? 'Yes' : 'No', t.bins ? 'Yes' : 'No', t.cadence, count(t.id)])])
     log('Export', `${name} downloaded`)
     toast(`${name} downloaded`)

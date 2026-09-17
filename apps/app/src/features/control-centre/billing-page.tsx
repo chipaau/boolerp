@@ -9,8 +9,9 @@ import { NativeSelect } from '@workspace/ui/components/native-select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
-import { ALWAYS_ON_APPS, INVOICE_TONE, PLANS, PLAN_SEAT_PRICE, REQUEST_TONE, fmtIso, formatMoney, isOpenInvoice, lineTotal, seatState } from '@/features/billing/logic'
-import { useBillingActions, useBillingContact, useInvoices, usePlanRequests, useSubscription } from '@/features/billing/queries'
+import { ALWAYS_ON_APPS, billingPeriods, draftInvoice, INVOICE_TERMS_DAYS, INVOICE_TONE, PLANS, PLAN_SEAT_PRICE, REQUEST_TONE, fmtIso, formatMoney, isOpenInvoice, lineTotal, seatState } from '@/features/billing/logic'
+import { useAutoIssuedNumbers, useBillingActions, useBillingContact, useGstRate, useInvoices, usePlanRequests, useSubscription } from '@/features/billing/queries'
+import { isoDate } from '@/lib/dates'
 import type { BillingContact, PlanName, TenantInvoice } from '@/features/billing/types'
 import { personById } from '@/features/org/logic'
 import { usePeople } from '@/features/org/queries'
@@ -43,6 +44,11 @@ export function BillingPage() {
   const owed = open.reduce((n, i) => n + i.total, 0)
   const pending = requests.find((r) => r.status === 'Pending')
   const monthly = sub.seatsIncluded * sub.pricePerSeat
+  const auto = useAutoIssuedNumbers()
+  const gstRate = useGstRate()
+  const today = isoDate(new Date())
+  const current = billingPeriods(sub, today, 0, 0)[0]
+  const next = draftInvoice(sub, current, sub.seatsUsed, gstRate, invoices)
 
   function cancel(id: string) {
     const undo = actions.cancelRequest(id)
@@ -55,7 +61,7 @@ export function BillingPage() {
         <ControlTitle
           overline="System"
           title="Billing & plan"
-          description="Your plan, seats and invoices. Pay by bank transfer against each invoice; plan changes go to Hexa for approval."
+          description="Your plan, seats and invoices. Pay by bank transfer against each invoice; plan changes go to Bool for approval."
           actions={<Button onClick={guard(() => setRequesting(true))} disabled={!!pending && isAdmin}>Request a plan change</Button>}
         />
         <RuleStrip>
@@ -65,7 +71,7 @@ export function BillingPage() {
         {overdue.length > 0 && (
           <Alert variant="warning" className="mb-5">
             <AlertDescription>
-              {overdue.map((i) => i.number).join(', ')} {overdue.length === 1 ? 'is' : 'are'} past due. Pay by bank transfer quoting the invoice number, or tell Hexa if it has been paid.
+              {overdue.map((i) => i.number).join(', ')} {overdue.length === 1 ? 'is' : 'are'} past due. Pay by bank transfer quoting the invoice number, or tell Bool if it has been paid.
             </AlertDescription>
           </Alert>
         )}
@@ -92,7 +98,7 @@ export function BillingPage() {
                 <li key={a}>
                   <Badge variant="secondary" size="sm">
                     {a}
-                    {ALWAYS_ON_APPS.includes(a) && <span className="font-normal text-faint">Â· Always on</span>}
+                    {ALWAYS_ON_APPS.includes(a) && <span className="font-normal text-faint">Â· Included</span>}
                   </Badge>
                 </li>
               ))}
@@ -121,6 +127,28 @@ export function BillingPage() {
             <KeyValue rows={[{ k: 'Name', v: contact.name }, { k: 'Email', v: contact.email }, { k: 'Phone', v: contact.phone, mono: true }, { k: 'Address', v: contact.address }, { k: 'TIN', v: contact.tin, mono: true }]} />
           </Panel>
         </div>
+
+        <Panel heading="Next invoice" className="mt-4" aside={<span className="text-caption text-faint">Generated automatically on {fmtIso(current.to)}</span>}>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <span className="text-compact text-faint">
+              {fmtIso(next.periodFrom)} – {fmtIso(next.periodTo)} · estimate from today's seats
+            </span>
+            <span className="text-xl font-bold tracking-[-0.01em] text-foreground tabular-nums">{formatMoney(next.total, next.currency)}</span>
+          </div>
+          <ul className="mt-3">
+            {next.lines.map((l, n) => (
+              <li key={n} className="flex items-baseline justify-between gap-3 border-b border-divider py-2 text-compact last:border-b-0">
+                <span className="min-w-0 text-body">
+                  {l.label} <span className="text-faint tabular-nums">× {l.qty}</span>
+                </span>
+                <span className="tabular-nums text-foreground">{formatMoney(lineTotal(l), next.currency)}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 text-compact text-faint">
+            {next.gst ? `Includes ${formatMoney(next.gst, next.currency)} GST. ` : 'GST exempt. '}Emailed to {contact.email} when issued, due {INVOICE_TERMS_DAYS} days later.
+          </div>
+        </Panel>
 
         {requests.length > 0 && (
           <Panel heading="Plan change requests" className="mt-4">
@@ -169,7 +197,14 @@ export function BillingPage() {
             <TableBody>
               {invoices.map((i) => (
                 <TableRow key={i.id} className={cn('cursor-pointer', i.status === 'Overdue' && 'bg-tone-risk-soft/40')} onClick={() => setInvoice(i)}>
-                  <TableCell className="font-mono text-compact font-bold text-foreground">{i.number}</TableCell>
+                  <TableCell className="font-mono text-compact font-bold text-foreground">
+                    {i.number}
+                    {auto.has(i.number) && (
+                      <Badge variant="secondary" size="sm" className="ml-2 font-sans" title="Issued automatically">
+                        Auto
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-compact">
                     {fmtIso(i.periodFrom)} â€“ {fmtIso(i.periodTo)}
                   </TableCell>
@@ -339,7 +374,7 @@ function PlanChangeDialog({ open, current, onClose }: { open: boolean; current: 
       <DialogContent className="gap-0 px-[26px] py-6 sm:max-w-[480px]" showCloseButton={false}>
         <DialogHeader className="mb-[18px] gap-0 text-left">
           <DialogTitle className="text-xl font-black tracking-[-0.01em]">Request a plan change</DialogTitle>
-          <DialogDescription className="mt-1.5 text-compact leading-[1.5] text-faint">Hexa reviews the request and confirms when it takes effect. Nothing changes until then.</DialogDescription>
+          <DialogDescription className="mt-1.5 text-compact leading-[1.5] text-faint">Bool reviews the request and confirms when it takes effect. Nothing changes until then.</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3.5">
           <div>

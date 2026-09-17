@@ -18,7 +18,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 
 /**
  * An address is a country, then a region, then a city or island. Countries switch on and off (not
- * while sites sit in them); surveyed countries bring Hexa's regions, which stay read-only, and the
+ * while sites sit in them); surveyed countries bring Bool's regions, which stay read-only, and the
  * rest take regions the Admin defines.
  */
 export function RegionsPage() {
@@ -40,7 +40,7 @@ export function RegionsPage() {
     if (!canEdit) return toast(READ_ONLY, { ok: false })
     const eligible = on.filter((c) => !c.seeded).map((c) => c.name)
     const country = forced ?? (eligible.includes(open) ? open : eligible[0])
-    if (!country) return toast("Every country you operate in is surveyed by Hexa — switch on one it hasn't mapped to define your own regions", { ok: false })
+    if (!country) return toast("Every country you operate in is surveyed by Bool — switch on one it hasn't mapped to define your own regions", { ok: false })
     setOpen(country)
     setDraft({ country })
   }
@@ -68,7 +68,7 @@ export function RegionsPage() {
         <ControlTitle
           overline="System"
           title="Regions"
-          description="An address is a country, then a region inside it, then a city or island. Switch on the countries you operate in; open one to see its regions. Where Hexa has surveyed a country the regions come with it — everywhere else they are yours to define."
+          description="An address is a country, then a region inside it, then a city or island. Switch on the countries you operate in; open one to see its regions. Where Bool has surveyed a country the regions come with it — everywhere else they are yours to define."
           actions={
             <>
               <Badge variant={showAll ? 'filter-active' : 'filter'} render={<button type="button" aria-pressed={showAll} onClick={() => setShowAll((v) => !v)} />}>
@@ -84,7 +84,7 @@ export function RegionsPage() {
           }
         />
         <RuleStrip>
-          {plural(regions.length, 'region', 'regions')} across {plural(on.length, 'country', 'countries')} · Hexa has surveyed {on.filter((c) => c.seeded).length} of them · {plural(mine, 'region', 'regions')} you defined
+          {plural(regions.length, 'region', 'regions')} across {plural(on.length, 'country', 'countries')} · Bool has surveyed {on.filter((c) => c.seeded).length} of them · {plural(mine, 'region', 'regions')} you defined
         </RuleStrip>
 
         <Card className="gap-0 overflow-clip py-0">
@@ -160,7 +160,7 @@ export function RegionsPage() {
                     })}
                     {regs.length === 0 && (
                       <div className="pt-1 pb-0.5 text-compact leading-[1.55] text-pretty text-body">
-                        {c.seeded ? `Hexa hasn't published regions for ${c.name} yet.` : c.on ? 'No regions here yet. Add one — a province, an emirate, an operating zone — and list the cities inside it.' : `Switch ${c.name} on to define its regions.`}
+                        {c.seeded ? `Bool hasn't published regions for ${c.name} yet.` : c.on ? 'No regions here yet. Add one — a province, an emirate, an operating zone — and list the cities inside it.' : `Switch ${c.name} on to define its regions.`}
                       </div>
                     )}
                   </div>

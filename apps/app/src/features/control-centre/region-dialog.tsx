@@ -12,7 +12,7 @@ export type RegionDraft = { edit?: Region; country?: string }
 const split = (raw: string) => raw.split(',').map((x) => x.trim()).filter(Boolean)
 
 /**
- * Add or edit a custom region: the middle level of an address, for a country Hexa hasn't surveyed.
+ * Add or edit a custom region: the middle level of an address, for a country Bool hasn't surveyed.
  * Places are a chip list — Enter or a comma adds, clicking a chip drops it.
  */
 export function RegionDialog({ draft, onClose, onSaved }: { draft: RegionDraft | null; onClose: () => void; onSaved?: (country: string) => void }) {
@@ -43,7 +43,7 @@ export function RegionDialog({ draft, onClose, onSaved }: { draft: RegionDraft |
     if (!n) return toast('A region needs a name', { ok: false })
     const target = countries.find((c) => c.name === country)
     if (!target) return toast('Pick a country this region belongs to', { ok: false })
-    if (target.seeded && !editing) return toast(`${target.name}'s regions come from Hexa — they can't be added to`, { ok: false })
+    if (target.seeded && !editing) return toast(`${target.name}'s regions come from Bool — they can't be added to`, { ok: false })
     // a half-typed place still counts
     const all = [...places, ...split(place).filter((x) => !places.includes(x))]
     if (!all.length) return toast('Add at least one city or island — sites are addressed to them', { ok: false })
@@ -64,7 +64,7 @@ export function RegionDialog({ draft, onClose, onSaved }: { draft: RegionDraft |
         <DialogHeader className="px-6 pt-[22px] pb-3 text-left">
           <DialogTitle className="text-[19px] tracking-[-0.015em]">{editing ? `Edit ${editing.name}` : 'Add a region'}</DialogTitle>
           <DialogDescription className="mt-1 text-compact text-muted-foreground">
-            {editing ? 'Renaming carries every site in it along. Removing a city it still holds sites in is refused.' : "The middle level of an address, for a country Hexa hasn't surveyed — a province, an emirate, an operating zone."}
+            {editing ? 'Renaming carries every site in it along. Removing a city it still holds sites in is refused.' : "The middle level of an address, for a country Bool hasn't surveyed — a province, an emirate, an operating zone."}
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-2">

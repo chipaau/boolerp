@@ -97,12 +97,12 @@ export type Site = {
   cadence: Cadence | null
 }
 
-// ---- geography (countries Hexa ships; regions and places inside them)
+// ---- geography (countries Bool ships; regions and places inside them)
 export type Country = { id: string; name: string; code: string; tz: string; cur: string; seeded: boolean; on: boolean }
 export type Region = { id: string; country: string; name: string; origin: 'system' | 'custom'; places: string[] }
 
 /**
- * A day the organisation is closed. Hexa keeps the Maldives public holidays current (`origin:
+ * A day the organisation is closed. Bool keeps the Maldives public holidays current (`origin:
  * 'system'`, which an Admin can only switch off); Admins add their own (`'custom'`). `appliesTo`
  * narrows a day to admin units (a unit covers its sub-units) and/or sites; both empty = everyone.
  */

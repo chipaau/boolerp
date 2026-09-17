@@ -45,7 +45,7 @@ export function MonthPicker({
       <PopoverTrigger
         className={cn(
           // a fixed width keeps the chevrons beside it from drifting as the month name changes
-          'inline-flex h-8 w-[6.75rem] items-center rounded-md text-left text-base font-bold text-muted-foreground transition-colors duration-instant ease-hexa outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-open:text-foreground',
+          'inline-flex h-8 w-[6.75rem] items-center rounded-md text-left text-base font-bold text-muted-foreground transition-colors duration-instant ease-bool outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-open:text-foreground',
           className
         )}
         aria-label={`Change month, currently ${label} ${value.getFullYear()}`}
@@ -74,7 +74,7 @@ export function MonthPicker({
                 aria-selected={selected}
                 onClick={() => pick(m)}
                 className={cn(
-                  'h-9 rounded-md text-compact font-bold transition-colors duration-instant ease-hexa outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'h-9 rounded-md text-compact font-bold transition-colors duration-instant ease-bool outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   selected
                     ? 'bg-sage text-sage-foreground'
                     : 'text-body hover:bg-accent hover:text-foreground',

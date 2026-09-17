@@ -49,7 +49,7 @@ export function Schedule() {
             <Tooltip>
               <TooltipTrigger
                 render={<Link to="/$app/$section" params={{ app: 'calendar', section: 'meetings' }} search={{ id: item.meetingId }} />}
-                className="group flex items-center gap-2.5 rounded-sm text-sm font-medium text-foreground outline-none transition-colors duration-instant ease-hexa hover:font-bold hover:text-schedule-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="group flex items-center gap-2.5 rounded-sm text-sm font-medium text-foreground outline-none transition-colors duration-instant ease-bool hover:font-bold hover:text-schedule-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 aria-label={`${item.title}, ${item.start} to ${item.end}. Open the meeting`}
               >
                 <MeetingMarker size={18} className="group-hover:text-marker-meeting-hover" />

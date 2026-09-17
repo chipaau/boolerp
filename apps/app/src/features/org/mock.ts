@@ -1,4 +1,4 @@
-// FIXTURES — the sample workspace (Hexa) that Control Centre edits and every other app reads.
+// FIXTURES — the sample workspace (Bool) that Control Centre edits and every other app reads.
 // Merged from the Directory and Control Center designs: the Directory's org tree (any depth,
 // coloured, with leads) carrying the Control Center's employee record (IDs, status, contract,
 // app roles, sites). Only ./queries.ts may import this file (lint-enforced).
@@ -217,7 +217,7 @@ export const SITES: Site[] = [
 /** Where goods arrive unless a receipt says otherwise. */
 export const DEFAULT_SITE = 's-1'
 
-// ---- geography: Hexa ships the country list; surveyed countries bring their regions with them
+// ---- geography: Bool ships the country list; surveyed countries bring their regions with them
 export const COUNTRIES: Country[] = [
   { id: 'r-mv', name: 'Maldives', code: 'MV', tz: 'Indian/Maldives', cur: 'MVR', seeded: true, on: true },
   { id: 'r-lk', name: 'Sri Lanka', code: 'LK', tz: 'Asia/Colombo', cur: 'LKR', seeded: false, on: true },
@@ -297,6 +297,7 @@ export const NOTIFICATION_RULES: NotificationRule[] = [
   { id: 'n-8', eventKey: 'calendar.shift_changed', sourceApp: 'Calendar', event: 'Shift published or changed', recipientRoles: ['everyone_on_shift'], inApp: true, email: false },
   { id: 'n-9', eventKey: 'calendar.holiday_added', sourceApp: 'Calendar', event: 'Public holiday added', recipientRoles: ['site_managers'], inApp: true, email: true },
   { id: 'n-10', eventKey: 'scan.device_offline', sourceApp: 'Scan', event: 'Handheld offline for over an hour', recipientRoles: ['site_manager'], inApp: false, email: false },
+  { id: 'n-11', eventKey: 'billing.invoice_issued', sourceApp: 'Control Centre', event: 'Invoice issued', recipientRoles: ['admins'], inApp: true, email: true },
 ]
 export const AUDIT: AuditEntry[] = [
   { id: 'a-1', scope: 'Sites', app: 'Control Centre', sev: 'normal', days: 1, text: 'Eydhafushi counter paused', who: 'Claudia Reyes', when: 'Yesterday, 16:40' },

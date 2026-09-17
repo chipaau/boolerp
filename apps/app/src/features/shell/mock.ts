@@ -47,7 +47,7 @@ export const SAVED_VIEWS: Record<string, SavedView[]> = {
 
 export const MEMBERSHIP: Membership = { role: 'Admin', avatar: avatar5 }
 
-/** Stand-in portraits until the workspace supplies its own Hexa set. */
+/** Stand-in portraits until the workspace supplies its own Bool set. */
 export const AVATAR_CHOICES: AvatarChoice[] = [
   { id: 'a1', src: avatar1, label: 'Portrait 1' },
   { id: 'a2', src: avatar2, label: 'Portrait 2' },

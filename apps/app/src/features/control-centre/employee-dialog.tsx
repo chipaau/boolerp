@@ -63,7 +63,7 @@ export function EmployeeDialog({ draft, onClose, onSaved }: { draft: EmployeeDra
   const store = sites.filter((s) => f.access.includes(s.id))
   const derived = deriveRole(f.perms)
   const onApps = appsOn(f.perms)
-  const mail = f.email.trim() || (f.name.trim() ? slugMail(f.name) : 'first.last@hexa.co')
+  const mail = f.email.trim() || (f.name.trim() ? slugMail(f.name) : 'first.last@bool.co')
 
   function valid() {
     if (!f.name.trim()) { setStep(1); toast('An employee needs a name', { ok: false }); return false }
@@ -137,7 +137,7 @@ export function EmployeeDialog({ draft, onClose, onSaved }: { draft: EmployeeDra
                 </div>
                 <div className="sm:col-span-2">
                   <FieldLabel>Work email</FieldLabel>
-                  <input value={f.email} onChange={(e) => set('email', e.target.value)} placeholder={f.name.trim() ? slugMail(f.name) : 'name@hexa.co'} className={fieldClass} />
+                  <input value={f.email} onChange={(e) => set('email', e.target.value)} placeholder={f.name.trim() ? slugMail(f.name) : 'name@bool.co'} className={fieldClass} />
                   <div className="mt-1.5 text-caption leading-[1.45] text-faint">{f.email.trim() ? 'The invitation and every sign-in link go to this address.' : `Left blank, we use ${mail} — the invitation goes there.`}</div>
                 </div>
                 <div>

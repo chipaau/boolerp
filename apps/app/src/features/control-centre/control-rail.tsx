@@ -4,7 +4,7 @@ import { useSidebar } from '@workspace/ui/components/sidebar'
 import { cn } from '@workspace/ui/lib/utils'
 import type { AppDef } from '@/lib/apps'
 import { isOpenInvoice } from '@/features/billing/logic'
-import { useInvoices } from '@/features/billing/queries'
+import { useAutoInvoicing, useInvoices } from '@/features/billing/queries'
 import { isOnBooks, liveUnits } from '@/features/org/logic'
 import { useApprovalChains, useAudit, useCountries, useHolidays, useNotificationRules, useNumbering, usePeople, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
 import { useAttention } from './attention'
@@ -22,6 +22,8 @@ export function ControlRail({ app }: { app: AppDef }) {
   const chains = useApprovalChains(), codes = useNumbering(), countries = useCountries(), rules = useNotificationRules(), audit = useAudit()
   const attention = useAttention()
   const invoices = useInvoices()
+  // the rail is mounted on every Control Centre page, so due invoices issue whichever one opens
+  useAutoInvoicing()
   const unpaid = invoices.filter((i) => isOpenInvoice(i.status)), overdue = unpaid.some((i) => i.status === 'Overdue')
   // one number, like the bell: the overview lists what it is
   const open = attention.reduce((n, a) => n + a.count, 0), risky = attention.some((a) => a.tone === 'risk')

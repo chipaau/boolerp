@@ -11,7 +11,7 @@ import { cn } from "@workspace/ui/lib/utils"
  * Render as a button or link with `render={<button … />}`.
  */
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-[7px] overflow-hidden border-0 font-bold whitespace-nowrap transition-[color,background-color] duration-instant ease-hexa focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&>svg]:pointer-events-none [&>svg]:size-3",
+  "inline-flex w-fit shrink-0 items-center justify-center gap-[7px] overflow-hidden border-0 font-bold whitespace-nowrap transition-[color,background-color] duration-instant ease-bool focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&>svg]:pointer-events-none [&>svg]:size-3",
   {
     variants: {
       variant: {

@@ -42,7 +42,7 @@ export function FeedbackDialog({ open, page, onClose }: { open: boolean; page: s
         <DialogHeader className="flex-row items-start justify-between gap-3.5 border-b border-divider px-6 pt-[22px] pb-4 text-left">
           <div>
             <DialogTitle className="text-[19px] tracking-[-0.015em]">Send feedback</DialogTitle>
-            <DialogDescription className="mt-1 text-compact text-muted-foreground">Goes straight to the people who build Hexa.</DialogDescription>
+            <DialogDescription className="mt-1 text-compact text-muted-foreground">Goes straight to the people who build Bool.</DialogDescription>
           </div>
           <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
             <X className="size-4" />

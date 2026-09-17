@@ -191,7 +191,7 @@ export function InventoryOverviewPage() {
                       </span>
                     </div>
                     <span className="flex h-2.5 rounded-full bg-muted">
-                      <span className={cn('block h-full rounded-full transition-[width] duration-[620ms] ease-hexa', RAMP[i % 5])} style={{ width: `${c.pct - riskW}%` }} />
+                      <span className={cn('block h-full rounded-full transition-[width] duration-[620ms] ease-bool', RAMP[i % 5])} style={{ width: `${c.pct - riskW}%` }} />
                       {riskW > 0 && <span className="ml-[3px] block h-full min-w-[15px] rounded-full bg-chart-risk" style={{ width: `${riskW}%` }} />}
                     </span>
                   </div>

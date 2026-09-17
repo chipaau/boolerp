@@ -8,7 +8,7 @@ import { initialValues, nodeLabel, sameOrigin, type Flow, type UiNode, type UiTe
 // KratosForm renders a flow's ui.nodes generically (inputs, hidden csrf, submit buttons) and posts
 // the collected values to the flow's action. Kratos drives which fields appear, so the same
 // component serves login, recovery, settings, and verification — and future MFA/passkey steps.
-// Styling follows the Hexa Login design: overline labels, 52px cream pill fields, one amber CTA
+// Styling follows the Bool Login design: overline labels, 52px cream pill fields, one amber CTA
 // with the circle arrow, further methods as cream secondary pills.
 export function KratosForm({
   flow,

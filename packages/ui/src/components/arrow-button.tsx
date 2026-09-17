@@ -14,7 +14,7 @@ import { cn } from "@workspace/ui/lib/utils"
  * (`group`); `ArrowButton` is the standalone button (or a link via `render={<Link … />}`).
  */
 const circleClasses = {
-  base: "grid shrink-0 place-items-center rounded-full bg-primary-circle text-foreground transition-[background-color,color] duration-instant ease-hexa [&>svg]:transition-transform [&>svg]:duration-instant [&>svg]:ease-hexa",
+  base: "grid shrink-0 place-items-center rounded-full bg-primary-circle text-foreground transition-[background-color,color] duration-instant ease-bool [&>svg]:transition-transform [&>svg]:duration-instant [&>svg]:ease-bool",
   hover: "group-hover:bg-primary-circle-hover group-hover:text-primary-circle-hover-foreground group-hover:[&>svg]:-rotate-45 group-focus-visible:bg-primary-circle-hover group-focus-visible:text-primary-circle-hover-foreground",
   default: "size-8 [&>svg]:size-3.5",
   small: "size-7 [&>svg]:size-3",

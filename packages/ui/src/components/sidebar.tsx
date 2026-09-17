@@ -404,7 +404,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button group/menu-button relative flex w-full items-center gap-2.5 text-left text-ui text-sidebar-foreground outline-hidden transition-[color,background-color,width,height,padding] duration-instant ease-hexa group-has-data-[sidebar=menu-action]/menu-item:pr-8 focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:pointer-events-none disabled:text-disabled-foreground aria-disabled:pointer-events-none aria-disabled:text-disabled-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground [&>span:last-child]:truncate data-active:[&_svg]:text-foreground",
+  "peer/menu-button group/menu-button relative flex w-full items-center gap-2.5 text-left text-ui text-sidebar-foreground outline-hidden transition-[color,background-color,width,height,padding] duration-instant ease-bool group-has-data-[sidebar=menu-action]/menu-item:pr-8 focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:pointer-events-none disabled:text-disabled-foreground aria-disabled:pointer-events-none aria-disabled:text-disabled-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground [&>span:last-child]:truncate data-active:[&_svg]:text-foreground",
   {
     variants: {
       variant: {

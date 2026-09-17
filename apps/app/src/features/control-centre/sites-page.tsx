@@ -34,7 +34,7 @@ function SiteList() {
   const toast = useToast()
   const log = useAuditLog()
   function exportCsv() {
-    const name = 'hexa-sites.csv'
+    const name = 'bool-sites.csv'
     downloadCsv(name, [['Code', 'Name', 'Region', 'Type', 'Status'], ...sites.map((s) => [s.code, s.name, s.region, siteTypeById(types, s.typeId).name, s.status])])
     log('Export', `${name} downloaded`)
     toast(`${name} downloaded`)

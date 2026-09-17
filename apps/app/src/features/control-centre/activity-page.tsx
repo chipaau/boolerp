@@ -62,7 +62,7 @@ export function ActivityPage() {
     setScope('all'); setApp('all'); setWho('all'); setDays('all'); setSignificant(false); setQ('')
   }
   function exportLog() {
-    const name = 'hexa-activity-log.csv'
+    const name = 'bool-activity-log.csv'
     const rows = [['When', 'Area', 'Change', 'By'], ...audit.map((a) => [a.when, a.scope, a.text, a.who])]
     downloadCsv(name, rows)
     log('Export', `${name} downloaded`)
