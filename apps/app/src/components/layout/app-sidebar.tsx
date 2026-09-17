@@ -63,8 +63,9 @@ export function AppSidebar({ app }: { app: AppDef }) {
       {/* rows carry their own right padding so their fill runs almost to the rail's edge, stopping 12px short */}
       <SidebarContent className="gap-0 pr-3 pl-[22px] pt-5 group-data-[collapsible=icon]:px-2">
         <div className="mb-5 flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-          <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-surface-soft" title={app.name}>
-            <AppIcon slug={app.slug} size={22} />
+          {/* soft plate with a hairline brand-orange edge; the mark fills more of the same 34px box */}
+          <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-surface-soft shadow-[inset_0_0_0_1px_var(--brand)]" title={app.name}>
+            <AppIcon slug={app.slug} size={26} />
           </span>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <div className="truncate text-heading-sm font-bold text-foreground">{app.name}</div>
