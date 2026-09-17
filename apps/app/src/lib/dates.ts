@@ -13,6 +13,20 @@ export function isoDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** YYYY-MM-DD back to a local Date (no UTC shift, unlike `new Date(iso)`). */
+export function parseIsoDate(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/** Whole days from `today` to a YYYY-MM-DD day; negative once it has passed. */
+export function daysUntil(iso: string, today: Date) {
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  return Math.round((parseIsoDate(iso).getTime() - start.getTime()) / 86_400_000)
+}
+
+export const weekdayShort = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'short' })
+
 /** 1 → "st", 2 → "nd", 3 → "rd", 11–13 → "th". */
 export function ordinal(n: number) {
   const v = n % 100

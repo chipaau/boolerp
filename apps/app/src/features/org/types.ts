@@ -101,7 +101,45 @@ export type Site = {
 export type Country = { id: string; name: string; code: string; tz: string; cur: string; seeded: boolean; on: boolean }
 export type Region = { id: string; country: string; name: string; origin: 'system' | 'custom'; places: string[] }
 
+/**
+ * A day the organisation is closed. Maldives only for now: national days apply everywhere, a
+ * `region` (Region id) narrows one to an atoll or city. Lunar days stay `provisional` until the
+ * government announces the date; `origin` separates the list Hexa keeps current from closures an Admin added.
+ */
+export type Holiday = {
+  id: string
+  name: string
+  nameDv: string
+  /** Local ISO day, YYYY-MM-DD. */
+  date: string
+  region: string | null
+  halfDay: boolean
+  provisional: boolean
+  origin: 'system' | 'custom'
+  /** Switched off, a day no longer closes anything; national days can only be switched, not edited. */
+  on: boolean
+}
+
 // ---- system
+/**
+ * Who signs off, in what order, above what value. Apps point at a chain by id; Control Centre
+ * owns who signs. A step is a role that resolves live ('Site manager', 'Unit lead', a job title)
+ * or a person id.
+ */
+export type ApprovalChain = {
+  id: string
+  name: string
+  /** 'Any' for every request, otherwise a money text such as 'MVR 30,000'. */
+  threshold: string
+  steps: string[]
+  /** The app processes pointing at this chain, e.g. 'Inventory · stock write-offs'. */
+  used: string[]
+  standIn?: string
+  /** Local ISO day the stand-in covers until. */
+  standInUntil?: string
+}
+/** One event an app raises, who it reaches (resolved live through the org tree) and on which channels. */
+export type NotificationRule = { id: string; sourceApp: string; event: string; recipients: string; inApp: boolean; email: boolean }
 export type NumberingRule = { id: string; app: string; label: string; pattern: string; next: string; note: string }
 export type AuditEntry = {
   id: string

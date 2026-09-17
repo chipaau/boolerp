@@ -14,7 +14,7 @@ import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { DAY_END, DAY_START, RECURRENCES, addMonths, agendaFromHtml, firstOfMonth, fmtDuration, fmtTime, fromMinutes, isPersonFree, isRoomFree, meetingsOn, roomBusy, shortDate, suggestSlots, toMinutes } from './logic'
 import { HexDot, PersonAvatar, TONE } from './meeting-bits'
-import { useCalendars, useMe, useMeetingActions, useMeetings, usePeople, useRooms } from './queries'
+import { useCalendars, useHolidayMap, useMe, useMeetingActions, useMeetings, usePeople, useRooms } from './queries'
 import type { CalendarKey, Meeting, Recurrence } from './types'
 
 export type NewMeetingDraft = { date: string; start: string; duration: number; room?: string }
@@ -68,6 +68,7 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
   const suggestions = people.filter((p) => query.trim() && p.key !== me.key && !invites.includes(p.key) && p.name.toLowerCase().includes(query.trim().toLowerCase()))
   const marks = useMemo(() => Object.fromEntries([...new Set(meetings.map((m) => m.date))].map((d) => [d, meetingsOn(meetings, d).length])), [meetings])
   const when = `${shortDate(date)} · ${fmtTime(start)} – ${fmtTime(fromMinutes(e))}`
+  const holiday = useHolidayMap()[date]
   const agendaCount = useMemo(() => agendaFromHtml(notes).length, [notes])
 
   function create() {
@@ -107,6 +108,11 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
 
         <div className="max-h-[min(74vh,620px)] overflow-y-auto px-6 pt-5 pb-3">
           <Input value={title} onChange={(ev) => setTitle(ev.target.value)} placeholder="What is this meeting for?" className="h-10 rounded-[10px] bg-surface-band text-sm" />
+          {holiday && (
+            <div role="status" className="mt-3 rounded-[10px] bg-tone-warning-soft px-[13px] py-2.5 text-compact leading-[1.5] text-tone-warning-foreground">
+              {shortDate(date)} is {holiday.name}{holiday.halfDay ? ' (half day, closed from 1pm)' : ''}{holiday.provisional ? ', if the date holds' : ''}. People may be off — you can still send it.
+            </div>
+          )}
 
           <Label className="mt-5 mb-2 text-meta font-bold text-muted-foreground">Calendar</Label>
           <div className="flex flex-wrap gap-[7px]">

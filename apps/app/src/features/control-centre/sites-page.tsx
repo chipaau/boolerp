@@ -12,8 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableToo
 import { useToast } from '@workspace/ui/components/toast'
 import { ToneDot } from '@workspace/ui/components/tone-dot'
 import { cn } from '@workspace/ui/lib/utils'
-import { MODE_TONE, ascii, binCode, binFills, cadenceOf, modeHint, personById, siteById, siteTypeById } from '@/features/org/logic'
-import { useAudit, useCountries, useDefaultSite, usePeople, useRegions, useSiteActions, useSiteTypes, useSites } from '@/features/org/queries'
+import { MODE_TONE, ascii, binCode, binFills, cadenceOf, fmtIsoDay, holidayOn, modeHint, nextCountDue, personById, siteById, siteRegionId, siteTypeById } from '@/features/org/logic'
+import { useAudit, useCountries, useDefaultSite, useHolidays, usePeople, useRegions, useSiteActions, useSiteTypes, useSites } from '@/features/org/queries'
 import { BinsDialog } from './bins-dialog'
 import { ControlTitle, KeyValue, ModeBadge, Panel, Timeline, useCanEdit } from './control-bits'
 import { SiteDialog } from './site-dialog'
@@ -176,7 +176,7 @@ function GroupRows({ label, count, children }: { label: string; count: number; c
 }
 
 function SiteDetail({ id }: { id: string }) {
-  const sites = useSites(), types = useSiteTypes(), people = usePeople(), audit = useAudit()
+  const sites = useSites(), types = useSiteTypes(), people = usePeople(), audit = useAudit(), holidays = useHolidays(), regions = useRegions()
   const def = useDefaultSite()
   const actions = useSiteActions()
   const canEdit = useCanEdit()
@@ -187,6 +187,8 @@ function SiteDetail({ id }: { id: string }) {
   if (!s) return <EmptyState title="No such site" action={<Button variant="outline" size="sm" render={<Link to="/$app/$section" params={{ app: 'control-centre', section: 'sites' }} />}>All sites</Button>} className="py-24" />
   const t = siteTypeById(types, s.typeId)
   const cad = cadenceOf(s, t)
+  const due = nextCountDue(s, t, new Date())
+  const dueHoliday = due ? holidayOn(holidays, due, siteRegionId(regions, s)) : undefined
   const owner = personById(people, s.ownerId)
   const parent = siteById(sites, s.parent)
   const fills = binFills(s)
@@ -352,6 +354,7 @@ function SiteDetail({ id }: { id: string }) {
                 { k: 'Site manager', v: owner?.name ?? 'Unassigned', quiet: !owner },
                 { k: 'Opened', v: s.opened },
                 { k: 'Counting', v: cad.value === 'None' ? 'Not counted' : `${cad.value}${s.counted === '—' ? ' · never counted' : ` · last ${s.counted}`}` },
+                ...(due ? [{ k: 'Next count due', v: dueHoliday ? <span className="text-tone-warning-foreground">{fmtIsoDay(due)} · {dueHoliday.name}, move it a day</span> : fmtIsoDay(due) }] : []),
                 { k: 'Counting set by', v: cad.inherited ? 'Site type default' : `This site (type says ${cad.typeValue})` },
               ]} />
             </Panel>

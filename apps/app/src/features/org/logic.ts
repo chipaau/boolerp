@@ -1,5 +1,6 @@
 // Pure helpers over the org record. No React, no fixtures: components and queries call these.
-import type { AppKey, Cadence, Perms, Person, PersonRole, PersonStatus, Site, SiteType, StorageMode, Tone, Unit } from './types'
+import { isoDate, parseIsoDate, weekdayShort } from '@/lib/dates'
+import type { AppKey, Cadence, Holiday, Perms, Person, PersonRole, PersonStatus, Region, Site, SiteType, StorageMode, Tone, Unit } from './types'
 
 // ---------- units
 export const UNIT_KINDS: Unit['kind'][] = ['Division', 'Department', 'Team']
@@ -195,3 +196,25 @@ export const nextCode = (pattern: string) => {
   const m = /^(.*?)(\d+)$/.exec(pattern)
   return m ? m[1] + String(Number(m[2]) + 1).padStart(m[2].length, '0') : pattern
 }
+
+// ---- public holidays and when counts fall due
+/** The holiday on a day, national first; pass a region to include that region's own days. */
+export function holidayOn(holidays: Holiday[], iso: string, region?: string | null): Holiday | undefined {
+  const day = holidays.filter((h) => h.on && h.date === iso && (!h.region || h.region === region))
+  return day.find((h) => !h.region) ?? day[0]
+}
+export const upcomingHolidays = (holidays: Holiday[], today: Date) => [...holidays].filter((h) => h.on && h.date >= isoDate(today)).sort((a, b) => a.date.localeCompare(b.date))
+export const fmtIsoDay = (iso: string) => { const d = parseIsoDate(iso); return `${weekdayShort(d)} ${fmtDate(d)}` }
+/** The next count a site owes, from its last count and cadence; undefined when it isn't counted or never was. */
+export function nextCountDue(site: Site, type: SiteType, today: Date): string | undefined {
+  const cad = site.cadence ?? type.cadence
+  const last = parseDate(site.counted === '—' ? '' : site.counted)
+  if (cad === 'None' || !last) return undefined
+  const step = (d: Date) => (cad === 'Weekly' ? new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7) : new Date(d.getFullYear(), d.getMonth() + (cad === 'Monthly' ? 1 : 3), d.getDate()))
+  let due = step(last)
+  const floor = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  while (due < floor) due = step(due)
+  return isoDate(due)
+}
+/** A region id for a site, matched by the region's name. */
+export const siteRegionId = (regions: Region[], site: Site) => regions.find((r) => r.name === site.region && r.country === site.country)?.id ?? null

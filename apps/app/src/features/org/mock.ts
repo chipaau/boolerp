@@ -10,7 +10,7 @@ import avatar5 from '@workspace/assets/avatars/avatar-5.jpg'
 import avatar6 from '@workspace/assets/avatars/avatar-6.jpg'
 import avatar7 from '@workspace/assets/avatars/avatar-7.jpg'
 import { ROLE_TEMPLATE, chatHandle, deriveRole, fmtDate, slugMail } from './logic'
-import type { AuditEntry, Contract, Country, Me, NumberingRule, Person, PersonRole, PersonStatus, Region, Site, SiteType, Unit } from './types'
+import type { ApprovalChain, AuditEntry, NotificationRule, Contract, Country, Holiday, Me, NumberingRule, Person, PersonRole, PersonStatus, Region, Site, SiteType, Unit } from './types'
 
 /** The signed-in person: Mariyam Ahmed, an Admin. */
 export const ME: Me = { id: 'EMP-017', role: 'Admin' }
@@ -239,6 +239,36 @@ export const REGIONS: Region[] = [
   { id: 'g-cmb', country: 'Sri Lanka', name: 'Colombo operations', origin: 'custom', places: ['Colombo', 'Negombo'] },
 ]
 
+// ---- public holidays (Maldives). Lunar dates are best estimates until announced.
+const H: [string, string, string, boolean?, string?][] = [
+  ['2026-01-01', 'New Year\'s Day', 'އާ އަހަރު ދުވަސް'],
+  ['2026-02-18', 'First day of Ramadan', 'ރަމަޟާން މަހުގެ ފުރަތަމަ ދުވަސް'],
+  ['2026-03-20', 'Eid al-Fitr', 'ފިތުރު ޢީދު'],
+  ['2026-03-21', 'Eid al-Fitr holiday', 'ފިތުރު ޢީދުގެ ބަންދު'],
+  ['2026-03-22', 'Eid al-Fitr holiday', 'ފިތުރު ޢީދުގެ ބަންދު'],
+  ['2026-05-26', 'Hajj Day', 'ޙައްޖު ދުވަސް'],
+  ['2026-05-27', 'Eid al-Adha', 'ޙައްޖު ޢީދު'],
+  ['2026-05-28', 'Eid al-Adha holiday', 'ޙައްޖު ޢީދުގެ ބަންދު'],
+  ['2026-05-29', 'Eid al-Adha holiday', 'ޙައްޖު ޢީދުގެ ބަންދު'],
+  ['2026-06-16', 'Islamic New Year', 'ހިޖުރީ އާ އަހަރު'],
+  ['2026-07-26', 'Independence Day', 'މިނިވަން ދުވަސް'],
+  ['2026-08-14', 'National Day', 'ޤައުމީ ދުވަސް'],
+  ['2026-08-25', 'Mawlid al-Nabi', 'މައުލޫދު'],
+  ['2026-09-12', 'The day Maldives embraced Islam', 'ދިވެހިން އިސްލާމްދީން ޤަބޫލުކުރި ދުވަސް'],
+  ['2026-11-03', 'Victory Day', 'ނަޞްރު ދުވަސް'],
+  ['2026-11-11', 'Republic Day', 'ޖުމްހޫރީ ދުވަސް'],
+  ['2027-01-01', 'New Year\'s Day', 'އާ އަހަރު ދުވަސް'],
+  ['2027-02-08', 'First day of Ramadan', 'ރަމަޟާން މަހުގެ ފުރަތަމަ ދުވަސް', true],
+  ['2027-03-10', 'Eid al-Fitr', 'ފިތުރު ޢީދު', true],
+]
+export const HOLIDAYS: Holiday[] = [
+  ...H.map(([date, name, nameDv, provisional]): Holiday => ({ id: `h-${date}`, name, nameDv, date, region: null, halfDay: false, provisional: !!provisional, origin: 'system', on: true })),
+  // what an Admin added on top of the national list
+  { id: 'h-addu-day', name: 'Addu City Day', nameDv: 'އައްޑޫ ސިޓީ ދުވަސް', date: '2026-10-08', region: 'g-s', halfDay: false, provisional: false, origin: 'custom', on: true },
+  { id: 'h-stocktake', name: 'Malé stock-take shutdown', nameDv: 'މާލޭ ސްޓޮކް ގުނުމުގެ ބަންދު', date: '2026-10-22', region: 'g-k', halfDay: false, provisional: false, origin: 'custom', on: true },
+  { id: 'h-yearend', name: 'Year-end close, afternoon off', nameDv: 'އަހަރު ނިމުމުގެ ބަންދު', date: '2026-12-31', region: null, halfDay: true, provisional: false, origin: 'custom', on: true },
+]
+
 // ---- numbering and the activity log
 export const NUMBERING: NumberingRule[] = [
   { id: 'k-1', app: 'Control Centre', label: 'Site code', pattern: 'AAA-##', next: 'MLE-09', note: 'Three letters from the island, then a sequence.' },
@@ -248,6 +278,24 @@ export const NUMBERING: NumberingRule[] = [
   { id: 'k-5', app: 'Inventory', label: 'Count sheet', pattern: 'CNT-####', next: 'CNT-0043', note: 'Continuous.' },
   { id: 'k-6', app: 'Calendar', label: 'Shift roster', pattern: 'ROS-YYYY-WW', next: 'ROS-2026-38', note: 'One per site, per week.' },
   { id: 'k-7', app: 'Scan', label: 'Handheld session', pattern: 'SCN-######', next: 'SCN-004182', note: 'Continuous. Ties every scan to a device and a person.' },
+]
+export const APPROVAL_CHAINS: ApprovalChain[] = [
+  { id: 'c-1', name: 'Operations sign-off', threshold: 'MVR 30,000', steps: ['Site manager', 'EMP-002'], used: ['Inventory · stock write-offs', 'Inventory · count variances'] },
+  { id: 'c-2', name: 'Capital spend', threshold: 'MVR 400,000', steps: ['Unit lead', 'EMP-002', 'EMP-001'], used: ['Inventory · purchase over budget'] },
+  { id: 'c-3', name: 'People changes', threshold: 'Any', steps: ['EMP-014', 'EMP-015'], used: ['Control Centre · role and site access changes'], standIn: 'EMP-089', standInUntil: '2026-09-30' },
+  { id: 'c-4', name: 'New site approval', threshold: 'Any', steps: ['EMP-002'], used: [] },
+]
+export const NOTIFICATION_RULES: NotificationRule[] = [
+  { id: 'n-1', sourceApp: 'Inventory', event: 'Stock falls below minimum', recipients: 'Site manager, Procurement', inApp: true, email: true },
+  { id: 'n-2', sourceApp: 'Inventory', event: 'Cycle count due', recipients: 'Site manager', inApp: true, email: false },
+  { id: 'n-3', sourceApp: 'Inventory', event: 'Count variance over threshold', recipients: 'Director of Operations', inApp: true, email: true },
+  { id: 'n-4', sourceApp: 'Control Centre', event: 'Site paused or reopened', recipients: 'All Admins', inApp: true, email: true },
+  { id: 'n-5', sourceApp: 'Control Centre', event: 'Employee added or exited', recipients: 'People Operations', inApp: false, email: true },
+  { id: 'n-6', sourceApp: 'Inventory', event: 'Bin utilisation over 90%', recipients: 'Site manager', inApp: true, email: false },
+  { id: 'n-7', sourceApp: 'Control Centre', event: 'Approval waiting more than 2 days', recipients: 'Requester, next approver', inApp: true, email: true },
+  { id: 'n-8', sourceApp: 'Calendar', event: 'Shift published or changed', recipients: 'Everyone on the shift', inApp: true, email: false },
+  { id: 'n-9', sourceApp: 'Calendar', event: 'Public holiday added', recipients: 'Site managers', inApp: true, email: true },
+  { id: 'n-10', sourceApp: 'Scan', event: 'Handheld offline for over an hour', recipients: 'Site manager', inApp: false, email: false },
 ]
 export const AUDIT: AuditEntry[] = [
   { id: 'a-1', scope: 'Sites', app: 'Control Centre', sev: 'normal', days: 1, text: 'Eydhafushi counter paused', who: 'Claudia Reyes', when: 'Yesterday, 16:40' },
