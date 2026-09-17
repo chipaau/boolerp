@@ -7,7 +7,8 @@ import type { AppDef } from '@/lib/apps'
 /**
  * Apps whose rail is more than a menu (Calendar: mini month, awaiting replies, calendar toggles)
  * register a rail component here; the sidebar renders it under the app's identity header in
- * place of the registry's menu groups.
+ * place of the registry's menu groups. Rails return the shared WorkspaceSidebar pieces
+ * (SidebarNavGroups, SidebarSection, SidebarAttention), never their own row markup.
  */
 export const RAILS: Partial<Record<string, ComponentType<{ app: AppDef }>>> = {
   calendar: CalendarRail,
