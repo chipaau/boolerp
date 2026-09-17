@@ -8,7 +8,8 @@ import { Switch } from '@workspace/ui/components/switch'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { monthYear, parseIsoDate, weekdayShort } from '@/lib/dates'
-import { useHolidayActions, useHolidays, useRegions } from '@/features/org/queries'
+import { holidayForEveryone, unitChain, unitPath } from '@/features/org/logic'
+import { useHolidayActions, useHolidays, useSites, useUnits } from '@/features/org/queries'
 import type { Holiday } from '@/features/org/types'
 import { ControlTitle, RuleStrip, useCanEdit } from './control-bits'
 import { HolidayDialog } from './holiday-dialog'
@@ -18,22 +19,27 @@ const READ_ONLY = 'Read only as Staff — ask an Admin to change setup'
 
 /**
  * The days the organisation is closed, Maldives only for now, grouped by month so the pattern of
- * closures is visible. Hexa keeps the public holidays current: they can only be switched off.
- * Closures added here (shutdowns, stock-take days, island days) can be edited and deleted.
+ * holidays is visible. Hexa keeps the public holidays current: they can only be switched off.
+ * Holidays added here (shutdowns, stock-take days) can be edited, deleted, and narrowed to units or sites.
  */
 export function HolidaysPage() {
   const holidays = useHolidays()
-  const regions = useRegions().filter((r) => r.country === 'Maldives')
+  const units = useUnits()
+  const sites = useSites()
   const actions = useHolidayActions()
   const canEdit = useCanEdit()
   const toast = useToast()
-  const [region, setRegion] = useState('all')
+  // 'all', 'u:<unit id>' or 's:<site id>'
+  const [scope, setScope] = useState('all')
   // the design opens on everything, switched-off days included
   const [showOff, setShowOff] = useState(true)
   const [draft, setDraft] = useState<HolidayDraft | null>(null)
   const guard = (fn: () => void) => () => (canEdit ? fn() : toast(READ_ONLY, { ok: false }))
 
-  const shown = holidays.filter((h) => (showOff || h.on) && (region === 'all' || !h.region || h.region === region)).sort((a, b) => a.date.localeCompare(b.date))
+  const scopeUnits = scope.startsWith('u:') ? unitChain(units, scope.slice(2)).map((u) => u.id) : []
+  const scopeSite = scope.startsWith('s:') ? scope.slice(2) : null
+  const applies = (h: Holiday) => scope === 'all' || holidayForEveryone(h) || h.appliesTo.units.some((u) => scopeUnits.includes(u)) || (!!scopeSite && h.appliesTo.sites.includes(scopeSite))
+  const shown = holidays.filter((h) => (showOff || h.on) && applies(h)).sort((a, b) => a.date.localeCompare(b.date))
   const months = shown.reduce<{ key: string; label: string; rows: Holiday[] }[]>((acc, h) => {
     const key = h.date.slice(0, 7)
     let g = acc.find((x) => x.key === key)
@@ -41,12 +47,13 @@ export function HolidaysPage() {
     g.rows.push(h)
     return acc
   }, [])
-  const regionName = (id: string) => regions.find((r) => r.id === id)?.name ?? 'One region'
-  const regionLine = (h: Holiday) =>
-    [h.region ? `${regionName(h.region)} only` : 'Everywhere you operate', h.halfDay && 'half day, closed from 1pm', h.provisional && 'date not announced yet'].filter(Boolean).join(' · ')
+  const siteName = (id: string) => sites.find((x) => x.id === id)?.name ?? 'A site'
+  const scopeName = scopeSite ? siteName(scopeSite) : scope.startsWith('u:') ? (units.find((u) => u.id === scope.slice(2))?.name ?? 'this unit') : ''
+  const appliesLine = (h: Holiday) =>
+    [holidayForEveryone(h) ? 'Everyone' : [...h.appliesTo.units.map((u) => units.find((x) => x.id === u)?.name ?? u), ...h.appliesTo.sites.map(siteName)].join(' · '), h.halfDay && 'Half day'].filter(Boolean).join(' · ')
   const emptyText =
-    region !== 'all'
-      ? `No dates apply to ${regionName(region)}${showOff ? '.' : ' that are switched on.'}`
+    scope !== 'all'
+      ? `No holidays apply to ${scopeName}${showOff ? '.' : ' that are switched on.'}`
       : holidays.length
         ? 'Nothing is switched on. Show everything to turn a day back on.'
         : 'Nothing on record yet.'
@@ -67,10 +74,10 @@ export function HolidaysPage() {
         <ControlTitle
           overline="System"
           title="Public holidays"
-          description="Hexa keeps Maldives public holidays current. Turn off any that don't apply to you, and add your own shutdowns and stock-take days on top."
+          description="Hexa keeps Maldives public holidays current. Turn off any that don't apply to you, and add your own holidays, for everyone or just some units and sites."
           actions={
             <Button onClick={guard(() => setDraft({}))}>
-              Add your own
+              Add holiday
               <ButtonArrow>
                 <Plus strokeWidth={2.2} />
               </ButtonArrow>
@@ -83,13 +90,25 @@ export function HolidaysPage() {
 
         <Card className="gap-0 overflow-clip py-0">
           <div className="flex flex-wrap items-center gap-[9px] border-b border-divider px-5 py-3.5">
-            <NativeSelect value={region} onChange={(e) => setRegion(e.target.value)} aria-label="Region" className="w-[190px] [&>select]:h-8">
-              <option value="all">All of Maldives</option>
-              {regions.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
+            <NativeSelect value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Applies to">
+              <option value="all">Anyone</option>
+              <optgroup label="Admin units">
+                {units
+                  .map((u) => ({ id: u.id, label: unitPath(units, u.id, ' › ') }))
+                  .sort((a, b) => a.label.localeCompare(b.label))
+                  .map((u) => (
+                    <option key={u.id} value={`u:${u.id}`}>
+                      {u.label}
+                    </option>
+                  ))}
+              </optgroup>
+              <optgroup label="Sites">
+                {sites.map((x) => (
+                  <option key={x.id} value={`s:${x.id}`}>
+                    {x.name}
+                  </option>
+                ))}
+              </optgroup>
             </NativeSelect>
             <Button variant="outline" size="sm" aria-pressed={!showOff} className={cn('rounded-full font-bold', !showOff && 'bg-muted')} onClick={() => setShowOff((v) => !v)}>
               {showOff ? 'Hiding nothing' : 'Active only'}
@@ -125,7 +144,7 @@ export function HolidaysPage() {
                           </span>
                         )}
                       </span>
-                      <span className="mt-[3px] block text-meta leading-[1.45] text-faint">{regionLine(h)}</span>
+                      <span className="mt-[3px] block text-meta leading-[1.45] text-faint">{appliesLine(h)}</span>
                     </span>
                     {sys ? (
                       <Badge variant="outline" size="sm" className="text-muted-foreground">
@@ -133,7 +152,7 @@ export function HolidaysPage() {
                       </Badge>
                     ) : (
                       <Badge variant="success" size="sm">
-                        Your closure
+                        Your holiday
                       </Badge>
                     )}
                     <span className="flex items-center gap-[7px]">

@@ -239,8 +239,8 @@ export const REGIONS: Region[] = [
   { id: 'g-cmb', country: 'Sri Lanka', name: 'Colombo operations', origin: 'custom', places: ['Colombo', 'Negombo'] },
 ]
 
-// ---- public holidays (Maldives). Lunar dates are best estimates until announced.
-const H: [string, string, string, boolean?, string?][] = [
+// ---- public holidays (Maldives)
+const H: [string, string, string, boolean?][] = [
   ['2026-01-01', 'New Year\'s Day', 'އާ އަހަރު ދުވަސް'],
   ['2026-02-18', 'First day of Ramadan', 'ރަމަޟާން މަހުގެ ފުރަތަމަ ދުވަސް'],
   ['2026-03-20', 'Eid al-Fitr', 'ފިތުރު ޢީދު'],
@@ -261,12 +261,13 @@ const H: [string, string, string, boolean?, string?][] = [
   ['2027-02-08', 'First day of Ramadan', 'ރަމަޟާން މަހުގެ ފުރަތަމަ ދުވަސް', true],
   ['2027-03-10', 'Eid al-Fitr', 'ފިތުރު ޢީދު', true],
 ]
+const EVERYONE: Holiday['appliesTo'] = { units: [], sites: [] }
 export const HOLIDAYS: Holiday[] = [
-  ...H.map(([date, name, nameDv, provisional]): Holiday => ({ id: `h-${date}`, name, nameDv, date, region: null, halfDay: false, provisional: !!provisional, origin: 'system', on: true })),
+  ...H.map(([date, name, nameDv]): Holiday => ({ id: `h-${date}`, name, nameDv, date, halfDay: false, origin: 'system', on: true, appliesTo: EVERYONE })),
   // what an Admin added on top of the national list
-  { id: 'h-addu-day', name: 'Addu City Day', nameDv: 'އައްޑޫ ސިޓީ ދުވަސް', date: '2026-10-08', region: 'g-s', halfDay: false, provisional: false, origin: 'custom', on: true },
-  { id: 'h-stocktake', name: 'Malé stock-take shutdown', nameDv: 'މާލޭ ސްޓޮކް ގުނުމުގެ ބަންދު', date: '2026-10-22', region: 'g-k', halfDay: false, provisional: false, origin: 'custom', on: true },
-  { id: 'h-yearend', name: 'Year-end close, afternoon off', nameDv: 'އަހަރު ނިމުމުގެ ބަންދު', date: '2026-12-31', region: null, halfDay: true, provisional: false, origin: 'custom', on: true },
+  { id: 'h-addu-day', name: 'Addu City Day', nameDv: 'އައްޑޫ ސިޓީ ދުވަސް', date: '2026-10-08', halfDay: false, origin: 'custom', on: true, appliesTo: { units: [], sites: ['s-3'] } },
+  { id: 'h-stocktake', name: 'Malé stock-take shutdown', nameDv: 'މާލޭ ސްޓޮކް ގުނުމުގެ ބަންދު', date: '2026-10-22', halfDay: false, origin: 'custom', on: true, appliesTo: { units: ['ops-wh'], sites: ['s-1'] } },
+  { id: 'h-yearend', name: 'Year-end close, afternoon off', nameDv: 'އަހަރު ނިމުމުގެ ބަންދު', date: '2026-12-31', halfDay: true, origin: 'custom', on: true, appliesTo: EVERYONE },
 ]
 
 // ---- numbering and the activity log

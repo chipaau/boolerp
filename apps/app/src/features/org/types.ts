@@ -102,9 +102,9 @@ export type Country = { id: string; name: string; code: string; tz: string; cur:
 export type Region = { id: string; country: string; name: string; origin: 'system' | 'custom'; places: string[] }
 
 /**
- * A day the organisation is closed. Maldives only for now: national days apply everywhere, a
- * `region` (Region id) narrows one to an atoll or city. Lunar days stay `provisional` until the
- * government announces the date; `origin` separates the list Hexa keeps current from closures an Admin added.
+ * A day the organisation is closed. Hexa keeps the Maldives public holidays current (`origin:
+ * 'system'`, which an Admin can only switch off); Admins add their own (`'custom'`). `appliesTo`
+ * narrows a day to admin units (a unit covers its sub-units) and/or sites; both empty = everyone.
  */
 export type Holiday = {
   id: string
@@ -112,12 +112,10 @@ export type Holiday = {
   nameDv: string
   /** Local ISO day, YYYY-MM-DD. */
   date: string
-  region: string | null
   halfDay: boolean
-  provisional: boolean
   origin: 'system' | 'custom'
-  /** Switched off, a day no longer closes anything; national days can only be switched, not edited. */
   on: boolean
+  appliesTo: { units: string[]; sites: string[] }
 }
 
 // ---- system

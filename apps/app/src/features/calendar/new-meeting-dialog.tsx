@@ -12,6 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@workspace/ui/component
 import { RichText } from '@workspace/ui/components/rich-text'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
+import { holidayForEveryone, holidayOn, unitChain } from '@/features/org/logic'
+import { useHolidays, usePeople as useOrgPeople, useUnits } from '@/features/org/queries'
 import { DAY_END, DAY_START, RECURRENCES, addMonths, agendaFromHtml, firstOfMonth, fmtDuration, fmtTime, fromMinutes, isPersonFree, isRoomFree, meetingsOn, roomBusy, shortDate, suggestSlots, toMinutes } from './logic'
 import { HexDot, PersonAvatar, TONE } from './meeting-bits'
 import { useCalendars, useHolidayMap, useMe, useMeetingActions, useMeetings, usePeople, useRooms } from './queries'
@@ -68,7 +70,22 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
   const suggestions = people.filter((p) => query.trim() && p.key !== me.key && !invites.includes(p.key) && p.name.toLowerCase().includes(query.trim().toLowerCase()))
   const marks = useMemo(() => Object.fromEntries([...new Set(meetings.map((m) => m.date))].map((d) => [d, meetingsOn(meetings, d).length])), [meetings])
   const when = `${shortDate(date)} · ${fmtTime(start)} – ${fmtTime(fromMinutes(e))}`
-  const holiday = useHolidayMap()[date]
+  const dayHoliday = useHolidayMap()[date]
+  const holiday = dayHoliday && holidayForEveryone(dayHoliday) ? dayHoliday : undefined
+  const holidays = useHolidays()
+  const orgPeople = useOrgPeople()
+  const units = useUnits()
+  // a holiday narrowed to some units or sites only matters when it covers someone invited
+  const invitedHoliday = useMemo(() => {
+    if (holiday) return undefined
+    for (const k of everyone) {
+      const p = orgPeople.find((x) => x.id === k)
+      if (!p) continue
+      const h = holidayOn(holidays, date, { units: unitChain(units, p.unitId).map((u) => u.id), site: p.primarySite })
+      if (h) return { holiday: h, name: p.name }
+    }
+    return undefined
+  }, [holiday, everyone, orgPeople, holidays, units, date])
   const agendaCount = useMemo(() => agendaFromHtml(notes).length, [notes])
 
   function create() {
@@ -110,7 +127,12 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
           <Input value={title} onChange={(ev) => setTitle(ev.target.value)} placeholder="What is this meeting for?" className="h-10 rounded-[10px] bg-surface-band text-sm" />
           {holiday && (
             <div role="status" className="mt-3 rounded-[10px] bg-tone-warning-soft px-[13px] py-2.5 text-compact leading-[1.5] text-tone-warning-foreground">
-              {shortDate(date)} is {holiday.name}{holiday.halfDay ? ' (half day, closed from 1pm)' : ''}{holiday.provisional ? ', if the date holds' : ''}. People may be off — you can still send it.
+              {shortDate(date)} is {holiday.name}{holiday.halfDay ? ' (half day)' : ''}. People may be off — you can still send it.
+            </div>
+          )}
+          {invitedHoliday && (
+            <div role="status" className="mt-3 rounded-[10px] bg-tone-warning-soft px-[13px] py-2.5 text-compact leading-[1.5] text-tone-warning-foreground">
+              {shortDate(date)} is {invitedHoliday.holiday.name} for {invitedHoliday.name}{invitedHoliday.holiday.halfDay ? ' (half day)' : ''}. They may be off — you can still send it.
             </div>
           )}
 

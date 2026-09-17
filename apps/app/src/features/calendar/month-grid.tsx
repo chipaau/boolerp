@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@works
 import { cn } from '@workspace/ui/lib/utils'
 import { dayOfMonth, fmtTime, isTentative, isWeekend, meetingsOn, monthGrid, myRsvp, sameMonth } from './logic'
 import { MeetingHoverCard, MeetingLink, TONE, useCalendarMap } from './meeting-bits'
+import { holidayForEveryone } from '@/features/org/logic'
 import { useHolidayMap, useMe } from './queries'
 import type { Meeting } from './types'
 
@@ -94,7 +95,8 @@ export function MonthGrid({
             const isToday = iso === today
             const isSelected = iso === selected
             const items = meetingsOn(meetings, iso)
-            const holiday = holidays[iso]
+            const dayHoliday = holidays[iso]
+            const holiday = dayHoliday && holidayForEveryone(dayHoliday) ? dayHoliday : undefined
             return (
               <div
                 key={iso}
@@ -138,9 +140,9 @@ export function MonthGrid({
                   </button>
                 </div>
                 {holiday && (
-                  <div title={`${holiday.name}${holiday.halfDay ? ' · half day' : ''}${holiday.provisional ? ' · date not announced yet' : ''}`} className="mt-1 flex items-center gap-1.5 truncate rounded-[6px] bg-tone-warning-soft px-1.5 py-px text-micro font-bold text-tone-warning-foreground">
+                  <div title={`${holiday.name}${holiday.halfDay ? ' · half day' : ''}`} className="mt-1 flex items-center gap-1.5 truncate rounded-[6px] bg-tone-warning-soft px-1.5 py-px text-micro font-bold text-tone-warning-foreground">
                     <span className="min-w-0 truncate">{holiday.name}</span>
-                    {(holiday.halfDay || holiday.provisional) && <span className="shrink-0 font-normal opacity-75">{holiday.halfDay ? '½' : 'tbc'}</span>}
+                    {holiday.halfDay && <span className="shrink-0 font-normal opacity-75">½</span>}
                   </div>
                 )}
                 <div className="mt-1.5 flex flex-col gap-[3px]">

@@ -4,6 +4,7 @@
 import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { orgMeQuery, peopleQuery as orgPeopleQuery, useHolidays } from '@/features/org/queries'
+import { holidayForEveryone } from '@/features/org/logic'
 import type { Holiday } from '@/features/org/types'
 import * as mock from './mock'
 import type { CalendarDef, CalendarKey, Meeting, Room, Tone } from './types'
@@ -24,12 +25,12 @@ export const useMeetings = () => useSuspenseQuery(meetingsQuery()).data
 /** The signed-in person as the calendar knows them, plus the fixture's "now" for the time line. */
 export const useMe = () => useSuspenseQuery(meQuery()).data
 
-/** Public holidays from Control Centre, one per day (national before regional). */
+/** Public holidays from Control Centre, one per day (everyone-wide before narrowed ones). */
 export function useHolidayMap() {
   const holidays = useHolidays()
   return useMemo(() => {
     const map: Partial<Record<string, Holiday>> = {}
-    ;holidays.filter((h) => h.on).sort((a, b) => Number(!!a.region) - Number(!!b.region)).forEach((h) => { map[h.date] ??= h })
+    ;holidays.filter((h) => h.on).sort((a, b) => Number(!holidayForEveryone(a)) - Number(!holidayForEveryone(b))).forEach((h) => { map[h.date] ??= h })
     return map
   }, [holidays])
 }
