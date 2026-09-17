@@ -58,9 +58,12 @@ export function NotificationsMenu() {
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
-        <div className="mt-1.5 border-t border-divider pt-2.5 text-center">
+        <div className="mt-1.5 flex items-center justify-between border-t border-divider px-1 pt-2.5">
           <Button variant="link" size="xs" className="text-meta no-underline hover:underline" render={<Link to="/notifications" />}>
             See all notifications
+          </Button>
+          <Button variant="link" size="xs" className="text-meta text-muted-foreground no-underline hover:underline" render={<Link to="/notifications/preferences" />}>
+            Preferences
           </Button>
         </div>
       </DropdownMenuContent>

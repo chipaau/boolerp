@@ -280,12 +280,3 @@ export function resolveRecipients(roles: RecipientRole[], subject: EventSubject,
   const live = new Set(org.people.filter(isOnBooks).map((p) => p.id))
   return [...new Set(roles.flatMap((r) => resolveRole(r, subject, org)))].filter((id) => live.has(id))
 }
-
-/** The notifications a person sees in-app: addressed to them, and not silenced in-app by their event's rule. */
-export function inAppFor<T extends { eventKey: string; recipientIds: string[] }>(list: T[], rules: NotificationRule[], personId: string | undefined): (T & { emailed: boolean })[] {
-  if (!personId) return []
-  return list.flatMap((n) => {
-    const rule = ruleForEvent(rules, n.eventKey)
-    return (!rule || rule.inApp) && n.recipientIds.includes(personId) ? [{ ...n, emailed: !!rule?.email }] : []
-  })
-}

@@ -1,6 +1,6 @@
 // Shell (workspace chrome) resource shapes: things the header and rails show for every app.
 
-export type NotificationCategory = 'Meetings' | 'Stock' | 'Approvals' | 'Orders' | 'Setup'
+export type NotificationCategory = 'Meetings' | 'Stock' | 'Approvals' | 'Orders' | 'Setup' | 'Billing'
 export type NotificationGroup = 'Today' | 'Yesterday' | 'Earlier'
 export type Notification = {
   id: string

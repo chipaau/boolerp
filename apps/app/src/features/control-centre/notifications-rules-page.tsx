@@ -21,11 +21,12 @@ export function NotificationRulesPage() {
   const both = rules.filter((n) => n.inApp && n.email).length
   const none = rules.filter((n) => !n.inApp && !n.email).length
   const toggle = (id: string, channel: 'inApp' | 'email') => (canEdit ? actions.toggle(id, channel) : toast('Read only as Staff — ask an Admin to change setup', { ok: false }))
+  const required = rules.filter((n) => n.mandatory).length
   return (
     <div className="min-h-0 w-full overflow-y-auto">
       <div className="px-8 pt-7 pb-24">
         <ControlTitle overline="System" title="Notifications" description="What the apps tell people about, and how it reaches them. Recipients resolve through the org tree — “site manager” means whoever holds that site today, so this keeps working when people change." />
-        <RuleStrip>{both} go to both channels · {none} silenced · recipients resolve live through the org tree</RuleStrip>
+        <RuleStrip>{both} go to both channels · {none} silenced · {required} required · recipients resolve live through the org tree</RuleStrip>
         <Card className="gap-0 overflow-clip py-0">
           <AppTabs value={app} onChange={setApp} count={`${list.length} of ${rules.length} events`} />
           <div className={`${GRID} border-b border-divider py-[11px] text-overline font-bold tracking-[0.1em] text-faint uppercase`}>
@@ -37,7 +38,14 @@ export function NotificationRulesPage() {
           {list.map((n) => (
             <div key={n.id} className={`${GRID} border-b border-divider py-3.5 last:border-b-0`}>
               <span className="min-w-0">
-                <span className="block text-ui-sm font-bold text-foreground">{n.event}</span>
+                <span className="flex flex-wrap items-center gap-2 text-ui-sm font-bold text-foreground">
+                  {n.event}
+                  {n.mandatory && (
+                    <Badge variant="warning" size="sm" title="Critical — people can’t mute this">
+                      Required
+                    </Badge>
+                  )}
+                </span>
                 <span className="mt-[3px] block text-caption text-faint">{n.sourceApp}</span>
               </span>
               <span className="flex min-w-0 flex-wrap gap-1.5">
@@ -47,8 +55,8 @@ export function NotificationRulesPage() {
                   </Badge>
                 ))}
               </span>
-              <Switch className="justify-self-center" checked={n.inApp} onCheckedChange={() => toggle(n.id, 'inApp')} aria-label={`${n.event} in-app`} />
-              <Switch className="justify-self-center" checked={n.email} onCheckedChange={() => toggle(n.id, 'email')} aria-label={`${n.event} email`} />
+              <Switch className="justify-self-center" checked={n.inApp} disabled={n.mandatory && n.inApp} onCheckedChange={() => toggle(n.id, 'inApp')} aria-label={`${n.event} in-app`} />
+              <Switch className="justify-self-center" checked={n.email} disabled={n.mandatory && n.email} onCheckedChange={() => toggle(n.id, 'email')} aria-label={`${n.event} email`} />
             </div>
           ))}
         </Card>

@@ -11,10 +11,10 @@ import { useMyNotifications } from '@/features/notifications/queries'
 import { useMarkAllRead } from './queries'
 import type { Notification, NotificationCategory, NotificationGroup } from './types'
 
-const FILTERS = ['All', 'Unread', 'Meetings', 'Stock', 'Approvals', 'Orders', 'Setup'] as const
+const FILTERS = ['All', 'Unread', 'Meetings', 'Stock', 'Approvals', 'Orders', 'Setup', 'Billing'] as const
 type Filter = (typeof FILTERS)[number]
 const GROUPS: NotificationGroup[] = ['Today', 'Yesterday', 'Earlier']
-const CATEGORY_TONE: Record<NotificationCategory, BadgeTone> = { Meetings: 'slate', Stock: 'risk', Approvals: 'warning', Orders: 'plum', Setup: 'neutral' }
+const CATEGORY_TONE: Record<NotificationCategory, BadgeTone> = { Meetings: 'slate', Stock: 'risk', Approvals: 'warning', Orders: 'plum', Setup: 'neutral', Billing: 'tan' }
 
 function matches(n: Notification, f: Filter) {
   if (f === 'All') return true
@@ -39,10 +39,12 @@ export function NotificationsPage() {
         <PageTitle
           className="mb-[26px]"
           title="Notifications"
-          meta={<span>{unread ? `${unread} unread` : 'All caught up'} · meetings, stock, approvals, orders and setup</span>}
+          meta={<span>{unread ? `${unread} unread` : 'All caught up'} · meetings, stock, approvals, orders, setup and billing</span>}
           actions={
             <>
-              <Button variant="outline">Preferences</Button>
+              <Button variant="outline" render={<Link to="/notifications/preferences" />}>
+                Preferences
+              </Button>
               <Button onClick={() => markAllRead.mutate()} disabled={unread === 0}>
                 Mark all read
                 <ButtonArrow />
@@ -98,7 +100,7 @@ export function NotificationsPage() {
 
         <Card className="flex-row flex-wrap items-center justify-between gap-3 px-[22px] py-[18px]">
           <span className="text-compact text-muted-foreground">Notifications are kept for 90 days</span>
-          <Button variant="link" size="sm" className="text-meta">
+          <Button variant="link" size="sm" className="text-meta" render={<Link to="/notifications/preferences" />}>
             Choose what reaches you
           </Button>
         </Card>

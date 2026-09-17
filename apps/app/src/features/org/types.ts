@@ -142,7 +142,7 @@ export type RecipientRole = 'site_manager' | 'site_managers' | 'unit_lead' | 'ad
  * One event an app raises, who it reaches and on which channels. `eventKey` is the dot-namespaced
  * id the app raises it by (`inventory.stock_below_min`).
  */
-export type NotificationRule = { id: string; eventKey: string; sourceApp: string; event: string; recipientRoles: RecipientRole[]; inApp: boolean; email: boolean }
+export type NotificationRule = { id: string; eventKey: string; sourceApp: string; event: string; recipientRoles: RecipientRole[]; inApp: boolean; email: boolean; /** Critical events that always deliver on the rule's channels; people can't mute them. */ mandatory: boolean }
 export type NumberingRule = { id: string; app: string; label: string; pattern: string; next: string; note: string }
 export type AuditEntry = {
   id: string
