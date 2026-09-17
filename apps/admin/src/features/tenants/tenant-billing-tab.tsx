@@ -7,6 +7,7 @@ import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { formatMvr } from '@/features/billing/logic'
 import { useBillingActions, useDunningPolicy, useTenantBilling } from '@/features/billing/queries'
+import { PaymentNote } from '@/features/billing/payment-review'
 import type { LedgerLine } from '@/features/billing/types'
 import type { DirectoryTenant } from './types'
 import type { TenantDrawerState } from './tenant-drawers'
@@ -164,6 +165,7 @@ export function TenantBillingTab({ tenant: t, onOpen }: { tenant: DirectoryTenan
                     <span className="mt-1 block text-caption text-muted-foreground md:hidden">
                       {e.period} · {formatMvr(Math.abs(e.total))} · {e.status}
                     </span>
+                    {!credit && <div className="md:hidden"><PaymentNote invoiceNo={e.no} /></div>}
                   </TableCell>
                   <TableCell className="hidden text-compact text-body md:table-cell">{e.period}</TableCell>
                   <TableCell className={cn('hidden text-compact md:table-cell', e.status === 'Overdue' ? 'font-bold text-tone-warning-foreground' : 'text-muted-foreground')}>{e.due}</TableCell>
@@ -178,6 +180,7 @@ export function TenantBillingTab({ tenant: t, onOpen }: { tenant: DirectoryTenan
                     <Badge size="sm" variant={LEDGER_TONE[e.status]}>
                       {e.status}
                     </Badge>
+                    {!credit && <PaymentNote invoiceNo={e.no} />}
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1.5">

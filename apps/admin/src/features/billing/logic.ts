@@ -22,3 +22,13 @@ export function prorate(from: Plan, to: Plan, seatsUsed: number, effect: 'Immedi
   const newMonthly = to.base + to.perSeat * seatsUsed
   return { newMonthly, delta: effect === 'Immediately' ? Math.round(((newMonthly - oldMonthly) * daysLeft) / cycleDays) : null }
 }
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+/** ISO date or date-time → '15 Sep 2026' (reads the calendar date as written, no timezone shift). */
+export const formatIsoDate = (iso: string) => {
+  const [y, m, d] = iso.slice(0, 10).split('-')
+  return `${d} ${MONTHS[Number(m) - 1]} ${y}`
+}
+
+/** '184 KB', '1.3 MB' */
+export const formatBytes = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`)

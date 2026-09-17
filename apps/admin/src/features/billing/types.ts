@@ -116,3 +116,31 @@ export type TenantBilling = {
 }
 
 export type IssueCreditInput = { tenantSlug: string; against: string; kind: CreditKind; amount: number; reason: string }
+
+export type PaymentBank = 'BML' | 'MIB' | 'SBI' | 'Other'
+export type PaymentSubmissionStatus = 'Pending verification' | 'Verified' | 'Rejected'
+
+/** A tenant's "I paid by bank transfer" claim with its slip, waiting for an operator to verify. */
+export type PaymentSubmission = {
+  id: string
+  /** Invoice number (Invoice.no). */
+  invoiceId: string
+  amount: number
+  currency: string
+  method: 'Bank transfer'
+  bank: PaymentBank
+  reference: string
+  /** ISO date the tenant says they paid. */
+  paidOn: string
+  receipt: { fileName: string; mimeType: string; sizeBytes: number; storageKey: string }
+  note?: string
+  /** Tenant person id (TenantAdmin.idNo). */
+  submittedBy: string
+  /** ISO date-time. */
+  submittedOn: string
+  status: PaymentSubmissionStatus
+  /** Operator id (AdminUser.idNo). */
+  reviewedBy?: string
+  reviewedOn?: string
+  rejectReason?: string
+}

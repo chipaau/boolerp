@@ -1,6 +1,6 @@
 // UI fixtures — shapes pending SRS/data-model review; replaced at integration.
 // Seed data from the Bool Admin design (.design/login/Bool Workspace/Bool Admin.dc.html).
-import type { BillingProfile, ChaseTemplate, Credit, DunningPolicy, DunningStep, Invoice, PaymentMethod, TenantDunningMode } from './types'
+import type { BillingProfile, ChaseTemplate, Credit, DunningPolicy, DunningStep, Invoice, PaymentMethod, PaymentSubmission, TenantDunningMode } from './types'
 
 export const BILLING_PROFILES: Record<string, BillingProfile> = {
   ncit: { contact: 'Ibrahim Waheed', email: 'finance@ncit.gov.mv', phone: '3324570', taxId: 'Exempt — government', taxRate: 0, po: 'PO-2026-114', method: 'Bank transfer' },
@@ -50,7 +50,39 @@ export const INVOICES: Invoice[] = [
 
 export const CURRENT_PERIOD = 'Sep 2026'
 export const TODAY = '16 Sep 2026'
+export const TODAY_ISO = '2026-09-16'
 /** Days in a billing cycle and days left in the current one (proration). */
 export const CYCLE_DAYS = 30
 export const DAYS_LEFT = 15
 export const NEXT_CYCLE_DATE = '1 Oct 2026'
+
+export const PAYMENT_REJECT_REASONS = [
+  'Reference not found on the bank statement',
+  'Amount does not match the invoice',
+  'Slip is unreadable or incomplete',
+  'Paid to the wrong account',
+  'Duplicate of an earlier submission',
+]
+
+export const PAYMENT_SUBMISSIONS: PaymentSubmission[] = [
+  {
+    id: 'pay-0004', invoiceId: 'INV-2026-0148', amount: 26374, currency: 'MVR', method: 'Bank transfer', bank: 'BML', reference: 'FT26258M7Q4K INV-2026-0148', paidOn: '2026-09-15',
+    receipt: { fileName: 'BML-transfer-INV-0148.pdf', mimeType: 'application/pdf', sizeBytes: 184320, storageKey: 'tenants/mtcc/payments/pay-0004.pdf' },
+    note: 'Paid from the MTCC operating account.', submittedBy: 'A093311', submittedOn: '2026-09-15T14:22:00+05:00', status: 'Pending verification',
+  },
+  {
+    id: 'pay-0003', invoiceId: 'INV-2026-0147', amount: 11700, currency: 'MVR', method: 'Bank transfer', bank: 'MIB', reference: 'MIB0916-332871', paidOn: '2026-09-16',
+    receipt: { fileName: 'mib-receipt-sep.jpg', mimeType: 'image/jpeg', sizeBytes: 912384, storageKey: 'tenants/vc/payments/pay-0003.jpg' },
+    submittedBy: 'A440192', submittedOn: '2026-09-16T09:05:00+05:00', status: 'Pending verification',
+  },
+  {
+    id: 'pay-0002', invoiceId: 'INV-2026-0146', amount: 4222, currency: 'MVR', method: 'Bank transfer', bank: 'BML', reference: 'FT26247H2L9D INV-2026-0146', paidOn: '2026-09-04',
+    receipt: { fileName: 'NCIT-payment-advice-0146.pdf', mimeType: 'application/pdf', sizeBytes: 96768, storageKey: 'tenants/ncit/payments/pay-0002.pdf' },
+    submittedBy: 'A154788', submittedOn: '2026-09-04T11:40:00+05:00', status: 'Verified', reviewedBy: 'A100234', reviewedOn: '2026-09-05',
+  },
+  {
+    id: 'pay-0001', invoiceId: 'INV-2026-0131', amount: 9612, currency: 'MVR', method: 'Bank transfer', bank: 'MIB', reference: 'MIB0828-110452', paidOn: '2026-08-28',
+    receipt: { fileName: 'IMG_4471.png', mimeType: 'image/png', sizeBytes: 1340416, storageKey: 'tenants/dhi/payments/pay-0001.png' },
+    submittedBy: 'A662001', submittedOn: '2026-08-28T16:10:00+05:00', status: 'Rejected', reviewedBy: 'A114500', reviewedOn: '2026-08-30', rejectReason: 'Reference not found on the bank statement',
+  },
+]

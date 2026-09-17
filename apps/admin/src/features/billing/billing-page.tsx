@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { useToast } from '@workspace/ui/components/toast'
@@ -13,6 +13,7 @@ import { downloadLedgerCsv } from './ledger-bits'
 import type { BillingStatusFilter } from './ledger-bits'
 import { LedgerTable } from './ledger-table'
 import { LedgerToolbar } from './ledger-toolbar'
+import { PaymentsToVerifyPanel } from './payment-review'
 import { formatMvr } from './logic'
 import { useBillingOptions, useBillingSummary, useInvoices, useLedger } from './queries'
 
@@ -20,7 +21,7 @@ export { BILLING_STATUS_FILTERS } from './ledger-bits'
 export type { BillingStatusFilter } from './ledger-bits'
 
 /** Operator billing: summary, dunning policy, and the invoice + credit ledger with its actions. */
-export function BillingPage({ status, onStatusChange }: { status: BillingStatusFilter; onStatusChange: (s: BillingStatusFilter) => void }) {
+export function BillingPage({ status, onStatusChange, view }: { status: BillingStatusFilter; onStatusChange: (s: BillingStatusFilter) => void; view?: 'payments' }) {
   const summary = useBillingSummary()
   const ledger = useLedger()
   const invoices = useInvoices()
@@ -34,6 +35,10 @@ export function BillingPage({ status, onStatusChange }: { status: BillingStatusF
   const [rollUp, setRollUp] = useState(true)
   const [showDunning, setShowDunning] = useState(false)
   const [drawer, setDrawer] = useState<BillingDrawer>(null)
+
+  useEffect(() => {
+    if (view === 'payments') document.getElementById('payments-to-verify')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [view])
 
   const bySlug = useMemo(() => new Map(tenants.map((t) => [t.slug, t])), [tenants])
   const picked = tenantSlug ? bySlug.get(tenantSlug) : undefined
@@ -111,6 +116,8 @@ export function BillingPage({ status, onStatusChange }: { status: BillingStatusF
           ))}
         </div>
         <div className="my-6 h-px bg-border" />
+
+        <PaymentsToVerifyPanel tenants={bySlug} focused={view === 'payments'} />
 
         {showDunning && <DunningPanel />}
 

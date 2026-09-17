@@ -3,6 +3,8 @@
 import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { monthlyNet, planByName } from '@/features/tenants/logic'
+import { useCurrentUser } from '@/components/layout/user-context'
+import { useAdminUsers } from '@/features/admin-users/queries'
 import { usePlans, useTenantDirectory } from '@/features/tenants/queries'
 import type { DirectoryTenant } from '@/features/tenants/types'
 import { taxOn } from './logic'
@@ -16,6 +18,7 @@ import type {
   Invoice,
   IssueCreditInput,
   LedgerLine,
+  PaymentSubmission,
   TenantBilling,
   TenantDunningMode,
   Undo,
@@ -214,4 +217,94 @@ export function useBillingActions() {
     setGroupBilling: (slug: string, enabled: boolean) =>
       swap<Record<string, boolean>>(key('group'), (m) => ({ ...m, [slug]: enabled })),
   }
+}
+
+// ——— Bank-transfer payment submissions (tenant uploads a slip, an operator verifies) ———
+
+export const paymentSubmissionsQuery = () => fixture(key('payment-submissions'), mock.PAYMENT_SUBMISSIONS)
+
+export const usePaymentSubmissions = () => useQuery(paymentSubmissionsQuery()).data ?? mock.PAYMENT_SUBMISSIONS
+export const usePaymentRejectReasons = () => mock.PAYMENT_REJECT_REASONS
+
+/** A pending submission joined to its invoice line, with the tenant person and the amount check. */
+export type PaymentToVerify = {
+  submission: PaymentSubmission
+  line: LedgerLine | undefined
+  tenantSlug: string
+  submitterName: string
+  /** Invoice total minus credits. */
+  expected: number
+  amountMatches: boolean
+  referenceMatches: boolean
+}
+
+/** Pending submissions, oldest first. */
+export function usePaymentsToVerify(): PaymentToVerify[] {
+  const subs = usePaymentSubmissions()
+  const ledger = useLedger()
+  const { tenants } = useTenantDirectory()
+  return useMemo(() => {
+    const people = new Map(tenants.flatMap((t) => t.admins.map((a) => [a.idNo, a.name] as const)))
+    return subs
+      .filter((s) => s.status === 'Pending verification')
+      .sort((a, b) => a.submittedOn.localeCompare(b.submittedOn))
+      .map((s) => {
+        const line = ledger.find((e) => e.kind === 'Invoice' && e.no === s.invoiceId)
+        const expected = line ? line.total - line.credited : 0
+        const digits = s.invoiceId.replace(/\D/g, '').slice(-4)
+        return {
+          submission: s, line, tenantSlug: line?.tenantSlug ?? '', submitterName: people.get(s.submittedBy) ?? s.submittedBy,
+          expected, amountMatches: Boolean(line) && Math.round(s.amount) === Math.round(expected),
+          referenceMatches: s.reference.toUpperCase().includes(s.invoiceId.toUpperCase()) || s.reference.includes(digits),
+        }
+      })
+  }, [subs, ledger, tenants])
+}
+
+export type InvoicePaymentNote = { state: 'review' | 'verified'; submission: PaymentSubmission; reviewerName: string | null }
+
+/** Per invoice no.: 'review' while a submission is pending, else 'verified' with the reviewer's name. */
+export function useInvoicePaymentNotes(): Map<string, InvoicePaymentNote> {
+  const subs = usePaymentSubmissions()
+  const operators = useAdminUsers()
+  return useMemo(() => {
+    const out = new Map<string, InvoicePaymentNote>()
+    for (const s of subs) {
+      if (s.status === 'Pending verification') out.set(s.invoiceId, { state: 'review', submission: s, reviewerName: null })
+      else if (s.status === 'Verified' && out.get(s.invoiceId)?.state !== 'review') {
+        out.set(s.invoiceId, { state: 'verified', submission: s, reviewerName: operators.find((u) => u.idNo === s.reviewedBy)?.name ?? s.reviewedBy ?? null })
+      }
+    }
+    return out
+  }, [subs, operators])
+}
+
+/** Verify or reject a submission. Both return an undo; verify also marks the linked invoice Paid. */
+export function usePaymentActions() {
+  const qc = useQueryClient()
+  const me = useCurrentUser()
+  const operators = useAdminUsers()
+  const reviewer = operators.find((u) => u.email === me.email)?.idNo ?? (me.email || 'operator')
+
+  return useMemo(() => {
+    const swap = <T>(k: readonly string[], fn: (v: T) => T): Undo => {
+      const before = qc.getQueryData<T>(k)
+      qc.setQueryData<T>(k, (v) => fn(v as T))
+      return () => qc.setQueryData<T>(k, before)
+    }
+    const patch = (id: string, changes: Partial<PaymentSubmission>) =>
+      swap<PaymentSubmission[]>(key('payment-submissions'), (l) => l.map((s) => (s.id === id ? { ...s, ...changes } : s)))
+    const find = (id: string) => (qc.getQueryData<PaymentSubmission[]>(key('payment-submissions')) ?? []).find((s) => s.id === id)
+
+    return {
+      verify: (id: string): Undo => {
+        const s = find(id)
+        const undoSub = patch(id, { status: 'Verified', reviewedBy: reviewer, reviewedOn: mock.TODAY_ISO, rejectReason: undefined })
+        const undoInv = s ? swap<Invoice[]>(key('invoices'), (l) => l.map((i) => (i.no === s.invoiceId ? { ...i, status: 'Paid' } : i))) : () => {}
+        return () => { undoInv(); undoSub() }
+      },
+      reject: (id: string, reason: string): Undo =>
+        patch(id, { status: 'Rejected', reviewedBy: reviewer, reviewedOn: mock.TODAY_ISO, rejectReason: reason.trim() || 'No reason given' }),
+    }
+  }, [qc, reviewer])
 }

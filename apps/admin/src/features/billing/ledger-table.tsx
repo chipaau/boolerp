@@ -10,6 +10,7 @@ import { creditDrawerFor, useInvoiceActions } from './billing-drawers'
 import type { BillingDrawer } from './billing-drawers'
 import { LedgerStatusBadge, signedMvr } from './ledger-bits'
 import { formatMvr } from './logic'
+import { PaymentNote } from './payment-review'
 import type { LedgerLine } from './types'
 
 /** The billing ledger: invoices and credits, with the per-row action and credit/refund shortcut. */
@@ -58,6 +59,7 @@ export function LedgerTable({ rows, tenants, onDrawer, onClear }: { rows: Ledger
                   <div className="mt-1 text-meta text-muted-foreground md:hidden">
                     {t?.abbr ?? e.tenantSlug} · {e.period} · {formatMvr(Math.abs(e.total))} · {e.status}
                   </div>
+                  {!credit && <div className="md:hidden"><PaymentNote invoiceNo={e.no} /></div>}
                 </TableCell>
                 <TableCell>
                   <button
@@ -80,6 +82,7 @@ export function LedgerTable({ rows, tenants, onDrawer, onClear }: { rows: Ledger
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
                   <LedgerStatusBadge status={e.status} />
+                  {!credit && <PaymentNote invoiceNo={e.no} />}
                 </TableCell>
                 <TableCell align="right">
                   <div className="flex justify-end gap-1.5">
