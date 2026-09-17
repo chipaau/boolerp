@@ -1,16 +1,19 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp, ChevronRight, Plus } from 'lucide-react'
+import { ArrowDown, ArrowUp, Plus } from 'lucide-react'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
+import { DropdownMenuItem } from '@workspace/ui/components/dropdown-menu'
 import { ConfirmDialog } from '@workspace/ui/components/confirm-dialog'
 import { NativeSelect } from '@workspace/ui/components/native-select'
 import { useToast } from '@workspace/ui/components/toast'
 import { ToneDot } from '@workspace/ui/components/tone-dot'
 import { cn } from '@workspace/ui/lib/utils'
 import { BRAND } from '@/lib/brand'
-import { PersonAvatar, TONE_FALLBACK } from '@/features/directory/people-bits'
-import { isOnBooks, liveUnits, unitById, unitChain, unitKids, unitLead, unitMembers, unitPath, unitTone } from '@/features/org/logic'
+import { OrgCanvas, OrgChartToolbar, buildOrgTree, useOrgChart } from '@/features/directory/org-chart'
+import type { OrgNode } from '@/features/directory/org-chart'
+import { PersonAvatar } from '@/features/directory/people-bits'
+import { isOnBooks, liveUnits, unitById, unitKids, unitLead, unitMembers, unitPath, unitTone } from '@/features/org/logic'
 import { usePeople, useUnitActions, useUnits } from '@/features/org/queries'
 import type { Tone, Unit } from '@/features/org/types'
 import { ControlTitle, FieldLabel, RuleStrip, useCanEdit } from './control-bits'
@@ -32,10 +35,10 @@ const TONE_TEXT: Record<Tone, string> = {
 }
 
 /**
- * The org tree as drill-down columns (the Directory design's structure view): top level, then
- * each level you open. Beneath, the selected group: rename, colour, lead, nest a new group,
- * reorder among its siblings, archive what is empty, and the people sitting directly in it.
- * `?id=` selects a group; `?id=company` the company itself.
+ * The same org chart the Directory draws, but editable: click a group (or the company) to select
+ * it, or use a card's menu to nest, staff or archive it. Beneath, the selected group: rename,
+ * colour, lead, reorder among its siblings, and the people sitting directly in it.
+ * `?id=<unit>` selects a group; no id (or `?id=company`) the company itself.
  */
 export function UnitsPage() {
   const units = useUnits(), people = usePeople()
@@ -47,18 +50,34 @@ export function UnitsPage() {
   const [draft, setDraft] = useState<UnitDraft | null>(null)
   const [archiving, setArchiving] = useState<Unit | null>(null)
   const roots = unitKids(units, null)
-  const isCompany = search.id === 'company'
-  const sel = isCompany ? undefined : (unitById(units, search.id) ?? roots[0])
-  const path = sel ? unitChain(units, sel.id) : []
+  const sel = search.id && search.id !== 'company' ? unitById(units, search.id) : undefined
   const select = (id: string) => void navigate({ to: '/$app/$section', params: { app: 'control-centre', section: 'units' }, search: { id }, replace: true })
   const guard = (fn: () => void) => () => (canEdit ? fn() : toast('Read only as Staff — ask an Admin to change setup', { ok: false }))
   const active = people.filter((p) => isOnBooks(p) && p.status === 'Active')
   const empty = liveUnits(units).filter((u) => !unitMembers(people, units, u.id, true).length)
   const chief = people.find((p) => isOnBooks(p) && !p.managerId)
 
-  // one column per level that is open: the top level, then each ancestor of the selection that has children
-  const columns: { parent: Unit | null; items: Unit[] }[] = [{ parent: null, items: roots }]
-  path.forEach((u) => { const kids = unitKids(units, u.id); if (kids.length) columns.push({ parent: u, items: kids }) })
+  const today = useMemo(() => new Date(), [])
+  const tree = useMemo(() => buildOrgTree(units, people, today), [units, people, today])
+  const selNode = sel ? `g:${sel.id}` : 'co'
+  const chart = useOrgChart(tree, units, selNode)
+  const hits = useMemo(() => new Set(chart.matches), [chart.matches])
+  // scroll to a search hit; a deep link lands on its card once
+  const [landing] = useState(search.id ? selNode : null)
+  const goPerson = (id: string) => void navigate({ to: '/$app/$section', params: { app: 'control-centre', section: 'employees' }, search: { id } })
+  const addPerson = (unitId: string) => void navigate({ to: '/$app/$section', params: { app: 'control-centre', section: 'employees' }, search: { filter: `new:${unitId}` } })
+  const menuExtra = (n: OrgNode) => {
+    if (n.kind === 'person') return <DropdownMenuItem onClick={() => n.person && goPerson(n.person.id)}>Edit employee record</DropdownMenuItem>
+    const u = n.unit
+    return (
+      <>
+        <DropdownMenuItem onClick={guard(() => setDraft({ parent: u?.id ?? null }))}>{u ? 'Add subgroup' : 'Add top-level group'}</DropdownMenuItem>
+        {u && <DropdownMenuItem onClick={guard(() => addPerson(u.id))}>Add person here</DropdownMenuItem>}
+        {u && <DropdownMenuItem onClick={() => select(u.id)}>Edit group</DropdownMenuItem>}
+        {u && <DropdownMenuItem variant="destructive" onClick={() => askArchive(u)}>Archive</DropdownMenuItem>}
+      </>
+    )
+  }
 
   const direct = sel ? unitMembers(people, units, sel.id, false) : []
   const deep = sel ? unitMembers(people, units, sel.id, true) : []
@@ -74,7 +93,6 @@ export function UnitsPage() {
     setArchiving(u)
   }
 
-  const row = (on: boolean, t: Tone) => cn('flex w-full items-center gap-2.5 rounded-[9px] px-3 py-[9px] text-left outline-none transition-colors duration-instant focus-visible:ring-2 focus-visible:ring-ring', on ? cn(TONE_FALLBACK[t], 'shadow-[inset_2px_0_0_currentColor]') : 'hover:bg-surface-soft')
 
   return (
     <div className="min-h-0 w-full overflow-y-auto">
@@ -96,52 +114,27 @@ export function UnitsPage() {
           {liveUnits(units).length} groups · {active.length} people placed · {empty.length ? `${empty.length} ${empty.length === 1 ? 'group' : 'groups'} with nobody in ${empty.length === 1 ? 'it' : 'them'}` : 'every group has someone in it'}
         </RuleStrip>
 
-        <Card className="flex max-w-full flex-row items-stretch gap-0 self-start overflow-x-auto py-0" style={{ minHeight: 322 }}>
-          {columns.map((col, ci) => (
-            <div key={col.parent?.id ?? 'top'} className={cn('w-[232px] shrink-0', ci < columns.length - 1 && 'border-r border-divider')}>
-              <div className="flex items-center gap-2 border-b border-divider px-3.5 py-3">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-compact font-bold text-foreground">{col.parent ? col.parent.name : 'Top level'}</span>
-                  <span className="mt-0.5 block text-caption text-faint">
-                    {col.items.length} {col.items.length === 1 ? 'group' : 'groups'}
-                  </span>
-                </span>
-                <Button variant="outline" size="xs" onClick={guard(() => setDraft({ parent: col.parent?.id ?? null }))}>
-                  + Group
-                </Button>
-              </div>
-              <div className="flex flex-col gap-0.5 p-2">
-                {ci === 0 && (
-                  <button type="button" onClick={() => select('company')} className={row(isCompany, 'warning')}>
-                    <ToneDot tone="warning" shape="square" size={7} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-compact font-bold text-foreground">{chief?.name ?? BRAND.name}</span>
-                      <span className="block truncate text-caption text-faint">Company · top of the chart</span>
-                    </span>
-                    <span className="text-caption font-bold tabular-nums text-muted-foreground">{active.length}</span>
-                  </button>
-                )}
-                {col.items.map((u) => {
-                  const kids = unitKids(units, u.id), on = path.some((p) => p.id === u.id), t = unitTone(units, u.id)
-                  return (
-                    <button key={u.id} type="button" onClick={() => select(u.id)} className={row(on, t)}>
-                      <ToneDot tone={t} shape={ci === 0 ? 'square' : 'round'} size={7} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-compact font-bold text-foreground">{u.name}</span>
-                        <span className="block truncate text-caption text-faint">{kids.length ? `${kids.length} ${kids.length === 1 ? 'subgroup' : 'subgroups'}` : `${unitMembers(people, units, u.id, false).length} direct`}</span>
-                      </span>
-                      <span className="text-caption font-bold tabular-nums text-muted-foreground">{unitMembers(people, units, u.id, true).length}</span>
-                      {kids.length > 0 && <ChevronRight className="size-3 shrink-0 text-faint" strokeWidth={1.8} />}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
+        <Card className="gap-0 overflow-clip py-0">
+          <OrgChartToolbar tree={tree} chart={chart} summary={sel ? `Editing ${sel.name}` : 'Click a group to edit it'} />
+          <OrgCanvas
+            tree={tree}
+            units={units}
+            openSet={chart.openSet}
+            setOpen={chart.setOpenSet}
+            zoom={chart.zoom}
+            hits={hits}
+            focus={chart.current ?? landing}
+            selected={selNode}
+            onSelect={(n) => select(n.unit ? n.unit.id : 'company')}
+            onOpenPerson={goPerson}
+            onSeePeople={(uid) => void navigate({ to: '/$app', params: { app: 'directory' }, search: { scope: `group:${uid}` } })}
+            menuExtra={menuExtra}
+            className="h-[min(56vh,560px)]"
+          />
         </Card>
 
         <Card className="mt-4 gap-3.5 px-[22px] py-[18px]">
-          {isCompany || !sel ? (
+          {!sel ? (
             <div>
               <div className="flex items-center gap-2">
                 <ToneDot tone="warning" shape="square" size={8} />
@@ -210,7 +203,7 @@ export function UnitsPage() {
                 <Button variant="outline" size="sm" onClick={guard(() => setDraft({ parent: sel.id }))}>
                   Add subgroup
                 </Button>
-                <Button variant="outline" size="sm" onClick={guard(() => void navigate({ to: '/$app/$section', params: { app: 'control-centre', section: 'employees' }, search: { filter: `new:${sel.id}` } }))}>
+                <Button variant="outline" size="sm" onClick={guard(() => addPerson(sel.id))}>
                   Add person here
                 </Button>
                 <Button variant="link" size="sm" render={<Link to="/$app" params={{ app: 'directory' }} search={{ scope: `group:${sel.id}` }} />}>
