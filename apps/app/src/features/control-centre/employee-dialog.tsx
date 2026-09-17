@@ -2,26 +2,32 @@ import { useEffect, useState } from 'react'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { Dialog, DialogContent } from '@workspace/ui/components/dialog'
+import { DatePicker } from '@workspace/ui/components/date-picker'
 import { NativeSelect } from '@workspace/ui/components/native-select'
+import { Stepper, StepperFooter, StepperLayout } from '@workspace/ui/components/stepper'
 import { Switch } from '@workspace/ui/components/switch'
 import { useToast } from '@workspace/ui/components/toast'
 import { Badge } from '@workspace/ui/components/badge'
 import { cn } from '@workspace/ui/lib/utils'
-import { APP_GOVERNS, APP_KEYS, APP_ROLES, NO_STOCK_PERMS, ROLE_TEMPLATE, ROLE_TONE, appRoleNote, appsOn, deriveRole, isOnBooks, liveUnits, siteTypeById, slugMail, unitPath } from '@/features/org/logic'
+import { APP_GOVERNS, APP_KEYS, APP_ROLES, NO_STOCK_PERMS, ROLE_TEMPLATE, ROLE_TONE, appRoleNote, appsOn, deriveRole, fmtDate, isOnBooks, liveUnits, parseDate, siteTypeById, slugMail, unitPath } from '@/features/org/logic'
 import { useCountries, useNumbering, usePeople, usePersonActions, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
 import type { Contract, Perms, Person, PersonStatus } from '@/features/org/types'
+import { isoDate, parseIsoDate } from '@/lib/dates'
 import { FieldLabel, fieldClass } from './control-bits'
 import { PermsReferenceDialog } from './employee-bulk'
 
 export type EmployeeDraft = { edit?: Person; step?: number; unitId?: string }
 const STEPS = [
-  { n: 1, label: 'Person', sub: 'Name, unit, dates' },
-  { n: 2, label: 'Access', sub: 'A role in each app' },
-  { n: 3, label: 'Sites', sub: 'Work and storage' },
-  { n: 4, label: 'Review', sub: 'Check and invite' },
+  { title: 'Person', hint: 'Name, unit, dates' },
+  { title: 'Access', hint: 'A role in each app' },
+  { title: 'Sites', hint: 'Work and storage' },
+  { title: 'Review', hint: 'Check and invite' },
 ]
 const STATUSES: PersonStatus[] = ['Not started', 'Active', 'On leave', 'Exited']
 const CONTRACTS: Contract[] = ['Full-time', 'Part-time', 'Contract', 'Intern']
+// the record keeps "9 Sep 2026"; the picker speaks ISO days
+const toIso = (s: string) => { const d = parseDate(s); return d ? isoDate(d) : '' }
+const fromIso = (iso: string) => (iso ? fmtDate(parseIsoDate(iso)) : '')
 
 type Form = { name: string; code: string; title: string; phone: string; email: string; unitId: string; managerId: string; status: PersonStatus; start: string; end: string; contract: Contract; badge: string; perms: Perms; primary: string; access: string[]; welcome: boolean }
 
@@ -90,35 +96,12 @@ export function EmployeeDialog({ draft, onClose, onSaved }: { draft: EmployeeDra
     onClose()
   }
 
-  const sel = 'h-10 w-full rounded-[10px] bg-surface-band px-[13px] text-sm font-bold text-foreground outline-none [&>select]:h-10 [&>select]:font-bold'
   const chip = (active: boolean, off = false) => cn('h-[30px] rounded-full px-3 text-fine font-bold outline-none transition-colors duration-instant focus-visible:ring-2 focus-visible:ring-ring', active ? (off ? 'bg-muted text-body' : 'bg-sage text-sage-foreground') : 'text-muted-foreground shadow-[inset_0_0_0_1px_var(--input)] hover:bg-surface-soft')
 
   return (
     <Dialog open={draft !== null} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[940px]" showCloseButton>
-        <div className="grid max-h-[90vh] grid-cols-1 sm:grid-cols-[206px_minmax(0,1fr)]">
-          <aside className="border-b border-divider bg-surface-band p-5 sm:border-r sm:border-b-0 sm:p-6">
-            <div className="mb-4 text-overline text-faint">{editing ? 'Editing' : 'New employee'}</div>
-            <ol className="relative flex flex-row gap-1 sm:flex-col">
-              {STEPS.map((s, i) => {
-                const done = s.n < step, here = s.n === step
-                return (
-                  <li key={s.n} className="relative">
-                    {i < STEPS.length - 1 && <span aria-hidden="true" className="absolute top-[34px] bottom-[-6px] left-[22px] hidden w-px bg-border sm:block" />}
-                    <button type="button" onClick={() => go(s.n)} className={cn('relative flex w-full items-start gap-[11px] rounded-[11px] px-2.5 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring', here && 'bg-card shadow-card')}>
-                      <span className={cn('relative z-[1] grid size-[26px] shrink-0 place-items-center rounded-full text-fine font-bold', here ? 'bg-surface-inverted text-surface-inverted-foreground' : done ? 'bg-sage text-sage-foreground' : 'bg-card text-faint shadow-[inset_0_0_0_1px_var(--input)]')}>{done ? '✓' : s.n}</span>
-                      <span className="hidden min-w-0 sm:block">
-                        <span className={cn('block text-ui-sm', here ? 'font-black text-foreground' : 'font-bold text-body')}>{s.label}</span>
-                        <span className="mt-0.5 block text-caption text-faint">{s.sub}</span>
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ol>
-          </aside>
-
-          <div className="min-w-0 overflow-y-auto px-6 pt-6 pb-5 sm:px-7">
+        <StepperLayout rail={<Stepper title={editing ? 'Editing' : 'New employee'} steps={STEPS} current={step - 1} complete={(i) => i > 0 || !!(f.name.trim() && f.unitId)} onStep={(i) => go(i + 1)} />}>
             <div className="mb-5 pr-8">
               <h2 className="text-[21px] leading-tight font-bold tracking-[-0.015em] text-foreground">{['', 'Who they are', 'What they can reach', 'Where they work', 'Check before you invite'][step]}</h2>
               <p className="mt-1.5 max-w-[58ch] text-compact leading-[1.55] text-pretty text-body">
@@ -159,7 +142,7 @@ export function EmployeeDialog({ draft, onClose, onSaved }: { draft: EmployeeDra
                 </div>
                 <div>
                   <FieldLabel>Admin unit</FieldLabel>
-                  <NativeSelect value={f.unitId} onChange={(e) => set('unitId', e.target.value)} className={sel}>
+                  <NativeSelect value={f.unitId} onChange={(e) => set('unitId', e.target.value)}>
                     <option value="">Pick a unit</option>
                     {liveUnits(units).map((u) => (
                       <option key={u.id} value={u.id}>
@@ -170,7 +153,7 @@ export function EmployeeDialog({ draft, onClose, onSaved }: { draft: EmployeeDra
                 </div>
                 <div>
                   <FieldLabel>Reports to</FieldLabel>
-                  <NativeSelect value={f.managerId} onChange={(e) => set('managerId', e.target.value)} className={sel}>
+                  <NativeSelect value={f.managerId} onChange={(e) => set('managerId', e.target.value)}>
                     <option value="">No one — top of the tree</option>
                     {people.filter((p) => isOnBooks(p) && p.id !== editing?.id).map((p) => (
                       <option key={p.id} value={p.id}>
@@ -182,7 +165,7 @@ export function EmployeeDialog({ draft, onClose, onSaved }: { draft: EmployeeDra
                 <div className="grid gap-4 border-t border-divider pt-[18px] sm:col-span-2 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
                   <div>
                     <FieldLabel>Status</FieldLabel>
-                    <NativeSelect value={f.status} onChange={(e) => set('status', e.target.value as PersonStatus)} className={sel}>
+                    <NativeSelect value={f.status} onChange={(e) => set('status', e.target.value as PersonStatus)}>
                       {STATUSES.map((s) => (
                         <option key={s} value={s}>
                           {s}
@@ -192,17 +175,17 @@ export function EmployeeDialog({ draft, onClose, onSaved }: { draft: EmployeeDra
                   </div>
                   <div>
                     <FieldLabel>Start date</FieldLabel>
-                    <input value={f.start} onChange={(e) => set('start', e.target.value)} placeholder="9 Sep 2026" className={fieldClass} />
+                    <DatePicker value={toIso(f.start)} onChange={(iso) => set('start', fromIso(iso))} placeholder="Pick a start date" aria-label="Start date" />
                   </div>
                   {f.status === 'Exited' && (
                     <div>
                       <FieldLabel>End date</FieldLabel>
-                      <input value={f.end} onChange={(e) => set('end', e.target.value)} placeholder="Last working day" className={fieldClass} />
+                      <DatePicker value={toIso(f.end)} onChange={(iso) => set('end', fromIso(iso))} placeholder="Last working day" aria-label="End date" />
                     </div>
                   )}
                   <div>
                     <FieldLabel>Contract</FieldLabel>
-                    <NativeSelect value={f.contract} onChange={(e) => set('contract', e.target.value as Contract)} className={sel}>
+                    <NativeSelect value={f.contract} onChange={(e) => set('contract', e.target.value as Contract)}>
                       {CONTRACTS.map((c) => (
                         <option key={c} value={c}>
                           {c}
@@ -357,10 +340,7 @@ export function EmployeeDialog({ draft, onClose, onSaved }: { draft: EmployeeDra
               </div>
             )}
 
-            <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-divider pt-[18px]">
-              <span className="min-w-[150px] flex-1 text-caption leading-[1.5] text-pretty text-faint">
-                {['', 'Name and admin unit are the only things this form insists on.', onApps.length ? `${onApps.length} of ${APP_KEYS.length} apps switched on.` : 'No app switched on yet.', work ? (store.length ? `${store.length} storage ${store.length === 1 ? 'site' : 'sites'}.` : 'No storage access yet.') : 'No work site — you can set one later.', 'Nothing is saved until you add them.'][step]}
-              </span>
+            <StepperFooter note={['', 'Name and admin unit are the only things this form insists on.', onApps.length ? `${onApps.length} of ${APP_KEYS.length} apps switched on.` : 'No app switched on yet.', work ? (store.length ? `${store.length} storage ${store.length === 1 ? 'site' : 'sites'}.` : 'No storage access yet.') : 'No work site — you can set one later.', 'Nothing is saved until you add them.'][step]}>
               {step > 1 && (
                 <Button variant="outline" onClick={() => setStep((s) => Math.max(1, s - 1))}>
                   Back
@@ -372,9 +352,8 @@ export function EmployeeDialog({ draft, onClose, onSaved }: { draft: EmployeeDra
                 </Button>
               )}
               {step < 4 && <Button onClick={() => go(step + 1)}>{step === 1 ? 'Continue' : step === 3 ? 'Review' : 'Next'}</Button>}
-            </div>
-          </div>
-        </div>
+            </StepperFooter>
+        </StepperLayout>
       </DialogContent>
       <PermsReferenceDialog open={ref} onClose={() => setRef(false)} current={f.perms} />
     </Dialog>

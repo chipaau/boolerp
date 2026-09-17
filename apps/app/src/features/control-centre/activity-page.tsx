@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Download } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@workspace/ui/components/avatar'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
@@ -6,6 +7,7 @@ import { Card } from '@workspace/ui/components/card'
 import { NativeSelect } from '@workspace/ui/components/native-select'
 import { SearchField } from '@workspace/ui/components/search-field'
 import { useToast } from '@workspace/ui/components/toast'
+import { downloadCsv } from '@/lib/csv'
 import { PersonAvatar } from '@/features/directory/people-bits'
 import { useAudit, useAuditLog, usePeople, useUnits } from '@/features/org/queries'
 import type { AuditEntry } from '@/features/org/types'
@@ -19,7 +21,7 @@ const DAYS = [
   { id: '90', label: 'Last 90 days' },
 ]
 const unique = (list: string[]) => list.filter((v, i, all) => all.indexOf(v) === i)
-const selectClass = 'w-auto [&>select]:h-8 [&>select]:rounded-full [&>select]:pl-[13px] [&>select]:text-compact'
+const selectClass = 'w-auto'
 
 /**
  * Everything that happened across the suite, newest first, grouped by day. Read-only; the export
@@ -62,16 +64,7 @@ export function ActivityPage() {
   function exportLog() {
     const name = 'hexa-activity-log.csv'
     const rows = [['When', 'Area', 'Change', 'By'], ...audit.map((a) => [a.when, a.scope, a.text, a.who])]
-    const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(',')).join('\n')
-    try {
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-      a.download = name
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000)
-    } catch {
-      // a blocked download still logs the intent
-    }
+    downloadCsv(name, rows)
     log('Export', `${name} downloaded`)
     toast(`${name} downloaded`)
   }
@@ -85,7 +78,8 @@ export function ActivityPage() {
           description="Everything that happened across the suite, newest first — who did it and what changed. Nothing here can be edited."
           actions={
             <Button variant="outline" onClick={exportLog}>
-              Export log
+              <Download strokeWidth={1.8} />
+              Export CSV
             </Button>
           }
         />

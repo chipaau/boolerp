@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { ChevronRight, MoreHorizontal, Plus } from 'lucide-react'
+import { ChevronRight, Download, MoreHorizontal, Plus } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
@@ -14,9 +14,10 @@ import { Table, TableBody, TableBulkAction, TableBulkBar, TableCell, TableHead, 
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { BRAND } from '@/lib/brand'
+import { downloadCsv } from '@/lib/csv'
 import { PersonAvatar } from '@/features/directory/people-bits'
 import { APP_KEYS, NO_STOCK_PERMS, appRoleRank, appsOn, ascii, directReports, liveUnits, personById, siteById, siteTypeById, tenure, unitDescendants, unitPath } from '@/features/org/logic'
-import { useAudit, usePeople, usePersonActions, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
+import { useAudit, useAuditLog, usePeople, usePersonActions, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
 import type { PersonStatus } from '@/features/org/types'
 import { ControlTitle, KeyValue, Panel, RoleBadge, RuleStrip, StatusBadge, Timeline, useCanEdit } from './control-bits'
 import { BulkDialog, ImportEmployeesDialog, PermsReferenceDialog } from './employee-bulk'
@@ -51,6 +52,7 @@ function EmployeeList() {
   const [draft, setDraft] = useState<EmployeeDraft | null>(preset.startsWith('new:') ? { unitId: preset.slice(4) } : null)
   const [bulk, setBulk] = useState<BulkKind | null>(null)
   const [importing, setImporting] = useState(false)
+  const log = useAuditLog()
   useEffect(() => {
     if (STATUSES.includes(preset as PersonStatus)) setStatus(preset)
     if (preset === 'no-site') { setSite('none'); setStatus('Active') }
@@ -73,6 +75,12 @@ function EmployeeList() {
   const stranded = internal.filter((p) => p.status === 'Active' && !p.primarySite && appRoleRank('Inventory', p.perms.Inventory) >= 2 && p.role !== 'Admin').length
   const guard = (fn: () => void) => () => (canEdit ? fn() : toast('Read only as Staff — ask an Admin to change setup', { ok: false }))
   const open = (id: string) => void navigate({ to: '/$app/$section', params: { app: 'control-centre', section: 'employees' }, search: { id } })
+  function exportCsv() {
+    const name = 'hexa-employees.csv'
+    downloadCsv(name, [['Code', 'Name', 'Job title', 'Unit', 'Status', 'Contract', 'Email'], ...internal.map((p) => [p.id, p.name, p.title, unitPath(units, p.unitId), p.status, p.contract, p.email])])
+    log('Export', `${name} downloaded`)
+    toast(`${name} downloaded`)
+  }
 
   return (
     <div className="min-h-0 w-full overflow-y-auto">
@@ -83,6 +91,10 @@ function EmployeeList() {
           description="Every person, their unit, and what they can reach in each app. This is the record the Directory displays and Inventory checks before it lets anyone issue stock."
           actions={
             <>
+<Button variant="outline" onClick={exportCsv}>
+                <Download strokeWidth={1.8} />
+                Export CSV
+              </Button>
               <Button variant="outline" onClick={guard(() => setImporting(true))}>
                 Import CSV
               </Button>
@@ -102,7 +114,7 @@ function EmployeeList() {
         <Card className="gap-0 overflow-clip py-0">
           <TableToolbar className="px-5">
             <SearchField size="sm" placeholder="Search people, IDs, titles" value={q} onChange={(e) => setQ(e.target.value)} className="min-w-[200px] max-w-xs" />
-            <NativeSelect value={unit} onChange={(e) => setUnit(e.target.value)} className="w-[200px] [&>select]:h-8 [&>select]:text-compact">
+            <NativeSelect value={unit} onChange={(e) => setUnit(e.target.value)} className="w-[200px]">
               <option value="all">All units</option>
               {liveUnits(units).map((u) => (
                 <option key={u.id} value={u.id}>
@@ -110,7 +122,7 @@ function EmployeeList() {
                 </option>
               ))}
             </NativeSelect>
-            <NativeSelect value={site} onChange={(e) => setSite(e.target.value)} className="w-[180px] [&>select]:h-8 [&>select]:text-compact">
+            <NativeSelect value={site} onChange={(e) => setSite(e.target.value)} className="w-[180px]">
               <option value="all">Any site</option>
               <option value="none">No site assigned</option>
               {sites.map((s) => (
@@ -119,7 +131,7 @@ function EmployeeList() {
                 </option>
               ))}
             </NativeSelect>
-            <NativeSelect value={status} onChange={(e) => setStatus(e.target.value)} className="w-[150px] [&>select]:h-8 [&>select]:text-compact">
+            <NativeSelect value={status} onChange={(e) => setStatus(e.target.value)} className="w-[150px]">
               <option value="all">Any status</option>
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -139,8 +151,8 @@ function EmployeeList() {
               <TableBulkAction onClick={guard(() => setBulk('unit'))}>Move to unit</TableBulkAction>
               <TableBulkAction onClick={guard(() => setBulk('access'))}>Grant site access</TableBulkAction>
               <TableBulkAction onClick={guard(() => setBulk('invite'))}>Resend invitation</TableBulkAction>
-              <TableBulkAction className="bg-tone-risk hover:bg-tone-risk/90" onClick={guard(() => setBulk('revoke'))}>Revoke access</TableBulkAction>
-              <TableBulkAction className="bg-transparent opacity-75" onClick={() => setChecked({})}>
+              <TableBulkAction className="bg-tone-risk text-card shadow-none hover:bg-tone-risk/90 dark:bg-tone-risk dark:text-surface-inverted-foreground" onClick={guard(() => setBulk('revoke'))}>Revoke access</TableBulkAction>
+              <TableBulkAction className="bg-transparent opacity-75 shadow-none dark:bg-transparent" onClick={() => setChecked({})}>
                 Clear
               </TableBulkAction>
             </TableBulkBar>

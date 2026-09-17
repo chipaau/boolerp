@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, Search } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
+import { DatePicker } from '@workspace/ui/components/date-picker'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
 import { NativeSelect } from '@workspace/ui/components/native-select'
 import { useToast } from '@workspace/ui/components/toast'
@@ -166,7 +167,7 @@ export function ApprovalChainDialog({ draft, onClose }: { draft: { edit?: Approv
             <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3.5">
               <div>
                 <FieldLabel>Stand-in approver</FieldLabel>
-                <NativeSelect value={standIn} onChange={(e) => setStandIn(e.target.value)} className="[&>select]:h-10">
+                <NativeSelect value={standIn} onChange={(e) => setStandIn(e.target.value)}>
                   <option value="">No cover — requests wait</option>
                   {standIns.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -177,7 +178,7 @@ export function ApprovalChainDialog({ draft, onClose }: { draft: { edit?: Approv
               </div>
               <div>
                 <FieldLabel>Until</FieldLabel>
-                <input type="date" value={until} disabled={!standIn} onChange={(e) => setUntil(e.target.value)} className={cn(fieldClass, 'disabled:cursor-not-allowed disabled:opacity-50')} />
+                <DatePicker value={until} disabled={!standIn} onChange={setUntil} aria-label="Until" />
               </div>
             </div>
           </div>

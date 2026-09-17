@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { CloudUpload, Download } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
 import { NativeSelect } from '@workspace/ui/components/native-select'
 import { Switch } from '@workspace/ui/components/switch'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
+import { cn } from '@workspace/ui/lib/utils'
+import { downloadCsv, parseCsv } from '@/lib/csv'
 import { PersonAvatar } from '@/features/directory/people-bits'
-import { APP_GOVERNS, APP_KEYS, APP_ROLES, NO_STOCK_PERMS, ROLE_TEMPLATE, deriveRole, liveUnits, slugMail, unitPath } from '@/features/org/logic'
+import { APP_GOVERNS, APP_KEYS, APP_ROLES, NO_STOCK_PERMS, ROLE_TEMPLATE, deriveRole, fmtDate, liveUnits, parseDate, slugMail, unitPath } from '@/features/org/logic'
 import { usePeople, usePersonActions, useSites, useUnits } from '@/features/org/queries'
-import type { Perms, Person, PersonRole } from '@/features/org/types'
+import type { Perms, Person, PersonRole, Site, Unit } from '@/features/org/types'
 import { FieldLabel } from './control-bits'
 
 /** Every app's roles side by side; the current choice, when there is one, is filled in. */
@@ -119,7 +123,7 @@ export function BulkDialog({ kind, ids, onClose }: { kind: BulkKind | null; ids:
               {(kind === 'role' || kind === 'unit' || kind === 'access') && (
                 <div className="mt-3">
                   <FieldLabel>{kind === 'role' ? 'New role' : kind === 'unit' ? 'Destination unit' : 'Site'}</FieldLabel>
-                  <NativeSelect value={val} onChange={(e) => setVal(e.target.value)} className="[&>select]:h-10">
+                  <NativeSelect value={val} onChange={(e) => setVal(e.target.value)}>
                     {kind === 'role' && ['Staff', 'Manager', 'Admin'].map((r) => <option key={r} value={r}>{r}</option>)}
                     {kind === 'unit' && liveUnits(units).map((u) => <option key={u.id} value={u.id}>{unitPath(units, u.id, ' › ')}</option>)}
                     {kind === 'access' && sites.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.code}</option>)}
@@ -176,57 +180,165 @@ export function BulkDialog({ kind, ids, onClose }: { kind: BulkKind | null; ids:
   )
 }
 
-/** Paste rows: name, job title, admin unit, reports to, start date. Unknown units are skipped, never guessed. */
+const IMPORT_COLUMNS = ['Name', 'Email', 'Job title', 'Unit', 'Work site', 'Reports to', 'Start date'] as const
+type ImportRow = { line: number; name: string; email: string; title: string; unit?: Unit; site?: Site; mgr?: Person; start: string; errors: string[] }
+
+/**
+ * Upload a CSV of new employees: drop or browse a file, check every row (required fields, unknown
+ * unit or site, duplicate email), then import the clean rows. Unknown names are reported, never guessed.
+ */
 export function ImportEmployeesDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const units = useUnits(), people = usePeople()
+  const units = useUnits(), people = usePeople(), sites = useSites()
   const actions = usePersonActions()
   const toast = useToast()
-  const [text, setText] = useState('')
-  useEffect(() => { if (open) setText('') }, [open])
-  const rows = text.split('\n').map((r) => r.trim()).filter(Boolean)
-  const parsed = rows.map((r) => {
-    const c = r.split(',').map((x) => x.trim())
-    const unit = liveUnits(units).find((u) => u.name.toLowerCase() === (c[2] ?? '').toLowerCase())
-    return { name: c[0] ?? '', title: c[1] ?? '', unit, mgr: people.find((p) => p.name.toLowerCase() === (c[3] ?? '').toLowerCase()), start: c[4] ?? '' }
-  }).filter((r) => r.name)
-  const ok = parsed.filter((r) => r.unit), bad = parsed.filter((r) => !r.unit)
-  const live = liveUnits(units)
+  const input = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState<{ name: string; text: string } | null>(null)
+  const [over, setOver] = useState(false)
+  useEffect(() => {
+    if (open) { setFile(null); setOver(false) }
+  }, [open])
+
+  const parsed = useMemo(() => {
+    if (!file) return null
+    const live = liveUnits(units)
+    const grid = parseCsv(file.text)
+    if (!grid.length) return { error: 'The file is empty.', rows: [] as ImportRow[] }
+    const head = grid[0].map((h) => h.toLowerCase())
+    const col = (c: string) => head.indexOf(c.toLowerCase())
+    const missing = ['Name', 'Unit'].filter((c) => col(c) < 0)
+    if (missing.length) return { error: `The header row needs ${missing.join(' and ')} columns — download the template to see the layout.`, rows: [] as ImportRow[] }
+    const cell = (r: string[], c: string) => (col(c) >= 0 ? (r[col(c)] ?? '').trim() : '')
+    const low = (v: string) => v.toLowerCase()
+    const taken = new Set(people.map((p) => low(p.email)))
+    const seen = new Set<string>()
+    const rows = grid.slice(1).map((r, i): ImportRow => {
+      const errors: string[] = []
+      const name = cell(r, 'Name'), unitName = cell(r, 'Unit'), siteName = cell(r, 'Work site'), mgrName = cell(r, 'Reports to'), startRaw = cell(r, 'Start date')
+      const email = cell(r, 'Email') || (name ? slugMail(name) : '')
+      if (!name) errors.push('Name is required')
+      if (!unitName) errors.push('Unit is required')
+      const unit = unitName ? live.find((u) => low(u.name) === low(unitName) || low(u.code) === low(unitName) || low(unitPath(units, u.id)) === low(unitName)) : undefined
+      if (unitName && !unit) errors.push(`No unit “${unitName}”`)
+      const site = siteName ? sites.find((s) => low(s.name) === low(siteName) || low(s.code) === low(siteName)) : undefined
+      if (siteName && !site) errors.push(`No site “${siteName}”`)
+      const mgr = mgrName ? people.find((p) => !p.external && (low(p.name) === low(mgrName) || low(p.id) === low(mgrName))) : undefined
+      if (mgrName && !mgr) errors.push(`No one called “${mgrName}”`)
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push(`“${email}” is not an email`)
+      else if (email && (taken.has(low(email)) || seen.has(low(email)))) errors.push(`${email} is already used`)
+      if (email) seen.add(low(email))
+      const d = startRaw ? parseDate(startRaw) : null
+      if (startRaw && !d) errors.push(`Start date “${startRaw}” not understood`)
+      return { line: i + 2, name, email, title: cell(r, 'Job title'), unit, site, mgr, start: d ? fmtDate(d) : '', errors }
+    })
+    return { error: rows.length ? '' : 'The file has a header row but no people.', rows }
+  }, [file, people, units, sites])
+  const ok = parsed?.rows.filter((r) => !r.errors.length) ?? []
+  const bad = parsed?.rows.filter((r) => r.errors.length) ?? []
+
+  function read(f: File | undefined) {
+    if (!f) return
+    if (!/\.csv$/i.test(f.name) && f.type !== 'text/csv') return toast('That is not a CSV file', { ok: false })
+    f.text().then(
+      (text) => setFile({ name: f.name, text }),
+      () => toast('Could not read that file', { ok: false })
+    )
+  }
+  function template() {
+    const u = liveUnits(units).at(0), s = sites.at(0)
+    downloadCsv('hexa-employees-template.csv', [[...IMPORT_COLUMNS], ['Priya Nair', 'priya.nair@hexa.co', 'Stock Controller', u?.name ?? '', s?.name ?? '', '', fmtDate(new Date())]])
+  }
   function run() {
-    if (!parsed.length) return toast('Paste at least one row', { ok: false })
-    if (!ok.length) return toast(`Nothing imported — no unit “${bad[0]?.name ?? ''}”`, { ok: false })
+    if (!ok.length) return
     let code = actions.nextId()
     const made: Person[] = ok.map((r) => {
       const id = code
       code = id.replace(/\d+$/, (n) => String(Number(n) + 1).padStart(n.length, '0'))
-      const email = slugMail(r.name)
-      return { id, name: r.name, title: r.title || 'Job title not set', unitId: r.unit!.id, managerId: r.mgr?.id ?? null, status: 'Active', start: r.start || '', end: '', contract: 'Full-time', role: 'Staff', primarySite: null, access: [], phone: '', email, chat: '@' + email.split('@')[0], perms: { ...ROLE_TEMPLATE.Staff, Inventory: 'Viewer', Scan: 'None' } }
+      return { id, name: r.name, title: r.title || 'Job title not set', unitId: r.unit!.id, managerId: r.mgr?.id ?? null, status: 'Active', start: r.start, end: '', contract: 'Full-time', role: 'Staff', primarySite: r.site?.id ?? null, access: r.site ? [r.site.id] : [], phone: '', email: r.email, chat: '@' + r.email.split('@')[0], perms: { ...ROLE_TEMPLATE.Staff, Inventory: 'Viewer', Scan: 'None' } }
     })
     actions.importMany(made)
-    toast(`${made.length} imported${bad.length ? ` · ${bad.length} skipped` : ''}`)
+    toast(`${made.length} ${made.length === 1 ? 'employee' : 'employees'} imported${bad.length ? ` · ${bad.length} skipped` : ''}`)
     onClose()
   }
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="gap-0 p-0 sm:max-w-[580px]" showCloseButton={false}>
+      <DialogContent className="gap-0 p-0 sm:max-w-[680px]" showCloseButton={false}>
         <DialogHeader className="px-6 pt-[22px] pb-2 text-left">
           <DialogTitle className="text-[19px] tracking-[-0.015em]">Import employees</DialogTitle>
-          <DialogDescription className="mt-1.5 text-compact leading-[1.55] text-pretty text-body">One person per line: name, job title, admin unit, reports to, start date. The unit must already exist — rows naming an unknown unit are skipped and reported back, never guessed.</DialogDescription>
+          <DialogDescription className="mt-1.5 text-compact leading-[1.55] text-pretty text-body">
+            A CSV with a header row: {IMPORT_COLUMNS.join(', ')}. Name and Unit are required. Units and sites must already exist — rows naming one that does not are skipped, never guessed.
+          </DialogDescription>
         </DialogHeader>
-        <div className="px-6 pb-2">
-          <FieldLabel>Rows</FieldLabel>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} placeholder="Priya Nair, Stock Controller, Warehouse, Sofie Bakker, 14 Sep 2026" className="w-full resize-y rounded-[12px] bg-surface-band px-[13px] py-3 font-mono text-compact leading-[1.6] text-foreground outline-none placeholder:text-placeholder focus-visible:ring-2 focus-visible:ring-ring" />
-          <div className="mt-3 rounded-xl border border-border bg-surface-band px-4 py-3 text-compact leading-[1.55] text-body">
-            {!rows.length ? `Nothing pasted yet. Unit names must match exactly — you have ${live.slice(0, 4).map((u) => u.name).join(', ')} and ${live.length - 4} more.` : `${ok.length} ${ok.length === 1 ? 'row' : 'rows'} ready${bad.length ? ` · ${bad.length} skipped for an unknown unit: ${bad.slice(0, 3).map((b) => b.name).join(', ')}` : ' · every unit matched'}`}
+        <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto px-6 pb-2">
+          <input ref={input} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { read(e.target.files?.[0]); e.target.value = '' }} />
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Upload a CSV file"
+            onClick={() => input.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.current?.click() }
+            }}
+            onDragOver={(e) => { e.preventDefault(); setOver(true) }}
+            onDragLeave={() => setOver(false)}
+            onDrop={(e) => { e.preventDefault(); setOver(false); read(e.dataTransfer.files[0]) }}
+            className={cn('flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-7 text-center outline-none transition-colors duration-instant focus-visible:ring-2 focus-visible:ring-ring', over ? 'border-ring bg-surface-soft' : 'border-border bg-surface-band hover:bg-surface-soft')}
+          >
+            <CloudUpload className="size-7 text-faint" strokeWidth={1.6} />
+            <div className="text-ui-sm font-bold text-foreground">
+              {file ? file.name : <>Drop a CSV here or <span className="underline underline-offset-2">browse</span></>}
+            </div>
+            <div className="text-caption text-faint">{file ? 'Drop another file or click to replace it' : 'One person per row, with a header row'}</div>
           </div>
+          <button type="button" onClick={template} className="inline-flex items-center gap-1.5 self-start rounded text-compact font-bold text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+            <Download className="size-3.5" strokeWidth={1.8} />
+            Download template
+          </button>
+          {parsed?.error && <div className="rounded-xl border border-border bg-surface-band px-4 py-3 text-compact text-tone-danger-foreground">{parsed.error}</div>}
+          {parsed && parsed.rows.length > 0 && (
+            <>
+              <div className="text-compact text-body">
+                {ok.length} {ok.length === 1 ? 'row' : 'rows'} ready{bad.length ? ` · ${bad.length} will be skipped` : ' · every row checks out'}
+              </div>
+              <div className="overflow-clip rounded-xl border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="h-auto hover:bg-transparent">
+                      <TableHead className="w-12">Row</TableHead>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead>Check</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {parsed.rows.map((r) => (
+                      <TableRow key={r.line} className="hover:bg-transparent">
+                        <TableCell className="text-caption tabular-nums text-faint">{r.line}</TableCell>
+                        <TableCell className="max-w-[220px]">
+                          <span className="block truncate text-ui-sm font-bold text-foreground">{r.name || '—'}</span>
+                          <span className="block truncate text-caption text-faint">{[r.email, r.title].filter(Boolean).join(' · ')}</span>
+                        </TableCell>
+                        <TableCell className="max-w-[160px] truncate text-compact">{r.unit ? unitPath(units, r.unit.id, ' › ') : '—'}</TableCell>
+                        <TableCell className="text-compact whitespace-normal">
+                          {r.errors.length ? <span className="text-tone-danger-foreground">{r.errors.join(' · ')}</span> : <Badge variant="success" size="sm">Ready</Badge>}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </div>
         <div className="flex items-center justify-end gap-[9px] px-6 pt-4 pb-[18px]">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={run}>{rows.length ? `Import ${rows.length} ${rows.length === 1 ? 'person' : 'people'}` : 'Import'}</Button>
+          <Button onClick={run} disabled={!ok.length}>
+            {ok.length ? `Import ${ok.length} ${ok.length === 1 ? 'employee' : 'employees'}` : 'Import'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
   )
 }
-

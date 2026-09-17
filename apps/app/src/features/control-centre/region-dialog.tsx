@@ -71,7 +71,7 @@ export function RegionDialog({ draft, onClose, onSaved }: { draft: RegionDraft |
           <div className="grid gap-3.5 sm:grid-cols-2">
             <div>
               <FieldLabel>Country</FieldLabel>
-              <NativeSelect value={country} onChange={(e) => setCountry(e.target.value)} disabled={!!editing} className="[&>select]:h-10">
+              <NativeSelect value={country} onChange={(e) => setCountry(e.target.value)} disabled={!!editing}>
                 {editing && !choices.some((c) => c.name === country) && <option value={country}>{country}</option>}
                 {choices.map((c) => (
                   <option key={c.id} value={c.name}>
