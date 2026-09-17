@@ -35,8 +35,8 @@ describe("WorkspaceSidebar", () => {
     expect(screen.getByTestId("dot")).toBeInTheDocument()
     expect(screen.getByLabelText("3 at risk")).toHaveClass("bg-tone-risk-soft")
     expect(screen.getByText("2")).toHaveClass("bg-tone-warning-soft")
-    // zero stays quiet even with a tone
-    expect(screen.getByText("0")).not.toHaveClass("bg-tone-warning-soft")
+    // only counts that need attention show: zero and untoned counts are hidden
+    expect(screen.queryByText("0")).toBeNull()
     // icon-less rows carry an initial for the folded rail
     expect(document.querySelectorAll('[data-slot="nav-initial"]')).toHaveLength(3)
     expect(document.querySelector('[data-slot="sidebar-footer"]')).toBeNull()
@@ -133,7 +133,8 @@ describe("SidebarAttention", () => {
     expect(onClick).toHaveBeenCalled()
     expect(screen.getByText("4")).toHaveClass("bg-tone-risk-soft")
     expect(screen.getByText("2")).toHaveClass("bg-tone-warning-soft")
-    expect(screen.getByText("1")).not.toHaveClass("bg-tone-warning-soft")
+    expect(screen.getByText("1")).toHaveClass("bg-tone-warning-soft")
+    expect(screen.getByText("5")).toHaveClass("bg-tone-warning-soft")
   })
 
   it("shows the empty line", () => {
