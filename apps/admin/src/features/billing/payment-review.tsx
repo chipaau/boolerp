@@ -228,14 +228,14 @@ export function PaymentReviewDialog({ item, tenant, onClose }: { item: PaymentTo
   )
 }
 
-/** Under a ledger status: "Payment under review" while pending, "Verified by …" once verified. */
+/** Under a ledger status: "Pending" while pending, "Verified by …" once verified. */
 export function PaymentNote({ invoiceNo }: { invoiceNo: string }) {
   const note = useInvoicePaymentNotes().get(invoiceNo)
   if (!note) return null
   if (note.state === 'review') {
     return (
       <Badge variant="warning" size="sm" className="mt-1 px-2 py-0 text-micro">
-        Payment under review
+        Pending
       </Badge>
     )
   }

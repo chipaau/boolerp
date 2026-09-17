@@ -11,9 +11,9 @@ const triggerClass =
   "inline-flex items-center gap-1.5 pb-[11px] text-ui whitespace-nowrap text-muted-foreground transition-colors duration-instant ease-bool outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:text-disabled-foreground aria-disabled:pointer-events-none aria-disabled:text-disabled-foreground data-active:font-bold data-active:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
 // the one rule under the active tab; it slides between tabs
 const indicatorClass =
-  "pointer-events-none absolute -bottom-px left-0 h-0.5 w-(--active-tab-width) translate-x-(--active-tab-left) rounded-full bg-sage transition-[translate,width] duration-considered ease-bool motion-reduce:transition-none"
+  "pointer-events-none absolute -bottom-px left-0 h-0.5 w-(--active-tab-width) translate-x-(--active-tab-left) rounded-full bg-brand-soft transition-[translate,width] duration-considered ease-bool motion-reduce:transition-none"
 
-/** Underline tabs: taupe labels, the active one in bold ink over a 2px sage rule that slides on select. */
+/** Underline tabs: taupe labels, the active one in bold ink over a 2px brand-orange rule that slides on select. */
 function Tabs({ className, ...props }: TabsPrimitive.Root.Props) {
   return (
     <TabsPrimitive.Root

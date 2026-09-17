@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { Building2, LayoutDashboard, LifeBuoy, MapPin, MessageSquarePlus, ReceiptText, UserCog } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { HexGlyph } from '@workspace/ui/components/hex-glyph'
+import adminGlyph from '@workspace/assets/logos/admin-glyph.png'
 import { useToast } from '@workspace/ui/components/toast'
 import { SidebarAttention, WorkspaceSidebar } from '@workspace/ui/components/workspace-sidebar'
 import type { SidebarAttentionTone, SidebarNavGroup } from '@workspace/ui/components/workspace-sidebar'
@@ -56,8 +56,7 @@ export function AdminSidebar() {
 
   return (
     <WorkspaceSidebar
-      // no admin artwork in packages/assets/logos yet, so the plate carries the hex glyph like AppIcon's fallback
-      identity={{ glyph: <HexGlyph size={20} className="text-tone-slate" />, name: 'Admin', description: 'Tenants, billing and access' }}
+      identity={{ glyph: <img src={adminGlyph} alt="" aria-hidden="true" className="size-[26px] object-contain dark:brightness-[.82] dark:saturate-[.9]" />, name: 'Admin', description: 'Tenants, billing and access' }}
       groups={groups}
       footer={{
         actions: [

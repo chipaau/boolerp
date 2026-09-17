@@ -10,11 +10,14 @@ import { creditDrawerFor, useInvoiceActions } from './billing-drawers'
 import type { BillingDrawer } from './billing-drawers'
 import { LedgerStatusBadge, signedMvr } from './ledger-bits'
 import { formatMvr } from './logic'
+import { useInvoicePaymentNotes } from './queries'
 import { PaymentNote } from './payment-review'
 import type { LedgerLine } from './types'
 
 /** The billing ledger: invoices and credits, with the per-row action and credit/refund shortcut. */
 export function LedgerTable({ rows, tenants, onDrawer, onClear }: { rows: LedgerLine[]; tenants: Map<string, DirectoryTenant>; onDrawer: (d: BillingDrawer) => void; onClear: () => void }) {
+  // an invoice with a slip awaiting review is verified from the payments panel, never marked paid by hand
+  const paymentNotes = useInvoicePaymentNotes()
   const navigate = useNavigate()
   const toast = useToast()
   const actions = useInvoiceActions()
@@ -91,9 +94,11 @@ export function LedgerTable({ rows, tenants, onDrawer, onClear }: { rows: Ledger
                         {e.status === 'Paid' ? 'Refund' : 'Credit note'}
                       </Button>
                     )}
-                    <Button variant="outline" size="sm" onClick={() => act(e, t)}>
-                      {credit ? 'Download' : e.status === 'Paid' ? 'Receipt' : e.status === 'Draft' ? 'Issue' : 'Mark paid'}
-                    </Button>
+                    {(credit || e.status === 'Paid' || e.status === 'Draft' || paymentNotes.get(e.no)?.state !== 'review') && (
+                      <Button variant="outline" size="sm" onClick={() => act(e, t)}>
+                        {credit ? 'Download' : e.status === 'Paid' ? 'Receipt' : e.status === 'Draft' ? 'Issue' : 'Mark paid'}
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

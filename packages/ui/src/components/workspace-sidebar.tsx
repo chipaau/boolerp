@@ -68,7 +68,7 @@ const COUNT_TONE: Record<Exclude<SidebarCountTone, "neutral">, string> = {
 const ATTENTION_DOT: Record<SidebarAttentionTone, DotTone> = { neutral: "neutral", caution: "tan", warning: "warning", risk: "risk" }
 
 // every block after the first carries the hairline rule and the gap above it
-const BLOCK = "relative p-0 not-first:mt-[18px] not-first:pt-4 not-first:before:absolute not-first:before:top-0 not-first:before:right-0 not-first:before:left-0 not-first:before:h-px not-first:before:bg-sidebar-border"
+const BLOCK = "relative p-0 not-first:mt-3 not-first:pt-3 not-first:before:absolute not-first:before:top-0 not-first:before:right-0 not-first:before:left-0 not-first:before:h-px not-first:before:bg-sidebar-border"
 
 function isComponent(icon: SidebarNavItem["icon"]): icon is LucideIcon {
   return typeof icon === "function" || (typeof icon === "object" && icon !== null && !React.isValidElement(icon) && "render" in icon)
@@ -78,7 +78,8 @@ function NavRow({ item, depth, tree }: { item: SidebarNavItem; depth: number; tr
   const Icon = item.icon
   const kids = item.items ?? []
   const tinted = item.countTone && item.countTone !== "neutral" && (item.count ?? 0) > 0
-  const pad = 16 + (tree ? 18 : 0) + depth * 14
+  // 9px puts a top-level icon directly under the identity plate's glyph; tree rows indent from there
+  const pad = 9 + (tree ? 18 : 0) + depth * 14
   return (
     <SidebarMenuItem className={cn(depth > 0 && "group-data-[collapsible=icon]:hidden")}>
       {tree && (
@@ -113,7 +114,7 @@ function NavRow({ item, depth, tree }: { item: SidebarNavItem; depth: number; tr
         <span className={cn(Icon === undefined && "group-data-[collapsible=icon]:hidden")}>{item.title}</span>
       </SidebarMenuButton>
       {item.count !== undefined && (
-        <SidebarMenuBadge aria-label={item.countLabel} className={cn("top-2 right-2.5", tinted && COUNT_TONE[item.countTone as "warning" | "risk"])}>
+        <SidebarMenuBadge aria-label={item.countLabel} className={cn("top-1.5 right-2.5", tinted && COUNT_TONE[item.countTone as "warning" | "risk"])}>
           {item.count}
         </SidebarMenuBadge>
       )}
@@ -136,7 +137,7 @@ function SidebarNavGroups({ groups }: { groups: SidebarNavGroup[] }) {
         const tree = g.items.some((it) => it.items !== undefined)
         return (
           <SidebarGroup key={g.title ?? `group-${i}`} data-slot="workspace-sidebar-group" className={BLOCK}>
-            {g.title && <SidebarGroupLabel className="mb-2.5 h-auto">{g.title}</SidebarGroupLabel>}
+            {g.title && <SidebarGroupLabel className="mb-1.5 h-auto">{g.title}</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu className="gap-px">
                 {g.items.map((item) => (
@@ -177,7 +178,7 @@ function SidebarSection({
       ) : (
         <>
           {(title || action) && (
-            <div className="mb-2.5 flex items-center gap-2">
+            <div className="mb-1.5 flex items-center gap-2">
               {title && <SidebarGroupLabel className="h-auto">{title}</SidebarGroupLabel>}
               {action && <div className="ms-auto">{action}</div>}
             </div>
@@ -233,7 +234,7 @@ function WorkspaceSidebar({ identity, groups = [], footer, children, className }
     <Sidebar collapsible="icon" className={cn("top-(--header-height) h-[calc(100svh-var(--header-height))]!", className)}>
       {/* rows carry their own right padding so their fill runs almost to the rail's edge, stopping 12px short */}
       <SidebarContent className="gap-0 pt-5 pr-3 pl-[22px] group-data-[collapsible=icon]:px-2">
-        <div data-slot="workspace-sidebar-identity" className="mb-5 flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+        <div data-slot="workspace-sidebar-identity" className="mb-4 flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
           {/* soft plate with a hairline brand edge */}
           <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-surface-soft shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--brand)_14%,transparent)]" title={identity.name}>
             {identity.glyph}
