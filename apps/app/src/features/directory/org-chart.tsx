@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ChevronDown, MoreHorizontal } from 'lucide-react'
+import { ChevronDown, ChevronUp, Minus, MoreHorizontal, Plus } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@workspace/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@workspace/ui/components/dropdown-menu'
+import { SearchField } from '@workspace/ui/components/search-field'
+import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
+import { TableToolbar } from '@workspace/ui/components/table'
 import { ToneDot } from '@workspace/ui/components/tone-dot'
 import { cn } from '@workspace/ui/lib/utils'
 import { BRAND } from '@/lib/brand'
@@ -79,7 +83,7 @@ export function placeNodes(root: OrgNode, openSet: Record<string, boolean>) {
  * canvas scrolls to `focus` when it changes.
  */
 export function OrgCanvas({
-  tree, openSet, setOpen, zoom, hits, focus, onOpenPerson, onSeePeople, units,
+  tree, openSet, setOpen, zoom, hits, focus, onOpenPerson, onSeePeople, units, selected, onSelect, menuExtra, onDropUnit, className,
 }: {
   tree: ReturnType<typeof buildOrgTree>
   openSet: Record<string, boolean>
@@ -90,12 +94,57 @@ export function OrgCanvas({
   onOpenPerson: (id: string) => void
   onSeePeople: (unitId: string) => void
   units: Unit[]
+  /** Editing (Control Centre): the selected card is outlined, and clicking a group or the company selects it. */
+  selected?: string
+  onSelect?: (n: OrgNode) => void
+  /** Further menu items for a card, under the built-in ones. */
+  menuExtra?: (n: OrgNode) => ReactNode
+  /** Editing: drag a group card onto the company or another group to move it there. Return false to refuse the drop. */
+  onDropUnit?: (unitId: string, target: OrgNode) => boolean
+  className?: string
 }) {
   const view = useRef<HTMLDivElement>(null)
   const layout = useMemo(() => placeNodes(tree.root, openSet), [tree, openSet])
   const navigate = useNavigate()
 
   const flip = (id: string) => setOpen({ ...openSet, [id]: !openSet[id] })
+  const [drag, setDrag] = useState<{ id: string; over: string | null } | null>(null)
+  const dragged = useRef(0)
+  function startDrag(n: OrgNode, e: React.PointerEvent) {
+    if (!onDropUnit || n.kind !== 'unit' || !n.unit || e.button !== 0 || (e.target as HTMLElement).closest('button')) return
+    const unitId = n.unit.id, x0 = e.clientX, y0 = e.clientY
+    let moving = false, over: string | null = null
+    const move = (ev: PointerEvent) => {
+      if (!moving && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return
+      moving = true
+      const hit = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>('[data-node]')?.dataset.node ?? null
+      over = hit && hit !== n.id && (hit === 'co' || hit.startsWith('g:')) ? hit : null
+      setDrag({ id: n.id, over })
+    }
+    const stop = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('keydown', key) }
+    const up = () => {
+      stop()
+      if (moving) dragged.current = Date.now()
+      const target = over ? tree.byId[over] : undefined
+      setDrag(null)
+      if (moving && target) onDropUnit(unitId, target)
+    }
+    const key = (ev: KeyboardEvent) => { if (ev.key === 'Escape') { stop(); if (moving) dragged.current = Date.now(); setDrag(null) } }
+    document.addEventListener('pointermove', move)
+    document.addEventListener('pointerup', up)
+    document.addEventListener('keydown', key)
+  }
+  // reading: a person opens their profile, a group folds open or shut. Editing: a group is selected, and opens if shut
+  const activate = (n: OrgNode) => {
+    if (Date.now() - dragged.current < 300) return
+    if (n.kind === 'person' && n.person) return onOpenPerson(n.person.id)
+    if (onSelect) {
+      onSelect(n)
+      if (n.children.length && !openSet[n.id]) flip(n.id)
+      return
+    }
+    if (n.children.length) flip(n.id)
+  }
   useEffect(() => {
     const el = view.current, pos = focus ? layout.placed[focus] : undefined
     if (!el || !pos) return
@@ -121,7 +170,7 @@ export function OrgCanvas({
   }
 
   return (
-    <div ref={view} className="relative h-[min(72vh,720px)] overflow-auto bg-surface-band bg-[radial-gradient(var(--divider)_1px,transparent_1px)] p-[26px] pb-10 [background-size:18px_18px]">
+    <div ref={view} className={cn('relative h-[min(72vh,720px)] overflow-auto bg-surface-band bg-[radial-gradient(var(--divider)_1px,transparent_1px)] p-[26px] pb-10 [background-size:18px_18px]', className)}>
       <div className="relative transition-[width,height] duration-considered" style={{ width: Math.round(layout.width * zoom), height: Math.round(layout.height * zoom) }}>
         <div className="absolute top-0 left-0 origin-top-left transition-transform duration-considered" style={{ width: layout.width, height: layout.height, transform: `scale(${zoom})` }}>
           <svg width={layout.width} height={layout.height} className="pointer-events-none absolute top-0 left-0 overflow-visible">
@@ -132,7 +181,7 @@ export function OrgCanvas({
               if (!live) return null
               const px = par.x + CW / 2, py = par.y + CH + 12, cx = ch.x + CW / 2, cy = ch.y - 6
               const mid = py + (cy - py) * 0.55
-              const col = `var(--color-tone-${n.tone})`
+              const col = `var(--tone-${n.tone})`
               return (
                 <g key={n.id} style={{ color: col }}>
                   <path d={`M${px} ${py} C ${px} ${mid}, ${cx} ${cy - (cy - py) * 0.45}, ${cx} ${cy}`} fill="none" stroke="currentColor" strokeWidth={1.5} strokeDasharray="5 6" strokeLinecap="round" opacity={0.45} />
@@ -155,9 +204,12 @@ export function OrgCanvas({
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => (isPerson && n.person ? onOpenPerson(n.person.id) : nKids ? flip(n.id) : undefined)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); isPerson && n.person ? onOpenPerson(n.person.id) : flip(n.id) } }}
-                  className={cn('relative cursor-pointer rounded-[14px] px-3.5 py-[13px] shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring', isRoot ? 'bg-tone-warning-soft' : 'bg-card', hit && 'ring-2 ring-brand-soft')}
+                  data-node={n.id}
+                  aria-pressed={onSelect && !isPerson ? selected === n.id : undefined}
+                  onPointerDown={(e) => startDrag(n, e)}
+                  onClick={() => activate(n)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); activate(n) } }}
+                  className={cn('relative cursor-pointer rounded-[14px] px-3.5 py-[13px] shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring', isRoot ? 'bg-tone-warning-soft' : 'bg-card', hit && 'ring-2 ring-brand-soft', selected === n.id && 'ring-2 ring-brand', drag?.id === n.id && 'opacity-45', drag?.over === n.id && 'ring-2 ring-brand ring-offset-2 ring-offset-surface-band', onDropUnit && n.kind === 'unit' && 'touch-none')}
                   style={{ width: CW, height: CH }}
                 >
                   <div className="flex items-start gap-[11px]">
@@ -195,6 +247,12 @@ export function OrgCanvas({
                             <DropdownMenuItem disabled={!n.person} onClick={() => n.person && onOpenPerson(n.person.id)}>Open profile</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => flip(n.id)}>{open ? 'Collapse everything' : 'Show top-level groups'}</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => void navigate({ to: '/$app', params: { app: 'directory' }, search: {} })}>See everyone in list</DropdownMenuItem>
+                          </>
+                        )}
+                        {menuExtra && (
+                          <>
+                            <DropdownMenuSeparator />
+                            {menuExtra(n)}
                           </>
                         )}
                       </DropdownMenuContent>
@@ -244,4 +302,73 @@ export function ancestorsOf(tree: ReturnType<typeof buildOrgTree>, id: string) {
   let cur = tree.byId[id]?.parentId
   while (cur) { out.push(cur); cur = tree.byId[cur]?.parentId }
   return out
+}
+
+const ZOOMS = [0.4, 0.55, 0.7, 0.85, 1, 1.2]
+
+/**
+ * What every org chart screen shares: which cards are open, zoom, find-in-chart with next and
+ * previous, and revealing `reveal` (a deep link or a selection) by opening its ancestors.
+ */
+export function useOrgChart(tree: ReturnType<typeof buildOrgTree>, units: Unit[], reveal: string | null) {
+  const [openSet, setOpenSet] = useState<Record<string, boolean>>({ co: true })
+  const [zoom, setZoom] = useState(0.85)
+  const [q, setQ] = useState('')
+  const [matchIx, setMatchIx] = useState(0)
+
+  useEffect(() => {
+    if (!reveal) return
+    setOpenSet((o) => ({ ...o, co: true, ...Object.fromEntries(ancestorsOf(tree, reveal).map((a) => [a, true])) }))
+  }, [reveal, tree])
+
+  const matches = useMemo(() => matchNodes(tree, units, q), [tree, units, q])
+  const withMatches = useMemo(() => {
+    const o = { ...openSet }
+    matches.forEach((id) => ancestorsOf(tree, id).forEach((a) => { o[a] = true }))
+    return o
+  }, [openSet, matches, tree])
+  const step = (dir: 1 | -1) => setZoom((z) => { const i = ZOOMS.indexOf(z); return ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? 3 : i) + dir))] })
+  const current = matches.length ? matches[Math.min(matchIx, matches.length - 1)] : null
+  return { openSet: withMatches, setOpenSet, zoom, setZoom, step, q, setQ, matches, matchIx, setMatchIx, current }
+}
+
+/** Find, a summary, collapse or expand everything, and zoom: the bar above every org chart. */
+export function OrgChartToolbar({ tree, chart, summary }: { tree: ReturnType<typeof buildOrgTree>; chart: ReturnType<typeof useOrgChart>; summary: ReactNode }) {
+  const { q, setQ, matches, matchIx, setMatchIx, setOpenSet, zoom, setZoom, step } = chart
+  return (
+    <TableToolbar className="px-5">
+      <SearchField size="sm" placeholder="Find in chart" value={q} onChange={(e) => { setQ(e.target.value); setMatchIx(0) }} className="min-w-[200px] max-w-xs" />
+      <span className="text-compact font-bold text-muted-foreground">{summary}</span>
+      {q.trim() && (
+        <Badge variant={matches.length ? 'warning' : 'neutral'} size="sm" className="gap-1.5 pr-1">
+          {matches.length ? `${Math.min(matchIx, matches.length - 1) + 1} of ${matches.length} matching` : 'No match'}
+          <Button variant="ghost" size="icon-xs" aria-label="Previous match" disabled={!matches.length} onClick={() => setMatchIx((i) => (i - 1 + matches.length) % matches.length)} className="size-5 text-current">
+            <ChevronUp />
+          </Button>
+          <Button variant="ghost" size="icon-xs" aria-label="Next match" disabled={!matches.length} onClick={() => setMatchIx((i) => (i + 1) % matches.length)} className="size-5 text-current">
+            <ChevronDown />
+          </Button>
+        </Badge>
+      )}
+      <span className="flex-1" />
+      <span className="text-caption text-faint">Depth</span>
+      <Badge variant="filter" render={<button type="button" onClick={() => { setOpenSet({ co: true }); setZoom(0.85) }} />}>
+        Collapse all
+      </Badge>
+      <Badge variant="filter" render={<button type="button" onClick={() => { setOpenSet(Object.fromEntries(tree.nodes.filter((n) => n.children.length).map((n) => [n.id, true]))); setZoom(0.55) }} />}>
+        Expand all
+      </Badge>
+      <Segmented>
+        <SegmentedItem aria-label="Zoom out" className="w-[30px] px-0" onClick={() => step(-1)}>
+          <Minus className="size-3.5" strokeWidth={1.8} />
+        </SegmentedItem>
+        <SegmentedItem className="w-12 px-0 tabular-nums" onClick={() => setZoom(0.85)}>
+          {Math.round(zoom * 100)}%
+        </SegmentedItem>
+        <SegmentedItem aria-label="Zoom in" className="w-[30px] px-0" onClick={() => step(1)}>
+          <Plus className="size-3.5" strokeWidth={1.8} />
+        </SegmentedItem>
+      </Segmented>
+    </TableToolbar>
+  )
 }

@@ -1,21 +1,8 @@
 import { useState } from 'react'
 import { Link, useLocation, useSearch } from '@tanstack/react-router'
 import { LifeBuoy, MessageSquarePlus } from 'lucide-react'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuBadge,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-} from '@workspace/ui/components/sidebar'
-import { MadeBy } from '@workspace/ui/components/made-by'
-import { cn } from '@workspace/ui/lib/utils'
+import { WorkspaceSidebar } from '@workspace/ui/components/workspace-sidebar'
+import type { SidebarNavGroup } from '@workspace/ui/components/workspace-sidebar'
 import { AppIcon } from '@/components/app-icon'
 import { getRail } from '@/features/rails'
 import { FeedbackDialog } from '@/features/shell/feedback-dialog'
@@ -23,17 +10,11 @@ import { useNavCounts, useSavedViews } from '@/features/shell/queries'
 import { SupportDialog } from '@/features/shell/support-dialog'
 import type { AppDef, AppMenuItem, AppMenuSection } from '@/lib/apps'
 
-const BADGE_TONE = {
-  risk: 'bg-tone-risk-soft text-tone-risk-foreground',
-  warning: 'bg-tone-warning-soft text-tone-warning-foreground',
-} as const
-
 /**
- * The design's rail: the app's identity at the top (glyph plate, name, one-line description), an
- * overline label per further group, right-rounded rows that bleed to the rail's edge (ivory +
- * short amber bar when active), counts at the right, saved views that carry their filter as
- * search params. Support, feedback and the maker's mark sit at the foot. Collapsed to icons, the
- * app's glyph plate stays as its label. The account and the way back to Home live in the topbar.
+ * The app's rail, a thin adapter over the shared WorkspaceSidebar: identity from the registry,
+ * the registry's menu groups (plus saved views, which carry their filter as search params) with
+ * live counts, or the app's own rail sections when it registers one. Support, feedback and the
+ * maker's mark sit at the foot. The account and the way back to Home live in the topbar.
  */
 export function AppSidebar({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
@@ -46,7 +27,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
   const [feedback, setFeedback] = useState(false)
 
   // the registry's groups, then the user's saved views as one more group (same row shape)
-  const groups: AppMenuSection[] = views.length
+  const sections: AppMenuSection[] = views.length
     ? [...app.menu, { title: 'My views', items: views.map((v) => ({ title: v.title, slug: v.section, search: v.search, badge: v.badgeKey ? { key: v.badgeKey } : undefined })) }]
     : app.menu
 
@@ -58,84 +39,40 @@ export function AppSidebar({ app }: { app: AppDef }) {
     return ['filter', 'q'].every((k) => (search[k] ?? undefined) === (want[k] ?? undefined))
   }
 
-  return (
-    <Sidebar className="top-(--header-height) h-[calc(100svh-var(--header-height))]!" collapsible="icon">
-      {/* rows carry their own right padding so their fill runs almost to the rail's edge, stopping 12px short */}
-      <SidebarContent className="gap-0 pr-3 pl-[22px] pt-5 group-data-[collapsible=icon]:px-2">
-        <div className="mb-5 flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-          <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-surface-soft" title={app.name}>
-            <AppIcon slug={app.slug} size={22} />
-          </span>
-          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-heading-sm font-bold text-foreground">{app.name}</div>
-            <div className="truncate text-caption text-muted-foreground">{app.description}</div>
-          </div>
-        </div>
-        {Rail && <Rail app={app} />}
-        {!Rail &&
-          groups.map((section, i) => (
-          <SidebarGroup
-            key={section.title ?? `s${i}`}
-            className={cn('p-0', i > 0 && 'relative mt-[18px] pt-4 before:absolute before:top-0 before:right-0 before:left-0 before:h-px before:bg-sidebar-border')}
-          >
-            {/* the header above already names the app, so a first group titled after it stays unlabelled */}
-            {section.title && section.title !== app.name && <SidebarGroupLabel className="mb-2.5 h-auto">{section.title}</SidebarGroupLabel>}
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-px">
-                {section.items.map((item) => {
-                  const ItemIcon = item.icon
-                  const count = item.badge ? counts[item.badge.key] : undefined
-                  const link = item.slug ? (
-                    <Link to="/$app/$section" params={{ app: app.slug, section: item.slug }} search={item.search} />
-                  ) : (
-                    <Link to="/$app" params={{ app: app.slug }} />
-                  )
-                  return (
-                    <SidebarMenuItem key={`${item.slug}:${item.title}`}>
-                      <SidebarMenuButton
-                        render={link}
-                        isActive={isActive(item)}
-                        tooltip={item.title}
-                        className={cn(count !== undefined && 'pr-10')}
-                      >
-                        {ItemIcon && <ItemIcon strokeWidth={1.75} />}
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-                      {item.badge && count !== undefined && (
-                        <SidebarMenuBadge className={cn('right-2.5 top-2', item.badge.tone && BADGE_TONE[item.badge.tone])}>
-                          {count}
-                        </SidebarMenuBadge>
-                      )}
-                    </SidebarMenuItem>
-                  )
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-          ))}
-      </SidebarContent>
+  const groups: SidebarNavGroup[] = sections.map((section) => ({
+    // the header already names the app, so a group titled after it stays unlabelled
+    title: section.title === app.name ? undefined : section.title,
+    items: section.items.map((item) => {
+      const count = item.badge ? counts[item.badge.key] : undefined
+      return {
+        key: `${item.slug}:${item.title}`,
+        title: item.title,
+        icon: item.icon,
+        render: item.slug ? <Link to="/$app/$section" params={{ app: app.slug, section: item.slug }} search={item.search} /> : <Link to="/$app" params={{ app: app.slug }} />,
+        active: isActive(item),
+        count,
+        countTone: item.badge?.tone,
+      }
+    }),
+  }))
 
-      <SidebarFooter className="gap-0 border-t border-sidebar-border px-3 pt-2 pb-3.5 group-data-[collapsible=icon]:px-2">
-        <SidebarMenu className="gap-px">
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Support" onClick={() => setSupport(true)}>
-              <LifeBuoy strokeWidth={1.75} />
-              <span>Support</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Send feedback" onClick={() => setFeedback(true)}>
-              <MessageSquarePlus strokeWidth={1.75} />
-              <span>Send feedback</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <MadeBy href="https://bool.mv" className="mt-3.5 ps-4 group-data-[collapsible=icon]:hidden" />
-      </SidebarFooter>
+  return (
+    <>
+      <WorkspaceSidebar
+        identity={{ glyph: <AppIcon slug={app.slug} size={26} />, name: app.name, description: app.description }}
+        groups={Rail ? [] : groups}
+        footer={{
+          actions: [
+            { label: 'Support', icon: LifeBuoy, onClick: () => setSupport(true) },
+            { label: 'Send feedback', icon: MessageSquarePlus, onClick: () => setFeedback(true) },
+          ],
+          madeBy: { href: 'https://bool.mv' },
+        }}
+      >
+        {Rail && <Rail app={app} />}
+      </WorkspaceSidebar>
       <SupportDialog open={support} onClose={() => setSupport(false)} onFeedback={() => { setSupport(false); setFeedback(true) }} />
       <FeedbackDialog open={feedback} page={pathname} onClose={() => setFeedback(false)} />
-
-      <SidebarRail />
-    </Sidebar>
+    </>
   )
 }

@@ -20,6 +20,7 @@ import { Route as AppAppRouteImport } from './routes/_app/$app'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppAppIndexRouteImport } from './routes/_app/$app/index'
 import { Route as AppAppSectionRouteImport } from './routes/_app/$app/$section'
+import { Route as AppNotificationsPreferencesRouteImport } from './routes/_app/notifications_.preferences'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -75,6 +76,12 @@ const AppAppSectionRoute = AppAppSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => AppAppRoute,
 } as any)
+const AppNotificationsPreferencesRoute =
+  AppNotificationsPreferencesRouteImport.update({
+    id: '/notifications_/preferences',
+    path: '/notifications/preferences',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/$app': typeof AppAppRouteWithChildren
   '/notifications': typeof AppNotificationsRoute
   '/$app/$section': typeof AppAppSectionRoute
+  '/notifications/preferences': typeof AppNotificationsPreferencesRoute
   '/$app/': typeof AppAppIndexRoute
 }
 export interface FileRoutesByTo {
@@ -97,6 +105,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof AppNotificationsRoute
   '/': typeof AppIndexRoute
   '/$app/$section': typeof AppAppSectionRoute
+  '/notifications/preferences': typeof AppNotificationsPreferencesRoute
   '/$app': typeof AppAppIndexRoute
 }
 export interface FileRoutesById {
@@ -111,6 +120,7 @@ export interface FileRoutesById {
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/': typeof AppIndexRoute
   '/_app/$app/$section': typeof AppAppSectionRoute
+  '/_app/notifications_/preferences': typeof AppNotificationsPreferencesRoute
   '/_app/$app/': typeof AppAppIndexRoute
 }
 export interface FileRouteTypes {
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
     | '/$app'
     | '/notifications'
     | '/$app/$section'
+    | '/notifications/preferences'
     | '/$app/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/'
     | '/$app/$section'
+    | '/notifications/preferences'
     | '/$app'
   id:
     | '__root__'
@@ -149,6 +161,7 @@ export interface FileRouteTypes {
     | '/_app/notifications'
     | '/_app/'
     | '/_app/$app/$section'
+    | '/_app/notifications_/preferences'
     | '/_app/$app/'
   fileRoutesById: FileRoutesById
 }
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppSectionRouteImport
       parentRoute: typeof AppAppRoute
     }
+    '/_app/notifications_/preferences': {
+      id: '/_app/notifications_/preferences'
+      path: '/notifications/preferences'
+      fullPath: '/notifications/preferences'
+      preLoaderRoute: typeof AppNotificationsPreferencesRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -260,12 +280,14 @@ interface AppRouteChildren {
   AppAppRoute: typeof AppAppRouteWithChildren
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppNotificationsPreferencesRoute: typeof AppNotificationsPreferencesRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAppRoute: AppAppRouteWithChildren,
   AppNotificationsRoute: AppNotificationsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppNotificationsPreferencesRoute: AppNotificationsPreferencesRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

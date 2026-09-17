@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Download, Plus } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
@@ -12,8 +12,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableToo
 import { useToast } from '@workspace/ui/components/toast'
 import { ToneDot } from '@workspace/ui/components/tone-dot'
 import { cn } from '@workspace/ui/lib/utils'
-import { MODE_TONE, ascii, binCode, binFills, cadenceOf, modeHint, personById, siteById, siteTypeById } from '@/features/org/logic'
-import { useAudit, useCountries, useDefaultSite, usePeople, useRegions, useSiteActions, useSiteTypes, useSites } from '@/features/org/queries'
+import { downloadCsv } from '@/lib/csv'
+import { MODE_TONE, ascii, binCode, binFills, cadenceOf, fmtIsoDay, holidayOn, modeHint, nextCountDue, personById, siteById, siteTypeById } from '@/features/org/logic'
+import { useAudit, useAuditLog, useCountries, useDefaultSite, useHolidays, usePeople, useRegions, useSiteActions, useSiteTypes, useSites } from '@/features/org/queries'
 import { BinsDialog } from './bins-dialog'
 import { ControlTitle, KeyValue, ModeBadge, Panel, Timeline, useCanEdit } from './control-bits'
 import { SiteDialog } from './site-dialog'
@@ -31,6 +32,13 @@ function SiteList() {
   const def = useDefaultSite()
   const canEdit = useCanEdit()
   const toast = useToast()
+  const log = useAuditLog()
+  function exportCsv() {
+    const name = 'bool-sites.csv'
+    downloadCsv(name, [['Code', 'Name', 'Region', 'Type', 'Status'], ...sites.map((s) => [s.code, s.name, s.region, siteTypeById(types, s.typeId).name, s.status])])
+    log('Export', `${name} downloaded`)
+    toast(`${name} downloaded`)
+  }
   const navigate = useNavigate()
   const search = useSearch({ from: '/_app/$app/$section' })
   const preset = search.filter ?? ''
@@ -61,18 +69,24 @@ function SiteList() {
           title="Sites"
           description={type === 'all' ? 'Every physical location that holds, moves or consumes stock. Rules come from the site type.' : `Sites of type ${siteTypeById(types, type).name} — ${modeHint(siteTypeById(types, type).mode)}`}
           actions={
-            <Button onClick={guard(() => setDraft({ typeId: type === 'all' ? undefined : type }))}>
-              New site
-              <ButtonArrow>
-                <Plus strokeWidth={2.2} />
-              </ButtonArrow>
-            </Button>
+            <>
+              <Button variant="outline" onClick={exportCsv}>
+                <Download strokeWidth={1.8} />
+                Export CSV
+              </Button>
+              <Button onClick={guard(() => setDraft({ typeId: type === 'all' ? undefined : type }))}>
+                New site
+                <ButtonArrow>
+                  <Plus strokeWidth={2.2} />
+                </ButtonArrow>
+              </Button>
+            </>
           }
         />
         <Card className="gap-0 overflow-clip py-0">
           <TableToolbar className="px-5">
             <SearchField size="sm" placeholder="Search sites, codes, places" value={q} onChange={(e) => setQ(e.target.value)} className="min-w-[200px] max-w-xs" />
-            <NativeSelect value={type} onChange={(e) => setType(e.target.value)} className="w-[190px] [&>select]:h-8 [&>select]:text-compact">
+            <NativeSelect value={type} onChange={(e) => setType(e.target.value)} className="w-[190px]">
               <option value="all">All site types</option>
               {types.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -80,7 +94,7 @@ function SiteList() {
                 </option>
               ))}
             </NativeSelect>
-            <NativeSelect value={country} onChange={(e) => setCountry(e.target.value)} className="w-[160px] [&>select]:h-8 [&>select]:text-compact">
+            <NativeSelect value={country} onChange={(e) => setCountry(e.target.value)} className="w-[160px]">
               <option value="all">All countries</option>
               {on.map((c) => (
                 <option key={c} value={c}>
@@ -176,7 +190,7 @@ function GroupRows({ label, count, children }: { label: string; count: number; c
 }
 
 function SiteDetail({ id }: { id: string }) {
-  const sites = useSites(), types = useSiteTypes(), people = usePeople(), audit = useAudit()
+  const sites = useSites(), types = useSiteTypes(), people = usePeople(), audit = useAudit(), holidays = useHolidays()
   const def = useDefaultSite()
   const actions = useSiteActions()
   const canEdit = useCanEdit()
@@ -187,6 +201,8 @@ function SiteDetail({ id }: { id: string }) {
   if (!s) return <EmptyState title="No such site" action={<Button variant="outline" size="sm" render={<Link to="/$app/$section" params={{ app: 'control-centre', section: 'sites' }} />}>All sites</Button>} className="py-24" />
   const t = siteTypeById(types, s.typeId)
   const cad = cadenceOf(s, t)
+  const due = nextCountDue(s, t, new Date())
+  const dueHoliday = due ? holidayOn(holidays, due, { site: s.id }) : undefined
   const owner = personById(people, s.ownerId)
   const parent = siteById(sites, s.parent)
   const fills = binFills(s)
@@ -352,6 +368,7 @@ function SiteDetail({ id }: { id: string }) {
                 { k: 'Site manager', v: owner?.name ?? 'Unassigned', quiet: !owner },
                 { k: 'Opened', v: s.opened },
                 { k: 'Counting', v: cad.value === 'None' ? 'Not counted' : `${cad.value}${s.counted === '—' ? ' · never counted' : ` · last ${s.counted}`}` },
+                ...(due ? [{ k: 'Next count due', v: dueHoliday ? <span className="text-tone-warning-foreground">{fmtIsoDay(due)} · {dueHoliday.name}, move it a day</span> : fmtIsoDay(due) }] : []),
                 { k: 'Counting set by', v: cad.inherited ? 'Site type default' : `This site (type says ${cad.typeValue})` },
               ]} />
             </Panel>

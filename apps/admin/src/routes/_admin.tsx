@@ -2,6 +2,7 @@ import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import { getSession } from '@workspace/auth'
 import { SidebarInset, SidebarProvider } from '@workspace/ui/components/sidebar'
 import { AdminSidebar } from '@/components/layout/admin-sidebar'
+import { AdminSearchProvider } from '@/components/layout/search-context'
 import { SiteHeader } from '@/components/layout/site-header'
 import { UserProvider } from '@/components/layout/user-context'
 
@@ -27,17 +28,19 @@ function AdminLayout() {
   const { user } = Route.useLoaderData()
   return (
     <UserProvider user={user}>
-      <div className="fixed inset-0 overflow-hidden">
-        <SidebarProvider className="flex flex-col">
-          <SiteHeader />
-          <div className="flex h-[calc(100svh-var(--header-height))] min-h-0">
-            <AdminSidebar />
-            <SidebarInset className="min-h-0 overflow-y-auto">
-              <Outlet />
-            </SidebarInset>
-          </div>
-        </SidebarProvider>
-      </div>
+      <AdminSearchProvider>
+        <div className="fixed inset-0 overflow-hidden">
+          <SidebarProvider className="flex flex-col">
+            <SiteHeader />
+            <div className="flex h-[calc(100svh-var(--header-height))] min-h-0">
+              <AdminSidebar />
+              <SidebarInset className="min-h-0 overflow-y-auto">
+                <Outlet />
+              </SidebarInset>
+            </div>
+          </SidebarProvider>
+        </div>
+      </AdminSearchProvider>
     </UserProvider>
   )
 }

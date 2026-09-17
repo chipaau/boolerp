@@ -96,7 +96,7 @@ export function MeetingDetailPage() {
                 </div>
                 <div className="flex items-center gap-2.5">
                   <MapPin className="size-[17px] text-faint" strokeWidth={1.6} />
-                  <span className="text-ui text-body">{m.room} · Hexa Meet link</span>
+                  <span className="text-ui text-body">{m.room} · Bool Meet link</span>
                 </div>
               </div>
               <div className="mt-5 flex flex-wrap items-center gap-2.5">

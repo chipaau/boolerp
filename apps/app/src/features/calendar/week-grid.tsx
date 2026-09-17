@@ -5,7 +5,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@works
 import { cn } from '@workspace/ui/lib/utils'
 import { DAY_END, DAY_START, HOUR_PX, addDays, dayOfMonth, fmtTime, fromMinutes, isWeekend, meetingsOn, packLanes, snap15, toMinutes, weekdayShort } from './logic'
 import { MeetingHoverCard, TONE, useCalendarMap } from './meeting-bits'
-import { useMe } from './queries'
+import { holidayForEveryone } from '@/features/org/logic'
+import { useHolidayMap, useMe } from './queries'
 import type { Meeting } from './types'
 
 type Drag = { mode: 'create'; date: string; s: number; e: number } | { mode: 'move' | 'resize'; id: string; date: string; s: number; e: number }
@@ -43,6 +44,7 @@ export function WeekGrid({
 }) {
   const cals = useCalendarMap()
   const me = useMe()
+  const holidays = useHolidayMap()
   const navigate = useNavigate()
   const [drag, setDrag] = useState<Drag | null>(null)
   const dragRef = useRef<Drag | null>(null)
@@ -173,6 +175,7 @@ export function WeekGrid({
                 >
                   {dayOfMonth(iso)}
                 </div>
+                {holidays[iso] && holidayForEveryone(holidays[iso]) && <div title={holidays[iso].name} className="mx-auto mt-1 max-w-full truncate rounded-full bg-tone-warning-soft px-1.5 text-micro font-bold text-tone-warning-foreground">{holidays[iso].name}</div>}
               </button>
             )
           })}

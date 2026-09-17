@@ -1,9 +1,17 @@
 // Shell (workspace chrome) resource shapes: things the header and rails show for every app.
 
-export type NotificationCategory = 'Meetings' | 'Stock' | 'Approvals' | 'Orders'
+export type NotificationCategory = 'Meetings' | 'Stock' | 'Approvals' | 'Orders' | 'Setup' | 'Billing'
 export type NotificationGroup = 'Today' | 'Yesterday' | 'Earlier'
 export type Notification = {
   id: string
+  /**
+   * The event that raised it (`controlcentre.site_paused`). When a Control Centre notification rule
+   * has this key, the rule decides whether it shows in-app and whether it was also emailed; events
+   * with no rule (a meeting invite) are addressed to their people directly.
+   */
+  eventKey: string
+  /** Org person ids it was addressed to, resolved when it was raised. */
+  recipientIds: string[]
   title: string
   /** One line of context under the title (where, who, how much). */
   meta: string

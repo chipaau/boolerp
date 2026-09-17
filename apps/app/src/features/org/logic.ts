@@ -1,5 +1,6 @@
 // Pure helpers over the org record. No React, no fixtures: components and queries call these.
-import type { AppKey, Cadence, Perms, Person, PersonRole, PersonStatus, Site, SiteType, StorageMode, Tone, Unit } from './types'
+import { isoDate, parseIsoDate, weekdayShort } from '@/lib/dates'
+import type { AppKey, Cadence, Holiday, NotificationRule, Perms, Person, PersonRole, PersonStatus, RecipientRole, Site, SiteType, StorageMode, Tone, Unit } from './types'
 
 // ---------- units
 export const UNIT_KINDS: Unit['kind'][] = ['Division', 'Department', 'Team']
@@ -65,7 +66,7 @@ export function slugMail(name: string) {
     .filter(Boolean)
     .map((p) => p.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase())
     .slice(0, 2)
-    .join('.') + '@hexa.co'
+    .join('.') + '@bool.co'
 }
 export const chatHandle = (name: string) => '@' + slugMail(name).split('@')[0]
 export const ascii = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -194,4 +195,88 @@ export function binFills(site: Site): number[] {
 export const nextCode = (pattern: string) => {
   const m = /^(.*?)(\d+)$/.exec(pattern)
   return m ? m[1] + String(Number(m[2]) + 1).padStart(m[2].length, '0') : pattern
+}
+
+// ---- public holidays and when counts fall due
+export const holidayForEveryone = (h: Holiday) => !h.appliesTo.units.length && !h.appliesTo.sites.length
+/**
+ * The active holiday on a day for a scope, everyone-wide days first. With no scope only days that
+ * apply to everyone count; a scope of units (with ancestors, so a parent's day covers its children)
+ * and/or a site also matches days narrowed to them.
+ */
+export function holidayOn(holidays: Holiday[], iso: string, scope?: { units?: string[]; site?: string | null }): Holiday | undefined {
+  const day = holidays.filter((h) => h.on && h.date === iso && (holidayForEveryone(h) || (!!scope && (h.appliesTo.units.some((u) => scope.units?.includes(u)) || (!!scope.site && h.appliesTo.sites.includes(scope.site))))))
+  return day.find(holidayForEveryone) ?? day[0]
+}
+export const upcomingHolidays = (holidays: Holiday[], today: Date) => [...holidays].filter((h) => h.on && h.date >= isoDate(today)).sort((a, b) => a.date.localeCompare(b.date))
+export const fmtIsoDay = (iso: string) => { const d = parseIsoDate(iso); return `${weekdayShort(d)} ${fmtDate(d)}` }
+/** The next count a site owes, from its last count and cadence; undefined when it isn't counted or never was. */
+export function nextCountDue(site: Site, type: SiteType, today: Date): string | undefined {
+  const cad = site.cadence ?? type.cadence
+  const last = parseDate(site.counted === '—' ? '' : site.counted)
+  if (cad === 'None' || !last) return undefined
+  const step = (d: Date) => (cad === 'Weekly' ? new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7) : new Date(d.getFullYear(), d.getMonth() + (cad === 'Monthly' ? 1 : 3), d.getDate()))
+  let due = step(last)
+  const floor = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  while (due < floor) due = step(due)
+  return isoDate(due)
+}
+
+// ---- notification recipients
+/** The fixed catalogue of who a notification rule can reach, with the label Control Centre shows. */
+export const RECIPIENT_ROLES: { k: RecipientRole; label: string }[] = [
+  { k: 'site_manager', label: 'Site manager' },
+  { k: 'site_managers', label: 'Site managers' },
+  { k: 'unit_lead', label: 'Unit lead' },
+  { k: 'admins', label: 'All Admins' },
+  { k: 'people_ops', label: 'People Operations' },
+  { k: 'procurement', label: 'Procurement' },
+  { k: 'director_of_operations', label: 'Director of Operations' },
+  { k: 'requester', label: 'Requester' },
+  { k: 'next_approver', label: 'Next approver' },
+  { k: 'everyone_on_shift', label: 'Everyone on the shift' },
+]
+export const recipientRoleLabel = (k: RecipientRole) => RECIPIENT_ROLES.find((r) => r.k === k)?.label ?? k
+export const ruleForEvent = (rules: NotificationRule[], eventKey: string) => rules.find((r) => r.eventKey === eventKey)
+
+/** What an event is about, so roles such as "site manager" know whose to pick. */
+export type EventSubject = { siteId?: string | null; siteIds?: string[]; unitId?: string | null; requesterId?: string | null; nextApproverId?: string | null }
+type OrgData = { people: Person[]; units: Unit[]; sites: Site[] }
+
+const membersOfNamedUnit = (org: OrgData, name: string) =>
+  org.units.filter((u) => !u.archived && u.name === name).flatMap((u) => unitMembers(org.people, org.units, u.id, true))
+
+/** One role to person ids for an event. Site staff are on-shift for a site through its primary site or access. */
+export function resolveRole(role: RecipientRole, subject: EventSubject, org: OrgData): string[] {
+  const { people, units, sites } = org
+  switch (role) {
+    case 'site_manager':
+      return [siteById(sites, subject.siteId)?.ownerId].filter((x): x is string => !!x)
+    case 'site_managers': {
+      const scoped = subject.siteIds?.length ? sites.filter((s) => subject.siteIds?.includes(s.id)) : subject.siteId ? sites.filter((s) => s.id === subject.siteId) : sites.filter((s) => s.status === 'Active')
+      return scoped.map((s) => s.ownerId).filter((x): x is string => !!x)
+    }
+    case 'unit_lead':
+      return subject.unitId ? [unitLead(units, people, subject.unitId)?.id].filter((x): x is string => !!x) : []
+    case 'admins':
+      return people.filter((p) => isOnBooks(p) && p.role === 'Admin').map((p) => p.id)
+    case 'people_ops':
+      return membersOfNamedUnit(org, 'People').map((p) => p.id)
+    case 'procurement':
+      return membersOfNamedUnit(org, 'Procurement').map((p) => p.id)
+    case 'director_of_operations':
+      return people.filter((p) => isOnBooks(p) && p.title === 'Director of Operations').map((p) => p.id)
+    case 'requester':
+      return subject.requesterId ? [subject.requesterId] : []
+    case 'next_approver':
+      return subject.nextApproverId ? [subject.nextApproverId] : []
+    case 'everyone_on_shift':
+      return subject.siteId ? siteStaff(people, subject.siteId).map((p) => p.id) : []
+  }
+}
+
+/** Every person a rule reaches for an event, once each, leaving out anyone who has exited. */
+export function resolveRecipients(roles: RecipientRole[], subject: EventSubject, org: OrgData): string[] {
+  const live = new Set(org.people.filter(isOnBooks).map((p) => p.id))
+  return [...new Set(roles.flatMap((r) => resolveRole(r, subject, org)))].filter((id) => live.has(id))
 }

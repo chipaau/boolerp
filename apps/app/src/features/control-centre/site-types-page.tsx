@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { ChevronRight, Plus } from 'lucide-react'
+import { ChevronRight, Download, Plus } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
@@ -11,8 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@workspace/ui/components/toast'
 import { ToneDot } from '@workspace/ui/components/tone-dot'
 import { cn } from '@workspace/ui/lib/utils'
+import { downloadCsv } from '@/lib/csv'
 import { MODE_TONE, modeHint, modeLabel } from '@/features/org/logic'
-import { useAudit, useSiteTypeActions, useSiteTypes, useSites } from '@/features/org/queries'
+import { useAudit, useAuditLog, useSiteTypeActions, useSiteTypes, useSites } from '@/features/org/queries'
 import type { SiteType } from '@/features/org/types'
 import { ControlTitle, FieldLabel, ModeBadge, Panel, Timeline, YesNo, useCanEdit, useIsAdmin } from './control-bits'
 import { SiteTypeDialog } from './site-type-dialog'
@@ -58,6 +59,13 @@ function SiteTypeList() {
   const [draft, setDraft] = useState<{ edit?: SiteType } | null>(null)
   const open = (id: string) => void navigate({ to: '/$app/$section', params: { app: 'control-centre', section: 'site-types' }, search: { id } })
   const count = (id: string) => sites.filter((s) => s.typeId === id).length
+  const log = useAuditLog()
+  function exportCsv() {
+    const name = 'bool-site-types.csv'
+    downloadCsv(name, [['Name', 'Storage', 'Can issue', 'Bins', 'Counting', 'Sites'], ...types.map((t) => [t.name, t.mode, t.issue ? 'Yes' : 'No', t.bins ? 'Yes' : 'No', t.cadence, count(t.id)])])
+    log('Export', `${name} downloaded`)
+    toast(`${name} downloaded`)
+  }
   return (
     <div className="min-h-0 w-full overflow-y-auto">
       <div className="px-8 pt-7 pb-24">
@@ -66,12 +74,18 @@ function SiteTypeList() {
           title="Site types"
           description="Set the rules once, then reuse them. Every site inherits its storage mode, issuing rights and bin tracking from the type you give it."
           actions={
-            <Button onClick={() => (canEdit ? setDraft({}) : toast('Read only as Staff — ask an Admin to change setup', { ok: false }))}>
-              New site type
-              <ButtonArrow>
-                <Plus strokeWidth={2.2} />
-              </ButtonArrow>
-            </Button>
+            <>
+              <Button variant="outline" onClick={exportCsv}>
+                <Download strokeWidth={1.8} />
+                Export CSV
+              </Button>
+              <Button onClick={() => (canEdit ? setDraft({}) : toast('Read only as Staff — ask an Admin to change setup', { ok: false }))}>
+                New site type
+                <ButtonArrow>
+                  <Plus strokeWidth={2.2} />
+                </ButtonArrow>
+              </Button>
+            </>
           }
         />
         <Card className="gap-0 overflow-clip py-0">
@@ -224,7 +238,7 @@ function SiteTypeDetail({ id }: { id: string }) {
         {used.length > 0 && (
           <div className="mt-2">
             <FieldLabel>Move those sites to</FieldLabel>
-            <NativeSelect value={target} onChange={(e) => setTarget(e.target.value)} className="[&>select]:h-10">
+            <NativeSelect value={target} onChange={(e) => setTarget(e.target.value)}>
               {others.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}

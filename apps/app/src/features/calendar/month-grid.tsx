@@ -5,7 +5,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@works
 import { cn } from '@workspace/ui/lib/utils'
 import { dayOfMonth, fmtTime, isTentative, isWeekend, meetingsOn, monthGrid, myRsvp, sameMonth } from './logic'
 import { MeetingHoverCard, MeetingLink, TONE, useCalendarMap } from './meeting-bits'
-import { useMe } from './queries'
+import { holidayForEveryone } from '@/features/org/logic'
+import { useHolidayMap, useMe } from './queries'
 import type { Meeting } from './types'
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -36,6 +37,7 @@ export function MonthGrid({
 }) {
   const cals = useCalendarMap()
   const me = useMe()
+  const holidays = useHolidayMap()
   const [drag, setDrag] = useState<{ id: string; over: string } | null>(null)
   const dragRef = useRef<{ id: string; over: string } | null>(null)
   const suppressClick = useRef(0)
@@ -93,6 +95,8 @@ export function MonthGrid({
             const isToday = iso === today
             const isSelected = iso === selected
             const items = meetingsOn(meetings, iso)
+            const dayHoliday = holidays[iso]
+            const holiday = dayHoliday && holidayForEveryone(dayHoliday) ? dayHoliday : undefined
             return (
               <div
                 key={iso}
@@ -109,7 +113,7 @@ export function MonthGrid({
                 className={cn(
                   'group/cell min-h-[136px] cursor-pointer border-b border-divider p-[9px] pt-[9px] pb-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                   (i + 1) % 7 !== 0 && 'border-r',
-                  isSelected || drag?.over === iso ? 'bg-surface-soft shadow-[inset_0_0_0_1.5px_var(--brand-soft)]' : isWeekend(iso) && 'bg-surface-band/60',
+                  isSelected || drag?.over === iso ? 'bg-surface-soft shadow-[inset_0_0_0_1.5px_var(--brand-soft)]' : (holiday && !holiday.halfDay) || isWeekend(iso) ? 'bg-surface-band/60' : undefined,
                   !inMonth && 'opacity-50'
                 )}
               >
@@ -135,6 +139,12 @@ export function MonthGrid({
                     <Plus className="size-3" strokeWidth={2} />
                   </button>
                 </div>
+                {holiday && (
+                  <div title={`${holiday.name}${holiday.halfDay ? ' · half day' : ''}`} className="mt-1 flex items-center gap-1.5 truncate rounded-[6px] bg-tone-warning-soft px-1.5 py-px text-micro font-bold text-tone-warning-foreground">
+                    <span className="min-w-0 truncate">{holiday.name}</span>
+                    {holiday.halfDay && <span className="shrink-0 font-normal opacity-75">½</span>}
+                  </div>
+                )}
                 <div className="mt-1.5 flex flex-col gap-[3px]">
                   {items.slice(0, MAX_CHIPS).map((m) => {
                     const t = TONE[cals[m.calendar].tone]

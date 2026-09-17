@@ -97,11 +97,52 @@ export type Site = {
   cadence: Cadence | null
 }
 
-// ---- geography (countries Hexa ships; regions and places inside them)
+// ---- geography (countries Bool ships; regions and places inside them)
 export type Country = { id: string; name: string; code: string; tz: string; cur: string; seeded: boolean; on: boolean }
 export type Region = { id: string; country: string; name: string; origin: 'system' | 'custom'; places: string[] }
 
+/**
+ * A day the organisation is closed. Bool keeps the Maldives public holidays current (`origin:
+ * 'system'`, which an Admin can only switch off); Admins add their own (`'custom'`). `appliesTo`
+ * narrows a day to admin units (a unit covers its sub-units) and/or sites; both empty = everyone.
+ */
+export type Holiday = {
+  id: string
+  name: string
+  nameDv: string
+  /** Local ISO day, YYYY-MM-DD. */
+  date: string
+  halfDay: boolean
+  origin: 'system' | 'custom'
+  on: boolean
+  appliesTo: { units: string[]; sites: string[] }
+}
+
 // ---- system
+/**
+ * Who signs off, in what order, above what value. Apps point at a chain by id; Control Centre
+ * owns who signs. A step is a role that resolves live ('Site manager', 'Unit lead', a job title)
+ * or a person id.
+ */
+export type ApprovalChain = {
+  id: string
+  name: string
+  /** 'Any' for every request, otherwise a money text such as 'MVR 30,000'. */
+  threshold: string
+  steps: string[]
+  /** The app processes pointing at this chain, e.g. 'Inventory · stock write-offs'. */
+  used: string[]
+  standIn?: string
+  /** Local ISO day the stand-in covers until. */
+  standInUntil?: string
+}
+/** Who a notification rule reaches; each resolves live through the org tree (see RECIPIENT_ROLES in logic.ts). */
+export type RecipientRole = 'site_manager' | 'site_managers' | 'unit_lead' | 'admins' | 'people_ops' | 'procurement' | 'director_of_operations' | 'requester' | 'next_approver' | 'everyone_on_shift'
+/**
+ * One event an app raises, who it reaches and on which channels. `eventKey` is the dot-namespaced
+ * id the app raises it by (`inventory.stock_below_min`).
+ */
+export type NotificationRule = { id: string; eventKey: string; sourceApp: string; event: string; recipientRoles: RecipientRole[]; inApp: boolean; email: boolean; /** Critical events that always deliver on the rule's channels; people can't mute them. */ mandatory: boolean }
 export type NumberingRule = { id: string; app: string; label: string; pattern: string; next: string; note: string }
 export type AuditEntry = {
   id: string

@@ -62,7 +62,6 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
     onClose()
   }
 
-  const sel = '[&>select]:h-10'
   const swapDiffs = prevType && editing ? [
     ['Storage', prevType.mode, type.mode], ['Issuing', prevType.issue ? 'Allowed' : 'Blocked', type.issue ? 'Allowed' : 'Blocked'], ['Bins', prevType.bins ? 'Tracked' : 'Not used', type.bins ? 'Tracked' : 'Not used'], ['Counting', prevType.cadence, type.cadence], ['Negative stock', prevType.negative ? 'Allowed' : 'Blocked', type.negative ? 'Allowed' : 'Blocked'],
   ].filter((d) => d[1] !== d[2]) : []
@@ -79,7 +78,7 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
             <div className="overflow-clip rounded-[14px] border border-border">
               <div className="px-3.5 pt-3 pb-3">
                 <FieldLabel>Site type</FieldLabel>
-                <NativeSelect value={f.typeId} onChange={(e) => set({ typeId: e.target.value })} className={sel}>
+                <NativeSelect value={f.typeId} onChange={(e) => set({ typeId: e.target.value })}>
                   {types.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
@@ -116,7 +115,7 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
               </div>
               <div>
                 <FieldLabel>Site manager</FieldLabel>
-                <NativeSelect value={f.owner} onChange={(e) => set({ owner: e.target.value })} className={sel}>
+                <NativeSelect value={f.owner} onChange={(e) => set({ owner: e.target.value })}>
                   <option value="">Unassigned</option>
                   {people.filter((p) => isOnBooks(p) && p.role !== 'Staff').map((p) => (
                     <option key={p.id} value={p.id}>
@@ -127,7 +126,7 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
               </div>
               <div>
                 <FieldLabel>Parent site</FieldLabel>
-                <NativeSelect value={f.parent} onChange={(e) => set({ parent: e.target.value })} className={sel}>
+                <NativeSelect value={f.parent} onChange={(e) => set({ parent: e.target.value })}>
                   <option value="">Top level — stands alone</option>
                   {sites.filter((s) => s.id !== editing?.id && s.country === f.country && s.parent !== editing?.id).map((s) => (
                     <option key={s.id} value={s.id}>
@@ -147,7 +146,7 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
               <div className="grid gap-3.5 sm:grid-cols-2">
                 <div>
                   <FieldLabel>Country</FieldLabel>
-                  <NativeSelect value={f.country} onChange={(e) => set({ country: e.target.value, region: '', place: '', parent: '' })} className={sel}>
+                  <NativeSelect value={f.country} onChange={(e) => set({ country: e.target.value, region: '', place: '', parent: '' })}>
                     {on.map((c) => (
                       <option key={c.id} value={c.name}>
                         {c.name}
@@ -157,7 +156,7 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
                 </div>
                 <div>
                   <FieldLabel>Region</FieldLabel>
-                  <NativeSelect value={f.region} onChange={(e) => set({ region: e.target.value, place: '' })} disabled={!formRegions.length} className={sel}>
+                  <NativeSelect value={f.region} onChange={(e) => set({ region: e.target.value, place: '' })} disabled={!formRegions.length}>
                     <option value="">{formRegions.length ? 'Pick a region' : `No regions in ${f.country} yet`}</option>
                     {formRegions.map((r) => (
                       <option key={r.id} value={r.name}>
@@ -169,7 +168,7 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
                 </div>
                 <div>
                   <FieldLabel>City / island</FieldLabel>
-                  <NativeSelect value={f.place} onChange={(e) => set({ place: e.target.value })} disabled={!places.length} className={sel}>
+                  <NativeSelect value={f.place} onChange={(e) => set({ place: e.target.value })} disabled={!places.length}>
                     <option value="">{places.length ? 'Pick a city or island' : 'Pick a region first'}</option>
                     {places.map((p) => (
                       <option key={p} value={p}>
@@ -183,7 +182,7 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
                   <input value={f.addr} onChange={(e) => set({ addr: e.target.value })} placeholder="Street and number" disabled={!f.place} className={cn(fieldClass, !f.place && 'opacity-50')} />
                 </div>
               </div>
-              {countryRec && !formRegions.length && <div className="mt-2.5 text-caption leading-[1.5] text-pretty text-faint">Hexa hasn't surveyed {f.country}, so its regions are yours to define — add one under System › Regions and it will appear here.</div>}
+              {countryRec && !formRegions.length && <div className="mt-2.5 text-caption leading-[1.5] text-pretty text-faint">Bool hasn't surveyed {f.country}, so its regions are yours to define — add one under System › Regions and it will appear here.</div>}
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface-band px-4 py-3">
@@ -194,7 +193,7 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
             </div>
             {override && (
               <div className="mt-3">
-                <NativeSelect value={f.cadence} onChange={(e) => set({ cadence: e.target.value as '' | Cadence })} className={sel}>
+                <NativeSelect value={f.cadence} onChange={(e) => set({ cadence: e.target.value as '' | Cadence })}>
                   <option value="">Follow the site type ({type.cadence})</option>
                   {[...CADENCES.filter((c) => c !== 'None'), 'None' as const].map((c) => (
                     <option key={c} value={c}>

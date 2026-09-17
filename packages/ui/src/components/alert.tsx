@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
+import { XIcon } from "lucide-react"
 
 import { cn } from "@workspace/ui/lib/utils"
 
@@ -22,18 +23,34 @@ const alertVariants = cva(
   }
 )
 
+/** An inline notice. Pass `onDismiss` to show a close button (labelled "Dismiss"). */
 function Alert({
   className,
   variant,
+  onDismiss,
+  children,
   ...props
-}: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
+}: React.ComponentProps<"div"> &
+  VariantProps<typeof alertVariants> & { onDismiss?: () => void }) {
   return (
     <div
       data-slot="alert"
       role="alert"
-      className={cn(alertVariants({ variant }), className)}
+      className={cn(alertVariants({ variant }), onDismiss && "pr-10", className)}
       {...props}
-    />
+    >
+      {children}
+      {onDismiss && (
+        <button
+          type="button"
+          aria-label="Dismiss"
+          onClick={onDismiss}
+          className="absolute top-2 right-2 grid size-7 place-items-center rounded-full text-current/70 outline-none transition-colors hover:bg-foreground/5 hover:text-current focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <XIcon className="size-3.5" />
+        </button>
+      )}
+    </div>
   )
 }
 

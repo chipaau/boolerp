@@ -16,7 +16,7 @@ export const HEX_PATH =
   "M10.2771 0.354226C11.1608 -0.118195 12.222 -0.118194 13.1057 0.354227L21.7971 5.00048C22.7732 5.52232 23.3827 6.53927 23.3827 7.64616V16.5501C23.3827 17.657 22.7732 18.674 21.7971 19.1958L13.1057 23.8421C12.222 24.3145 11.1608 24.3145 10.2771 23.8421L1.58572 19.1958C0.609563 18.674 6.29425e-05 17.657 6.29425e-05 16.5501V7.64616C6.29425e-05 6.53927 0.609565 5.52232 1.58572 5.00048L10.2771 0.354226Z"
 
 const hexagonVariants = cva(
-  "group/hex relative inline-grid shrink-0 place-items-center select-none [&>svg:first-child]:absolute [&>svg:first-child]:inset-0 [&>svg:first-child]:size-full [&>svg:first-child]:overflow-visible [&>svg:first-child>path]:transition-[fill,stroke] [&>svg:first-child>path]:duration-quick [&>svg:first-child>path]:ease-hexa",
+  "group/hex relative inline-grid shrink-0 place-items-center select-none [&>svg:first-child]:absolute [&>svg:first-child]:inset-0 [&>svg:first-child]:size-full [&>svg:first-child]:overflow-visible [&>svg:first-child>path]:transition-[fill,stroke] [&>svg:first-child>path]:duration-quick [&>svg:first-child>path]:ease-bool",
   {
     variants: {
       // fill lives on the SVG via currentColor, so a single text-* class recolours the tile
@@ -28,7 +28,7 @@ const hexagonVariants = cva(
         ghost: "text-transparent",
       },
       interactive: {
-        true: "cursor-pointer transition-transform duration-instant ease-hexa hover:-translate-y-[3px] hover:[&>svg:first-child]:drop-shadow-hex-hover active:translate-y-0 focus-visible:outline-none focus-visible:[&>svg:first-child>path]:[stroke:var(--ring)] focus-visible:[&>svg:first-child>path]:[stroke-width:1.5px]",
+        true: "cursor-pointer transition-transform duration-instant ease-bool hover:-translate-y-[3px] hover:[&>svg:first-child]:drop-shadow-hex-hover active:translate-y-0 focus-visible:outline-none focus-visible:[&>svg:first-child>path]:[stroke:var(--ring)] focus-visible:[&>svg:first-child>path]:[stroke-width:1.5px]",
         false: "",
       },
     },

@@ -216,8 +216,8 @@ export function InventoryItemsPage() {
           <TableBulkBar label={`${count} ${count === 1 ? 'item' : 'items'} selected`}>
             <TableBulkAction>Move location</TableBulkAction>
             <TableBulkAction>Count &amp; adjust</TableBulkAction>
-            <TableBulkAction className="bg-tone-risk hover:bg-tone-risk/90">Delete</TableBulkAction>
-            <TableBulkAction className="bg-transparent opacity-75" onClick={() => setSelected({})}>
+            <TableBulkAction className="bg-tone-risk text-card shadow-none hover:bg-tone-risk/90 dark:bg-tone-risk dark:text-surface-inverted-foreground">Delete</TableBulkAction>
+            <TableBulkAction className="bg-transparent opacity-75 shadow-none dark:bg-transparent" onClick={() => setSelected({})}>
               Clear
             </TableBulkAction>
           </TableBulkBar>

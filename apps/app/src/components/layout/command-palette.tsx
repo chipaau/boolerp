@@ -1,5 +1,3 @@
-import { useEffect, useState  } from 'react'
-import type {ReactNode} from 'react';
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, CalendarDays, Moon, Sun } from 'lucide-react'
@@ -14,34 +12,22 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@workspace/ui/components/command'
-import { SearchField } from '@workspace/ui/components/search-field'
+import { useTheme } from '@workspace/ui/hooks/use-theme'
 import { AppIcon } from '@/components/app-icon'
 import { fmtRange, shortDate } from '@/features/calendar/logic'
 import { meetingsQuery } from '@/features/calendar/queries'
 import { APPS } from '@/lib/apps'
-import { useTheme } from './use-theme'
 
 /**
  * The workspace search (⌘K): every app and every section of every app, plus a couple of
- * commands. Picking a row navigates. Files and people join once the API exposes them.
+ * commands. Picking a row navigates. Opened by the shared HeaderSearchTrigger (click or ⌘K). Files and people join once the API exposes them.
  */
-export function CommandPalette({ trigger }: { trigger?: ReactNode }) {
-  const [open, setOpen] = useState(false)
+export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const navigate = useNavigate()
   const { isDark, setTheme } = useTheme()
   // meetings join the index once loaded; the header never waits on them
   const meetings = useQuery(meetingsQuery()).data ?? []
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        setOpen((o) => !o)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  const setOpen = onOpenChange
 
   function go(to: () => void) {
     setOpen(false)
@@ -50,15 +36,6 @@ export function CommandPalette({ trigger }: { trigger?: ReactNode }) {
 
   return (
     <>
-      <SearchField
-        asButton
-        size="sm"
-        placeholder="Search"
-        shortcut={<span className="text-micro font-medium tracking-[0.04em] text-muted-foreground">⌘K</span>}
-        className="justify-self-center"
-        onClick={() => setOpen(true)}
-      />
-      {trigger}
       <CommandDialog open={open} onOpenChange={setOpen}>
         <Command>
           <CommandInput placeholder="Search apps, pages, people…" shortcut="esc" autoFocus />

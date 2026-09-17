@@ -1,0 +1,11 @@
+import { fileURLToPath } from 'node:url'
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.{ts,tsx}'],
+    coverage: { provider: 'v8', include: ['src/lib/dates.ts', 'src/lib/csv.ts', 'src/features/org/logic.ts'] },
+  },
+})

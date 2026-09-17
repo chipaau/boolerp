@@ -1,25 +1,82 @@
-import { BrandMark } from './brand-mark'
+import { useState } from 'react'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { ArrowRight, X } from 'lucide-react'
+import logo from '@workspace/assets/logos/bool-logo.png'
+import { Command, CommandDialog, CommandGroup, CommandInput, CommandItem, CommandList } from '@workspace/ui/components/command'
+import {
+  BrandMark,
+  HeaderDivider,
+  HeaderSearchTrigger,
+  ThemeToggle,
+  WorkspaceHeader,
+} from '@workspace/ui/components/workspace-header'
+import { NotificationsBell } from '@workspace/ui/components/notifications-bell'
+import { useAttentionNotifications } from '@/features/attention/queries'
 import { UserMenu } from './nav-user'
-import { ThemeToggle } from './theme-toggle'
+import { useAdminSearch } from './search-context'
 
 /**
- * The global topbar, same shape as apps/app's SiteHeader (brand mark left, account menu right) —
- * minus the pieces that only make sense in the multi-app tenant workspace: the search command
- * palette (no app registry to index here), the tenant switcher (admin isn't scoped to one tenant),
- * the app switcher (admin is a single console, not a set of modules), and notifications (no data
- * source yet). Just brand, theme, account.
+ * The global topbar, composed from the shared WorkspaceHeader parts (identical to apps/app, minus the
+ * app switcher: the console is internal, not one of the tenant's apps). The
+ * search pill (click or ⌘K) opens a small dialog whose text filters whichever list is open; typing
+ * from the dashboard jumps to Tenants. The query stays applied after the dialog closes.
  */
 export function SiteHeader() {
+  const { query, setQuery } = useAdminSearch()
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const notifications = useAttentionNotifications()
+
+  function change(q: string) {
+    setQuery(q)
+    if (pathname === '/') void navigate({ to: '/tenants' })
+  }
+
   return (
-    <header className="sticky top-0 z-50 flex h-(--header-height) w-full items-center justify-between gap-[18px] border-b border-border bg-card px-6">
-      <div className="flex min-w-0 items-center gap-[18px] overflow-hidden">
-        <BrandMark />
-      </div>
-      <div className="flex items-center gap-2">
-        <ThemeToggle />
-        <span aria-hidden="true" className="mx-1 h-[22px] w-px bg-border" />
-        <UserMenu />
-      </div>
-    </header>
+    <>
+      <WorkspaceHeader
+        brand={<BrandMark logoSrc={logo} render={<Link to="/" />} />}
+        search={<HeaderSearchTrigger placeholder={query ? `Search: ${query}` : 'Search'} onOpen={() => setOpen(true)} />}
+        actions={
+          <>
+            <ThemeToggle />
+            <HeaderDivider />
+            <NotificationsBell
+              items={notifications.items}
+              onMarkAllRead={notifications.markAllRead}
+              onItemClick={(n) => notifications.markRead(n.id)}
+              renderItem={(n) => <Link to={n.target.to} search={n.target.search} />}
+            />
+            <UserMenu />
+          </>
+        }
+      />
+      <CommandDialog open={open} onOpenChange={setOpen} title="Search" description="Filter tenants, geographies and admin users">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Search tenants, geographies, admin users"
+            shortcut="esc"
+            autoFocus
+            value={query}
+            onValueChange={change}
+          />
+          <CommandList>
+            <CommandGroup heading="Search">
+              <CommandItem value="apply" onSelect={() => setOpen(false)}>
+                <ArrowRight strokeWidth={1.75} />
+                <span className="text-foreground">{query ? `Show matches for “${query}”` : 'Type to filter the open list'}</span>
+              </CommandItem>
+              {query && (
+                <CommandItem value="clear" onSelect={() => setQuery('')}>
+                  <X strokeWidth={1.75} />
+                  <span className="text-foreground">Clear search</span>
+                </CommandItem>
+              )}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </CommandDialog>
+    </>
   )
 }
