@@ -31,7 +31,7 @@ export type SidebarNavItem = {
   icon?: LucideIcon | React.ReactNode
   render: React.ReactElement
   active?: boolean
-  /** a quiet number at the right; tinted pill when `countTone` is warning or risk and the count is above 0 */
+  /** shown only when it needs attention: a tinted pill when `countTone` is warning or risk and the count is above 0 */
   count?: number
   countTone?: SidebarCountTone
   /** accessible name for the count ("3 items need attention") */
@@ -103,7 +103,7 @@ function NavRow({ item, depth, tree }: { item: SidebarNavItem; depth: number; tr
         isActive={!!item.active}
         tooltip={item.title}
         style={{ paddingLeft: pad }}
-        className={cn(item.count !== undefined && "pr-10")}
+        className={cn(tinted && "pr-10")}
       >
         {isComponent(Icon) ? <Icon strokeWidth={1.75} /> : Icon}
         {Icon === undefined && (
@@ -113,8 +113,8 @@ function NavRow({ item, depth, tree }: { item: SidebarNavItem; depth: number; tr
         )}
         <span className={cn(Icon === undefined && "group-data-[collapsible=icon]:hidden")}>{item.title}</span>
       </SidebarMenuButton>
-      {item.count !== undefined && (
-        <SidebarMenuBadge aria-label={item.countLabel} className={cn("top-1.5 right-2.5", tinted && COUNT_TONE[item.countTone as "warning" | "risk"])}>
+      {tinted && (
+        <SidebarMenuBadge aria-label={item.countLabel} className={cn("top-1.5 right-2.5", COUNT_TONE[item.countTone as "warning" | "risk"])}>
           {item.count}
         </SidebarMenuBadge>
       )}
@@ -206,7 +206,8 @@ function SidebarAttention({
     icon: <ToneDot tone={ATTENTION_DOT[a.tone]} shape="round" size={7} className="mx-[4.5px]" />,
     render: a.render,
     count: a.count,
-    countTone: a.tone === "risk" || a.tone === "warning" ? a.tone : "neutral",
+    // every attention row is something to look at, so its count always shows (risk stays red, the rest amber)
+    countTone: a.tone === "risk" ? "risk" : "warning",
   }))
   return (
     <SidebarSection title={title}>
