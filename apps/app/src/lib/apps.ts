@@ -60,6 +60,10 @@ export const APPS: AppDef[] = [
           { title: 'Activity log', slug: 'activity', icon: Activity },
         ],
       },
+      {
+        title: 'Account',
+        items: [{ title: 'Billing & plan', slug: 'billing', icon: Receipt }],
+      },
     ],
   },
   {

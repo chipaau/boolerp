@@ -6,6 +6,7 @@ import { ControlOverviewPage } from './control-centre/overview-page'
 import { SiteTypesPage } from './control-centre/site-types-page'
 import { SitesPage } from './control-centre/sites-page'
 import { ActivityPage } from './control-centre/activity-page'
+import { BillingPage } from './control-centre/billing-page'
 import { ApprovalsPage } from './control-centre/approvals-page'
 import { CodesPage } from './control-centre/codes-page'
 import { HolidaysPage } from './control-centre/holidays-page'
@@ -42,6 +43,7 @@ export const SCREENS: Partial<Record<string, Partial<Record<string, ComponentTyp
     holidays: HolidaysPage,
     notifications: NotificationRulesPage,
     activity: ActivityPage,
+    billing: BillingPage,
   },
   directory: {
     '': PeoplePage, // ?scope=group:<unit>|mgr:<person>|away&sort=team&q=&id=<person>
