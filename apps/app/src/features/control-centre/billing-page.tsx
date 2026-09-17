@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Download } from 'lucide-react'
+import { ChevronRight, Download, Landmark } from 'lucide-react'
 import { Alert, AlertDescription } from '@workspace/ui/components/alert'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
@@ -9,12 +9,13 @@ import { NativeSelect } from '@workspace/ui/components/native-select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
-import { ALWAYS_ON_APPS, billingPeriods, draftInvoice, INVOICE_TERMS_DAYS, INVOICE_TONE, PLANS, PLAN_SEAT_PRICE, REQUEST_TONE, fmtIso, formatMoney, isOpenInvoice, lineTotal, seatState } from '@/features/billing/logic'
-import { useAutoIssuedNumbers, useBillingActions, useBillingContact, useGstRate, useInvoices, usePlanRequests, useSubscription } from '@/features/billing/queries'
+import { ALWAYS_ON_APPS, billingPeriods, defaultPayInvoice, DISPLAY_TONE, draftInvoice, invoiceDisplayStatus, INVOICE_TERMS_DAYS, isUnderReview, payableInvoices, paymentsFor, PLANS, PLAN_SEAT_PRICE, REQUEST_TONE, fmtIso, formatMoney, isOpenInvoice, lineTotal, seatState } from '@/features/billing/logic'
+import { useAutoIssuedNumbers, useBillingActions, useBillingContact, useGstRate, useInvoices, usePayments, usePlanRequests, useSubscription } from '@/features/billing/queries'
 import { isoDate } from '@/lib/dates'
-import type { BillingContact, PlanName, TenantInvoice } from '@/features/billing/types'
+import type { BillingContact, PaymentSubmission, PlanName, TenantInvoice } from '@/features/billing/types'
 import { personById } from '@/features/org/logic'
 import { usePeople } from '@/features/org/queries'
+import { PayDialog, PaymentList } from './billing-pay'
 import { ControlTitle, FieldLabel, KeyValue, Panel, RuleStrip, fieldClass, useIsAdmin } from './control-bits'
 
 const READ_ONLY = 'Only an Admin can change billing'
@@ -58,12 +59,20 @@ export function BillingPage() {
   const [invoice, setInvoice] = useState<TenantInvoice | null>(null)
   const [editContact, setEditContact] = useState(false)
   const [requesting, setRequesting] = useState(false)
+  const [payFor, setPayFor] = useState<string[] | null>(null)
+  const payments = usePayments()
   const guard = (fn: () => void) => () => (isAdmin ? fn() : toast(READ_ONLY, { ok: false }))
 
   const state = seatState(sub.seatsUsed, sub.seatsIncluded)
   const pct = Math.min(100, Math.round((sub.seatsUsed / Math.max(1, sub.seatsIncluded)) * 100))
   const open = invoices.filter((i) => isOpenInvoice(i.status))
-  const overdue = invoices.filter((i) => i.status === 'Overdue')
+  // an overdue invoice with a slip awaiting verification is no longer chased
+  const overdue = invoices.filter((i) => i.status === 'Overdue' && !isUnderReview(i, payments))
+  const payable = payableInvoices(invoices, payments)
+  const payableIds = new Set(payable.map((i) => i.id))
+  const pay = (ids: string[]) => guard(() => setPayFor(ids))()
+  const recent = [...payments].sort((a, b) => b.submittedOn.localeCompare(a.submittedOn) || b.id.localeCompare(a.id)).slice(0, 4)
+  const numberOf = (id: string) => invoices.find((i) => i.id === id)?.number ?? id
   const owed = open.reduce((n, i) => n + i.total, 0)
   const pending = requests.find((r) => r.status === 'Pending')
   const monthly = sub.seatsIncluded * sub.pricePerSeat
@@ -89,7 +98,17 @@ export function BillingPage() {
           overline="System"
           title="Billing & plan"
           description="Your plan, seats and invoices. Pay by bank transfer against each invoice; plan changes go to Bool for approval."
-          actions={<Button onClick={guard(() => setRequesting(true))} disabled={!!pending && isAdmin}>Request a plan change</Button>}
+          actions={
+            <>
+              <Button variant="outline" onClick={guard(() => setRequesting(true))} disabled={!!pending && isAdmin}>
+                Request a plan change
+              </Button>
+              <Button onClick={() => pay([defaultPayInvoice(invoices, payments)?.id ?? ''].filter(Boolean))} disabled={!payable.length} title={payable.length ? undefined : 'Nothing to pay'}>
+                <Landmark className="size-4" strokeWidth={1.8} />
+                Pay
+              </Button>
+            </>
+          }
         />
         <RuleStrip>
           {sub.plan} · {sub.cycle.toLowerCase()} · renews {fmtIso(sub.renewsOn)} · {open.length ? <span className={cn(overdue.length && 'text-tone-risk-foreground')}>{formatMoney(owed, sub.currency)} outstanding{overdue.length ? `, ${overdue.length} overdue` : ''}</span> : 'nothing outstanding'}
@@ -98,7 +117,7 @@ export function BillingPage() {
         {overdue.length > 0 && !isDismissed(overdueKey) && (
           <Alert variant="warning" className="mb-5" onDismiss={() => dismiss(overdueKey)}>
             <AlertDescription>
-              {overdue.map((i) => i.number).join(', ')} {overdue.length === 1 ? 'is' : 'are'} past due. Pay by bank transfer quoting the invoice number, or tell Bool if it has been paid.
+              {overdue.map((i) => i.number).join(', ')} {overdue.length === 1 ? 'is' : 'are'} past due. Transfer the amount quoting the invoice number, then use Pay to upload the slip.
             </AlertDescription>
           </Alert>
         )}
@@ -132,6 +151,10 @@ export function BillingPage() {
             </ul>
           </Panel>
 
+          <Panel heading="Billing contact" aside={<Button variant="outline" size="sm" className="rounded-full font-bold" onClick={guard(() => setEditContact(true))}>Edit</Button>}>
+            <KeyValue rows={[{ k: 'Name', v: contact.name }, { k: 'Email', v: contact.email }, { k: 'Phone', v: contact.phone, mono: true }, { k: 'Address', v: contact.address }, { k: 'TIN', v: contact.tin, mono: true }]} />
+          </Panel>
+
           <Panel heading="Seats" aside={<span className="text-caption text-faint">counted from people on the books</span>}>
             <div className="flex items-baseline gap-2">
               <span className={cn('text-[34px] leading-[1.05] font-bold tracking-[-0.03em] tabular-nums', state === 'over' ? 'text-tone-risk-foreground' : 'text-foreground')}>{sub.seatsUsed}</span>
@@ -150,36 +173,11 @@ export function BillingPage() {
               </p>
             )}
           </Panel>
-
-          <Panel heading="Billing contact" aside={<Button variant="outline" size="sm" className="rounded-full font-bold" onClick={guard(() => setEditContact(true))}>Edit</Button>}>
-            <KeyValue rows={[{ k: 'Name', v: contact.name }, { k: 'Email', v: contact.email }, { k: 'Phone', v: contact.phone, mono: true }, { k: 'Address', v: contact.address }, { k: 'TIN', v: contact.tin, mono: true }]} />
-          </Panel>
         </div>
 
-        <Panel heading="Next invoice" className="mt-4" aside={<span className="text-caption text-faint">Generated automatically on {fmtIso(next.issuedOn)}</span>}>
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <span className="text-compact text-faint">
-              {fmtIso(next.periodFrom)} – {fmtIso(next.periodTo)} · estimate from current seats
-            </span>
-            <span className="text-xl font-bold tracking-[-0.01em] text-foreground tabular-nums">{formatMoney(next.total, next.currency)}</span>
-          </div>
-          <ul className="mt-3">
-            {next.lines.map((l, n) => (
-              <li key={n} className="flex items-baseline justify-between gap-3 border-b border-divider py-2 text-compact last:border-b-0">
-                <span className="min-w-0 text-body">
-                  {l.label} <span className="text-faint tabular-nums">× {l.qty}</span>
-                </span>
-                <span className="tabular-nums text-foreground">{formatMoney(lineTotal(l), next.currency)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-2 text-compact text-faint">
-            {next.gst ? `Includes ${formatMoney(next.gst, next.currency)} GST. ` : 'GST exempt. '}Emailed to {contact.email} when issued, due {INVOICE_TERMS_DAYS} days later.
-          </div>
-        </Panel>
-
-        {requests.length > 0 && (
-          <Panel heading="Plan change requests" className="mt-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:h-full">
+          <Panel heading="Plan change requests">
+            {requests.length === 0 && <p className="mt-3 text-compact text-faint">No plan changes requested yet.</p>}
             <ul>
               {requests.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center gap-3 border-b border-divider py-2.5 last:border-b-0">
@@ -204,6 +202,34 @@ export function BillingPage() {
               ))}
             </ul>
           </Panel>
+
+          <Panel heading="Next invoice" aside={<span className="text-caption text-faint">Generated automatically on {fmtIso(next.issuedOn)}</span>}>
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <span className="text-compact text-faint">
+                {fmtIso(next.periodFrom)} – {fmtIso(next.periodTo)} · estimate from current seats
+              </span>
+              <span className="text-xl font-bold tracking-[-0.01em] text-foreground tabular-nums">{formatMoney(next.total, next.currency)}</span>
+            </div>
+            <ul className="mt-3">
+              {next.lines.map((l, n) => (
+                <li key={n} className="flex items-baseline justify-between gap-3 border-b border-divider py-2 text-compact last:border-b-0">
+                  <span className="min-w-0 text-body">
+                    {l.label} <span className="text-faint tabular-nums">× {l.qty}</span>
+                  </span>
+                  <span className="tabular-nums text-foreground">{formatMoney(lineTotal(l), next.currency)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2 text-compact text-faint">
+              {next.gst ? `Includes ${formatMoney(next.gst, next.currency)} GST. ` : 'GST exempt. '}Emailed to {contact.email} when issued, due {INVOICE_TERMS_DAYS} days later.
+            </div>
+          </Panel>
+        </div>
+
+        {recent.length > 0 && (
+          <Panel heading="Recent payments" className="mt-4" aside={<span className="text-caption text-faint">Bool verifies each transfer, usually within one working day</span>}>
+            <PaymentList payments={recent} showInvoice invoiceNumber={numberOf} onReupload={(id) => pay([id])} canReupload={(id) => payableIds.has(id) && paymentsFor(payments, id)[0]?.status === 'Rejected'} />
+          </Panel>
         )}
 
         <Card className="mt-4 gap-0 overflow-clip py-0">
@@ -224,7 +250,7 @@ export function BillingPage() {
             </TableHeader>
             <TableBody>
               {invoices.map((i) => (
-                <TableRow key={i.id} className={cn('cursor-pointer', i.status === 'Overdue' && 'bg-tone-risk-soft/40')} onClick={() => setInvoice(i)}>
+                <TableRow key={i.id} className={cn('cursor-pointer', i.status === 'Overdue' && !isUnderReview(i, payments) && 'bg-tone-risk-soft/40')} onClick={() => setInvoice(i)}>
                   <TableCell className="font-mono text-compact font-bold text-foreground">
                     {i.number}
                     {auto.has(i.number) && (
@@ -236,12 +262,27 @@ export function BillingPage() {
                   <TableCell className="text-compact">
                     {fmtIso(i.periodFrom)} – {fmtIso(i.periodTo)}
                   </TableCell>
-                  <TableCell className={cn('text-compact', i.status === 'Overdue' && 'font-bold text-tone-risk-foreground')}>{fmtIso(i.dueOn)}</TableCell>
+                  <TableCell className={cn('text-compact', i.status === 'Overdue' && !isUnderReview(i, payments) && 'font-bold text-tone-risk-foreground')}>{fmtIso(i.dueOn)}</TableCell>
                   <TableCell align="right" className="text-compact tabular-nums">{formatMoney(i.total, i.currency)}</TableCell>
                   <TableCell align="right">
-                    <Badge variant={INVOICE_TONE[i.status]} size="sm">
-                      {i.status}
-                    </Badge>
+                    <span className="inline-flex items-center gap-2">
+                      {payableIds.has(i.id) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full font-bold"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            pay([i.id])
+                          }}
+                        >
+                          Pay
+                        </Button>
+                      )}
+                      <Badge variant={DISPLAY_TONE[invoiceDisplayStatus(i, payments)]} size="sm">
+                        {invoiceDisplayStatus(i, payments)}
+                      </Badge>
+                    </span>
                   </TableCell>
                   <TableCell align="right">
                     <ChevronRight className="size-3.5 text-faint" strokeWidth={1.8} />
@@ -252,14 +293,24 @@ export function BillingPage() {
           </Table>
         </Card>
       </div>
-      <InvoiceDialog invoice={invoice} onClose={() => setInvoice(null)} />
+      <InvoiceDialog
+        invoice={invoice}
+        payments={invoice ? paymentsFor(payments, invoice.id) : []}
+        payable={!!invoice && payableIds.has(invoice.id)}
+        onPay={(id) => {
+          setInvoice(null)
+          pay([id])
+        }}
+        onClose={() => setInvoice(null)}
+      />
+      <PayDialog invoiceIds={payFor} onClose={() => setPayFor(null)} />
       <ContactDialog open={editContact} contact={contact} onClose={() => setEditContact(false)} />
       <PlanChangeDialog open={requesting} current={{ plan: sub.plan, seats: sub.seatsIncluded, used: sub.seatsUsed }} onClose={() => setRequesting(false)} />
     </div>
   )
 }
 
-function InvoiceDialog({ invoice, onClose }: { invoice: TenantInvoice | null; onClose: () => void }) {
+function InvoiceDialog({ invoice, payments, payable, onPay, onClose }: { invoice: TenantInvoice | null; payments: PaymentSubmission[]; payable: boolean; onPay: (invoiceId: string) => void; onClose: () => void }) {
   const toast = useToast()
   const i = invoice
   return (
@@ -270,8 +321,8 @@ function InvoiceDialog({ invoice, onClose }: { invoice: TenantInvoice | null; on
             <DialogHeader className="mb-[18px] gap-0 text-left">
               <div className="flex items-center justify-between gap-3">
                 <DialogTitle className="font-mono text-xl font-black tracking-[-0.01em]">{i.number}</DialogTitle>
-                <Badge variant={INVOICE_TONE[i.status]} size="sm">
-                  {i.status}
+                <Badge variant={DISPLAY_TONE[invoiceDisplayStatus(i, payments)]} size="sm">
+                  {invoiceDisplayStatus(i, payments)}
                 </Badge>
               </div>
               <DialogDescription className="mt-1.5 text-compact leading-[1.5] text-faint">
@@ -301,14 +352,21 @@ function InvoiceDialog({ invoice, onClose }: { invoice: TenantInvoice | null; on
             <div className="mt-3">
               <KeyValue rows={[{ k: 'Subtotal', v: formatMoney(i.subtotal, i.currency) }, { k: i.gst ? 'GST' : 'GST (exempt)', v: formatMoney(i.gst, i.currency), quiet: !i.gst }, { k: 'Total', v: <span className="text-base font-bold text-foreground">{formatMoney(i.total, i.currency)}</span> }]} />
             </div>
+            {payments.length > 0 && (
+              <div className="mt-5">
+                <div className="text-overline text-faint">Payments</div>
+                <PaymentList payments={payments} onReupload={onPay} canReupload={() => payable && payments[0]?.status === 'Rejected'} />
+              </div>
+            )}
             <div className="mt-[22px] flex items-center justify-end gap-2">
               <Button variant="outline" onClick={onClose}>
                 Close
               </Button>
-              <Button onClick={() => toast(`Downloading ${i.number}.pdf`)}>
+              <Button variant={payable ? 'outline' : 'default'} onClick={() => toast(`Downloading ${i.number}.pdf`)}>
                 <Download className="size-4" strokeWidth={1.8} />
                 Download PDF
               </Button>
+              {payable && <Button onClick={() => onPay(i.id)}>Pay</Button>}
             </div>
           </>
         )}

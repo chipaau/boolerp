@@ -52,3 +52,39 @@ export type PlanChangeRequest = {
   requestedOn: string
   status: PlanChangeStatus
 }
+
+export type PaymentBank = 'BML' | 'MIB' | 'SBI' | 'Other'
+export type PaymentStatus = 'Pending verification' | 'Verified' | 'Rejected'
+
+/** The tenant's proof that it paid an invoice by bank transfer; Bool's operators verify it. */
+export type PaymentSubmission = {
+  id: string
+  invoiceId: string
+  /** 2dp, in `currency` */
+  amount: number
+  currency: string
+  method: 'Bank transfer'
+  /** The bank the money was sent from */
+  bank: PaymentBank
+  /** The transfer reference the bank printed on the slip */
+  reference: string
+  /** ISO date */
+  paidOn: string
+  receipt: { fileName: string; mimeType: string; sizeBytes: number; storageKey: string }
+  note?: string
+  /** An org person id */
+  submittedBy: string
+  /** ISO date */
+  submittedOn: string
+  status: PaymentStatus
+  /** An operator id */
+  reviewedBy?: string
+  reviewedOn?: string
+  rejectReason?: string
+}
+
+/** Where tenants send transfers. A platform setting, display-only here. */
+export type PayeeDetails = {
+  accountName: string
+  accounts: { bank: string; accountNumber: string; currency: string; swift: string }[]
+}

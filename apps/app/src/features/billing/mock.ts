@@ -1,5 +1,5 @@
 // UI fixtures — approved shapes; replaced at integration
-import type { BillingContact, PlanChangeRequest, Subscription, TenantInvoice } from './types'
+import type { BillingContact, PayeeDetails, PaymentSubmission, PlanChangeRequest, Subscription, TenantInvoice } from './types'
 
 /** seatsUsed here is a fallback; the hook derives it from people on the books. */
 export const SUBSCRIPTION: Subscription = {
@@ -51,3 +51,27 @@ export const PLAN_REQUESTS: PlanChangeRequest[] = [
 
 /** GST percent on this tenant's invoices: a government council, so exempt. */
 export const TENANT_GST_RATE = 0
+
+/** Transfers submitted against invoices. The September one was sent back: the slip was unreadable. */
+export const PAYMENTS: PaymentSubmission[] = [
+  {
+    id: 'pay-2609a', invoiceId: 'inv-2609', amount: 2730, currency: 'MVR', method: 'Bank transfer', bank: 'BML', reference: 'FT26257LK4Q9', paidOn: '2026-09-13',
+    receipt: { fileName: 'bml-transfer-sep.jpg', mimeType: 'image/jpeg', sizeBytes: 184_320, storageKey: 'tenant/malecouncil/receipts/pay-2609a/bml-transfer-sep.jpg' },
+    submittedBy: 'EMP-017', submittedOn: '2026-09-13', status: 'Rejected', reviewedBy: 'OP-002', reviewedOn: '2026-09-14',
+    rejectReason: 'The slip is cropped: the amount and beneficiary account are cut off.',
+  },
+  {
+    id: 'pay-2608a', invoiceId: 'inv-2608', amount: 2280, currency: 'MVR', method: 'Bank transfer', bank: 'BML', reference: 'FT26224HX7M2', paidOn: '2026-08-11',
+    receipt: { fileName: 'INV-2026-0811-slip.pdf', mimeType: 'application/pdf', sizeBytes: 96_512, storageKey: 'tenant/malecouncil/receipts/pay-2608a/INV-2026-0811-slip.pdf' },
+    submittedBy: 'EMP-017', submittedOn: '2026-08-11', status: 'Verified', reviewedBy: 'OP-002', reviewedOn: '2026-08-12',
+  },
+]
+
+/** Bool's receiving accounts: a platform setting, shown to tenants read-only. */
+export const PAYEE: PayeeDetails = {
+  accountName: 'Bool Pvt Ltd',
+  accounts: [
+    { bank: 'Bank of Maldives (BML)', accountNumber: '7730000418265', currency: 'MVR', swift: 'MALBMVMV' },
+    { bank: 'Maldives Islamic Bank (MIB)', accountNumber: '90501480027431000', currency: 'MVR', swift: 'MADVMVMV' },
+  ],
+}

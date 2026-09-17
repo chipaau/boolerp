@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, addMonths, autoIssuedNumbers, autoIssuedText, billingPeriods, draftInvoice, invoicesToGenerate, issuedStatus, nextInvoiceNumber } from './logic'
-import type { Subscription, TenantInvoice } from './types'
+import { addDays, addMonths, autoIssuedNumbers, defaultPayInvoice, invoiceDisplayStatus, isUnderReview, payableInvoices, paymentsFor, receiptStorageKey, autoIssuedText, billingPeriods, draftInvoice, invoicesToGenerate, issuedStatus, nextInvoiceNumber } from './logic'
+import type { InvoiceStatus, PaymentStatus, PaymentSubmission, Subscription, TenantInvoice } from './types'
 
 const sub = (over: Partial<Subscription> = {}): Subscription => ({
   plan: 'Basic', cycle: 'Monthly', seatsIncluded: 120, seatsUsed: 96, pricePerSeat: 19, currency: 'MVR', renewsOn: '2026-10-01', apps: [], ...over,
@@ -126,5 +126,42 @@ describe('invoicesToGenerate', () => {
 describe('auto-issued audit', () => {
   it('round-trips invoice numbers through the audit text', () => {
     expect([...autoIssuedNumbers([autoIssuedText('INV-2026-0915'), 'Billing contact updated'])]).toEqual(['INV-2026-0915'])
+  })
+})
+
+describe('payments', () => {
+  const bill = (id: string, status: InvoiceStatus, dueOn: string): TenantInvoice => ({ ...inv(`INV-${id}`, dueOn, dueOn), id, status, dueOn })
+  const pay = (id: string, invoiceId: string, status: PaymentStatus, submittedOn = '2026-09-10'): PaymentSubmission => ({
+    id, invoiceId, amount: 100, currency: 'MVR', method: 'Bank transfer', bank: 'BML', reference: 'FT1', paidOn: submittedOn,
+    receipt: { fileName: 's.pdf', mimeType: 'application/pdf', sizeBytes: 1, storageKey: 'k' }, submittedBy: 'EMP-001', submittedOn, status,
+  })
+
+  it('shows an open invoice with a pending slip as under review, and nothing else', () => {
+    const payments = [pay('p1', 'a', 'Pending verification'), pay('p2', 'b', 'Rejected'), pay('p3', 'c', 'Pending verification')]
+    expect(invoiceDisplayStatus(bill('a', 'Overdue', '2026-09-01'), payments)).toBe('Payment under review')
+    expect(invoiceDisplayStatus(bill('a', 'Due', '2026-09-01'), payments)).toBe('Payment under review')
+    expect(invoiceDisplayStatus(bill('b', 'Overdue', '2026-09-01'), payments)).toBe('Overdue')
+    // a paid invoice keeps Paid even if a stray submission is still pending
+    expect(invoiceDisplayStatus(bill('c', 'Paid', '2026-09-01'), payments)).toBe('Paid')
+    expect(isUnderReview(bill('d', 'Due', '2026-09-01'), payments)).toBe(false)
+  })
+
+  it('lists submissions for an invoice newest first', () => {
+    const list = [pay('p1', 'a', 'Rejected', '2026-09-01'), pay('p2', 'b', 'Verified'), pay('p3', 'a', 'Pending verification', '2026-09-05'), pay('p4', 'a', 'Rejected', '2026-09-05')]
+    expect(paymentsFor(list, 'a').map((p) => p.id)).toEqual(['p4', 'p3', 'p1'])
+  })
+
+  it('picks the oldest overdue invoice first, then the oldest due, skipping paid and under-review ones', () => {
+    const invoices = [bill('due-old', 'Due', '2026-09-20'), bill('over-new', 'Overdue', '2026-09-15'), bill('paid', 'Paid', '2026-07-15'), bill('over-old', 'Overdue', '2026-08-15'), bill('review', 'Overdue', '2026-07-01'), bill('due-new', 'Due', '2026-09-30')]
+    const payments = [pay('p1', 'review', 'Pending verification'), pay('p2', 'over-old', 'Rejected')]
+    expect(payableInvoices(invoices, payments).map((i) => i.id)).toEqual(['over-old', 'over-new', 'due-old', 'due-new'])
+    expect(defaultPayInvoice(invoices, payments)?.id).toBe('over-old')
+    expect(defaultPayInvoice(invoices.filter((i) => i.status !== 'Overdue'), [])?.id).toBe('due-old')
+    expect(defaultPayInvoice([bill('paid', 'Paid', '2026-07-15')], [])).toBeUndefined()
+  })
+
+  it('keeps slips under the tenant, per submission', () => {
+    expect(receiptStorageKey('malecouncil', 'pay-1', 'slip.jpg')).toBe('tenant/malecouncil/receipts/pay-1/slip.jpg')
+    expect(receiptStorageKey('malecouncil', 'pay-1', 'a/b\\c.pdf')).toBe('tenant/malecouncil/receipts/pay-1/a_b_c.pdf')
   })
 })

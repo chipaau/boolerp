@@ -1,6 +1,6 @@
 // Pure billing derivations and presentation maps. No fixtures, no hooks.
 import { parseIsoDate } from '@/lib/dates'
-import type { InvoiceLine, InvoiceStatus, PlanChangeStatus, PlanName, Subscription, TenantInvoice } from './types'
+import type { InvoiceLine, InvoiceStatus, PaymentStatus, PaymentSubmission, PlanChangeStatus, PlanName, Subscription, TenantInvoice } from './types'
 
 export const PLANS: PlanName[] = ['Starter', 'Basic', 'Pro', 'Enterprise']
 /** Per-seat list prices, kept in step with the operator console's plan table. */
@@ -144,3 +144,39 @@ export function invoicesToGenerate(existing: TenantInvoice[], s: Subscription, t
 export const autoIssuedText = (number: string) => `Invoice ${number} issued automatically`
 /** Invoice numbers the audit says were issued automatically. */
 export const autoIssuedNumbers = (texts: string[]) => new Set(texts.flatMap((t) => /^Invoice (\S+) issued automatically$/.exec(t)?.[1] ?? []))
+
+// ── Paying by bank transfer ──────────────────────────────────────────────────────────────────
+
+export const PAYMENT_TONE: Record<PaymentStatus, BadgeTone> = { 'Pending verification': 'warning', Verified: 'success', Rejected: 'risk' }
+/** Slips: JPG, PNG or PDF up to 10 MB. */
+export const RECEIPT_ACCEPT = ['.jpg', '.jpeg', '.png', '.pdf', 'image/jpeg', 'image/png', 'application/pdf']
+export const RECEIPT_MAX_BYTES = 10 * 1024 * 1024
+
+/** What an invoice's badge says: an open invoice with a slip awaiting verification is under review. */
+export type InvoiceDisplayStatus = InvoiceStatus | 'Payment under review'
+export const DISPLAY_TONE: Record<InvoiceDisplayStatus, BadgeTone> = { ...INVOICE_TONE, 'Payment under review': 'neutral' }
+
+/** Submissions for one invoice, newest first. */
+export const paymentsFor = (payments: PaymentSubmission[], invoiceId: string) =>
+  payments.filter((p) => p.invoiceId === invoiceId).sort((a, b) => b.submittedOn.localeCompare(a.submittedOn) || b.id.localeCompare(a.id))
+
+/** True when an open invoice has a payment waiting for Bool to verify it. */
+export const isUnderReview = (i: Pick<TenantInvoice, 'id' | 'status'>, payments: PaymentSubmission[]) =>
+  isOpenInvoice(i.status) && payments.some((p) => p.invoiceId === i.id && p.status === 'Pending verification')
+
+export const invoiceDisplayStatus = (i: Pick<TenantInvoice, 'id' | 'status'>, payments: PaymentSubmission[]): InvoiceDisplayStatus =>
+  isUnderReview(i, payments) ? 'Payment under review' : i.status
+
+/** Invoices that still need paying (open, no slip under review): overdue first, then oldest due date. */
+export function payableInvoices(invoices: TenantInvoice[], payments: PaymentSubmission[]) {
+  return invoices
+    .filter((i) => isOpenInvoice(i.status) && !isUnderReview(i, payments))
+    .sort((a, b) => Number(b.status === 'Overdue') - Number(a.status === 'Overdue') || a.dueOn.localeCompare(b.dueOn) || a.number.localeCompare(b.number))
+}
+
+/** The invoice a Pay flow starts on: the oldest overdue one, else the oldest due one. */
+export const defaultPayInvoice = (invoices: TenantInvoice[], payments: PaymentSubmission[]): TenantInvoice | undefined => payableInvoices(invoices, payments).at(0)
+
+/** Where a slip is kept: tenant/<tenant>/receipts/<submission>/<file name>. */
+export const receiptStorageKey = (tenant: string, submissionId: string, fileName: string) =>
+  `tenant/${tenant}/receipts/${submissionId}/${fileName.replace(/[/\\]/g, '_')}`
