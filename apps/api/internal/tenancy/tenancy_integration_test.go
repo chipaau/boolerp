@@ -103,11 +103,31 @@ func TestCheckRLSCoverage_CatchesMissingRLSAndPassesConfigured(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "test_unprotected") {
 		t.Fatalf("want an error: forced but still no policy, got %v", err)
 	}
+	// A policy that exists but scopes by something other than tenant_id isolates nothing — "has a
+	// policy" used to be the whole check.
+	if _, err := tx.Exec(ctx, `CREATE POLICY test_unprotected_useless ON test_unprotected USING (true)`); err != nil {
+		t.Fatalf("create useless policy: %v", err)
+	}
+	err = tenancy.CheckRLSCoverage(ctx, tx)
+	if err == nil || !strings.Contains(err.Error(), "scopes by tenant_id") {
+		t.Fatalf("want an error: a policy that never mentions tenant_id, got %v", err)
+	}
+
 	if _, err := tx.Exec(ctx, `CREATE POLICY test_unprotected_isolation ON test_unprotected USING (tenant_id = current_setting('app.current_tenant')::uuid)`); err != nil {
 		t.Fatalf("create policy: %v", err)
 	}
+	// Still not covered: without the column default a query has to name tenant_id itself, and can
+	// therefore name the wrong one. UC-FND-06 has always required the guard to check this.
+	err = tenancy.CheckRLSCoverage(ctx, tx)
+	if err == nil || !strings.Contains(err.Error(), "no DEFAULT") {
+		t.Fatalf("want an error: policy is right but tenant_id has no session default, got %v", err)
+	}
+
+	if _, err := tx.Exec(ctx, `ALTER TABLE test_unprotected ALTER COLUMN tenant_id SET DEFAULT current_setting('app.current_tenant')::uuid`); err != nil {
+		t.Fatalf("set tenant_id default: %v", err)
+	}
 	if err := tenancy.CheckRLSCoverage(ctx, tx); err != nil {
-		t.Fatalf("want no error once forced + policied (rest of the real schema already passes), got %v", err)
+		t.Fatalf("want no error once forced + scoped + defaulted (the real schema already passes), got %v", err)
 	}
 }
 

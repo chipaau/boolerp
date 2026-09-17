@@ -121,7 +121,7 @@ CREATE INDEX ON role_capabilities (role_id);
 -- Revoking early means setting active_to, not deleting the row.
 CREATE TABLE user_roles (
   id           uuid        PRIMARY KEY DEFAULT uuidv7(),
-  tenant_id    uuid        NOT NULL REFERENCES tenants(id),
+  tenant_id    uuid        NOT NULL REFERENCES tenants(id) DEFAULT current_setting('app.current_tenant')::uuid,
   user_id      uuid        NOT NULL REFERENCES users(id),
   role_id      uuid        NOT NULL REFERENCES roles(id),   -- app-enforced, see invariant 2 above
   assigned_by  uuid        REFERENCES users(id),            -- audit: who made the assignment; NULL if system-assigned
@@ -141,7 +141,7 @@ CREATE INDEX ON user_roles (tenant_id);
 -- access_requests).
 CREATE TABLE role_requests (
   id                 uuid        PRIMARY KEY DEFAULT uuidv7(),
-  tenant_id          uuid        NOT NULL REFERENCES tenants(id),
+  tenant_id          uuid        NOT NULL REFERENCES tenants(id) DEFAULT current_setting('app.current_tenant')::uuid,
   target_user_id     uuid        NOT NULL REFERENCES users(id),   -- who the role is for (self-request allowed)
   role_id            uuid        NOT NULL REFERENCES roles(id),   -- app is implied via roles.app_id
   requested_by       uuid        NOT NULL REFERENCES users(id),
@@ -173,7 +173,7 @@ CREATE INDEX ON role_requests (review_deadline_at);
 -- requires_support_access_approval.
 CREATE TABLE support_access_grants (
   id                  uuid        PRIMARY KEY DEFAULT uuidv7(),
-  tenant_id           uuid        NOT NULL REFERENCES tenants(id),
+  tenant_id           uuid        NOT NULL REFERENCES tenants(id) DEFAULT current_setting('app.current_tenant')::uuid,
   target_user_id      uuid        NOT NULL REFERENCES users(id),
   reason              text        NOT NULL,
   status              text        NOT NULL DEFAULT 'pending_review',
