@@ -64,7 +64,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
       <SidebarContent className="gap-0 pr-3 pl-[22px] pt-5 group-data-[collapsible=icon]:px-2">
         <div className="mb-5 flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
           {/* soft plate with a hairline brand-orange edge; the mark fills more of the same 34px box */}
-          <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-surface-soft shadow-[inset_0_0_0_1px_var(--brand)]" title={app.name}>
+          <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-surface-soft shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--brand)_14%,transparent)]" title={app.name}>
             <AppIcon slug={app.slug} size={26} />
           </span>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
