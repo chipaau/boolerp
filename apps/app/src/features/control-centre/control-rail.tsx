@@ -8,7 +8,7 @@ import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import type { AppDef } from '@/lib/apps'
 import { isOnBooks, liveUnits, unitPath } from '@/features/org/logic'
-import { useAuditLog, usePeople, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
+import { useApprovalChains, useAudit, useAuditLog, useCountries, useHolidays, useNotificationRules, useNumbering, usePeople, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
 import { useAttention } from './attention'
 
 const row = (on: boolean) =>
@@ -20,7 +20,8 @@ const row = (on: boolean) =>
  */
 export function ControlRail({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
-  const units = useUnits(), people = usePeople(), sites = useSites(), types = useSiteTypes()
+  const units = useUnits(), people = usePeople(), sites = useSites(), types = useSiteTypes(), holidays = useHolidays()
+  const chains = useApprovalChains(), codes = useNumbering(), countries = useCountries(), rules = useNotificationRules(), audit = useAudit()
   const attention = useAttention()
   // one number, like the bell: the overview lists what it is
   const open = attention.reduce((n, a) => n + a.count, 0), risky = attention.some((a) => a.tone === 'risk')
@@ -28,7 +29,9 @@ export function ControlRail({ app }: { app: AppDef }) {
   const toast = useToast()
   const log = useAuditLog()
   const section = pathname.replace(/^\/control-centre\/?/, '').split('/')[0]
-  const counts: Partial<Record<string, number>> = { units: liveUnits(units).length, employees: people.filter(isOnBooks).length, 'site-types': types.length, sites: sites.length }
+  const counts: Partial<Record<string, number>> = { units: liveUnits(units).length, employees: people.filter(isOnBooks).length, 'site-types': types.length, sites: sites.length, holidays: holidays.filter((h) => h.on).length,
+    approvals: chains.length, codes: codes.length, regions: countries.filter((c) => c.on).length, notifications: rules.filter((r) => r.inApp || r.email).length, activity: audit.length,
+  }
 
   function exportCsv(kind: string) {
     const rows: string[][] =

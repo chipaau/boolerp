@@ -1,38 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import {
-  SlidersHorizontal,
-  Users,
-  Bell,
-  UserCog,
-  ListTodo,
-  Boxes,
-  LayoutDashboard,
-  Shield,
-  Building2,
-  MapPin,
-  Settings,
-  Briefcase,
-  BadgeCheck,
-  Layers,
-  ClipboardList,
-  Activity,
-  Target,
-  ScrollText,
-  Package,
-  PackageMinus,
-  Truck,
-  ScanBarcode,
-  ClipboardCheck,
-  Wrench,
-  NotebookPen,
-  FolderOpen,
-  ChartColumn,
-  FileBarChart,
-  ShoppingCart,
-  FileSignature,
-  Receipt,
-  CalendarDays,
-} from 'lucide-react'
+import { Activity, BadgeCheck, Bell, Boxes, Briefcase, Building2, CalendarDays, ChartColumn, ClipboardCheck, ClipboardList, FileBarChart, FileSignature, FolderOpen, GitBranch, Layers, LayoutDashboard, ListTodo, MapPin, NotebookPen, Package, PackageMinus, Receipt, ScanBarcode, ScrollText, Settings, Shield, ShoppingCart, SlidersHorizontal, Target, Truck, UserCog, Users, Wrench } from 'lucide-react'
 
 export type AppMenuItem = {
   title: string
@@ -85,6 +52,7 @@ export const APPS: AppDef[] = [
       {
         title: 'System',
         items: [
+          { title: 'Approval chains', slug: 'approvals', icon: GitBranch },
           { title: 'Codes & numbering', slug: 'codes', icon: Settings },
           { title: 'Regions', slug: 'regions', icon: MapPin },
           { title: 'Public holidays', slug: 'holidays', icon: CalendarDays },
