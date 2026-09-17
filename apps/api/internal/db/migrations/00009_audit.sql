@@ -40,7 +40,18 @@ CREATE TRIGGER trg_audit_log_append_only
 BEFORE UPDATE OR DELETE ON audit_log
 FOR EACH ROW EXECUTE FUNCTION audit_log_reject_mutation();
 
+-- A row-level trigger never sees TRUNCATE, which empties the table without touching a single row.
+CREATE TRIGGER trg_audit_log_no_truncate
+BEFORE TRUNCATE ON audit_log
+FOR EACH STATEMENT EXECUTE FUNCTION audit_log_reject_mutation();
+
+-- Second layer, and the one that holds if a trigger is ever dropped: the application role is simply
+-- not granted the ability to rewrite history. 00002 grants SELECT/INSERT/UPDATE/DELETE on every
+-- table by default, which silently included this one, so append-only rested entirely on the trigger.
+REVOKE UPDATE, DELETE, TRUNCATE ON audit_log FROM erp_app;
+
 -- +goose Down
+DROP TRIGGER IF EXISTS trg_audit_log_no_truncate ON audit_log;
 DROP TRIGGER IF EXISTS trg_audit_log_append_only ON audit_log;
 DROP FUNCTION IF EXISTS audit_log_reject_mutation();
 DROP TABLE IF EXISTS audit_log;

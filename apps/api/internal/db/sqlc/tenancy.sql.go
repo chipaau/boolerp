@@ -603,9 +603,12 @@ func (q *Queries) ListTenants(ctx context.Context) ([]Tenant, error) {
 }
 
 const nextTenantTreeKey = `-- name: NextTenantTreeKey :one
-SELECT (COALESCE(MAX(tree_key), 0) + 1)::bigint FROM tenants
+SELECT nextval('tenant_tree_key_seq')::bigint
 `
 
+// Atomic allocation from the sequence (see 00006_tenancy.sql). This was MAX(tree_key)+1, a
+// read-then-insert that two concurrent provisions could both win — one then died on
+// tenants_tree_key_key, reported as a bare 500 because that constraint isn't attributed to a field.
 func (q *Queries) NextTenantTreeKey(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, nextTenantTreeKey)
 	var column_1 int64

@@ -100,6 +100,9 @@ type Querier interface {
 	ListPartyTypes(ctx context.Context) ([]PartyType, error)
 	// Operator-facing (apps/admin) tenant list — every tenant, newest first.
 	ListTenants(ctx context.Context) ([]Tenant, error)
+	// Atomic allocation from the sequence (see 00006_tenancy.sql). This was MAX(tree_key)+1, a
+	// read-then-insert that two concurrent provisions could both win — one then died on
+	// tenants_tree_key_key, reported as a bare 500 because that constraint isn't attributed to a field.
 	NextTenantTreeKey(ctx context.Context) (int64, error)
 	// Reversible status flip (active <-> suspended); does not touch active_to — that's archival only.
 	// Guarded on the CURRENT status ($3) so the legal-transition check is atomic rather than a

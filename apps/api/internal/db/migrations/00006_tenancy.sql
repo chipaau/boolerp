@@ -4,6 +4,15 @@
 -- +goose Up
 
 -- tenants — one row per legal entity in the hierarchy. Billing profile + seats deferred to component 08.
+-- tree_key is allocated from a sequence, not MAX(tree_key)+1: that read-then-insert races, and two
+-- concurrent provisions computed the same key until one died on the unique constraint. A sequence is
+-- atomic and needs no lock or caller discipline (provisioning is not always inside a transaction).
+--
+-- tenancy.md's "never a Postgres sequence" rule is scoped to GAPLESS DOCUMENT numbering — invoices,
+-- POs, IUL series — where a skipped number is a compliance problem. tree_key is an opaque, immutable
+-- ltree label that is never displayed or counted, so a gap from a rolled-back provision costs nothing.
+CREATE SEQUENCE tenant_tree_key_seq AS bigint START 1;
+
 CREATE TABLE tenants (
   id                  uuid        PRIMARY KEY DEFAULT uuidv7(),
   slug                text        NOT NULL UNIQUE,             -- subdomain; immutable after go-live
@@ -19,7 +28,7 @@ CREATE TABLE tenants (
   is_internal         boolean     NOT NULL DEFAULT false,      -- the ONE internal/operator tenant; resolves admin.bool.test's membership check; Cerbos is_internal_member reads this
   parent_id           uuid        REFERENCES tenants(id),      -- hierarchy parent; NULL for roots
   oversight           text,                                    -- 'subordinate' (auto aggregate) | 'affiliated' (mutual agreement). NULL iff parent_id NULL
-  tree_key            bigint      NOT NULL UNIQUE,             -- immutable ltree label
+  tree_key            bigint      NOT NULL UNIQUE DEFAULT nextval('tenant_tree_key_seq'),  -- immutable ltree label; see the sequence above
   path                ltree       NOT NULL,                    -- materialised hierarchy path of tree_keys; GiST-indexed
   country             char(2)     NOT NULL REFERENCES countries(code),
   timezone            text        NOT NULL DEFAULT 'Indian/Maldives',
@@ -60,3 +69,4 @@ CREATE INDEX ON tenant_users (user_id);     -- tenants I belong to (switcher)
 -- +goose Down
 DROP TABLE IF EXISTS tenant_users;
 DROP TABLE IF EXISTS tenants;
+DROP SEQUENCE IF EXISTS tenant_tree_key_seq;

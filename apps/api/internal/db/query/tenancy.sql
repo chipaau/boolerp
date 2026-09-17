@@ -46,7 +46,10 @@ WHERE id = $1 AND status IN ('active', 'suspended')
 RETURNING *;
 
 -- name: NextTenantTreeKey :one
-SELECT (COALESCE(MAX(tree_key), 0) + 1)::bigint FROM tenants;
+-- Atomic allocation from the sequence (see 00006_tenancy.sql). This was MAX(tree_key)+1, a
+-- read-then-insert that two concurrent provisions could both win — one then died on
+-- tenants_tree_key_key, reported as a bare 500 because that constraint isn't attributed to a field.
+SELECT nextval('tenant_tree_key_seq')::bigint;
 
 -- name: CreateTenant :one
 -- Root tenant only (parent_id/oversight NULL) — path is a single-label ltree of its own tree_key.

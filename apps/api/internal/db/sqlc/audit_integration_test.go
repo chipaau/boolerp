@@ -47,26 +47,76 @@ func TestAuditLog_RequiresCurrentTenantToInsert(t *testing.T) {
 	}
 }
 
+// attempt runs one statement inside a savepoint and returns its error, rolling the savepoint back so
+// the outer transaction stays usable. Without this, the first refusal aborts the transaction and
+// every later statement fails with 25P02 (transaction aborted) — which is still an error, so a test
+// asserting only "err != nil" would pass without ever exercising the statements after the first.
+func attempt(t *testing.T, ctx context.Context, tx pgx.Tx, sql string, args ...any) error {
+	t.Helper()
+	sp, err := tx.Begin(ctx) // pgx implements a nested Begin as a SAVEPOINT
+	if err != nil {
+		t.Fatalf("savepoint: %v", err)
+	}
+	defer func() { _ = sp.Rollback(ctx) }()
+	_, err = sp.Exec(ctx, sql, args...)
+	return err
+}
+
+// Append-only rests on two independent layers, and this checks each one on its own, because either
+// alone can be lost without the other noticing: a REVOKE is invisible to a superuser, and a trigger
+// can be dropped while the grants stay put.
 func TestAuditLog_AppendOnly(t *testing.T) {
 	ctx := context.Background()
-	tx := env.AppTx(t)
-	q := sqlc.New(tx)
-	tenant := createTestTenant(t, ctx, q)
-	setTenantConfig(t, ctx, tx, tenant)
 
-	row, err := q.CreateAuditLogEntry(ctx, sqlc.CreateAuditLogEntryParams{
-		EntityType: "tenant", EntityID: tenant, Action: "create", Payload: []byte(`{"after":{"status":"active"}}`),
+	t.Run("the application role holds no privilege to rewrite history", func(t *testing.T) {
+		tx := env.AppTx(t) // erp_app — the role the API actually runs as
+		q := sqlc.New(tx)
+		tenant := createTestTenant(t, ctx, q)
+		setTenantConfig(t, ctx, tx, tenant)
+
+		row, err := q.CreateAuditLogEntry(ctx, sqlc.CreateAuditLogEntryParams{
+			EntityType: "tenant", EntityID: tenant, Action: "create", Payload: []byte(`{"after":{"status":"active"}}`),
+		})
+		if err != nil {
+			t.Fatalf("CreateAuditLogEntry: %v", err)
+		}
+
+		err = attempt(t, ctx, tx, `UPDATE audit_log SET action = 'tampered' WHERE id = $1`, row.ID)
+		if code := pgErrorCode(err); code != pgInsufficientPrivilege {
+			t.Fatalf("want UPDATE refused for lack of privilege (%s), got %s: %v", pgInsufficientPrivilege, code, err)
+		}
+		err = attempt(t, ctx, tx, `DELETE FROM audit_log WHERE id = $1`, row.ID)
+		if code := pgErrorCode(err); code != pgInsufficientPrivilege {
+			t.Fatalf("want DELETE refused for lack of privilege (%s), got %s: %v", pgInsufficientPrivilege, code, err)
+		}
 	})
-	if err != nil {
-		t.Fatalf("CreateAuditLogEntry: %v", err)
-	}
 
-	if _, err := tx.Exec(ctx, `UPDATE audit_log SET action = 'tampered' WHERE id = $1`, row.ID); err == nil {
-		t.Fatal("want an error updating an audit_log row — it must be append-only")
-	}
-	if _, err := tx.Exec(ctx, `DELETE FROM audit_log WHERE id = $1`, row.ID); err == nil {
-		t.Fatal("want an error deleting an audit_log row — it must be append-only")
-	}
+	// The owner bypasses grants entirely, so what stops it is the trigger — which is the layer that
+	// still holds if the privileges are ever widened again.
+	t.Run("the trigger refuses even the table owner", func(t *testing.T) {
+		tx := env.Tx(t)
+		q := sqlc.New(tx)
+		tenant := createTestTenant(t, ctx, q)
+		setTenantConfig(t, ctx, tx, tenant)
+
+		row, err := q.CreateAuditLogEntry(ctx, sqlc.CreateAuditLogEntryParams{
+			EntityType: "tenant", EntityID: tenant, Action: "create", Payload: []byte(`{}`),
+		})
+		if err != nil {
+			t.Fatalf("CreateAuditLogEntry: %v", err)
+		}
+
+		if err := attempt(t, ctx, tx, `UPDATE audit_log SET action = 'tampered' WHERE id = $1`, row.ID); err == nil {
+			t.Fatal("the owner updated an audit_log row — the append-only trigger is not firing")
+		}
+		if err := attempt(t, ctx, tx, `DELETE FROM audit_log WHERE id = $1`, row.ID); err == nil {
+			t.Fatal("the owner deleted an audit_log row — the append-only trigger is not firing")
+		}
+		// TRUNCATE empties the table without touching a row, so a row-level trigger never sees it.
+		if err := attempt(t, ctx, tx, `TRUNCATE audit_log`); err == nil {
+			t.Fatal("the owner truncated audit_log — the statement-level trigger is not firing")
+		}
+	})
 }
 
 func TestAuditLog_TenantIsolation(t *testing.T) {
