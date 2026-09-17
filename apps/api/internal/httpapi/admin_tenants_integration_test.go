@@ -92,7 +92,7 @@ func doAsOperator(t *testing.T, h http.Handler, method, path string, body any) *
 }
 
 func TestAdminTenants_ListAndGet(t *testing.T) {
-	userID := setupOperatorFixture(t, "list-e2e", "")
+	userID := setupOperatorFixture(t, "list-e2e", "platform:tenants:read")
 	kratos := fakeKratosFor(uuidToStringAdmin(userID), "list-e2e@example.test")
 	defer kratos.Close()
 	h := newAdminAPITestRouter(t, kratos.URL)
@@ -233,7 +233,7 @@ func TestAdminTenants_CreateDeniedWithoutProvisionCapability(t *testing.T) {
 }
 
 func TestAdminTenants_SuspendReactivateArchive(t *testing.T) {
-	userID := setupOperatorFixture(t, "lifecycle-e2e", "platform:tenants:suspend")
+	userID := setupOperatorFixture(t, "lifecycle-e2e", "platform:tenants:suspend", "platform:tenants:archive")
 	kratos := fakeKratosFor(uuidToStringAdmin(userID), "lifecycle-e2e@example.test")
 	defer kratos.Close()
 	h := newAdminAPITestRouter(t, kratos.URL)
@@ -263,7 +263,7 @@ func TestAdminTenants_SuspendReactivateArchive(t *testing.T) {
 // A transition the tenant's current status forbids is a client error (409), and an unknown tenant is
 // a 404 — neither is an "internal" 500. Archived ends the lifecycle (FR-TEN-03), so nothing reopens it.
 func TestAdminTenants_IllegalTransitionsAndUnknownTenant(t *testing.T) {
-	userID := setupOperatorFixture(t, "lifecycle-illegal", "platform:tenants:suspend")
+	userID := setupOperatorFixture(t, "lifecycle-illegal", "platform:tenants:suspend", "platform:tenants:archive")
 	kratos := fakeKratosFor(uuidToStringAdmin(userID), "lifecycle-illegal@example.test")
 	defer kratos.Close()
 	h := newAdminAPITestRouter(t, kratos.URL)
@@ -367,7 +367,7 @@ func TestAdminTenants_AuditRowCarriesTheRequestID(t *testing.T) {
 // the wrong thing" about a 200 has no id to quote, even though that id keys the logs, the trace,
 // Cerbos's decision and the audit row.
 func TestAdminAPI_EveryResponseEchoesTheRequestID(t *testing.T) {
-	userID := setupOperatorFixture(t, "reqid-header", "")
+	userID := setupOperatorFixture(t, "reqid-header", "platform:tenants:read")
 	kratos := fakeKratosFor(uuidToStringAdmin(userID), "reqid-header@example.test")
 	defer kratos.Close()
 	h := newAdminAPITestRouter(t, kratos.URL)
@@ -464,5 +464,43 @@ func TestAdminTenants_WhitespaceOnlyFieldIsBlank(t *testing.T) {
 	// The padded slug was trimmed before validation, so it must NOT be reported as malformed.
 	if len(resp.Errors["slug"]) != 0 {
 		t.Fatalf("a padded slug should be trimmed, not rejected: %v", resp.Errors)
+	}
+}
+
+// The tenant directory IS the customer list, so reading it needs a capability of its own. Membership
+// of the internal tenant used to be enough: any internal role could enumerate every customer.
+func TestAdminTenants_ListRequiresTheReadCapability(t *testing.T) {
+	// A genuine operator — internal member, holds a platform capability — but not the one for reading.
+	userID := setupOperatorFixture(t, "list-no-read", "platform:tenants:suspend")
+	kratos := fakeKratosFor(uuidToStringAdmin(userID), "list-no-read@example.test")
+	defer kratos.Close()
+	h := newAdminAPITestRouter(t, kratos.URL)
+
+	if rec := doAsOperator(t, h, http.MethodGet, "/v1/tenants", nil); rec.Code != http.StatusForbidden {
+		t.Fatalf("want 403 listing tenants without platform:tenants:read, got %d: %s", rec.Code, rec.Body.String())
+	}
+	target := createLifecycleTargetTenant(t, "e2e-no-read-target")
+	if rec := doAsOperator(t, h, http.MethodGet, "/v1/tenants/"+target, nil); rec.Code != http.StatusForbidden {
+		t.Fatalf("want 403 reading one tenant without platform:tenants:read, got %d", rec.Code)
+	}
+}
+
+// Archiving ends a tenant's life and cannot be undone, so it is not the same permission as pausing
+// one. It used to be gated on the suspend capability — anyone who could pause could also end.
+func TestAdminTenants_ArchiveRequiresItsOwnCapability(t *testing.T) {
+	userID := setupOperatorFixture(t, "archive-denied", "platform:tenants:suspend")
+	kratos := fakeKratosFor(uuidToStringAdmin(userID), "archive-denied@example.test")
+	defer kratos.Close()
+	h := newAdminAPITestRouter(t, kratos.URL)
+
+	target := createLifecycleTargetTenant(t, "e2e-archive-denied")
+
+	// Suspending is allowed — the capability they do hold.
+	if rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/tenants/%s/suspend", target), nil); rec.Code != http.StatusOK {
+		t.Fatalf("suspend: want 200 with platform:tenants:suspend, got %d: %s", rec.Code, rec.Body.String())
+	}
+	// Archiving is not.
+	if rec := doAsOperator(t, h, http.MethodPost, fmt.Sprintf("/v1/tenants/%s/archive", target), nil); rec.Code != http.StatusForbidden {
+		t.Fatalf("want 403 archiving without platform:tenants:archive, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
