@@ -12,6 +12,8 @@ const config = defineConfig({
     host: true,
     port: 3000,
     allowedHosts: ['.bool.test'], // served behind Traefik at <tenant>.bool.test
+    // Poll Windows Docker bind mounts so edits trigger live reload.
+    watch: { usePolling: true, interval: 800 },
   },
   plugins: [
     devtools(),

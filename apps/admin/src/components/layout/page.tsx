@@ -40,7 +40,7 @@ export function PageTitle({
         <div className="min-w-0 flex-1 basis-[300px]">
           {overline && <div className="mb-2 text-overline text-faint">{overline}</div>}
           <h1 className="text-[30px] leading-none font-medium tracking-[-0.022em] text-foreground">{title}</h1>
-          {meta && <div className="mt-2.5 max-w-[66ch] text-ui-sm leading-[1.6] text-pretty text-muted-foreground">{meta}</div>}
+          {meta && <div className="mt-2.5 max-w-[96ch] text-ui-sm leading-[1.6] text-pretty text-muted-foreground">{meta}</div>}
         </div>
         {actions && <div className="ms-auto flex flex-wrap items-center gap-2.5">{actions}</div>}
       </div>
