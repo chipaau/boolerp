@@ -16,9 +16,13 @@ function shiftMonth(iso: string, delta: number) {
   const d = new Date(y, m - 1 + delta, 1)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`
 }
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 function label(iso: string) {
   const [y, m, d] = iso.split("-").map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+  // built by hand: Intl's en-GB gives "Wed, 30 Sept 2026", the design wants "Wed 30 Sep 2026"
+  const date = new Date(y, m - 1, d)
+  return `${WEEKDAYS[date.getDay()]} ${d} ${MONTHS[m - 1]} ${y}`
 }
 
 /**
