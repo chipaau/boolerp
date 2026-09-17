@@ -114,7 +114,7 @@ function NavRow({ item, depth, tree }: { item: SidebarNavItem; depth: number; tr
         <span className={cn(Icon === undefined && "group-data-[collapsible=icon]:hidden")}>{item.title}</span>
       </SidebarMenuButton>
       {tinted && (
-        <SidebarMenuBadge aria-label={item.countLabel} className={cn("top-1.5 right-2.5", COUNT_TONE[item.countTone as "warning" | "risk"])}>
+        <SidebarMenuBadge aria-label={item.countLabel} className={cn("right-2.5", COUNT_TONE[item.countTone as "warning" | "risk"])}>
           {item.count}
         </SidebarMenuBadge>
       )}
@@ -137,7 +137,7 @@ function SidebarNavGroups({ groups }: { groups: SidebarNavGroup[] }) {
         const tree = g.items.some((it) => it.items !== undefined)
         return (
           <SidebarGroup key={g.title ?? `group-${i}`} data-slot="workspace-sidebar-group" className={BLOCK}>
-            {g.title && <SidebarGroupLabel className="mb-1.5 h-auto">{g.title}</SidebarGroupLabel>}
+            {g.title && <SidebarGroupLabel className="mb-1.5 h-auto group-data-[collapsible=icon]:hidden">{g.title}</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu className="gap-px">
                 {g.items.map((item) => (
@@ -179,7 +179,7 @@ function SidebarSection({
         <>
           {(title || action) && (
             <div className="mb-1.5 flex items-center gap-2">
-              {title && <SidebarGroupLabel className="h-auto">{title}</SidebarGroupLabel>}
+              {title && <SidebarGroupLabel className="h-auto group-data-[collapsible=icon]:hidden">{title}</SidebarGroupLabel>}
               {action && <div className="ms-auto">{action}</div>}
             </div>
           )}
