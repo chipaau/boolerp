@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
-import { ChevronRight } from 'lucide-react'
-import { Badge } from '@workspace/ui/components/badge'
+import { ChevronRight, MapPin, Network, Shield, Users } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
 import { isOnBooks, liveUnits, parseDate, siteStaff, unitKids, unitMembers } from '@/features/org/logic'
@@ -43,10 +42,10 @@ export function ControlOverviewPage() {
   const uncovered = sites.filter((s) => !siteStaff(people, s.id).length)
 
   const figures = [
-    { n: active.length, label: 'Employees', sub: `${joined} joined this year`, section: 'employees' },
-    { n: liveUnits(units).length, label: 'Admin units', sub: `${divisions.length} top-level`, section: 'units' },
-    { n: sites.length, label: 'Sites', sub: `${regionsLive} regions live`, section: 'sites' },
-    { n: types.length, label: 'Site types', sub: overrides ? `${overrides} ${overrides === 1 ? 'site overrides' : 'sites override'} counting` : 'no counting overrides', section: 'site-types' },
+    { n: active.length, label: 'Employees', sub: `${joined} joined this year`, section: 'employees', icon: Users },
+    { n: liveUnits(units).length, label: 'Admin units', sub: `${divisions.length} top-level`, section: 'units', icon: Network },
+    { n: sites.length, label: 'Sites', sub: `${regionsLive} regions live`, section: 'sites', icon: MapPin },
+    { n: types.length, label: 'Site types', sub: overrides ? `${overrides} ${overrides === 1 ? 'site overrides' : 'sites override'} counting` : 'no counting overrides', section: 'site-types', icon: Shield },
   ]
 
   return (
@@ -56,9 +55,12 @@ export function ControlOverviewPage() {
 
         <div className="flex flex-wrap items-end gap-x-[54px] gap-y-5">
           {figures.map((f) => (
-            <Link key={f.label} to="/$app/$section" params={{ app: 'control-centre', section: f.section }} className="-m-2 rounded-[10px] p-2 outline-none transition-colors duration-instant hover:bg-surface-soft focus-visible:ring-2 focus-visible:ring-ring">
+            <Link key={f.label} to="/$app/$section" params={{ app: 'control-centre', section: f.section }} className="group rounded-[10px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background">
               <div className="text-overline text-faint">{f.label}</div>
-              <div className="mt-2 text-[34px] leading-[1.05] font-bold tracking-[-0.03em] text-foreground">{f.n}</div>
+              <div className="mt-2 flex items-center gap-2.5 text-foreground transition-colors duration-instant group-hover:text-brand">
+                <span className="text-[34px] leading-[1.05] font-bold tracking-[-0.03em] tabular-nums">{f.n}</span>
+                <f.icon aria-hidden="true" className="size-[18px] text-faint transition-colors duration-instant group-hover:text-brand" strokeWidth={1.6} />
+              </div>
               <div className="mt-1 text-compact text-faint">{f.sub}</div>
             </Link>
           ))}
@@ -72,8 +74,8 @@ export function ControlOverviewPage() {
         </div>
         <div className="my-6 h-px bg-border" />
 
-        <div className="grid items-start gap-4 lg:grid-cols-2">
-          <Panel heading="Needs attention" aside={<span className="text-caption text-faint">{attention.length ? `${attention.length} open` : 'all clear'}</span>}>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Panel heading="Needs attention" aside={<span className="text-caption text-faint">{attention.length ? `${attention.reduce((n, a) => n + a.count, 0)} open` : 'all clear'}</span>}>
             {attention.length === 0 && <div className="text-compact text-body">Nothing needs a look right now.</div>}
             <ul>
               {attention.map((a) => (
@@ -93,7 +95,7 @@ export function ControlOverviewPage() {
           </Panel>
         </div>
 
-        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <Panel heading="People by division" aside={<Button variant="link" size="xs" render={<Link to="/$app/$section" params={{ app: 'control-centre', section: 'units' }} />}>Open units</Button>}>
             <ul className="mt-1.5 flex flex-col gap-[13px]">
               {[...divisions].sort((a, b) => unitMembers(people, units, b.id, true).length - unitMembers(people, units, a.id, true).length).map((u) => {
@@ -144,9 +146,6 @@ export function ControlOverviewPage() {
         <p className="mt-[18px] max-w-[88ch] text-caption leading-[1.7] text-pretty text-faint">
           Inventory and Scan read sites, site types and each person's site access · Directory mirrors these admin units and employees, read-only · Calendar reads regions and public holidays so scheduled counts never land on a closed day.
         </p>
-        <Badge variant="neutral" size="sm" className="mt-3 hidden">
-          {audit.length}
-        </Badge>
       </div>
     </div>
   )

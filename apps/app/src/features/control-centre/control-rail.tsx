@@ -8,21 +8,22 @@ import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import type { AppDef } from '@/lib/apps'
 import { isOnBooks, liveUnits, unitPath } from '@/features/org/logic'
-import { useAuditLog, useOrgMe, usePeople, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
+import { useAuditLog, usePeople, useSiteTypes, useSites, useUnits } from '@/features/org/queries'
 import { useAttention } from './attention'
 
 const row = (on: boolean) =>
   cn('flex w-full items-center gap-2 rounded-lg py-[7px] pr-2.5 pl-2.5 text-left text-ui-sm outline-none transition-colors duration-instant focus-visible:ring-2 focus-visible:ring-ring', on ? 'bg-sidebar-accent font-bold text-foreground' : 'text-body hover:bg-sidebar-hover hover:text-foreground')
 
 /**
- * Control Centre's rail: the sections with live counts, then what needs a look (the same list
- * the overview shows), the viewer's role in a line, and the export menu.
+ * Control Centre's rail: the sections with live counts, what needs a look (the same list
+ * the overview lists) as one total on Overview, and the export menu.
  */
 export function ControlRail({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
   const units = useUnits(), people = usePeople(), sites = useSites(), types = useSiteTypes()
-  const me = useOrgMe()
   const attention = useAttention()
+  // one number, like the bell: the overview lists what it is
+  const open = attention.reduce((n, a) => n + a.count, 0), risky = attention.some((a) => a.tone === 'risk')
   const collapsed = useSidebar().state === 'collapsed'
   const toast = useToast()
   const log = useAuditLog()
@@ -57,6 +58,11 @@ export function ControlRail({ app }: { app: AppDef }) {
       <div className="flex flex-col gap-px">
         <Link to="/$app" params={{ app: app.slug }} className={row(section === '')}>
           <span className="flex-1">Overview</span>
+          {open > 0 && (
+            <Badge variant={risky ? 'risk' : 'warning'} size="sm" aria-label={`${open} ${open === 1 ? 'item needs' : 'items need'} attention`}>
+              {open}
+            </Badge>
+          )}
         </Link>
       </div>
       {app.menu.filter((g) => g.title).map((g) => (
@@ -74,27 +80,9 @@ export function ControlRail({ app }: { app: AppDef }) {
           </ul>
         </div>
       ))}
-      <div className="border-t border-sidebar-border pt-4">
-        <div className="mb-2 px-2.5 text-overline text-faint">Needs attention</div>
-        {attention.length === 0 && <div className="px-2.5 text-caption text-faint">Nothing needs a look right now.</div>}
-        <ul className="flex flex-col gap-px">
-          {attention.map((a) => (
-            <li key={a.label}>
-              <Link to="/$app/$section" params={{ app: app.slug, section: a.to.section }} search={a.to.search} className={row(false)}>
-                <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', a.tone === 'warning' ? 'bg-brand-soft' : a.tone === 'risk' ? 'bg-tone-risk' : 'bg-tone-neutral')} />
-                <span className="min-w-0 flex-1 truncate font-normal">{a.label}</span>
-                <Badge variant={a.tone === 'neutral' ? 'neutral' : 'warning'} size="sm">
-                  {a.count}
-                </Badge>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
       <div className="mt-auto border-t border-sidebar-border pt-4 text-caption leading-[1.5] text-faint">
-        <div className="px-2.5">{me.role === 'Staff' ? 'Staff can browse all of this but change none of it.' : me.role === 'Manager' ? 'Managers edit sites and employees. Site types and numbering stay with Admins.' : 'Admins control the whole record — organisation, inventory setup and system rules.'}</div>
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="outline" size="sm" />} className="mt-3 w-full justify-start">
+          <DropdownMenuTrigger render={<Button variant="outline" size="sm" />} className="w-full justify-start">
             <Download className="size-3.5" strokeWidth={1.7} />
             Export data
           </DropdownMenuTrigger>
