@@ -252,11 +252,14 @@ CREATE UNIQUE INDEX uq_payment_one_verified ON payment_submissions (invoice_id) 
 
 ---
 
+## Decisions (2026-09-17)
+- **Q1 → snake codes.** Enums are stored as clear snake_case codes (`pending_verification`, `overdue`, …); the UI maps them to display text ("Pending", "Overdue").
+- **Q2 → `tenant_apps` is authoritative** for which apps a tenant has; drop `subscriptions.apps` from the proposal (the billing page reads `tenant_apps`).
+- **Q4 → one Bool-wide yearly series** `INV-YYYY-nnnn`, Bool as issuer (a single counter row per year in `invoice_number_counters`).
+- **Overdue never suspends automatically.** An overdue invoice notifies the platform admins (`billing.invoice_overdue`, mandatory); suspension stays a manual operator action.
+
 ## Open questions (resolve before any migration)
-- **Q1** Enum storage: display strings (as approved) or snake codes?
-- **Q2** `subscriptions.apps` vs `tenant_apps` — which is authoritative for app activation?
 - **Q3** Operator cross-tenant queue: iterate `WithTenant` per tenant, or a SECURITY DEFINER view gated to `/api/v1/admin/*`?
-- **Q4** Invoice series platform-wide (`INV-YYYY-nnnn`, Bool as issuer) — confirm, vs per tenant.
 - **Q5** Add `decided_by`/`decided_at` to `plan_change_requests` (not in approved shape; audit_log could cover it instead).
 - **Q6** `tin` mandatory for government tenants?
 - **Q7** Withdrawal: `withdrawn_at` column, a 4th status `Withdrawn`, or hard delete of a still-pending row?
