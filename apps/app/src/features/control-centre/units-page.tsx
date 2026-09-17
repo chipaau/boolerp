@@ -7,30 +7,21 @@ import { Card } from '@workspace/ui/components/card'
 import { DropdownMenuItem } from '@workspace/ui/components/dropdown-menu'
 import { ConfirmDialog } from '@workspace/ui/components/confirm-dialog'
 import { NativeSelect } from '@workspace/ui/components/native-select'
-import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
 import { useToast } from '@workspace/ui/components/toast'
 import { ToneDot } from '@workspace/ui/components/tone-dot'
+import { LinkTab, LinkTabs } from '@workspace/ui/components/tabs'
 import { cn } from '@workspace/ui/lib/utils'
 import { BRAND } from '@/lib/brand'
 import { OrgCanvas, OrgChartToolbar, buildOrgTree, useOrgChart } from '@/features/directory/org-chart'
 import type { OrgNode } from '@/features/directory/org-chart'
 import { PersonAvatar } from '@/features/directory/people-bits'
-import { isOnBooks, liveUnits, siteById, unitById, unitChain, unitDescendants, unitKids, unitLead, unitMembers, unitPath, unitTone } from '@/features/org/logic'
-import { usePeople, useSites, useUnitActions, useUnits } from '@/features/org/queries'
+import { isOnBooks, liveUnits, siteById, unitById, unitChain, unitDescendants, unitKids, unitLead, unitMembers, unitPath } from '@/features/org/logic'
+import { useAuditLog, usePeople, useSites, useUnitActions, useUnits } from '@/features/org/queries'
 import type { Person, Site, Tone, Unit } from '@/features/org/types'
 import { ControlTitle, FieldLabel, RoleBadge, RuleStrip, useCanEdit } from './control-bits'
 import { UnitDialog } from './unit-dialog'
 import type { UnitDraft } from './unit-dialog'
 
-const SWATCHES: { name: string; tone: Tone }[] = [
-  { name: 'Sage', tone: 'success' },
-  { name: 'Plum', tone: 'plum' },
-  { name: 'Slate', tone: 'slate' },
-  { name: 'Tan', tone: 'tan' },
-  { name: 'Amber', tone: 'warning' },
-  { name: 'Clay', tone: 'risk' },
-  { name: 'Rose', tone: 'rose' },
-]
 const TONE_TEXT: Record<Tone, string> = {
   success: 'text-tone-success-foreground', plum: 'text-tone-plum-foreground', slate: 'text-tone-slate-foreground', tan: 'text-tone-tan-foreground',
   warning: 'text-tone-warning-foreground', risk: 'text-tone-risk-foreground', danger: 'text-tone-danger-foreground', neutral: 'text-tone-neutral-foreground', rose: 'text-tone-rose-foreground',
@@ -51,6 +42,7 @@ export function UnitsPage() {
   const actions = useUnitActions()
   const canEdit = useCanEdit()
   const toast = useToast()
+  const log = useAuditLog()
   const navigate = useNavigate()
   const search = useSearch({ from: '/_app/$app/$section' })
   const [mode, setMode] = useState<Mode>('tree')
@@ -88,6 +80,23 @@ export function UnitsPage() {
     )
   }
 
+  function exportCsv() {
+    const rows = [['Code', 'Name', 'Type', 'Parent'], ...liveUnits(units).map((u) => [u.code, u.name, u.kind, u.parent ? unitPath(units, u.parent) : ''])]
+    const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(',')).join('\n')
+    const name = 'hexa-admin-units.csv'
+    try {
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+      a.download = name
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000)
+    } catch {
+      // a blocked download still logs the intent
+    }
+    log('Export', `${name} downloaded`)
+    toast(`${name} downloaded`)
+  }
+
   function askArchive(u: Unit) {
     if (!canEdit) return toast(READ_ONLY, { ok: false })
     const kids = unitKids(units, u.id).length
@@ -108,7 +117,6 @@ export function UnitsPage() {
       onAddPerson={guard(() => addPerson(sel.id))}
       onEdit={guard(() => setDraft({ edit: sel, parent: sel.parent }))}
       onArchive={() => askArchive(sel)}
-      onRecolor={(t) => (canEdit ? actions.recolor(sel.id, t) : toast(READ_ONLY, { ok: false }))}
       onLead={(id) => {
         const p = people.find((x) => x.id === id)
         actions.setLead(sel.id, id || undefined, p?.name)
@@ -128,13 +136,9 @@ export function UnitsPage() {
           description="One org tree — divisions, departments and teams. The Directory shows this same structure read-only; approvals and notifications follow its shape."
           actions={
             <>
-              <Segmented className="gap-1 p-1" aria-label="View">
-                {(['tree', 'chart'] as const).map((m) => (
-                  <SegmentedItem key={m} active={mode === m} onClick={() => setMode(m)} className={cn('h-[30px] px-[15px] font-bold', mode === m && 'bg-card text-foreground shadow-none')}>
-                    {m === 'tree' ? 'Tree' : 'Org chart'}
-                  </SegmentedItem>
-                ))}
-              </Segmented>
+              <Button variant="outline" onClick={exportCsv}>
+                Export CSV
+              </Button>
               <Button onClick={guard(() => setDraft({ parent: sel?.id ?? null }))}>
                 New unit
                 <ButtonArrow>
@@ -144,6 +148,13 @@ export function UnitsPage() {
             </>
           }
         />
+        <LinkTabs aria-label="View" className="mb-4">
+          {(['tree', 'chart'] as const).map((m) => (
+            <LinkTab key={m} active={mode === m} onClick={() => setMode(m)}>
+              {m === 'tree' ? 'Tree' : 'Org chart'}
+            </LinkTab>
+          ))}
+        </LinkTabs>
         <RuleStrip>
           {plural(liveUnits(units).length, 'unit', 'units')} · {active.length} people placed · {empty.length ? `${plural(empty.length, 'unit', 'units')} with nobody in ${empty.length === 1 ? 'it' : 'them'}` : 'every unit has someone in it'}
         </RuleStrip>
@@ -280,9 +291,9 @@ function UnitTree({ units, people, selected, onSelect }: { units: Unit[]; people
   )
 }
 
-/** The selected unit: header, actions, stats, colour / lead / order, then the people sitting in it. */
+/** The selected unit: header, actions, stats, lead / order, then the people sitting in it. */
 function UnitDetail({
-  unit, units, people, sites, canEdit, onAddSub, onAddPerson, onEdit, onArchive, onRecolor, onLead, onNudge, onOpenPerson,
+  unit, units, people, sites, canEdit, onAddSub, onAddPerson, onEdit, onArchive, onLead, onNudge, onOpenPerson,
 }: {
   unit: Unit
   units: Unit[]
@@ -293,7 +304,6 @@ function UnitDetail({
   onAddPerson: () => void
   onEdit: () => void
   onArchive: () => void
-  onRecolor: (tone: Tone | undefined) => void
   onLead: (id: string) => void
   onNudge: (d: -1 | 1) => void
   onOpenPerson: (id: string) => void
@@ -356,13 +366,9 @@ function UnitDetail({
         </div>
 
         <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3.5 border-t border-divider pt-4">
-          <div className="min-w-0">
-            <FieldLabel>Colour</FieldLabel>
-            <ColourDots units={units} unit={unit} canEdit={canEdit} onPick={onRecolor} />
-          </div>
           <div className="w-[236px] shrink-0">
             <FieldLabel>Lead</FieldLabel>
-            <NativeSelect value={unit.leadId ?? ''} disabled={!canEdit} onChange={(e) => onLead(e.target.value)} className="[&>select]:h-9">
+            <NativeSelect value={unit.leadId ?? ''} disabled={!canEdit} onChange={(e) => onLead(e.target.value)}>
               <option value="">{lead ? `Standing in: ${lead.name}` : 'No lead'}</option>
               {deep.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -422,45 +428,5 @@ function UnitDetail({
         )}
       </Card>
     </>
-  )
-}
-
-/** Small round tone dots; unset shows (with a lighter ring) the colour it inherits and from where. */
-function ColourDots({ units, unit, canEdit, onPick }: { units: Unit[]; unit: Unit; canEdit: boolean; onPick: (tone: Tone | undefined) => void }) {
-  const effective = unitTone(units, unit.id)
-  const from = unit.tone ? undefined : unitChain(units, unit.parent).reverse().find((u) => u.tone)
-  const hint = unit.tone ? (unitKids(units, unit.id).length ? 'Sub-units inherit this unless they set their own' : null) : from ? `Inherited from ${from.name}` : 'Default colour for its place in the tree'
-  return (
-    <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1.5">
-      <div role="radiogroup" aria-label="Unit colour" className="flex items-center gap-2">
-        {SWATCHES.map((sw) => {
-          const on = unit.tone === sw.tone
-          const ghost = !unit.tone && effective === sw.tone
-          return (
-            <button
-              key={sw.tone}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              title={sw.name}
-              aria-label={sw.name}
-              aria-disabled={!canEdit || undefined}
-              onClick={() => onPick(sw.tone)}
-              className="size-[18px] rounded-full outline-none transition-shadow duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-card"
-              style={{
-                backgroundColor: `var(--tone-${sw.tone})`,
-                boxShadow: on ? `0 0 0 2px var(--card), 0 0 0 4px var(--tone-${sw.tone})` : ghost ? `0 0 0 2px var(--card), 0 0 0 3px color-mix(in oklab, var(--tone-${sw.tone}) 45%, transparent)` : undefined,
-              }}
-            />
-          )
-        })}
-      </div>
-      {hint && <span className="text-caption text-faint">{hint}</span>}
-      {unit.tone && (
-        <button type="button" onClick={() => onPick(undefined)} className="text-caption text-faint underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:underline">
-          Reset
-        </button>
-      )}
-    </div>
   )
 }

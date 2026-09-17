@@ -5,6 +5,7 @@ import { Checkbox } from '@workspace/ui/components/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@workspace/ui/components/popover'
 import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
 import { useToast } from '@workspace/ui/components/toast'
+import { LinkTab, LinkTabs } from '@workspace/ui/components/tabs'
 import { cn } from '@workspace/ui/lib/utils'
 import { AgendaList } from './agenda-list'
 import { useCalendarSearch } from './calendar-search'
@@ -135,19 +136,13 @@ export function CalendarPage() {
             </SegmentedItem>
           </Segmented>
           <span aria-hidden="true" className="h-[22px] w-px bg-border" />
-          <div className="flex min-w-0 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <LinkTabs aria-label="View" className="min-w-0 items-stretch gap-4 overflow-x-auto border-b-0 [&>[data-slot=tabs-indicator]]:bottom-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {VIEWS.map((v) => (
-              <button
-                key={v.key}
-                type="button"
-                title={v.hint}
-                onClick={() => set({ view: v.key })}
-                className={cn('relative me-4 h-[34px] px-[3px] text-ui-sm whitespace-nowrap outline-none transition-colors duration-instant focus-visible:ring-2 focus-visible:ring-ring', boardView === v.key && view !== 'awaiting' ? 'font-bold text-foreground shadow-[inset_0_-2px_0_var(--brand-soft)]' : 'text-muted-foreground hover:text-foreground')}
-              >
+              <LinkTab key={v.key} title={v.hint} active={boardView === v.key && view !== 'awaiting'} onClick={() => set({ view: v.key })} className="h-[34px] px-[3px] pb-0 text-ui-sm">
                 {v.label}
-              </button>
+              </LinkTab>
             ))}
-          </div>
+          </LinkTabs>
           <Popover>
             <PopoverTrigger
               render={<Button variant="outline" size="icon-sm" />}
