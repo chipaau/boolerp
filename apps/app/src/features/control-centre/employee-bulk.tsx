@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { CloudUpload, Download } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Download } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
+import { FileDropzone } from '@workspace/ui/components/file-dropzone'
 import { NativeSelect } from '@workspace/ui/components/native-select'
 import { Switch } from '@workspace/ui/components/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
-import { cn } from '@workspace/ui/lib/utils'
 import { downloadCsv, parseCsv } from '@/lib/csv'
 import { PersonAvatar } from '@/features/directory/people-bits'
 import { APP_GOVERNS, APP_KEYS, APP_ROLES, NO_STOCK_PERMS, ROLE_TEMPLATE, deriveRole, fmtDate, liveUnits, parseDate, slugMail, unitPath } from '@/features/org/logic'
@@ -191,11 +191,9 @@ export function ImportEmployeesDialog({ open, onClose }: { open: boolean; onClos
   const units = useUnits(), people = usePeople(), sites = useSites()
   const actions = usePersonActions()
   const toast = useToast()
-  const input = useRef<HTMLInputElement>(null)
-  const [file, setFile] = useState<{ name: string; text: string } | null>(null)
-  const [over, setOver] = useState(false)
+  const [file, setFile] = useState<{ file: File; text: string } | null>(null)
   useEffect(() => {
-    if (open) { setFile(null); setOver(false) }
+    if (open) setFile(null)
   }, [open])
 
   const parsed = useMemo(() => {
@@ -235,11 +233,9 @@ export function ImportEmployeesDialog({ open, onClose }: { open: boolean; onClos
   const ok = parsed?.rows.filter((r) => !r.errors.length) ?? []
   const bad = parsed?.rows.filter((r) => r.errors.length) ?? []
 
-  function read(f: File | undefined) {
-    if (!f) return
-    if (!/\.csv$/i.test(f.name) && f.type !== 'text/csv') return toast('That is not a CSV file', { ok: false })
+  function read(f: File) {
     f.text().then(
-      (text) => setFile({ name: f.name, text }),
+      (text) => setFile({ file: f, text }),
       () => toast('Could not read that file', { ok: false })
     )
   }
@@ -270,26 +266,7 @@ export function ImportEmployeesDialog({ open, onClose }: { open: boolean; onClos
           </DialogDescription>
         </DialogHeader>
         <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto px-6 pb-2">
-          <input ref={input} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { read(e.target.files?.[0]); e.target.value = '' }} />
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="Upload a CSV file"
-            onClick={() => input.current?.click()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.current?.click() }
-            }}
-            onDragOver={(e) => { e.preventDefault(); setOver(true) }}
-            onDragLeave={() => setOver(false)}
-            onDrop={(e) => { e.preventDefault(); setOver(false); read(e.dataTransfer.files[0]) }}
-            className={cn('flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-7 text-center outline-none transition-colors duration-instant focus-visible:ring-2 focus-visible:ring-ring', over ? 'border-ring bg-surface-soft' : 'border-border bg-surface-band hover:bg-surface-soft')}
-          >
-            <CloudUpload className="size-7 text-faint" strokeWidth={1.6} />
-            <div className="text-ui-sm font-bold text-foreground">
-              {file ? file.name : <>Drop a CSV here or <span className="underline underline-offset-2">browse</span></>}
-            </div>
-            <div className="text-caption text-faint">{file ? 'Drop another file or click to replace it' : 'One person per row, with a header row'}</div>
-          </div>
+          <FileDropzone file={file?.file ?? null} onFile={read} accept={['.csv', 'text/csv']} label="Drop a CSV here" hint="One person per row, with a header row" aria-label="Upload a CSV file" preview={false} />
           <button type="button" onClick={template} className="inline-flex items-center gap-1.5 self-start rounded text-compact font-bold text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
             <Download className="size-3.5" strokeWidth={1.8} />
             Download template
