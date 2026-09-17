@@ -94,6 +94,31 @@ services:
       timeout: 3s
       retries: 10
 
+  # one-shot: seeds dev logins (malecouncil owner + internal operator). Safe to re-run.
+  # Needs Kratos admin (identity creation) and a migrated DB (role/tenant rows).
+  provision-dev:
+    build:
+      context: .
+      dockerfile: docker/go.Dockerfile
+    working_dir: /w/apps/api
+    command: go run -buildvcs=false ./cmd/provision-dev
+    environment:
+      APP_DSN: ${APP_DSN:-postgres://erp_app:erp_app@postgres:5432/erp?sslmode=disable}
+      APP_KRATOS_PUBLIC_URL: ${APP_KRATOS_PUBLIC_URL:-http://kratos:4433}
+      APP_KRATOS_ADMIN_URL: ${APP_KRATOS_ADMIN_URL:-http://kratos:4434}
+    volumes:
+      - .:/w
+      - gocache:/root/.cache/go-build
+      - gomod:/go/pkg/mod
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      kratos:
+        condition: service_started
+    networks:
+      - internal
+    restart: "no"
+
   # one-shot: applies embedded Goose migrations as the OWNER, then exits. api waits on it.
   migrate:
     build:
@@ -287,7 +312,7 @@ services:
       kratos-initdb:
         condition: service_completed_successfully
     environment:
-      DSN: postgres://erp:erp@postgres:5432/kratos?sslmode=disable
+      DSN: postgres://${POSTGRES_USER:-erp}:${POSTGRES_PASSWORD:-erp}@postgres:5432/kratos?sslmode=disable
     volumes:
       - ./docker/kratos:/etc/config/kratos:ro
     command: ["migrate", "sql", "-e", "--yes"]
@@ -305,7 +330,7 @@ services:
       mailpit:
         condition: service_started
     environment:
-      DSN: postgres://erp:erp@postgres:5432/kratos?sslmode=disable
+      DSN: postgres://${POSTGRES_USER:-erp}:${POSTGRES_PASSWORD:-erp}@postgres:5432/kratos?sslmode=disable
     volumes:
       - ./docker/kratos:/etc/config/kratos:ro
     command: ["serve", "-c", "/etc/config/kratos/kratos.yml", "--dev", "--watch-courier"]
