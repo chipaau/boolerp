@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -30,23 +31,12 @@ func TestMetricsMiddleware_RecordsRequestCount(t *testing.T) {
 	rec2 := httptest.NewRecorder()
 	observability.MetricsHandler().ServeHTTP(rec2, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 	body := rec2.Body.String()
-	if !contains(body, `route="/widgets/{id}"`) {
+	if !strings.Contains(body, `route="/widgets/{id}"`) {
 		t.Fatalf("want exposition to label the route pattern, got:\n%s", body)
 	}
-	if contains(body, `/widgets/42`) {
+	if strings.Contains(body, `/widgets/42`) {
 		t.Fatalf("want the raw path (with its id) NOT to appear as a label value:\n%s", body)
 	}
-}
-
-func contains(haystack, needle string) bool {
-	return len(haystack) >= len(needle) && (func() bool {
-		for i := 0; i+len(needle) <= len(haystack); i++ {
-			if haystack[i:i+len(needle)] == needle {
-				return true
-			}
-		}
-		return false
-	})()
 }
 
 func TestRegisterPoolMetrics_ExposesDBPoolGauges(t *testing.T) {
@@ -68,7 +58,7 @@ func TestRegisterPoolMetrics_ExposesDBPoolGauges(t *testing.T) {
 	observability.MetricsHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 	body := rec.Body.String()
 	for _, name := range []string{"db_pool_acquired_conns", "db_pool_idle_conns", "db_pool_total_conns", "db_pool_max_conns"} {
-		if !contains(body, name) {
+		if !strings.Contains(body, name) {
 			t.Fatalf("want %s in the exposition output, got:\n%s", name, body)
 		}
 	}
@@ -93,7 +83,7 @@ func TestMetricsMiddleware_RecordsPanickingRequestsAs500(t *testing.T) {
 	exposition := httptest.NewRecorder()
 	observability.MetricsHandler().ServeHTTP(exposition, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 	body := exposition.Body.String()
-	if !contains(body, `route="/boom/{id}"`) || !contains(body, `status="500"`) {
+	if !strings.Contains(body, `route="/boom/{id}"`) || !strings.Contains(body, `status="500"`) {
 		t.Fatalf("want the panicking request counted as a 500, got:\n%s", body)
 	}
 }
@@ -110,7 +100,7 @@ func TestMetricsMiddleware_DurationCarriesTheStatusLabel(t *testing.T) {
 	exposition := httptest.NewRecorder()
 	observability.MetricsHandler().ServeHTTP(exposition, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 	body := exposition.Body.String()
-	if !contains(body, `http_request_duration_seconds_count{method="GET",route="/gone/{id}",status="404"}`) {
+	if !strings.Contains(body, `http_request_duration_seconds_count{method="GET",route="/gone/{id}",status="404"}`) {
 		t.Fatalf("want duration labelled by status, got:\n%s", body)
 	}
 }

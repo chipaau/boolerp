@@ -148,10 +148,10 @@ func TestAccessLog_RecordsPanicsAs500(t *testing.T) {
 	}
 }
 
-// The container healthcheck polls constantly; thousands of identical 200s would bury everything
-// worth reading. Failures still get logged, because an unhealthy probe is news.
+// Health probes and metric scrapes arrive every few seconds; thousands of identical 200s would bury
+// everything worth reading. Failures still get logged, because an unhealthy probe is news.
 func TestAccessLog_SkipsHealthyProbesButLogsFailingOnes(t *testing.T) {
-	for _, path := range []string{"/healthz", "/readyz", "/"} {
+	for _, path := range []string{"/healthz", "/readyz", "/", "/metrics"} {
 		if line := accessLogLine(t, http.MethodGet, path,
 			func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }); line != nil {
 			t.Fatalf("%s: want a healthy probe not to be logged, got %v", path, line)

@@ -5,13 +5,13 @@ import type { CreateTenantInput, CreateTenantResult, Tenant } from './types'
 const key = (...parts: string[]) => ['admin', 'tenants', ...parts] as const
 
 export function useTenants() {
-  return useQuery({ queryKey: key('list'), queryFn: () => api.get<Tenant[]>('/api/v1/admin/tenants') })
+  return useQuery({ queryKey: key('list'), queryFn: () => api.get<Tenant[]>('/api/v1/tenants') })
 }
 
 export function useCreateTenant() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: CreateTenantInput) => api.post<CreateTenantResult>('/api/v1/admin/tenants', input),
+    mutationFn: (input: CreateTenantInput) => api.post<CreateTenantResult>('/api/v1/tenants', input),
     onSuccess: () => void qc.invalidateQueries({ queryKey: key('list') }),
   })
 }
@@ -21,7 +21,7 @@ type TransitionAction = 'suspend' | 'reactivate' | 'archive'
 function useTransition(action: TransitionAction) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => api.post<Tenant>(`/api/v1/admin/tenants/${id}/${action}`),
+    mutationFn: (id: string) => api.post<Tenant>(`/api/v1/tenants/${id}/${action}`),
     onSuccess: () => void qc.invalidateQueries({ queryKey: key('list') }),
   })
 }

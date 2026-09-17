@@ -158,11 +158,12 @@ func setupOperatorFixture(t *testing.T, slugSuffix string, capability string) (u
 	return userID
 }
 
-// buildAdminTestHandler wires one AdminRoute-registered endpoint against a fake Cerbos that mirrors
-// resource_tenant.yaml's rules. Runs the handler directly (ServeHTTP, no network hop) so the
-// request's context — carrying the injected Principal — actually reaches AdminRoute, matching how
-// the tenancy middleware tests already do this correctly.
-func buildAdminTestHandler(t *testing.T, action string) (http.Handler, *bool) {
+// buildGatedTestHandler wires one route behind the real authorization middleware — OperatorsOnly to
+// resolve the principal and gate on internal membership, then RequirePermission for the (resource,
+// action) decision — against a fake Cerbos mirroring resource_tenant.yaml's rules. Runs the handler
+// directly (ServeHTTP, no network hop) so the request's context, carrying the injected Principal,
+// reaches the middleware.
+func buildGatedTestHandler(t *testing.T, action string) (http.Handler, *bool) {
 	t.Helper()
 	cerbosSrv := fakeAuthzCerbos()
 	t.Cleanup(cerbosSrv.Close)
@@ -170,9 +171,12 @@ func buildAdminTestHandler(t *testing.T, action string) (http.Handler, *bool) {
 	cerbos := auth.NewCerbos(cerbosSrv.URL)
 	called := false
 	r := chi.NewRouter()
-	httpapi.AdminRoute(r, http.MethodGet, "/test", "tenant", action, env.Pool, cerbos, struct{}{}, func(w http.ResponseWriter, _ *http.Request, _ struct{}, _ auth.AuthzPrincipal) {
-		called = true
-		w.WriteHeader(http.StatusOK)
+	r.Group(func(r chi.Router) {
+		r.Use(auth.OperatorsOnly(env.Pool))
+		r.With(auth.RequirePermission(cerbos, "tenant", action)).Get("/test", func(w http.ResponseWriter, _ *http.Request) {
+			called = true
+			w.WriteHeader(http.StatusOK)
+		})
 	})
 	return r, &called
 }
@@ -203,9 +207,9 @@ func uuidToStringAdmin(id pgtype.UUID) string {
 	return string(buf)
 }
 
-func TestAdminRoute_DeniesNonInternalMember(t *testing.T) {
+func TestAuthzMiddleware_DeniesNonInternalMember(t *testing.T) {
 	userID := setupNonMemberFixture(t, "nonmember")
-	h, called := buildAdminTestHandler(t, "list")
+	h, called := buildGatedTestHandler(t, "list")
 
 	rec := doAdminRequest(h, userID)
 	if rec.Code != http.StatusForbidden {
@@ -216,9 +220,9 @@ func TestAdminRoute_DeniesNonInternalMember(t *testing.T) {
 	}
 }
 
-func TestAdminRoute_AllowsInternalMemberForListAction(t *testing.T) {
+func TestAuthzMiddleware_AllowsInternalMemberForListAction(t *testing.T) {
 	userID := setupOperatorFixture(t, "list-ok", "")
-	h, called := buildAdminTestHandler(t, "list")
+	h, called := buildGatedTestHandler(t, "list")
 
 	rec := doAdminRequest(h, userID)
 	if rec.Code != http.StatusOK {
@@ -229,9 +233,9 @@ func TestAdminRoute_AllowsInternalMemberForListAction(t *testing.T) {
 	}
 }
 
-func TestAdminRoute_DeniesInternalMemberWithoutMatchingCapability(t *testing.T) {
+func TestAuthzMiddleware_DeniesInternalMemberWithoutMatchingCapability(t *testing.T) {
 	userID := setupOperatorFixture(t, "wrong-cap", "platform:tenants:suspend")
-	h, called := buildAdminTestHandler(t, "provision") // only holds suspend, not provision
+	h, called := buildGatedTestHandler(t, "provision") // only holds suspend, not provision
 
 	rec := doAdminRequest(h, userID)
 	if rec.Code != http.StatusForbidden {
@@ -242,9 +246,9 @@ func TestAdminRoute_DeniesInternalMemberWithoutMatchingCapability(t *testing.T) 
 	}
 }
 
-func TestAdminRoute_AllowsMatchingCapability(t *testing.T) {
+func TestAuthzMiddleware_AllowsMatchingCapability(t *testing.T) {
 	userID := setupOperatorFixture(t, "right-cap", "platform:tenants:provision")
-	h, called := buildAdminTestHandler(t, "provision")
+	h, called := buildGatedTestHandler(t, "provision")
 
 	rec := doAdminRequest(h, userID)
 	if rec.Code != http.StatusOK {
@@ -255,13 +259,15 @@ func TestAdminRoute_AllowsMatchingCapability(t *testing.T) {
 	}
 }
 
-// Every route a module mounts under /admin must be gated by AdminRoute. The handler signature
-// AdminRoute requires already makes a raw r.Get/r.Post rejection a compile error for handlers written
-// in that shape — but nothing stops someone registering a differently-shaped plain http.HandlerFunc
-// alongside them. So rather than trust the registration mechanism, this asserts the property itself:
-// walk the module's real route tree and prove each route denies a caller who holds no capabilities.
-// A route that skipped the gate would run its handler and answer something other than 403.
-func TestEveryAdminRouteIsAuthorizationGated(t *testing.T) {
+// Every route this module mounts must be gated by the authorization middleware. Nothing in the type
+// system enforces that any more: handlers are ordinary http.HandlerFunc, so a route registered
+// outside the OperatorsOnly group compiles perfectly and is simply open. That makes this audit the
+// only guard, so it asserts the property directly rather than trusting the registration style — walk
+// the module's real route tree and prove every route denies a caller holding no capabilities.
+//
+// It deliberately audits ALL of the module's routes rather than some privileged path prefix: the URL
+// no longer says who may call a route, so "is it under /admin?" is not a question worth asking.
+func TestEveryModuleRouteIsAuthorizationGated(t *testing.T) {
 	userID := setupNonMemberFixture(t, "route-tree-audit")
 	kratos := fakeKratosFor(uuidToStringAdmin(userID), "route-tree-audit@example.test")
 	defer kratos.Close()
@@ -295,15 +301,12 @@ func TestEveryAdminRouteIsAuthorizationGated(t *testing.T) {
 	// signed-in user who is not an operator.
 	h := httpapi.New(deps, module)
 	for _, rt := range routes {
-		if !strings.HasPrefix(rt.pattern, "/admin") {
-			continue
-		}
 		path := "/v1" + strings.ReplaceAll(rt.pattern, "{id}", uuidToStringAdmin(newAdminTestUUID(t)))
 		t.Run(rt.method+" "+rt.pattern, func(t *testing.T) {
 			rec := doAsOperator(t, h, rt.method, path, nil)
 			if rec.Code != http.StatusForbidden {
 				t.Fatalf("want 403 for a caller with no capabilities, got %d: %s\n"+
-					"this route appears not to go through httpapi.AdminRoute", rec.Code, rec.Body.String())
+					"this route is not behind auth.OperatorsOnly / auth.RequirePermission", rec.Code, rec.Body.String())
 			}
 		})
 	}

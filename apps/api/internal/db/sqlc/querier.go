@@ -11,6 +11,12 @@ import (
 )
 
 type Querier interface {
+	// Validates a caller-supplied country code against the reference table rather than a regex: a
+	// well-formed pair of letters like 'ZZ' is not a country. Requires the row to be CURRENT (active_to
+	// IS NULL), so a retired country can't be chosen for something new. tenants.country is an FK to this
+	// table, so without this an unknown code surfaces as a foreign-key violation from deep inside
+	// provisioning — a 500 for what is really a bad field.
+	ActiveCountryExists(ctx context.Context, code string) (bool, error)
 	// Irreversible in this flat-CRUD pass; active_to marks the tenant as ceased (replaces deleted_at).
 	// Only a live tenant can be archived: re-archiving would re-stamp active_to and move the ceased date.
 	ArchiveTenant(ctx context.Context, id pgtype.UUID) (Tenant, error)

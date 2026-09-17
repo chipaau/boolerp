@@ -30,8 +30,10 @@ var platformTables = map[string]bool{
 	"tenant_apps": true, "tenant_settings": true, "user_apps": true,
 }
 
-// queryier is satisfied by both *pgxpool.Pool (startup) and pgx.Tx (tests).
-type queryier interface {
+// Querier is the read-only database handle CheckRLSCoverage needs, satisfied by both *pgxpool.Pool
+// (startup) and pgx.Tx (tests). Exported alongside the function that takes it, so callers can name
+// the type rather than relying on structural satisfaction alone.
+type Querier interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
@@ -42,7 +44,7 @@ type queryier interface {
 // someone remembered to list it" — platformTables is the one place a table opts OUT, and given most
 // tables in this system are tenant-owned business data (not platform/control-plane), that's meant
 // to stay a short, deliberately-reviewed list. Run at startup (refuse to serve on failure) and in CI.
-func CheckRLSCoverage(ctx context.Context, db queryier) error {
+func CheckRLSCoverage(ctx context.Context, db Querier) error {
 	rows, err := db.Query(ctx, `
 		SELECT c.relname FROM pg_class c
 		JOIN pg_namespace n ON n.oid = c.relnamespace

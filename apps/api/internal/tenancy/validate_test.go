@@ -21,7 +21,7 @@ func TestValidateCreateTenant(t *testing.T) {
 		{"accepts digits in the slug", func(r *createTenantRequest) { r.Slug = "council2" }, ""},
 
 		{"rejects a missing slug", func(r *createTenantRequest) { r.Slug = "" }, "slug"},
-		{"rejects a whitespace-only name", func(r *createTenantRequest) { r.Name = "   " }, "name"},
+		{"rejects an empty name", func(r *createTenantRequest) { r.Name = "" }, "name"},
 		{"rejects uppercase in the slug", func(r *createTenantRequest) { r.Slug = "MaleCouncil" }, "slug"},
 		{"rejects spaces in the slug", func(r *createTenantRequest) { r.Slug = "male council" }, "slug"},
 		{"rejects non-ascii in the slug", func(r *createTenantRequest) { r.Slug = "malé" }, "slug"},
@@ -66,6 +66,27 @@ func TestValidateCreateTenant_ReportsEveryFieldAtOnce(t *testing.T) {
 	for _, field := range []string{"slug", "code", "name", "party_type_code", "institution_type_code", "owner_email", "owner_name", "country"} {
 		if len(errs[field]) == 0 {
 			t.Errorf("want an error reported for %q, got none", field)
+		}
+	}
+}
+
+// The validator assumes its input arrives trimmed — httpapi.SanitizeBody does that for every route
+// — so it treats a blank field as absent. TestAdminTenants_WhitespaceOnlyFieldIsBlank proves the two
+// halves meet: a whitespace-only value posted over HTTP is reported as the missing field it is.
+func TestValidateCreateTenant_TreatsBlankAsMissing(t *testing.T) {
+	req := createTenantRequest{
+		Slug: "malecouncil", Code: "MCC", Name: "", Country: "MV",
+		PartyTypeCode: "government", InstitutionTypeCode: "council",
+		OwnerEmail: "owner@malecouncil.mv", OwnerName: "Owner",
+	}
+	errs := validateCreateTenant(&req)
+
+	if len(errs["name"]) == 0 {
+		t.Fatalf("want a blank name rejected, got %v", errs)
+	}
+	for field, msgs := range errs {
+		if field != "name" {
+			t.Fatalf("only name should fail; %q also did: %v", field, msgs)
 		}
 	}
 }

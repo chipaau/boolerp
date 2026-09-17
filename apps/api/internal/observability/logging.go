@@ -66,15 +66,16 @@ func RequestLogger(base *slog.Logger) func(http.Handler) http.Handler {
 // Deferred, so a panicking handler is still recorded rather than vanishing — Recoverer converts it
 // to a 500 below this middleware, which is what ww then reports.
 //
-// Health probes are logged only when they fail: the container healthcheck polls /healthz constantly,
-// and thousands of identical 200s a day would bury the requests worth reading.
+// Polled endpoints are logged only when they fail: the container healthcheck hits /healthz and
+// Prometheus scrapes /metrics every few seconds, and thousands of identical 200s a day would bury
+// the requests worth reading.
 func AccessLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 		defer func() {
 			status := ww.Status()
-			if isHealthProbe(r.URL.Path) && status < http.StatusBadRequest {
+			if isPolledEndpoint(r.URL.Path) && status < http.StatusBadRequest {
 				return
 			}
 			LoggerFrom(r.Context()).Info("request",
@@ -90,8 +91,8 @@ func AccessLog(next http.Handler) http.Handler {
 	})
 }
 
-func isHealthProbe(path string) bool {
-	return path == "/healthz" || path == "/readyz" || path == "/"
+func isPolledEndpoint(path string) bool {
+	return path == "/healthz" || path == "/readyz" || path == "/" || path == "/metrics"
 }
 
 // sensitiveKeys are attribute keys never allowed to reach a log line unredacted (FR-OBS-06) —
