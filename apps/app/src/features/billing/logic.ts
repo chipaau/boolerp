@@ -153,8 +153,8 @@ export const RECEIPT_ACCEPT = ['.jpg', '.jpeg', '.png', '.pdf', 'image/jpeg', 'i
 export const RECEIPT_MAX_BYTES = 10 * 1024 * 1024
 
 /** What an invoice's badge says: an open invoice with a slip awaiting verification is under review. */
-export type InvoiceDisplayStatus = InvoiceStatus | 'Payment under review'
-export const DISPLAY_TONE: Record<InvoiceDisplayStatus, BadgeTone> = { ...INVOICE_TONE, 'Payment under review': 'neutral' }
+export type InvoiceDisplayStatus = InvoiceStatus | 'Pending'
+export const DISPLAY_TONE: Record<InvoiceDisplayStatus, BadgeTone> = { ...INVOICE_TONE, 'Pending': 'neutral' }
 
 /** Submissions for one invoice, newest first. */
 export const paymentsFor = (payments: PaymentSubmission[], invoiceId: string) =>
@@ -165,7 +165,7 @@ export const isUnderReview = (i: Pick<TenantInvoice, 'id' | 'status'>, payments:
   isOpenInvoice(i.status) && payments.some((p) => p.invoiceId === i.id && p.status === 'Pending verification')
 
 export const invoiceDisplayStatus = (i: Pick<TenantInvoice, 'id' | 'status'>, payments: PaymentSubmission[]): InvoiceDisplayStatus =>
-  isUnderReview(i, payments) ? 'Payment under review' : i.status
+  isUnderReview(i, payments) ? 'Pending' : i.status
 
 /** Invoices that still need paying (open, no slip under review): overdue first, then oldest due date. */
 export function payableInvoices(invoices: TenantInvoice[], payments: PaymentSubmission[]) {

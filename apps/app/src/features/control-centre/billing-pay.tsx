@@ -28,7 +28,7 @@ const HEADINGS = ['Make the transfer', 'Upload the transfer slip', 'Check before
 const LEADS = [
   'Pay from your bank app or at a branch into either account below, quoting the reference so Bool can match it.',
   'A screenshot or PDF of the confirmation your bank gave you. Bool checks it against the transfer, usually within one working day.',
-  'Nothing is sent until you submit. The invoice shows "Payment under review" until Bool verifies it.',
+  'Nothing is sent until you submit. The invoice shows "Pending" until Bool verifies it.',
 ]
 
 /** A value with a copy button: account numbers, the amount and the reference. */
@@ -287,10 +287,13 @@ export function PaymentList({ payments, onReupload, canReupload = () => true, sh
           </div>
           {!showInvoice && <FileChip className="mt-2 py-2" name={p.receipt.fileName} mimeType={p.receipt.mimeType} sizeBytes={p.receipt.sizeBytes} url={receiptUrl(p.receipt.storageKey)} />}
           {p.status === 'Rejected' && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-tone-risk-soft px-3 py-2 text-compact text-tone-risk-foreground">
-              <span className="min-w-0 flex-1">{p.rejectReason ?? 'Bool could not verify this payment.'}</span>
+            // a quiet reason line under the row, not a red block: the badge already says Rejected
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-compact text-muted-foreground">
+              <span className="min-w-0 flex-1">
+                <span className="text-tone-risk-foreground">Reason:</span> {p.rejectReason ?? 'Bool could not verify this payment.'}
+              </span>
               {onReupload && canReupload(p.invoiceId) && (
-                <Button variant="outline" size="sm" className="rounded-full font-bold" onClick={() => onReupload(p.invoiceId)}>
+                <Button variant="link" size="xs" className="font-bold" onClick={() => onReupload(p.invoiceId)}>
                   Upload a new slip
                 </Button>
               )}

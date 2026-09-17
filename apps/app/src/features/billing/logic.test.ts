@@ -138,8 +138,8 @@ describe('payments', () => {
 
   it('shows an open invoice with a pending slip as under review, and nothing else', () => {
     const payments = [pay('p1', 'a', 'Pending verification'), pay('p2', 'b', 'Rejected'), pay('p3', 'c', 'Pending verification')]
-    expect(invoiceDisplayStatus(bill('a', 'Overdue', '2026-09-01'), payments)).toBe('Payment under review')
-    expect(invoiceDisplayStatus(bill('a', 'Due', '2026-09-01'), payments)).toBe('Payment under review')
+    expect(invoiceDisplayStatus(bill('a', 'Overdue', '2026-09-01'), payments)).toBe('Pending')
+    expect(invoiceDisplayStatus(bill('a', 'Due', '2026-09-01'), payments)).toBe('Pending')
     expect(invoiceDisplayStatus(bill('b', 'Overdue', '2026-09-01'), payments)).toBe('Overdue')
     // a paid invoice keeps Paid even if a stray submission is still pending
     expect(invoiceDisplayStatus(bill('c', 'Paid', '2026-09-01'), payments)).toBe('Paid')
