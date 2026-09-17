@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
-import logo from '@workspace/assets/logos/hexa-logo.png'
+import logo from '@workspace/assets/logos/bool-logo.png'
 import { Hexagon } from '@workspace/ui/components/hexagon'
 import { MadeBy } from '@workspace/ui/components/made-by'
 
 /**
- * The sign-in canvas from the Hexa Login design: Warm Ivory page with three faded hexagons
+ * The sign-in canvas from the Bool Login design: Warm Ivory page with three faded hexagons
  * behind a 408px column that rises in. Shared by every Kratos self-service screen (login,
  * recovery, verification, settings) in app and admin; the screens supply title, intro and form.
  */
@@ -13,7 +13,7 @@ export function AuthShell({
   subtitle,
   children,
   footer,
-  brand = 'Hexa',
+  brand = 'Bool',
   links = [],
 }: {
   title: string

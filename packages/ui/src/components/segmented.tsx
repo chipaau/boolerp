@@ -28,7 +28,7 @@ function SegmentedItem({
       data-slot="segmented-item"
       data-active={active || undefined}
       className={cn(
-        "inline-flex h-[30px] items-center justify-center gap-1.5 rounded-full px-3.5 text-compact whitespace-nowrap outline-none transition-[background-color,color] duration-instant ease-hexa focus-visible:ring-2 focus-visible:ring-ring",
+        "inline-flex h-[30px] items-center justify-center gap-1.5 rounded-full px-3.5 text-compact whitespace-nowrap outline-none transition-[background-color,color] duration-instant ease-bool focus-visible:ring-2 focus-visible:ring-ring",
         active ? "bg-primary font-bold text-primary-foreground shadow-[0_1px_3px_rgba(64,44,20,0.10)]" : "text-muted-foreground hover:text-foreground",
         className
       )}

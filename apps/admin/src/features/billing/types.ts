@@ -1,4 +1,4 @@
-// Billing shapes from the Hexa Admin design. Pending SRS/data-model review.
+// Billing shapes from the Bool Admin design. Pending SRS/data-model review.
 // Money is whole MVR (number). Dates and periods are display strings ('15 Sep 2026', 'Sep 2026').
 export type { Undo } from '@/features/tenants/types'
 

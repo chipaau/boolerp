@@ -183,7 +183,7 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
                   <input value={f.addr} onChange={(e) => set({ addr: e.target.value })} placeholder="Street and number" disabled={!f.place} className={cn(fieldClass, !f.place && 'opacity-50')} />
                 </div>
               </div>
-              {countryRec && !formRegions.length && <div className="mt-2.5 text-caption leading-[1.5] text-pretty text-faint">Hexa hasn't surveyed {f.country}, so its regions are yours to define — add one under System › Regions and it will appear here.</div>}
+              {countryRec && !formRegions.length && <div className="mt-2.5 text-caption leading-[1.5] text-pretty text-faint">Bool hasn't surveyed {f.country}, so its regions are yours to define — add one under System › Regions and it will appear here.</div>}
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface-band px-4 py-3">

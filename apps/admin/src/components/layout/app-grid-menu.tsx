@@ -42,7 +42,7 @@ export function AppGridMenu() {
               key={app.name}
               href={app.path ? workspaceUrl(app.path) : '/'}
               aria-current={app.path ? undefined : 'page'}
-              className="flex flex-col items-center gap-2 rounded-[10px] px-1.5 py-3 text-center outline-none transition-colors duration-instant ease-hexa hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex flex-col items-center gap-2 rounded-[10px] px-1.5 py-3 text-center outline-none transition-colors duration-instant ease-bool hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
             >
               <span aria-hidden="true" className={cn('size-[30px] rounded-[9px]', app.plate)} />
               <span className={cn('text-fine font-bold', app.path ? 'text-body' : 'text-tone-warning-deep')}>{app.name}</span>

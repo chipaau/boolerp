@@ -30,7 +30,7 @@ export type CreateTenantResult = {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Design-only profile (Hexa Admin design). UI fixtures — shapes pending SRS/data-model review.
+// Design-only profile (Bool Admin design). UI fixtures — shapes pending SRS/data-model review.
 // Keyed by tenant slug. Dates are display strings ('25 Oct 2024'), '—' means not set.
 // ---------------------------------------------------------------------------------------------
 export type Undo = () => void

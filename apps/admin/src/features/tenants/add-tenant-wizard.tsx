@@ -77,7 +77,7 @@ const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
  * one step body on the right. A step can only be moved past once complete; later steps stay locked
  * until then. "Provision" calls the real API and is offered from every step as soon as the required
  * details (name, slug, code, owner) are in: the owner is the required admin and Control Centre +
- * Calendar are always on, so nothing on a later step can block it. Everything the API does not take
+ * Calendar are included, so nothing on a later step can block it. Everything the API does not take
  * yet (plan, apps, geography, parent, extra admins) is saved to the fixture profile afterwards.
  */
 export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => void; onProvisioned: (p: Provisioned) => void }) {
@@ -239,7 +239,7 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
   const notes = [
     ready ? 'Ready to provision. The other steps are optional.' : 'Name, slug, code and owner are all that provisioning needs.',
     'Optional. Left blank, notices go to the owner.',
-    `Control Centre and Calendar are always on${extraApps ? ` · ${extraApps} more ${extraApps === 1 ? 'app' : 'apps'}` : ''}.`,
+    `Control Centre and Calendar are included${extraApps ? ` · ${extraApps} more ${extraApps === 1 ? 'app' : 'apps'}` : ''}.`,
     adminCount ? `${adminCount} ${adminCount === 1 ? 'admin' : 'admins'} will be invited on provision.` : 'Add at least one admin to continue.',
     'Nothing is created until you provision.',
   ]
@@ -417,7 +417,7 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
                       <span className="mt-0.5 block text-caption text-faint">{a.name === 'Control Centre' ? 'The tenant’s own admin: users, roles, units, sites and settings' : a.note}</span>
                     </span>
                     <Badge variant="success" size="sm">
-                      Always on
+                      Included
                     </Badge>
                   </div>
                 ))}
@@ -545,7 +545,7 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
                 onEdit={() => setStep(2)}
                 lines={catalog
                   .filter((a) => f.apps[a.name] || core.includes(a.name))
-                  .map((a) => [appLabel(a.name), core.includes(a.name) ? 'Always on' : (f.apps[a.name] ?? []).join(', ')] as [string, string])}
+                  .map((a) => [appLabel(a.name), core.includes(a.name) ? 'Included' : (f.apps[a.name] ?? []).join(', ')] as [string, string])}
               />
               <ReviewCard
                 title="Admin users"

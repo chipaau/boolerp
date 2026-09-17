@@ -28,7 +28,7 @@ export function TenantMenu() {
         render={
           <button
             type="button"
-            className="group flex h-[34px] items-center gap-2 rounded-full px-[11px] outline-none transition-colors duration-instant ease-hexa hover:bg-sidebar-hover focus-visible:ring-2 focus-visible:ring-ring data-open:bg-sidebar-hover"
+            className="group flex h-[34px] items-center gap-2 rounded-full px-[11px] outline-none transition-colors duration-instant ease-bool hover:bg-sidebar-hover focus-visible:ring-2 focus-visible:ring-ring data-open:bg-sidebar-hover"
             aria-label={`Workspace: ${tenant.name}`}
           />
         }

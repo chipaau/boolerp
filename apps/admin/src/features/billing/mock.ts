@@ -1,5 +1,5 @@
 // UI fixtures — shapes pending SRS/data-model review; replaced at integration.
-// Seed data from the Hexa Admin design (.design/login/Hexa Workspace/Hexa Admin.dc.html).
+// Seed data from the Bool Admin design (.design/login/Bool Workspace/Bool Admin.dc.html).
 import type { BillingProfile, ChaseTemplate, Credit, DunningPolicy, DunningStep, Invoice, PaymentMethod, TenantDunningMode } from './types'
 
 export const BILLING_PROFILES: Record<string, BillingProfile> = {

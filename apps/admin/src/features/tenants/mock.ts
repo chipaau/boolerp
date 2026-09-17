@@ -1,5 +1,5 @@
 // UI fixtures — shapes pending SRS/data-model review; replaced at integration.
-// Seed data from the Hexa Admin design (.design/login/Hexa Workspace/Hexa Admin.dc.html).
+// Seed data from the Bool Admin design (.design/login/Bool Workspace/Bool Admin.dc.html).
 import type { AppDef, AppName, OrgType, EntityType, Plan, TenantProfile } from './types'
 
 export const APP_CATALOG: AppDef[] = [
@@ -10,7 +10,7 @@ export const APP_CATALOG: AppDef[] = [
   { name: 'Control Centre', note: 'Tenant-side settings — always included', modules: ['Settings'] },
 ]
 
-/** Apps every tenant gets, always on: Control Centre (the catalogue's Control Centre) and Calendar. */
+/** Apps every tenant gets included: Control Centre and Calendar. */
 export const CORE_APPS: AppName[] = ['Control Centre', 'Calendar']
 
 export const PLANS: Plan[] = [

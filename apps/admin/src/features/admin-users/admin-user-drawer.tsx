@@ -113,7 +113,7 @@ function AdminUserFlow({ editing, tenant, onDone }: { editing?: AdminUser; tenan
   }
 
   const heading: [string, string][] = [
-    [tenant ? `An admin for ${tenant.abbr}` : 'What they can run', tenant ? 'Tenant admins run one tenant day to day. They cannot see or touch the others.' : 'Admin users run Hexa itself or a single tenant. Everyday staff live in each tenant’s own Control Centre.'],
+    [tenant ? `An admin for ${tenant.abbr}` : 'What they can run', tenant ? 'Tenant admins run one tenant day to day. They cannot see or touch the others.' : 'Admin users run Bool itself or a single tenant. Everyday staff live in each tenant’s own Control Centre.'],
     ['Who they are', editing ? 'The ID can’t change once invited. Everything else can.' : 'The invite link goes to their e-mail and expires in 14 days.'],
     ['Check before you send', editing ? 'Role and scope changes are logged and take effect on their next request.' : 'Nothing is sent until you confirm.'],
   ]
@@ -210,7 +210,7 @@ function AdminUserFlow({ editing, tenant, onDone }: { editing?: AdminUser; tenan
               <input id="au-id" value={f.idNo} onChange={(e) => set('idNo', e.target.value)} placeholder={expat ? 'P-8823441' : 'A123566'} disabled={!!editing} className={cn(fieldClass, 'font-mono text-compact')} />
             </Field>
             <Field id="au-email" label="E-mail address" className="sm:col-span-2" hint="The invite link goes here and expires in 14 days.">
-              <input id="au-email" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="name@hexa.co" className={fieldClass} />
+              <input id="au-email" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="name@bool.co" className={fieldClass} />
             </Field>
             <Field id="au-contact" label="Contact number">
               <input id="au-contact" value={f.contact} onChange={(e) => set('contact', e.target.value)} placeholder="7778899" inputMode="tel" className={fieldClass} />

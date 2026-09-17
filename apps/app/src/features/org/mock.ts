@@ -1,4 +1,4 @@
-// FIXTURES — the sample workspace (Hexa) that Control Centre edits and every other app reads.
+// FIXTURES — the sample workspace (Bool) that Control Centre edits and every other app reads.
 // Merged from the Directory and Control Center designs: the Directory's org tree (any depth,
 // coloured, with leads) carrying the Control Center's employee record (IDs, status, contract,
 // app roles, sites). Only ./queries.ts may import this file (lint-enforced).
@@ -215,7 +215,7 @@ export const SITES: Site[] = [
 /** Where goods arrive unless a receipt says otherwise. */
 export const DEFAULT_SITE = 's-1'
 
-// ---- geography: Hexa ships the country list; surveyed countries bring their regions with them
+// ---- geography: Bool ships the country list; surveyed countries bring their regions with them
 export const COUNTRIES: Country[] = [
   { id: 'r-mv', name: 'Maldives', code: 'MV', tz: 'Indian/Maldives', cur: 'MVR', seeded: true, on: true },
   { id: 'r-lk', name: 'Sri Lanka', code: 'LK', tz: 'Asia/Colombo', cur: 'LKR', seeded: false, on: true },

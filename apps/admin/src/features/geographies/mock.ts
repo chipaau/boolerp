@@ -1,5 +1,5 @@
 // UI fixtures — shapes pending SRS/data-model review; replaced at integration.
-// Seed data from the Hexa Admin design (.design/login/Hexa Workspace/Hexa Admin.dc.html).
+// Seed data from the Bool Admin design (.design/login/Bool Workspace/Bool Admin.dc.html).
 import type { Country, Geography, GeographyType } from './types'
 
 export const COUNTRIES: Country[] = [

@@ -45,7 +45,7 @@ export function AppSwitcher() {
                 key={app.slug}
                 to="/$app"
                 params={{ app: app.slug }}
-                className="flex flex-col items-center gap-[7px] rounded-[10px] px-1.5 py-3 outline-none transition-colors duration-instant ease-hexa hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex flex-col items-center gap-[7px] rounded-[10px] px-1.5 py-3 outline-none transition-colors duration-instant ease-bool hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="grid size-[34px] place-items-center rounded-[10px] bg-surface-soft">
                   <AppIcon slug={app.slug} size={22} />

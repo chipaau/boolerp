@@ -51,13 +51,13 @@ function Stepper({ title, steps, current, complete = () => true, onStep, classNa
                 aria-disabled={!open || !onStep || undefined}
                 onClick={() => open && !here && onStep?.(i)}
                 className={cn(
-                  "relative flex w-full items-start gap-[11px] rounded-[11px] px-2.5 py-2 text-left outline-none transition-colors duration-instant ease-hexa focus-visible:ring-2 focus-visible:ring-ring",
+                  "relative flex w-full items-start gap-[11px] rounded-[11px] px-2.5 py-2 text-left outline-none transition-colors duration-instant ease-bool focus-visible:ring-2 focus-visible:ring-ring",
                   here ? "bg-tone-warning-soft" : open && onStep ? "hover:bg-surface-soft" : "cursor-default"
                 )}
               >
                 <span
                   className={cn(
-                    "relative z-[1] grid size-[26px] shrink-0 place-items-center rounded-full text-fine font-bold transition-colors duration-instant ease-hexa",
+                    "relative z-[1] grid size-[26px] shrink-0 place-items-center rounded-full text-fine font-bold transition-colors duration-instant ease-bool",
                     here
                       ? "bg-brand-soft text-brand-cta-foreground"
                       : done

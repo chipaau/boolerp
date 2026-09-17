@@ -151,7 +151,7 @@ export function PickCard({ selected, title, note, onPick, dimmed, trailing }: { 
       aria-checked={selected}
       onClick={onPick}
       className={cn(
-        'block w-full rounded-[13px] border px-[15px] py-[13px] text-left transition-colors duration-instant ease-hexa',
+        'block w-full rounded-[13px] border px-[15px] py-[13px] text-left transition-colors duration-instant ease-bool',
         selected ? 'border-sage bg-sage-soft' : 'border-divider hover:bg-surface-soft',
         dimmed && 'opacity-45',
       )}

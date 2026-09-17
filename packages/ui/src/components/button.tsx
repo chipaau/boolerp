@@ -14,7 +14,7 @@ import { cn } from "@workspace/ui/lib/utils"
  */
 const buttonVariants = cva(
   // every button lifts 1px on hover and settles on press: immediate, never bouncy
-  "group/btn inline-flex shrink-0 items-center justify-center rounded-full font-bold whitespace-nowrap outline-none transition-[background-color,color,box-shadow,transform] duration-instant ease-hexa hover:-translate-y-px active:translate-y-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:bg-muted disabled:text-disabled-foreground aria-invalid:ring-2 aria-invalid:ring-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/btn inline-flex shrink-0 items-center justify-center rounded-full font-bold whitespace-nowrap outline-none transition-[background-color,color,box-shadow,transform] duration-instant ease-bool hover:-translate-y-px active:translate-y-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:bg-muted disabled:text-disabled-foreground aria-invalid:ring-2 aria-invalid:ring-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -88,7 +88,7 @@ function ButtonArrow({
       data-slot="button-arrow"
       aria-hidden="true"
       className={cn(
-        "grid shrink-0 place-items-center rounded-full bg-primary-circle text-primary-circle-foreground transition-[background-color,color] duration-instant ease-hexa group-hover/btn:bg-primary-circle-hover group-hover/btn:text-primary-circle-hover-foreground",
+        "grid shrink-0 place-items-center rounded-full bg-primary-circle text-primary-circle-foreground transition-[background-color,color] duration-instant ease-bool group-hover/btn:bg-primary-circle-hover group-hover/btn:text-primary-circle-hover-foreground",
         "size-7 [&>svg]:size-3.5",
         "group-data-[size=xs]/btn:size-4 group-data-[size=xs]/btn:[&>svg]:size-2.5",
         "group-data-[size=sm]/btn:size-6 group-data-[size=icon-sm]/btn:size-6 group-data-[size=sm]/btn:[&>svg]:size-3 group-data-[size=icon-sm]/btn:[&>svg]:size-3",

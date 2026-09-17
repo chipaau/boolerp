@@ -66,7 +66,7 @@ export const profilesQuery = () => fixture(key('profiles'), mock.TENANT_PROFILES
 
 export const usePlans = () => useQuery(plansQuery()).data ?? mock.PLANS
 export const useAppCatalog = () => useQuery(appCatalogQuery()).data ?? mock.APP_CATALOG
-/** Apps that are always on for every tenant and cannot be toggled. */
+/** Apps included with every tenant; they cannot be toggled off. */
 export const useCoreApps = () => mock.CORE_APPS
 export const useOrgTypes = () => mock.ORG_TYPES
 export const useEntityTypes = () => mock.ENTITY_TYPES

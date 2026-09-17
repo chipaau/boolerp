@@ -65,7 +65,7 @@ export function slugMail(name: string) {
     .filter(Boolean)
     .map((p) => p.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase())
     .slice(0, 2)
-    .join('.') + '@hexa.co'
+    .join('.') + '@bool.co'
 }
 export const chatHandle = (name: string) => '@' + slugMail(name).split('@')[0]
 export const ascii = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()

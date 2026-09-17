@@ -186,7 +186,7 @@ function ParentDrawer({ tenant: t, onClose }: DrawerProps) {
               aria-checked={parent === o.slug}
               onClick={() => (blocked ? toast(`${t.abbr} has child tenants, so it cannot also be a child.`, { ok: false }) : setParentSlug(o.slug))}
               className={cn(
-                'flex items-center gap-[11px] rounded-xl border px-3.5 py-3 text-left transition-colors duration-instant ease-hexa',
+                'flex items-center gap-[11px] rounded-xl border px-3.5 py-3 text-left transition-colors duration-instant ease-bool',
                 parent === o.slug ? 'border-sage bg-sage-soft' : 'border-divider hover:bg-accent',
                 blocked && 'opacity-45',
               )}

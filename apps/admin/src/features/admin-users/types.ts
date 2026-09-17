@@ -1,4 +1,4 @@
-// Admin user shapes from the Hexa Admin design. Pending SRS/data-model review.
+// Admin user shapes from the Bool Admin design. Pending SRS/data-model review.
 import type { InviteState, Nationality } from '@/features/tenants/types'
 
 export type { InviteState, Nationality, Undo } from '@/features/tenants/types'

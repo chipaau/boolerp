@@ -48,7 +48,7 @@ const csvCell = (v: string | number) => {
 }
 
 /** Builds the ledger CSV and hands it to the browser as a download. Returns the line count. */
-export function downloadLedgerCsv(lines: LedgerLine[], tenantName: (slug: string) => string, filename = 'hexa-billing-ledger.csv') {
+export function downloadLedgerCsv(lines: LedgerLine[], tenantName: (slug: string) => string, filename = 'bool-billing-ledger.csv') {
   const head = ['Document', 'Kind', 'Tenant', 'Period', 'Issued', 'Due', 'Net (MVR)', 'GST (MVR)', 'Total (MVR)', 'Credited (MVR)', 'Status', 'Payment method', 'PO reference']
   const body = lines.map((e) => [e.no, e.kind, tenantName(e.tenantSlug), e.period, e.issued, e.due, e.net, e.tax, e.total, e.credited, e.status, e.method, e.po])
   const csv = [head, ...body].map((r) => r.map(csvCell).join(',')).join('\r\n')

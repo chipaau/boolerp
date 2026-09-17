@@ -1,4 +1,4 @@
-// Geography shapes from the Hexa Admin design. Pending SRS/data-model review.
+// Geography shapes from the Bool Admin design. Pending SRS/data-model review.
 export type { Undo } from '@/features/tenants/types'
 
 export type CountryStatus = 'Active' | 'Inactive'

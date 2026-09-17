@@ -33,7 +33,7 @@ function ListRow({
       {
         className: cn(
           "flex items-center gap-[13px] border-b border-divider px-6 py-[15px] last:border-b-0",
-          interactive && "group cursor-pointer transition-colors duration-instant ease-hexa hover:bg-surface-soft",
+          interactive && "group cursor-pointer transition-colors duration-instant ease-bool hover:bg-surface-soft",
           className
         ),
         children: (

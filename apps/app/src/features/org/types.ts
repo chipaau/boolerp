@@ -97,7 +97,7 @@ export type Site = {
   cadence: Cadence | null
 }
 
-// ---- geography (countries Hexa ships; regions and places inside them)
+// ---- geography (countries Bool ships; regions and places inside them)
 export type Country = { id: string; name: string; code: string; tz: string; cur: string; seeded: boolean; on: boolean }
 export type Region = { id: string; country: string; name: string; origin: 'system' | 'custom'; places: string[] }
 

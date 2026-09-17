@@ -3,7 +3,7 @@ import { Button } from '@workspace/ui/components/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@workspace/ui/components/sheet'
 import { cn } from '@workspace/ui/lib/utils'
 
-// The Hexa Admin side drawer (design section DRAWER): a 560px right sheet with a title + note
+// The Bool Admin side drawer (design section DRAWER): a 560px right sheet with a title + note
 // header, a scrolling body and a Cancel / primary footer. Wraps @workspace/ui's Sheet.
 
 /** Right-hand form drawer: header, scrolling body, Cancel + save footer. */
@@ -81,7 +81,7 @@ export function DrawerChoice({ selected, onSelect, label, note }: { selected: bo
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        'rounded-lg p-3.5 text-left outline-none transition-[background-color,box-shadow] duration-instant ease-hexa focus-visible:ring-2 focus-visible:ring-ring',
+        'rounded-lg p-3.5 text-left outline-none transition-[background-color,box-shadow] duration-instant ease-bool focus-visible:ring-2 focus-visible:ring-ring',
         selected ? 'bg-sage-soft shadow-[inset_0_0_0_1.5px_var(--sage)]' : 'bg-surface-band shadow-[inset_0_0_0_1px_var(--divider)] hover:bg-secondary-hover/60'
       )}
     >

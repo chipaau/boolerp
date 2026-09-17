@@ -145,7 +145,7 @@ export function AppsHoneycomb() {
                   stroke={active ? 'var(--tile-hover-stroke)' : 'var(--tile-stroke)'}
                   strokeWidth={1}
                   className={cn(
-                    'transition-[color,transform] duration-quick ease-hexa',
+                    'transition-[color,transform] duration-quick ease-bool',
                     active ? 'text-tile-hover-fill' : 'text-tile-fill'
                   )}
                 >
@@ -156,7 +156,7 @@ export function AppsHoneycomb() {
                       variant="art"
                       size={50}
                       className={cn(
-                        'transition-transform duration-instant ease-hexa',
+                        'transition-transform duration-instant ease-bool',
                         active && 'scale-[1.08] -translate-y-0.5'
                       )}
                     />

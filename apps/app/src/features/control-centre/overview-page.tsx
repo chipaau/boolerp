@@ -52,7 +52,7 @@ export function ControlOverviewPage() {
   return (
     <div className="min-h-0 w-full overflow-y-auto">
       <div className="px-8 pt-7 pb-24">
-        <ControlTitle overline="Control Centre" title="Overview" description="The record every other Hexa app reads. Change it once here and it lands everywhere." />
+        <ControlTitle overline="Control Centre" title="Overview" description="The record every other Bool app reads. Change it once here and it lands everywhere." />
 
         <div className="flex flex-wrap items-end gap-x-[54px] gap-y-5">
           {figures.map((f) => (

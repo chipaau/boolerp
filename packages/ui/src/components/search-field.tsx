@@ -24,7 +24,7 @@ function SearchField({
   asButton?: boolean
 }) {
   const shell = cn(
-    "flex w-full items-center gap-2.5 rounded-full bg-muted text-placeholder transition-[background-color,box-shadow] duration-instant ease-hexa focus-within:ring-2 focus-within:ring-ring hover:bg-secondary-hover/60",
+    "flex w-full items-center gap-2.5 rounded-full bg-muted text-placeholder transition-[background-color,box-shadow] duration-instant ease-bool focus-within:ring-2 focus-within:ring-ring hover:bg-secondary-hover/60",
     size === "sm" ? "h-9 px-3.5" : "h-[38px] px-[15px]",
     className
   )

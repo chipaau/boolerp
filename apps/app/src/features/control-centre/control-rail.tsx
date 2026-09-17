@@ -36,7 +36,7 @@ export function ControlRail({ app }: { app: AppDef }) {
       : kind === 'sites' ? [['Code', 'Name', 'Region', 'Type', 'Status'], ...sites.map((s) => [s.code, s.name, s.region, types.find((t) => t.id === s.typeId)?.name ?? '', s.status])]
       : [['Name', 'Storage', 'Can issue', 'Bins', 'Counting'], ...types.map((t) => [t.name, t.mode, t.issue ? 'Yes' : 'No', t.bins ? 'Yes' : 'No', t.cadence])]
     const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(',')).join('\n')
-    const name = `hexa-${kind}.csv`
+    const name = `bool-${kind}.csv`
     try {
       const a = document.createElement('a')
       a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))

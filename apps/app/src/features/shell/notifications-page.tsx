@@ -73,7 +73,7 @@ export function NotificationsPage() {
                         params={{ app: n.to.app, section: n.to.section ?? '' }}
                         search={{ id: n.to.id }}
                         onClick={() => markAllRead.mutate()}
-                        className="grid grid-cols-[12px_minmax(0,1fr)_auto] items-start gap-3.5 border-b border-divider px-[22px] py-4 outline-none transition-colors duration-instant ease-hexa hover:bg-surface-soft focus-visible:bg-surface-soft [li:last-child>&]:border-b-0"
+                        className="grid grid-cols-[12px_minmax(0,1fr)_auto] items-start gap-3.5 border-b border-divider px-[22px] py-4 outline-none transition-colors duration-instant ease-bool hover:bg-surface-soft focus-visible:bg-surface-soft [li:last-child>&]:border-b-0"
                       >
                         <HexGlyph size={10} className={cn('mt-1', n.unread ? 'text-brand-soft' : 'text-border')} />
                         <span className="min-w-0">

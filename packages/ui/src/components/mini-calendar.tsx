@@ -76,7 +76,7 @@ function MiniCalendar({ month, selected, today, marks = {}, onSelect, onMonthCha
               title={n ? `${n} ${n === 1 ? "meeting" : "meetings"}` : undefined}
               aria-pressed={on}
               className={cn(
-                "relative justify-self-center rounded-full tabular-nums outline-none transition-colors duration-instant ease-hexa focus-visible:ring-2 focus-visible:ring-ring",
+                "relative justify-self-center rounded-full tabular-nums outline-none transition-colors duration-instant ease-bool focus-visible:ring-2 focus-visible:ring-ring",
                 size,
                 on ? "bg-brand-soft font-bold text-brand-cta-foreground" : isToday ? "bg-primary font-bold text-foreground" : "hover:bg-accent",
                 !on && !isToday && (inMonth ? "text-body" : "text-faint"),

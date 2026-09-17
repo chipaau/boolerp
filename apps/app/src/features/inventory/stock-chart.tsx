@@ -50,7 +50,7 @@ export function StockChart() {
                 startTransition(() => setPeriod(p))
               }}
               className={cn(
-                'rounded-full px-[13px] py-[5px] text-meta font-bold transition-colors duration-instant ease-hexa',
+                'rounded-full px-[13px] py-[5px] text-meta font-bold transition-colors duration-instant ease-bool',
                 p === period ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'
               )}
             >

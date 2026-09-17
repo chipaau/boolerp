@@ -35,7 +35,7 @@ export function DayPanel({ meetings, date, today, nowMinutes, onCreate }: { meet
       </div>
       <div className="max-h-[calc(100svh-300px)] overflow-y-auto p-2">
         {items.map((m) => (
-          <MeetingLink key={m.id} m={m} className={cn('flex gap-[11px] rounded-[11px] px-3 py-[11px] outline-none transition-colors duration-instant ease-hexa hover:bg-surface-soft focus-visible:bg-surface-soft', date === today && toMinutes(m.end) < nowMinutes && 'opacity-55 hover:opacity-100')}>
+          <MeetingLink key={m.id} m={m} className={cn('flex gap-[11px] rounded-[11px] px-3 py-[11px] outline-none transition-colors duration-instant ease-bool hover:bg-surface-soft focus-visible:bg-surface-soft', date === today && toMinutes(m.end) < nowMinutes && 'opacity-55 hover:opacity-100')}>
             <HexDot tone={cals[m.calendar].tone} size={8} className="mt-1" />
             <span className="min-w-0 flex-1">
               <span className="block text-xs font-bold tabular-nums text-muted-foreground">{fmtRange(m.start, m.end)}</span>

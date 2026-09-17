@@ -55,7 +55,7 @@ function SheetContent({
         data-slot="sheet-content"
         data-side={side}
         className={cn(
-          "fixed z-50 flex flex-col gap-4 bg-card text-card-foreground shadow-overlay outline-none ease-hexa data-open:animate-in data-open:duration-considered data-closed:animate-out data-closed:duration-considered",
+          "fixed z-50 flex flex-col gap-4 bg-card text-card-foreground shadow-overlay outline-none ease-bool data-open:animate-in data-open:duration-considered data-closed:animate-out data-closed:duration-considered",
           "data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:data-open:slide-in-from-right data-[side=right]:data-closed:slide-out-to-right data-[side=right]:sm:max-w-sm",
           "data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:data-open:slide-in-from-left data-[side=left]:data-closed:slide-out-to-left data-[side=left]:sm:max-w-sm",
           "data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:data-open:slide-in-from-top data-[side=top]:data-closed:slide-out-to-top",
@@ -68,7 +68,7 @@ function SheetContent({
         {showCloseButton && (
           <SheetPrimitive.Close
             data-slot="sheet-close"
-            className="absolute top-5 right-5 grid size-8 place-items-center rounded-full text-muted-foreground transition-colors duration-instant ease-hexa hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden disabled:pointer-events-none"
+            className="absolute top-5 right-5 grid size-8 place-items-center rounded-full text-muted-foreground transition-colors duration-instant ease-bool hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden disabled:pointer-events-none"
           >
             <XIcon className="size-4" />
             <span className="sr-only">Close</span>

@@ -320,7 +320,7 @@ function OverviewTab({
     <div>
       <Card className="mb-[18px] grid gap-0 overflow-hidden py-0 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(190px,1fr))]">
         {stats.map((s) => (
-          <button key={s.label} type="button" onClick={s.run} className="min-w-0 border-divider px-[21px] pt-[19px] pb-[18px] text-left transition-colors duration-instant ease-hexa not-last:border-r hover:bg-surface-soft">
+          <button key={s.label} type="button" onClick={s.run} className="min-w-0 border-divider px-[21px] pt-[19px] pb-[18px] text-left transition-colors duration-instant ease-bool not-last:border-r hover:bg-surface-soft">
             <Overline>{s.label}</Overline>
             <div className="mt-3 flex items-baseline gap-[7px]">
               <span className="text-[26px] font-bold tracking-[-0.025em] text-foreground">{s.value}</span>
@@ -360,7 +360,7 @@ function OverviewTab({
                   key={n.t.slug}
                   to="/tenants/$slug"
                   params={{ slug: n.t.slug }}
-                  className={cn('flex items-center gap-[11px] rounded-[11px] px-3 py-[11px] transition-colors duration-instant ease-hexa hover:bg-surface-soft', n.self && 'bg-sage-soft hover:bg-sage-soft')}
+                  className={cn('flex items-center gap-[11px] rounded-[11px] px-3 py-[11px] transition-colors duration-instant ease-bool hover:bg-surface-soft', n.self && 'bg-sage-soft hover:bg-sage-soft')}
                 >
                   {n.child && <span aria-hidden="true" className="h-px w-3.5 shrink-0 bg-border" />}
                   <div className="min-w-0 flex-1">
