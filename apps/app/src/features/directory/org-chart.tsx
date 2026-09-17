@@ -83,7 +83,7 @@ export function placeNodes(root: OrgNode, openSet: Record<string, boolean>) {
  * canvas scrolls to `focus` when it changes.
  */
 export function OrgCanvas({
-  tree, openSet, setOpen, zoom, hits, focus, onOpenPerson, onSeePeople, units, selected, onSelect, menuExtra, className,
+  tree, openSet, setOpen, zoom, hits, focus, onOpenPerson, onSeePeople, units, selected, onSelect, menuExtra, onDropUnit, className,
 }: {
   tree: ReturnType<typeof buildOrgTree>
   openSet: Record<string, boolean>
@@ -99,6 +99,8 @@ export function OrgCanvas({
   onSelect?: (n: OrgNode) => void
   /** Further menu items for a card, under the built-in ones. */
   menuExtra?: (n: OrgNode) => ReactNode
+  /** Editing: drag a group card onto the company or another group to move it there. Return false to refuse the drop. */
+  onDropUnit?: (unitId: string, target: OrgNode) => boolean
   className?: string
 }) {
   const view = useRef<HTMLDivElement>(null)
@@ -106,8 +108,35 @@ export function OrgCanvas({
   const navigate = useNavigate()
 
   const flip = (id: string) => setOpen({ ...openSet, [id]: !openSet[id] })
+  const [drag, setDrag] = useState<{ id: string; over: string | null } | null>(null)
+  const dragged = useRef(0)
+  function startDrag(n: OrgNode, e: React.PointerEvent) {
+    if (!onDropUnit || n.kind !== 'unit' || !n.unit || e.button !== 0 || (e.target as HTMLElement).closest('button')) return
+    const unitId = n.unit.id, x0 = e.clientX, y0 = e.clientY
+    let moving = false, over: string | null = null
+    const move = (ev: PointerEvent) => {
+      if (!moving && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return
+      moving = true
+      const hit = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>('[data-node]')?.dataset.node ?? null
+      over = hit && hit !== n.id && (hit === 'co' || hit.startsWith('g:')) ? hit : null
+      setDrag({ id: n.id, over })
+    }
+    const stop = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('keydown', key) }
+    const up = () => {
+      stop()
+      if (moving) dragged.current = Date.now()
+      const target = over ? tree.byId[over] : undefined
+      setDrag(null)
+      if (moving && target) onDropUnit(unitId, target)
+    }
+    const key = (ev: KeyboardEvent) => { if (ev.key === 'Escape') { stop(); if (moving) dragged.current = Date.now(); setDrag(null) } }
+    document.addEventListener('pointermove', move)
+    document.addEventListener('pointerup', up)
+    document.addEventListener('keydown', key)
+  }
   // reading: a person opens their profile, a group folds open or shut. Editing: a group is selected, and opens if shut
   const activate = (n: OrgNode) => {
+    if (Date.now() - dragged.current < 300) return
     if (n.kind === 'person' && n.person) return onOpenPerson(n.person.id)
     if (onSelect) {
       onSelect(n)
@@ -152,7 +181,7 @@ export function OrgCanvas({
               if (!live) return null
               const px = par.x + CW / 2, py = par.y + CH + 12, cx = ch.x + CW / 2, cy = ch.y - 6
               const mid = py + (cy - py) * 0.55
-              const col = `var(--color-tone-${n.tone})`
+              const col = `var(--tone-${n.tone})`
               return (
                 <g key={n.id} style={{ color: col }}>
                   <path d={`M${px} ${py} C ${px} ${mid}, ${cx} ${cy - (cy - py) * 0.45}, ${cx} ${cy}`} fill="none" stroke="currentColor" strokeWidth={1.5} strokeDasharray="5 6" strokeLinecap="round" opacity={0.45} />
@@ -175,10 +204,12 @@ export function OrgCanvas({
                 <div
                   role="button"
                   tabIndex={0}
+                  data-node={n.id}
                   aria-pressed={onSelect && !isPerson ? selected === n.id : undefined}
+                  onPointerDown={(e) => startDrag(n, e)}
                   onClick={() => activate(n)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); activate(n) } }}
-                  className={cn('relative cursor-pointer rounded-[14px] px-3.5 py-[13px] shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring', isRoot ? 'bg-tone-warning-soft' : 'bg-card', hit && 'ring-2 ring-brand-soft', selected === n.id && 'ring-2 ring-brand')}
+                  className={cn('relative cursor-pointer rounded-[14px] px-3.5 py-[13px] shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring', isRoot ? 'bg-tone-warning-soft' : 'bg-card', hit && 'ring-2 ring-brand-soft', selected === n.id && 'ring-2 ring-brand', drag?.id === n.id && 'opacity-45', drag?.over === n.id && 'ring-2 ring-brand ring-offset-2 ring-offset-surface-band', onDropUnit && n.kind === 'unit' && 'touch-none')}
                   style={{ width: CW, height: CH }}
                 >
                   <div className="flex items-start gap-[11px]">
