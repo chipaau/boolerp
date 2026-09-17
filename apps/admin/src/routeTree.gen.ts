@@ -12,7 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminIndexRouteImport } from './routes/_admin/index'
-import { Route as AdminTenantsRouteImport } from './routes/_admin/tenants'
+import { Route as AdminAdminUsersRouteImport } from './routes/_admin/admin-users'
+import { Route as AdminBillingRouteImport } from './routes/_admin/billing'
+import { Route as AdminGeographiesRouteImport } from './routes/_admin/geographies'
+import { Route as AdminTenantsIndexRouteImport } from './routes/_admin/tenants/index'
+import { Route as AdminTenantsSlugRouteImport } from './routes/_admin/tenants/$slug'
 
 const AdminRoute = AdminRouteImport.update({
   id: '/_admin',
@@ -28,35 +32,90 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminTenantsRoute = AdminTenantsRouteImport.update({
-  id: '/tenants',
-  path: '/tenants',
+const AdminAdminUsersRoute = AdminAdminUsersRouteImport.update({
+  id: '/admin-users',
+  path: '/admin-users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBillingRoute = AdminBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminGeographiesRoute = AdminGeographiesRouteImport.update({
+  id: '/geographies',
+  path: '/geographies',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTenantsIndexRoute = AdminTenantsIndexRouteImport.update({
+  id: '/tenants/',
+  path: '/tenants/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTenantsSlugRoute = AdminTenantsSlugRouteImport.update({
+  id: '/tenants/$slug',
+  path: '/tenants/$slug',
   getParentRoute: () => AdminRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AdminIndexRoute
   '/login': typeof LoginRoute
-  '/tenants': typeof AdminTenantsRoute
+  '/admin-users': typeof AdminAdminUsersRoute
+  '/billing': typeof AdminBillingRoute
+  '/geographies': typeof AdminGeographiesRoute
+  '/tenants/$slug': typeof AdminTenantsSlugRoute
+  '/tenants/': typeof AdminTenantsIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
-  '/tenants': typeof AdminTenantsRoute
+  '/admin-users': typeof AdminAdminUsersRoute
+  '/billing': typeof AdminBillingRoute
+  '/geographies': typeof AdminGeographiesRoute
   '/': typeof AdminIndexRoute
+  '/tenants/$slug': typeof AdminTenantsSlugRoute
+  '/tenants': typeof AdminTenantsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
-  '/_admin/tenants': typeof AdminTenantsRoute
+  '/_admin/admin-users': typeof AdminAdminUsersRoute
+  '/_admin/billing': typeof AdminBillingRoute
+  '/_admin/geographies': typeof AdminGeographiesRoute
   '/_admin/': typeof AdminIndexRoute
+  '/_admin/tenants/$slug': typeof AdminTenantsSlugRoute
+  '/_admin/tenants/': typeof AdminTenantsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/tenants'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/admin-users'
+    | '/billing'
+    | '/geographies'
+    | '/tenants/$slug'
+    | '/tenants/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/tenants' | '/'
-  id: '__root__' | '/_admin' | '/login' | '/_admin/tenants' | '/_admin/'
+  to:
+    | '/login'
+    | '/admin-users'
+    | '/billing'
+    | '/geographies'
+    | '/'
+    | '/tenants/$slug'
+    | '/tenants'
+  id:
+    | '__root__'
+    | '/_admin'
+    | '/login'
+    | '/_admin/admin-users'
+    | '/_admin/billing'
+    | '/_admin/geographies'
+    | '/_admin/'
+    | '/_admin/tenants/$slug'
+    | '/_admin/tenants/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -87,24 +146,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/_admin/tenants': {
-      id: '/_admin/tenants'
+    '/_admin/admin-users': {
+      id: '/_admin/admin-users'
+      path: '/admin-users'
+      fullPath: '/admin-users'
+      preLoaderRoute: typeof AdminAdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/billing': {
+      id: '/_admin/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof AdminBillingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/geographies': {
+      id: '/_admin/geographies'
+      path: '/geographies'
+      fullPath: '/geographies'
+      preLoaderRoute: typeof AdminGeographiesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/tenants/': {
+      id: '/_admin/tenants/'
       path: '/tenants'
-      fullPath: '/tenants'
-      preLoaderRoute: typeof AdminTenantsRouteImport
+      fullPath: '/tenants/'
+      preLoaderRoute: typeof AdminTenantsIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/tenants/$slug': {
+      id: '/_admin/tenants/$slug'
+      path: '/tenants/$slug'
+      fullPath: '/tenants/$slug'
+      preLoaderRoute: typeof AdminTenantsSlugRouteImport
       parentRoute: typeof AdminRoute
     }
   }
 }
 
 interface AdminRouteChildren {
-  AdminTenantsRoute: typeof AdminTenantsRoute
+  AdminAdminUsersRoute: typeof AdminAdminUsersRoute
+  AdminBillingRoute: typeof AdminBillingRoute
+  AdminGeographiesRoute: typeof AdminGeographiesRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminTenantsSlugRoute: typeof AdminTenantsSlugRoute
+  AdminTenantsIndexRoute: typeof AdminTenantsIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminTenantsRoute: AdminTenantsRoute,
+  AdminAdminUsersRoute: AdminAdminUsersRoute,
+  AdminBillingRoute: AdminBillingRoute,
+  AdminGeographiesRoute: AdminGeographiesRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminTenantsSlugRoute: AdminTenantsSlugRoute,
+  AdminTenantsIndexRoute: AdminTenantsIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
