@@ -71,7 +71,7 @@ export function ControlOverviewPage() {
       <div className="px-8 pt-7 pb-24">
         <ControlTitle overline="Control Centre" title="Overview" description="The record every other Bool app reads. Change it once here and it lands everywhere." />
 
-        <div className="flex flex-wrap items-end gap-x-10 gap-y-5">
+        <div className="grid grid-cols-2 items-start gap-x-6 gap-y-5 sm:grid-cols-3 xl:grid-cols-6">
           {figures.map((f) => (
             <Link key={f.label} to="/$app/$section" params={{ app: 'control-centre', section: f.section }} className="group rounded-[10px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background">
               <div className="text-overline text-faint">{f.label}</div>
@@ -84,8 +84,7 @@ export function ControlOverviewPage() {
               </div>
             </Link>
           ))}
-          <span className="flex-1" />
-          <div className="w-[180px]">
+          <div className="min-w-0">
             <svg viewBox="0 0 120 34" preserveAspectRatio="none" role="img" aria-label="Headcount, last 12 months" className="block h-9 w-full overflow-visible">
               <path d={spark} fill="none" className="stroke-sage" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
             </svg>
