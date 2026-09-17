@@ -16,7 +16,7 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
-      include: ["src/components/date-picker.tsx", "src/components/stepper.tsx", "src/components/tabs.tsx", "src/components/table.tsx"],
+      include: ["src/components/date-picker.tsx", "src/components/stepper.tsx", "src/components/tabs.tsx", "src/components/table.tsx", "src/components/workspace-sidebar.tsx"],
     },
   },
 })
