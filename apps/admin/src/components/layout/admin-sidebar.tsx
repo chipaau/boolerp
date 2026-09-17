@@ -57,7 +57,7 @@ export function AdminSidebar() {
 
   return (
     <WorkspaceSidebar
-      identity={{ glyph: <img src={adminGlyph} alt="" aria-hidden="true" className="size-[26px] object-contain dark:brightness-[.82] dark:saturate-[.9]" />, name: 'Admin', description: 'Tenants, billing and access' }}
+      identity={{ glyph: <img src={adminGlyph} alt="" aria-hidden="true" className="size-5 object-contain" />, name: 'Admin', description: 'Tenants, billing and access' }}
       groups={groups}
       footer={{
         actions: [

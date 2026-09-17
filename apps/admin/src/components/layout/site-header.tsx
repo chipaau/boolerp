@@ -1,51 +1,73 @@
-import { useLocation, useNavigate } from '@tanstack/react-router'
-import { SearchField } from '@workspace/ui/components/search-field'
-import { AppGridMenu } from './app-grid-menu'
-import { BrandMark } from './brand-mark'
+import { useState } from 'react'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { ArrowRight, X } from 'lucide-react'
+import logo from '@workspace/assets/logos/bool-logo.png'
+import { Command, CommandDialog, CommandGroup, CommandInput, CommandItem, CommandList } from '@workspace/ui/components/command'
+import {
+  BrandMark,
+  HeaderDivider,
+  HeaderSearchTrigger,
+  ThemeToggle,
+  WorkspaceHeader,
+} from '@workspace/ui/components/workspace-header'
 import { UserMenu } from './nav-user'
 import { useAdminSearch } from './search-context'
-import { ThemeToggle } from './theme-toggle'
 
 /**
- * The global topbar, laid out like apps/app's SiteHeader: brand mark, the search pill in the middle
- * column, then theme, apps, a hairline and the account avatar. The console names itself at the top
- * of its rail. The pill filters whichever list is open; typing from the dashboard jumps to Tenants.
+ * The global topbar, composed from the shared WorkspaceHeader parts (identical to apps/app, minus the
+ * app switcher: the console is internal, not one of the tenant's apps). The
+ * search pill (click or ⌘K) opens a small dialog whose text filters whichever list is open; typing
+ * from the dashboard jumps to Tenants. The query stays applied after the dialog closes.
  */
 export function SiteHeader() {
   const { query, setQuery } = useAdminSearch()
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+
+  function change(q: string) {
+    setQuery(q)
+    if (pathname === '/') void navigate({ to: '/tenants' })
+  }
 
   return (
-    <header className="sticky top-0 z-50 grid h-(--header-height) w-full grid-cols-[minmax(min-content,1fr)_minmax(150px,340px)_minmax(min-content,1fr)] items-center gap-[18px] border-b border-border bg-card px-6">
-      <div className="flex min-w-0 items-center gap-[18px] overflow-hidden">
-        <BrandMark />
-      </div>
-
-      <SearchField
-        size="sm"
-        aria-label="Search tenants, geographies, admin users"
-        placeholder="Search tenants, geographies, admin users"
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value)
-          if (pathname === '/') void navigate({ to: '/tenants' })
-        }}
-        shortcut={
-          query ? (
-            <button type="button" onClick={() => setQuery('')} className="px-1.5 text-fine font-bold text-faint hover:text-foreground">
-              Clear
-            </button>
-          ) : undefined
+    <>
+      <WorkspaceHeader
+        brand={<BrandMark logoSrc={logo} render={<Link to="/" />} />}
+        search={<HeaderSearchTrigger placeholder={query ? `Search: ${query}` : 'Search'} onOpen={() => setOpen(true)} />}
+        actions={
+          <>
+            <ThemeToggle />
+            <HeaderDivider />
+            <UserMenu />
+          </>
         }
       />
-
-      <div className="flex items-center justify-end gap-2 justify-self-end">
-        <ThemeToggle />
-        <AppGridMenu />
-        <span aria-hidden="true" className="mx-1 h-[22px] w-px bg-border" />
-        <UserMenu />
-      </div>
-    </header>
+      <CommandDialog open={open} onOpenChange={setOpen} title="Search" description="Filter tenants, geographies and admin users">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Search tenants, geographies, admin users"
+            shortcut="esc"
+            autoFocus
+            value={query}
+            onValueChange={change}
+          />
+          <CommandList>
+            <CommandGroup heading="Search">
+              <CommandItem value="apply" onSelect={() => setOpen(false)}>
+                <ArrowRight strokeWidth={1.75} />
+                <span className="text-foreground">{query ? `Show matches for “${query}”` : 'Type to filter the open list'}</span>
+              </CommandItem>
+              {query && (
+                <CommandItem value="clear" onSelect={() => setQuery('')}>
+                  <X strokeWidth={1.75} />
+                  <span className="text-foreground">Clear search</span>
+                </CommandItem>
+              )}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </CommandDialog>
+    </>
   )
 }
