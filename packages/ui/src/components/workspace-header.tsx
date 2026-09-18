@@ -178,6 +178,20 @@ export type AccountMenuItem = {
   destructive?: boolean
 }
 
+/**
+ * The account menu, defined once so every app shows the same person the same choices. It carries
+ * only what actually leads somewhere: "Profile & preferences" and "Switch workspace" were dropped
+ * because neither had a destination, and a menu that lies about what it can do is worse than a
+ * short one. Pass `onChangePhoto` from an app that can persist a photo — an app that cannot should
+ * omit it rather than offer a control that quietly disagrees with the other app.
+ */
+function accountMenuItems({ onChangePhoto, onSignOut }: { onChangePhoto?: () => void; onSignOut: () => void }): AccountMenuItem[] {
+  return [
+    ...(onChangePhoto ? [{ key: "photo", label: "Change photo…", onClick: onChangePhoto }] : []),
+    { key: "signout", label: "Sign out", destructive: true, onClick: onSignOut },
+  ]
+}
+
 /** The 31px avatar and the account dropdown: name and email, then the items. */
 function AccountMenu({
   user,
@@ -230,4 +244,4 @@ function AccountMenu({
   )
 }
 
-export { WorkspaceHeader, BrandMark, HeaderDivider, ThemeToggle, HeaderSearchTrigger, AppSwitcherMenu, AccountMenu }
+export { WorkspaceHeader, BrandMark, HeaderDivider, ThemeToggle, HeaderSearchTrigger, AppSwitcherMenu, AccountMenu, accountMenuItems }
