@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Network } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@workspace/ui/components/sheet'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@workspace/ui/components/dialog'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { awayInfo, directReports, unitPath } from '@/features/org/logic'
@@ -9,10 +9,10 @@ import { usePeople, useUnits } from '@/features/org/queries'
 import { PersonAvatar, copyText, usePeopleMap } from './people-bits'
 
 /**
- * One person, slid in from the right: who they are, where they sit, how to reach them, and their
- * reporting line. Every name in it opens that person instead.
+ * One person, in a modal: who they are, where they sit, how to reach them, and their reporting
+ * line. Every name in it opens that person instead.
  */
-export function PersonPanel({ id, onClose, onOpen }: { id: string | undefined; onClose: () => void; onOpen: (id: string) => void }) {
+export function PersonModal({ id, onClose, onOpen }: { id: string | undefined; onClose: () => void; onOpen: (id: string) => void }) {
   const units = useUnits()
   const people = usePeople()
   const byId = usePeopleMap()
@@ -30,18 +30,18 @@ export function PersonPanel({ id, onClose, onOpen }: { id: string | undefined; o
   }
 
   return (
-    <Sheet open={!!p} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="gap-0 overflow-y-auto sm:max-w-[392px]">
+    <Dialog open={!!p} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent showCloseButton className="max-h-[86vh] gap-0 overflow-y-auto p-0 sm:max-w-[420px]">
         {p && (
           <>
-            <SheetHeader className="flex-row items-start gap-3.5 px-6 pt-6 pb-4 pr-14 text-left">
+            <div className="flex flex-row items-start gap-3.5 px-6 pt-6 pb-4 pe-14 text-left">
               <PersonAvatar person={p} units={units} className="size-[52px]" fallbackClassName="text-base" />
               <div className="min-w-0 flex-1">
-                <SheetTitle className="text-[19px] leading-[1.3] tracking-[-0.015em]">{p.name}</SheetTitle>
-                <SheetDescription className="mt-0.5 text-ui-sm text-body">{p.title}</SheetDescription>
+                <DialogTitle className="text-[19px] leading-[1.3] tracking-[-0.015em]">{p.name}</DialogTitle>
+                <DialogDescription className="mt-0.5 text-ui-sm text-body">{p.title}</DialogDescription>
                 <div className="mt-0.5 text-compact text-faint">{unitPath(units, p.unitId)}</div>
               </div>
-            </SheetHeader>
+            </div>
             {away && <div className={cn('mx-6 mb-4 rounded-[10px] px-3.5 py-[11px] text-compact font-bold', away.now ? 'bg-tone-warning-soft text-tone-warning-foreground' : 'bg-muted text-body')}>{away.long}</div>}
             <div className="px-6 pb-4">
               <Button variant="outline" size="sm" render={<Link to="/$app/$section" params={{ app: 'directory', section: 'org' }} search={{ id: p.id }} />}>
@@ -106,7 +106,7 @@ export function PersonPanel({ id, onClose, onOpen }: { id: string | undefined; o
             </section>
           </>
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -20,7 +20,7 @@ import { usePeople, useUnits } from '@/features/org/queries'
 import type { Person } from '@/features/org/types'
 import { useDirectorySearch } from './directory-search'
 import { AwayBadge, PersonAvatar, copyText, usePeopleMap } from './people-bits'
-import { PersonPanel } from './person-panel'
+import { PersonModal } from './person-modal'
 
 /** The strip every Directory screen opens with: this is a window onto Control Centre's record. */
 export function ReadOnlyStrip() {
@@ -172,7 +172,7 @@ export function PeoplePage() {
           )}
         </Card>
       </div>
-      <PersonPanel id={id} onClose={() => set({ id: undefined })} onOpen={(pid) => set({ id: pid })} />
+      <PersonModal id={id} onClose={() => set({ id: undefined })} onOpen={(pid) => set({ id: pid })} />
     </div>
   )
 }
