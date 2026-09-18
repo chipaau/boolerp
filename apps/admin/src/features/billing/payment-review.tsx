@@ -5,7 +5,7 @@ import { Button } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
 import { Input } from '@workspace/ui/components/input'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
@@ -187,14 +187,13 @@ export function PaymentReviewDialog({ item, tenant, onClose }: { item: PaymentTo
             <div className="mt-5 grid gap-2.5 rounded-[13px] bg-surface-band px-4 py-3.5">
               <label className="grid gap-1.5">
                 <span className="text-caption font-bold text-body">Reason</span>
-                <NativeSelect value={reason} onChange={(e) => setReason(e.target.value)} className="[&_select]:bg-card">
-                  <option value="">Choose a reason</option>
-                  {reasons.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </NativeSelect>
+                <SelectField
+                  aria-label="Reason"
+                  value={reason}
+                  onValueChange={setReason}
+                  className="bg-card"
+                  options={[{ value: '', label: 'Choose a reason' }, ...reasons.map((r) => ({ value: r, label: r }))]}
+                />
               </label>
               <label className="grid gap-1.5">
                 <span className="text-caption font-bold text-body">Message to the tenant (optional)</span>

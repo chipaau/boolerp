@@ -21,7 +21,8 @@ type StepperProps = Omit<React.ComponentProps<"nav">, "title"> & {
 
 /**
  * A vertical step rail for multi-step flows (horizontal numbers only below `sm`). The current step
- * sits on a soft brand tint; completed steps show a sage check; upcoming ones an outline disc.
+ * is marked by a filled brand disc and a black label — no row fill; completed steps show a sage
+ * check; upcoming ones an outline disc.
  * A step can be picked when it is current, already visited, or every step before it is complete —
  * anything else is locked (`aria-disabled`).
  */
@@ -52,7 +53,7 @@ function Stepper({ title, steps, current, complete = () => true, onStep, classNa
                 onClick={() => open && !here && onStep?.(i)}
                 className={cn(
                   "relative flex w-full items-start gap-[11px] rounded-[11px] px-2.5 py-2 text-left outline-none transition-colors duration-instant ease-bool focus-visible:ring-2 focus-visible:ring-ring",
-                  here ? "bg-tone-warning-soft" : open && onStep ? "hover:bg-surface-soft" : "cursor-default"
+                  open && onStep && !here ? "hover:bg-surface-soft" : "cursor-default"
                 )}
               >
                 <span

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Button } from '@workspace/ui/components/button'
 import { Label } from '@workspace/ui/components/label'
 import { cn } from '@workspace/ui/lib/utils'
 
@@ -36,9 +37,9 @@ export function ReviewCard({ title, onEdit, lines }: { title: string; onEdit?: (
       <div className="mb-2 flex items-baseline justify-between gap-3">
         <span className="text-overline text-faint">{title}</span>
         {onEdit && (
-          <button type="button" onClick={onEdit} aria-label={`Edit ${title}`} className="text-caption font-bold text-link hover:underline">
+          <Button variant="link" size="sm" onClick={onEdit} aria-label={`Edit ${title}`} className="text-caption font-bold">
             Edit
-          </button>
+          </Button>
         )}
       </div>
       {lines.map(([k, v], i) => (

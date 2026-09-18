@@ -5,7 +5,7 @@ import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
@@ -465,13 +465,13 @@ function PlanChangeDialog({ open, current, onClose }: { open: boolean; current: 
         <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3.5">
           <div>
             <FieldLabel>Plan</FieldLabel>
-            <NativeSelect value={plan} onChange={(e) => setPlan(e.target.value as PlanName)} aria-label="Plan" className="w-full">
-              {PLANS.map((p) => (
-                <option key={p} value={p}>
-                  {p} · MVR {PLAN_SEAT_PRICE[p]} a seat
-                </option>
-              ))}
-            </NativeSelect>
+            <SelectField
+              aria-label="Plan"
+              value={plan}
+              onValueChange={(v) => setPlan(v as PlanName)}
+              className="w-full"
+              options={PLANS.map((p) => ({ value: p, label: `${p} · MVR ${PLAN_SEAT_PRICE[p]} a seat` }))}
+            />
           </div>
           <div>
             <FieldLabel>Seats</FieldLabel>

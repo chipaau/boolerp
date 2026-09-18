@@ -6,7 +6,7 @@ import { isOnBooks } from '@/features/org/logic'
 import { usePeople, useUnits } from '@/features/org/queries'
 import { OrgCanvas, OrgChartToolbar, buildOrgTree, useOrgChart } from './org-chart'
 import { ReadOnlyStrip } from './people-page'
-import { PersonPanel } from './person-panel'
+import { PersonModal } from './person-modal'
 
 /** The org chart screen: the canvas plus its toolbar (find, expand/collapse, zoom) and the person panel. */
 export function OrgPage() {
@@ -34,7 +34,7 @@ export function OrgPage() {
           <OrgCanvas tree={tree} units={units} openSet={chart.openSet} setOpen={chart.setOpenSet} zoom={chart.zoom} hits={hits} focus={chart.current ?? focusNode} onOpenPerson={setPanel} onSeePeople={(uid) => void navigate({ to: '/$app', params: { app: 'directory' }, search: { scope: `group:${uid}` } })} />
         </Card>
       </div>
-      <PersonPanel id={panel} onClose={() => setPanel(undefined)} onOpen={setPanel} />
+      <PersonModal id={panel} onClose={() => setPanel(undefined)} onOpen={setPanel} />
     </div>
   )
 }

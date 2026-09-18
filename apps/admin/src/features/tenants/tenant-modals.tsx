@@ -1,20 +1,21 @@
 import { useState } from 'react'
 import { Badge } from '@workspace/ui/components/badge'
+import { FormModal, FormModalField } from '@workspace/ui/components/form-modal'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
-import { AdminUserDialog } from '@/features/admin-users/admin-user-drawer'
+import { AdminUserDialog } from '@/features/admin-users/admin-user-modal'
 import { formatMvr, prorate } from '@/features/billing/logic'
 import { useBillingActions, useBillingOptions, useCredits, useDunningPolicy, useTenantBilling } from '@/features/billing/queries'
 import type { BillingProfile, ChaseTemplate, CreditKind, PaymentMethod, TenantDunningMode } from '@/features/billing/types'
 import { childrenOf, planByName, seatPct } from './logic'
 import { usePlans, useTenantDirectory, useTenantProfileActions } from './queries'
 import type { DirectoryTenant, PlanName } from './types'
-import { DrawerField, DrawerShell, KeyValueRows, LEDGER_TONE, Overline, PickCard, Radio, SeatBar } from './tenant-detail-bits'
+import { KeyValueRows, LEDGER_TONE, Overline, PickCard, Radio, SeatBar } from './tenant-detail-bits'
 
-export type TenantDrawerState =
+export type TenantModalState =
   | { type: 'plan' }
   | { type: 'parent' }
   | { type: 'admin' }
@@ -25,29 +26,29 @@ export type TenantDrawerState =
   | { type: 'credit'; against: string; kind: CreditKind }
   | null
 
-type DrawerProps = { tenant: DirectoryTenant; onClose: () => void; onOpen: (d: TenantDrawerState) => void }
+type ModalProps = { tenant: DirectoryTenant; onClose: () => void; onOpen: (d: TenantModalState) => void }
 
-/** Every drawer the tenant detail screen opens, keyed by `drawer.type`. */
-export function TenantDrawer({ tenant, drawer, onClose, onOpen }: DrawerProps & { drawer: TenantDrawerState }) {
-  if (!drawer) return null
+/** Every modal the tenant detail screen opens, keyed by `modal.type`. */
+export function TenantModals({ tenant, modal, onClose, onOpen }: ModalProps & { modal: TenantModalState }) {
+  if (!modal) return null
   const p = { tenant, onClose, onOpen }
-  switch (drawer.type) {
+  switch (modal.type) {
     case 'plan':
-      return <PlanDrawer {...p} />
+      return <PlanModal {...p} />
     case 'parent':
-      return <ParentDrawer {...p} />
+      return <ParentModal {...p} />
     case 'admin':
-      return <AdminDrawer {...p} />
+      return <AdminModal {...p} />
     case 'billing':
-      return <BillingDetailsDrawer {...p} />
+      return <BillingDetailsModal {...p} />
     case 'dunning':
-      return <DunningDrawer {...p} />
+      return <DunningModal {...p} />
     case 'chase':
-      return <ChaseDrawer {...p} />
+      return <ChaseModal {...p} />
     case 'invoice':
-      return <InvoiceDrawer key={drawer.no} {...p} no={drawer.no} />
+      return <InvoiceModal key={modal.no} {...p} no={modal.no} />
     case 'credit':
-      return <CreditDrawer key={drawer.against} {...p} against={drawer.against} initialKind={drawer.kind} />
+      return <CreditModal key={modal.against} {...p} against={modal.against} initialKind={modal.kind} />
   }
 }
 
@@ -55,7 +56,7 @@ export function TenantDrawer({ tenant, drawer, onClose, onOpen }: DrawerProps & 
 // Plan & seats
 // ------------------------------------------------------------------------------------------
 
-function PlanDrawer({ tenant: t, onClose }: DrawerProps) {
+function PlanModal({ tenant: t, onClose }: ModalProps) {
   const plans = usePlans()
   const { cycleDays, daysLeft, nextCycleDate } = useBillingOptions()
   const { setPlan } = useTenantProfileActions()
@@ -88,7 +89,7 @@ function PlanDrawer({ tenant: t, onClose }: DrawerProps) {
   }
 
   return (
-    <DrawerShell
+    <FormModal
       open
       title="Plan & seats"
       note={`${t.name} · currently ${t.plan} with ${t.seatLimit} seats, ${t.seatsUsed} in use.`}
@@ -138,7 +139,7 @@ function PlanDrawer({ tenant: t, onClose }: DrawerProps) {
         <PickCard selected={effect === 'Next cycle'} title="Start next cycle" note={`Nothing changes until ${nextCycleDate}.`} onPick={() => setEffect('Next cycle')} />
       </div>
       <p className="mt-3 text-xs leading-[1.5] text-muted-foreground">{prorateLabel}</p>
-    </DrawerShell>
+    </FormModal>
   )
 }
 
@@ -146,7 +147,7 @@ function PlanDrawer({ tenant: t, onClose }: DrawerProps) {
 // Parent tenant
 // ------------------------------------------------------------------------------------------
 
-function ParentDrawer({ tenant: t, onClose }: DrawerProps) {
+function ParentModal({ tenant: t, onClose }: ModalProps) {
   const { tenants } = useTenantDirectory()
   const { setParent } = useTenantProfileActions()
   const toast = useToast()
@@ -165,7 +166,7 @@ function ParentDrawer({ tenant: t, onClose }: DrawerProps) {
   }
 
   return (
-    <DrawerShell
+    <FormModal
       open
       title="Parent tenant"
       note="Child tenants keep their own data and admin users, and roll up to the parent for plan and reporting."
@@ -202,7 +203,7 @@ function ParentDrawer({ tenant: t, onClose }: DrawerProps) {
           )
         })}
       </div>
-    </DrawerShell>
+    </FormModal>
   )
 }
 
@@ -211,7 +212,7 @@ function ParentDrawer({ tenant: t, onClose }: DrawerProps) {
 // ------------------------------------------------------------------------------------------
 
 /** "Add an admin" on a tenant: the shared admin-user stepped dialog with this tenant preselected and the role fixed. */
-function AdminDrawer({ tenant: t, onClose }: DrawerProps) {
+function AdminModal({ tenant: t, onClose }: ModalProps) {
   return <AdminUserDialog open tenant={t} onClose={onClose} />
 }
 
@@ -219,7 +220,7 @@ function AdminDrawer({ tenant: t, onClose }: DrawerProps) {
 // Billing details
 // ------------------------------------------------------------------------------------------
 
-function BillingDetailsDrawer({ tenant: t, onClose }: DrawerProps) {
+function BillingDetailsModal({ tenant: t, onClose }: ModalProps) {
   const { profile } = useTenantBilling(t.slug)
   const { paymentMethods } = useBillingOptions()
   const { saveProfile } = useBillingActions()
@@ -234,7 +235,7 @@ function BillingDetailsDrawer({ tenant: t, onClose }: DrawerProps) {
   }
 
   return (
-    <DrawerShell
+    <FormModal
       open
       title="Billing details"
       note={`${t.name} · who gets the invoice, and what has to appear on it.`}
@@ -244,36 +245,29 @@ function BillingDetailsDrawer({ tenant: t, onClose }: DrawerProps) {
       onClose={onClose}
     >
       <div className="grid grid-cols-2 gap-x-[18px] gap-y-4">
-        <DrawerField label="Billing contact">
+        <FormModalField label="Billing contact">
           <Input value={f.contact} onChange={(e) => set('contact', e.target.value)} placeholder="Ibrahim Waheed" />
-        </DrawerField>
-        <DrawerField label="Invoices go to">
+        </FormModalField>
+        <FormModalField label="Invoices go to">
           <Input value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="finance@tenant.gov.mv" />
-        </DrawerField>
-        <DrawerField label="Contact number">
+        </FormModalField>
+        <FormModalField label="Contact number">
           <Input value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="3324570" />
-        </DrawerField>
-        <DrawerField label="Payment method">
-          <NativeSelect value={f.method} onChange={(e) => set('method', e.target.value as PaymentMethod)}>
-            {paymentMethods.map((m) => (
-              <option key={m}>{m}</option>
-            ))}
-          </NativeSelect>
-        </DrawerField>
-        <DrawerField label="Tax registration" hint="Leave as exempt for government bodies.">
+        </FormModalField>
+        <FormModalField label="Payment method">
+          <SelectField aria-label="Payment method" value={f.method} onValueChange={(v) => set('method', v as PaymentMethod)} options={paymentMethods} />
+        </FormModalField>
+        <FormModalField label="Tax registration" hint="Leave as exempt for government bodies.">
           <Input value={f.taxId} onChange={(e) => set('taxId', e.target.value)} placeholder="GST 1024-VC" />
-        </DrawerField>
-        <DrawerField label="GST rate (%)">
-          <NativeSelect value={String(f.taxRate)} onChange={(e) => set('taxRate', Number(e.target.value) as 0 | 8)}>
-            <option value="0">0</option>
-            <option value="8">8</option>
-          </NativeSelect>
-        </DrawerField>
-        <DrawerField label="PO reference" wide hint="Printed on every invoice — most government tenants will not pay without it.">
+        </FormModalField>
+        <FormModalField label="GST rate (%)">
+          <SelectField aria-label="GST rate" value={String(f.taxRate)} onValueChange={(v) => set('taxRate', Number(v) as 0 | 8)} options={['0', '8']} />
+        </FormModalField>
+        <FormModalField label="PO reference" wide hint="Printed on every invoice — most government tenants will not pay without it.">
           <Input value={f.po} onChange={(e) => set('po', e.target.value)} placeholder="PO-2026-114" />
-        </DrawerField>
+        </FormModalField>
       </div>
-    </DrawerShell>
+    </FormModal>
   )
 }
 
@@ -281,7 +275,7 @@ function BillingDetailsDrawer({ tenant: t, onClose }: DrawerProps) {
 // Per-tenant dunning
 // ------------------------------------------------------------------------------------------
 
-function DunningDrawer({ tenant: t, onClose }: DrawerProps) {
+function DunningModal({ tenant: t, onClose }: ModalProps) {
   const { dunningMode } = useTenantBilling(t.slug)
   const { dunningModes } = useBillingOptions()
   const { setTenantDunning } = useBillingActions()
@@ -295,7 +289,7 @@ function DunningDrawer({ tenant: t, onClose }: DrawerProps) {
   }
 
   return (
-    <DrawerShell
+    <FormModal
       open
       title={`Dunning for ${t.abbr}`}
       note="What happens when this tenant misses a due date."
@@ -304,14 +298,10 @@ function DunningDrawer({ tenant: t, onClose }: DrawerProps) {
       onSave={save}
       onClose={onClose}
     >
-      <DrawerField label="Policy" wide hint="Overrides only this tenant. Everyone else keeps the platform policy.">
-        <NativeSelect value={mode} onChange={(e) => setMode(e.target.value as TenantDunningMode)}>
-          {dunningModes.map((m) => (
-            <option key={m}>{m}</option>
-          ))}
-        </NativeSelect>
-      </DrawerField>
-    </DrawerShell>
+      <FormModalField label="Policy" wide hint="Overrides only this tenant. Everyone else keeps the platform policy.">
+        <SelectField aria-label="Policy" value={mode} onValueChange={(v) => setMode(v as TenantDunningMode)} options={dunningModes} />
+      </FormModalField>
+    </FormModal>
   )
 }
 
@@ -319,7 +309,7 @@ function DunningDrawer({ tenant: t, onClose }: DrawerProps) {
 // Chase this tenant's open invoices
 // ------------------------------------------------------------------------------------------
 
-function ChaseDrawer({ tenant: t, onClose }: DrawerProps) {
+function ChaseModal({ tenant: t, onClose }: ModalProps) {
   const { ledger, profile } = useTenantBilling(t.slug)
   const { chaseTemplates } = useBillingOptions()
   const policy = useDunningPolicy()
@@ -340,8 +330,9 @@ function ChaseDrawer({ tenant: t, onClose }: DrawerProps) {
   }
 
   return (
-    <DrawerShell
+    <FormModal
       open
+      size="lg"
       title="Chase open invoices"
       note={`${open.length} invoice(s) are issued and unpaid. Pick who gets a reminder and what it says.`}
       warn={tpl === 'Final notice before suspension' ? 'A final notice states the date access stops. It should not be the first thing a tenant hears.' : undefined}
@@ -376,15 +367,11 @@ function ChaseDrawer({ tenant: t, onClose }: DrawerProps) {
       })}
       <div className="mt-1.5 text-compact font-bold text-muted-foreground">{formatMvr(picks.reduce((n, e) => n + owed(e), 0))} chased in total</div>
       <div className="mt-5">
-        <DrawerField label="Message" wide hint="Sent to each tenant’s billing contact, copied to their tenant admins on a final notice.">
-          <NativeSelect value={tpl} onChange={(e) => setTpl(e.target.value as ChaseTemplate)}>
-            {chaseTemplates.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </NativeSelect>
-        </DrawerField>
+        <FormModalField label="Message" wide hint="Sent to each tenant’s billing contact, copied to their tenant admins on a final notice.">
+          <SelectField aria-label="Message" value={tpl} onValueChange={(v) => setTpl(v as ChaseTemplate)} options={chaseTemplates} />
+        </FormModalField>
       </div>
-    </DrawerShell>
+    </FormModal>
   )
 }
 
@@ -392,7 +379,7 @@ function ChaseDrawer({ tenant: t, onClose }: DrawerProps) {
 // Invoice / credit document
 // ------------------------------------------------------------------------------------------
 
-function InvoiceDrawer({ tenant: t, onClose, onOpen, no }: DrawerProps & { no: string }) {
+function InvoiceModal({ tenant: t, onClose, onOpen, no }: ModalProps & { no: string }) {
   const { ledger, profile: pf } = useTenantBilling(t.slug)
   const credits = useCredits()
   const plans = usePlans()
@@ -432,8 +419,9 @@ function InvoiceDrawer({ tenant: t, onClose, onOpen, no }: DrawerProps & { no: s
   }
 
   return (
-    <DrawerShell
+    <FormModal
       open
+      size="lg"
       title={e.no}
       note={`${t.name} · ${e.kind} for ${e.period} · ${e.status}`}
       warn={
@@ -515,7 +503,7 @@ function InvoiceDrawer({ tenant: t, onClose, onOpen, no }: DrawerProps & { no: s
           Open tenant
         </Button>
       </div>
-    </DrawerShell>
+    </FormModal>
   )
 }
 
@@ -523,7 +511,7 @@ function InvoiceDrawer({ tenant: t, onClose, onOpen, no }: DrawerProps & { no: s
 // Credit note / refund
 // ------------------------------------------------------------------------------------------
 
-function CreditDrawer({ tenant: t, onClose, against, initialKind }: DrawerProps & { against: string; initialKind: CreditKind }) {
+function CreditModal({ tenant: t, onClose, against, initialKind }: ModalProps & { against: string; initialKind: CreditKind }) {
   const { ledger } = useTenantBilling(t.slug)
   const { issueCredit } = useBillingActions()
   const toast = useToast()
@@ -550,7 +538,7 @@ function CreditDrawer({ tenant: t, onClose, against, initialKind }: DrawerProps 
   }
 
   return (
-    <DrawerShell
+    <FormModal
       open
       title={isRefund ? 'Refund a payment' : 'Issue a credit note'}
       note={`${isRefund ? 'Money goes back to ' : 'Credit is applied against '}${against} for ${t.name}.`}
@@ -560,20 +548,17 @@ function CreditDrawer({ tenant: t, onClose, against, initialKind }: DrawerProps 
       onClose={onClose}
     >
       <div className="grid grid-cols-2 gap-x-[18px] gap-y-4">
-        <DrawerField label="Type" hint="A credit note reduces what they owe. A refund returns money already paid.">
-          <NativeSelect value={kind} onChange={(e) => setKind(e.target.value as CreditKind)}>
-            <option>Credit note</option>
-            <option>Refund</option>
-          </NativeSelect>
-        </DrawerField>
-        <DrawerField label="Amount (MVR)">
+        <FormModalField label="Type" hint="A credit note reduces what they owe. A refund returns money already paid.">
+          <SelectField aria-label="Type" value={kind} onValueChange={(v) => setKind(v as CreditKind)} options={['Credit note', 'Refund']} />
+        </FormModalField>
+        <FormModalField label="Amount (MVR)">
           <Input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" />
-        </DrawerField>
-        <DrawerField label="Reason shown on the document" wide>
+        </FormModalField>
+        <FormModalField label="Reason shown on the document" wide>
           <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Seat count corrected after a mid-month leaver" />
-        </DrawerField>
+        </FormModalField>
       </div>
-    </DrawerShell>
+    </FormModal>
   )
 }
 

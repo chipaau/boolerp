@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@workspace/ui/components/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { useToast } from '@workspace/ui/components/toast'
 import { UNIT_KINDS, liveUnits, unitById, unitChain, unitDescendants, unitPath, unitTone } from '@/features/org/logic'
 import { useUnitActions, useUnits } from '@/features/org/queries'
@@ -75,24 +75,16 @@ export function UnitDialog({ draft, onClose, onSaved }: { draft: UnitDraft | nul
           </div>
           <div>
             <FieldLabel>Type</FieldLabel>
-            <NativeSelect value={kind} onChange={(e) => setKind(e.target.value as Unit['kind'])}>
-              {UNIT_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </NativeSelect>
+            <SelectField aria-label="Kind" value={kind} onValueChange={(v) => setKind(v as Unit['kind'])} options={UNIT_KINDS} />
           </div>
           <div className="sm:col-span-2">
             <FieldLabel>Sits under</FieldLabel>
-            <NativeSelect value={parent} onChange={(e) => setParent(e.target.value)}>
-              <option value="">Top level — no parent</option>
-              {liveUnits(units).filter((u) => u.id !== editing?.id).map((u) => (
-                <option key={u.id} value={u.id}>
-                  {unitPath(units, u.id, ' › ')}
-                </option>
-              ))}
-            </NativeSelect>
+            <SelectField
+              aria-label="Sits under"
+              value={parent}
+              onValueChange={setParent}
+              options={[{ value: '', label: 'Top level — no parent' }, ...liveUnits(units).filter((u) => u.id !== editing?.id).map((u) => ({ value: u.id, label: unitPath(units, u.id, ' › ') }))]}
+            />
           </div>
           <div className="sm:col-span-2">
             <FieldLabel>Colour</FieldLabel>

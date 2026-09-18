@@ -6,7 +6,7 @@ import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@workspace/ui/components/dropdown-menu'
 import { EmptyState } from '@workspace/ui/components/empty-state'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { SearchField } from '@workspace/ui/components/search-field'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableToolbar } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
@@ -86,22 +86,20 @@ function SiteList() {
         <Card className="gap-0 overflow-clip py-0">
           <TableToolbar className="px-5">
             <SearchField size="sm" placeholder="Search sites, codes, places" value={q} onChange={(e) => setQ(e.target.value)} className="min-w-[200px] max-w-xs" />
-            <NativeSelect value={type} onChange={(e) => setType(e.target.value)} className="w-[190px]">
-              <option value="all">All site types</option>
-              {types.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} · {sites.filter((s) => s.typeId === t.id).length}
-                </option>
-              ))}
-            </NativeSelect>
-            <NativeSelect value={country} onChange={(e) => setCountry(e.target.value)} className="w-[160px]">
-              <option value="all">All countries</option>
-              {on.map((c) => (
-                <option key={c} value={c}>
-                  {c} · {sites.filter((s) => s.country === c).length}
-                </option>
-              ))}
-            </NativeSelect>
+            <SelectField
+              aria-label="Site type"
+              value={type}
+              onValueChange={setType}
+              className="w-[190px]"
+              options={[{ value: 'all', label: 'All site types' }, ...types.map((t) => ({ value: t.id, label: `${t.name} · ${sites.filter((s) => s.typeId === t.id).length}` }))]}
+            />
+            <SelectField
+              aria-label="Country"
+              value={country}
+              onValueChange={setCountry}
+              className="w-[160px]"
+              options={[{ value: 'all', label: 'All countries' }, ...on.map((c) => ({ value: c, label: `${c} · ${sites.filter((s) => s.country === c).length}` }))]}
+            />
             {['all', 'Active', 'Paused'].map((s) => (
               <Badge key={s} variant={status === s ? 'filter-active' : 'filter'} render={<button type="button" onClick={() => setStatus(s)} />}>
                 {s === 'all' ? 'All statuses' : s}

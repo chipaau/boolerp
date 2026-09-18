@@ -7,7 +7,7 @@ import type { BadgeTone } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { ConfirmDialog } from '@workspace/ui/components/confirm-dialog'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { SearchField } from '@workspace/ui/components/search-field'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
@@ -207,18 +207,20 @@ export function TenantsPage() {
               {c.label}
             </Badge>
           ))}
-          <NativeSelect aria-label="Organization type" value={org} onChange={(e) => setOrg(e.target.value)} className="w-auto">
-            <option value="">Any type</option>
-            {orgTypes.map((o) => (
-              <option key={o}>{o}</option>
-            ))}
-          </NativeSelect>
-          <NativeSelect aria-label="Plan" value={plan} onChange={(e) => setPlan(e.target.value)} className="w-auto">
-            <option value="">Any plan</option>
-            {plans.map((p) => (
-              <option key={p.name}>{p.name}</option>
-            ))}
-          </NativeSelect>
+          <SelectField
+            aria-label="Organization type"
+            value={org}
+            onValueChange={setOrg}
+            className="w-auto"
+            options={[{ value: '', label: 'Any type' }, ...orgTypes.map((o) => ({ value: o, label: o }))]}
+          />
+          <SelectField
+            aria-label="Plan"
+            value={plan}
+            onValueChange={setPlan}
+            className="w-auto"
+            options={[{ value: '', label: 'Any plan' }, ...plans.map((p) => ({ value: p.name, label: p.name }))]}
+          />
           <span className="flex-1" />
           <span className="text-meta whitespace-nowrap text-faint">
             {rows.length} of {tenants.length} tenants

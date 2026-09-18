@@ -18,8 +18,8 @@ import { useAppCatalog, useArchiveTenant, useReactivateTenant, useSuspendTenant,
 import type { DirectoryTenant } from './types'
 import { TenantBillingTab } from './tenant-billing-tab'
 import { DetailCard, INVITE_TONE, LinkAction, Overline, STATUS_TONE, SeatBar } from './tenant-detail-bits'
-import { TenantDrawer } from './tenant-drawers'
-import type { TenantDrawerState } from './tenant-drawers'
+import { TenantModals } from './tenant-modals'
+import type { TenantModalState } from './tenant-modals'
 
 export const TENANT_TABS = [
   ['overview', 'Overview'],
@@ -57,14 +57,14 @@ function BackLink() {
 }
 
 function TenantDetail({ tenant: t, tenants, tab, onTabChange }: { tenant: DirectoryTenant; tenants: DirectoryTenant[]; tab: TenantTab; onTabChange: (tab: TenantTab) => void }) {
-  const [drawer, setDrawer] = useState<TenantDrawerState>(null)
+  const [modal, setModal] = useState<TenantModalState>(null)
   const parent = t.parentSlug ? tenants.find((x) => x.slug === t.parentSlug) : undefined
   const kids = childrenOf(tenants, t.slug)
 
   return (
     <div className="px-8 py-7">
       <BackLink />
-      <TenantHeader tenant={t} parent={parent} onOpen={setDrawer} />
+      <TenantHeader tenant={t} parent={parent} onOpen={setModal} />
 
       {/* the shared underline tabs as-is: an overflow on the list clipped the sliding sage rule and drew a scrollbar under the row */}
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as TenantTab)} className="gap-[22px]">
@@ -76,7 +76,7 @@ function TenantDetail({ tenant: t, tenants, tab, onTabChange }: { tenant: Direct
           ))}
         </TabsList>
         <TabsContent value="overview">
-          <OverviewTab tenant={t} parent={parent} kids={kids} onOpen={setDrawer} onTab={onTabChange} />
+          <OverviewTab tenant={t} parent={parent} kids={kids} onOpen={setModal} onTab={onTabChange} />
         </TabsContent>
         <TabsContent value="addresses">
           <AddressesTab tenant={t} />
@@ -85,10 +85,10 @@ function TenantDetail({ tenant: t, tenants, tab, onTabChange }: { tenant: Direct
           <AppsTab tenant={t} />
         </TabsContent>
         <TabsContent value="admins">
-          <AdminsTab tenant={t} onOpen={setDrawer} />
+          <AdminsTab tenant={t} onOpen={setModal} />
         </TabsContent>
         <TabsContent value="billing">
-          <TenantBillingTab tenant={t} onOpen={setDrawer} />
+          <TenantBillingTab tenant={t} onOpen={setModal} />
         </TabsContent>
         <TabsContent value="activity">
           <Card className="gap-0 px-6 pt-2 pb-[18px]">
@@ -105,7 +105,7 @@ function TenantDetail({ tenant: t, tenants, tab, onTabChange }: { tenant: Direct
         </TabsContent>
       </Tabs>
 
-      <TenantDrawer tenant={t} drawer={drawer} onOpen={setDrawer} onClose={() => setDrawer(null)} />
+      <TenantModals tenant={t} modal={modal} onOpen={setModal} onClose={() => setModal(null)} />
     </div>
   )
 }
@@ -139,7 +139,7 @@ function IdentityPlate({ abbr, status }: { abbr: string; status: DirectoryTenant
   )
 }
 
-function TenantHeader({ tenant: t, parent, onOpen }: { tenant: DirectoryTenant; parent?: DirectoryTenant; onOpen: (d: TenantDrawerState) => void }) {
+function TenantHeader({ tenant: t, parent, onOpen }: { tenant: DirectoryTenant; parent?: DirectoryTenant; onOpen: (d: TenantModalState) => void }) {
   const toast = useToast()
   const { setStatus, resendPendingInvites } = useTenantProfileActions()
   const suspend = useSuspendTenant()
@@ -270,7 +270,7 @@ function OverviewTab({
   tenant: DirectoryTenant
   parent?: DirectoryTenant
   kids: DirectoryTenant[]
-  onOpen: (d: TenantDrawerState) => void
+  onOpen: (d: TenantModalState) => void
   onTab: (tab: TenantTab) => void
 }) {
   const catalog = useAppCatalog()
@@ -479,7 +479,7 @@ function AppsTab({ tenant: t }: { tenant: DirectoryTenant }) {
 // Admin users
 // ------------------------------------------------------------------------------------------
 
-function AdminsTab({ tenant: t, onOpen }: { tenant: DirectoryTenant; onOpen: (d: TenantDrawerState) => void }) {
+function AdminsTab({ tenant: t, onOpen }: { tenant: DirectoryTenant; onOpen: (d: TenantModalState) => void }) {
   const toast = useToast()
   const { removeAdmin, resendInvite } = useTenantProfileActions()
 

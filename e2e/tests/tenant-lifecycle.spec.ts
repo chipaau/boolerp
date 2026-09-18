@@ -30,8 +30,8 @@ test('operator provisions a tenant and drives it through suspend / reactivate / 
     await page.getByLabel('Code', { exact: true }).fill(`E2E${suffix}`.slice(0, 12))
     await page.getByLabel('Owner email', { exact: true }).fill(`owner@${slug}.test`)
     await page.getByLabel('Owner name', { exact: true }).fill('E2E Owner')
-    await page.getByRole('button', { name: 'Provision' }).click()
-    await expect(page.getByText(`${name} provisioned`)).toBeVisible()
+    await page.getByRole('button', { name: 'Create tenant' }).click()
+    await expect(page.getByText(`${name} created`)).toBeVisible()
   })
 
   const row = page.getByRole('row', { name: new RegExp(name) })

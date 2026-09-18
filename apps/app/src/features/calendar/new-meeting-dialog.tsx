@@ -6,7 +6,7 @@ import { Checkbox } from '@workspace/ui/components/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
 import { Input } from '@workspace/ui/components/input'
 import { Label } from '@workspace/ui/components/label'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { MiniCalendar } from '@workspace/ui/components/mini-calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@workspace/ui/components/popover'
 import { RichText } from '@workspace/ui/components/rich-text'
@@ -170,23 +170,21 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
                   </div>
                   <div className={cn(allDay && 'pointer-events-none opacity-35')}>
                     <div className="mb-[5px] text-micro text-faint">Start time</div>
-                    <NativeSelect value={start} onChange={(ev) => setStart(ev.target.value)}>
-                      {times(DAY_START * 60, DAY_END * 60 - 15).map((t) => (
-                        <option key={t} value={t}>
-                          {fmtTime(t)}
-                        </option>
-                      ))}
-                    </NativeSelect>
+                    <SelectField
+                      aria-label="Starts"
+                      value={start}
+                      onValueChange={setStart}
+                      options={times(DAY_START * 60, DAY_END * 60 - 15).map((t) => ({ value: t, label: fmtTime(t) }))}
+                    />
                   </div>
                   <div className={cn(allDay && 'pointer-events-none opacity-35')}>
                     <div className="mb-[5px] text-micro text-faint">End time</div>
-                    <NativeSelect value={fromMinutes(e)} onChange={(ev) => setDuration(Math.max(15, toMinutes(ev.target.value) - s))}>
-                      {times(s + 15, DAY_END * 60).map((t) => (
-                        <option key={t} value={t}>
-                          {fmtTime(t)}
-                        </option>
-                      ))}
-                    </NativeSelect>
+                    <SelectField
+                      aria-label="Ends"
+                      value={fromMinutes(e)}
+                      onValueChange={(v) => setDuration(Math.max(15, toMinutes(v) - s))}
+                      options={times(s + 15, DAY_END * 60).map((t) => ({ value: t, label: fmtTime(t) }))}
+                    />
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -197,13 +195,13 @@ export function NewMeetingDialog({ draft, today, onClose }: { draft: NewMeetingD
                     <Checkbox checked={!!repeats} onCheckedChange={(v) => setRepeats(v ? 'Weekly' : '')} /> Repeats
                   </label>
                   {repeats && (
-                    <NativeSelect value={repeats} onChange={(ev) => setRepeats(ev.target.value as Recurrence)} className="w-[132px] [&>select]:h-[30px] [&>select]:text-meta">
-                      {RECURRENCES.filter((r) => r.value).map((r) => (
-                        <option key={r.value} value={r.value}>
-                          {r.label}
-                        </option>
-                      ))}
-                    </NativeSelect>
+                    <SelectField
+                      aria-label="Repeats"
+                      value={repeats}
+                      onValueChange={(v) => setRepeats(v as Recurrence)}
+                      className="h-[30px] w-[132px] text-meta"
+                      options={RECURRENCES.filter((r) => r.value).map((r) => ({ value: r.value, label: r.label }))}
+                    />
                   )}
                 </div>
                 <div className="mt-[18px] border-t border-divider pt-4">

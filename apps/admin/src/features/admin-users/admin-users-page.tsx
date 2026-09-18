@@ -10,7 +10,7 @@ import { FilterPill, FilterSelect, FilterToolbar } from '@/components/filter-too
 import { useTenantDirectory } from '@/features/tenants/queries'
 import { useAdminRoles, useAdminUserActions, useAdminUserSummary, useAdminUsers } from './queries'
 import type { AdminRole, AdminUser, InviteState } from './types'
-import { AdminUserDialog } from './admin-user-drawer'
+import { AdminUserDialog } from './admin-user-modal'
 
 const ROLE_TONE: Record<AdminRole, BadgeTone | 'secondary'> = { 'Platform admin': 'slate', 'Tenant admin': 'success', Support: 'secondary', 'Read only': 'neutral' }
 const INVITE_TONE: Record<InviteState, BadgeTone> = { Accepted: 'success', Invited: 'slate', Expired: 'warning' }

@@ -6,7 +6,7 @@ import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { DatePicker } from '@workspace/ui/components/date-picker'
 import { Dialog, DialogContent } from '@workspace/ui/components/dialog'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
 import { Stepper, StepperFooter, StepperLayout } from '@workspace/ui/components/stepper'
 import { useToast } from '@workspace/ui/components/toast'
@@ -25,14 +25,14 @@ const STEPS = [
   { title: 'Contact & address', hint: 'Who we write to' },
   { title: 'Apps & modules', hint: 'What they can open' },
   { title: 'Admin users', hint: 'At least one admin' },
-  { title: 'Review', hint: 'Last look before it goes live' }, // hint must not contain "provision": the e2e clicks the button named Provision
+  { title: 'Review', hint: 'Last look before it goes live' },
 ]
 const HEADINGS: [string, string][] = [
-  ['Who they are', 'Name, slug, code and owner are what provisioning needs. Once they are in you can provision straight away and fill in the rest later.'],
+  ['Who they are', 'Name, slug, code and owner are all it takes to create the tenant. Once they are in you can create it straight away and fill in the rest later.'],
   ['How we reach them', 'Invites and billing notices go to the contact e-mail. Everything here is optional.'],
   ['What they can open', 'Control Centre and Calendar come with every tenant. Switch on the other apps they pay for, down to the module.'],
-  ['Who runs it', 'A tenant needs at least one admin. The owner is the first; add anyone else who should get an invite on provision.'],
-  ['Check before you provision', 'Everything you have set, in one place. The owner’s sign-in link is created the moment you provision.'],
+  ['Who runs it', 'A tenant needs at least one admin. The owner is the first; add anyone else who should be invited when the tenant is created.'],
+  ['Check it over', 'Everything you have set, in one place. The owner’s sign-in link is created the moment you do.'],
 ]
 const appLabel = (a: AppName) => a
 
@@ -75,7 +75,7 @@ const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
 /**
  * Add a tenant in a large stepped dialog (the New employee pattern): a Stepper rail on the left,
  * one step body on the right. A step can only be moved past once complete; later steps stay locked
- * until then. "Provision" calls the real API and is offered from every step as soon as the required
+ * until then. "Create tenant" calls the real provisioning API and is offered from every step as soon as the required
  * details (name, slug, code, owner) are in: the owner is the required admin and Control Centre +
  * Calendar are included, so nothing on a later step can block it. Everything the API does not take
  * yet (plan, apps, geography, parent, extra admins) is saved to the fixture profile afterwards.
@@ -172,7 +172,7 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
       admins: [...p.admins, { name: p.aName.trim(), idNo: p.aId.trim() || (p.nat === 'Maldivian' ? 'ID pending' : 'Passport pending'), email: p.aEmail.trim(), nat: p.nat }],
       aName: '', aId: '', aEmail: '',
     }))
-    toast('Added. The invite sends when you provision the tenant.')
+    toast('Added. The invite sends when you create the tenant.')
   }
 
   const profileFrom = (slug: string, name: string, status: TenantProfile['status']): TenantProfile => {
@@ -196,7 +196,7 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
     }
   }
 
-  const provision = () => {
+  const create_ = () => {
     const bad = STEPS.findIndex((_, i) => !complete(i))
     if (bad >= 0) {
       blocked(bad)
@@ -218,10 +218,10 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
         // Wait for the list to hold the new tenant, so its row carries the API id (and the API
         // lifecycle buttons) the moment the list shows it.
         await apiList.refetch()
-        toast(`${res.tenant.name} provisioned`)
+        toast(`${res.tenant.name} created`)
         onProvisioned({ name: res.tenant.name, recoveryLink: res.recovery_link })
       },
-      onError: (e) => toast(e instanceof Error ? e.message : 'Could not provision tenant', { ok: false }),
+      onError: (e) => toast(e instanceof Error ? e.message : 'Could not create tenant', { ok: false }),
     })
   }
 
@@ -237,11 +237,11 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
   const extraApps = optional.filter((a) => f.apps[a.name]).length
   const last = STEPS.length - 1
   const notes = [
-    ready ? 'Ready to provision. The other steps are optional.' : 'Name, slug, code and owner are all that provisioning needs.',
+    ready ? 'Ready to create. The other steps are optional.' : 'Name, slug, code and owner are all it needs.',
     'Optional. Left blank, notices go to the owner.',
     `Control Centre and Calendar are included${extraApps ? ` · ${extraApps} more ${extraApps === 1 ? 'app' : 'apps'}` : ''}.`,
-    adminCount ? `${adminCount} ${adminCount === 1 ? 'admin' : 'admins'} will be invited on provision.` : 'Add at least one admin to continue.',
-    'Nothing is created until you provision.',
+    adminCount ? `${adminCount} ${adminCount === 1 ? 'admin' : 'admins'} will be invited when you create it.` : 'Add at least one admin to continue.',
+    'Nothing is created until you press the button.',
   ]
 
   return (
@@ -286,18 +286,10 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
                   <DatePicker id="t-regdate" value={f.regDate} onChange={(iso) => set('regDate', iso)} placeholder="Pick the registration date" />
                 </Field>
                 <Field id="t-org" label="Organization type">
-                  <NativeSelect id="t-org" value={f.orgType} onChange={(e) => set('orgType', e.target.value as OrgType)}>
-                    {orgTypes.map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField id="t-org" aria-label="Organisation type" value={f.orgType} onValueChange={(v) => set('orgType', v as OrgType)} options={orgTypes} />
                 </Field>
                 <Field id="t-party" label="Party type">
-                  <NativeSelect id="t-party" value={f.entityType} onChange={(e) => set('entityType', e.target.value as EntityType)}>
-                    {entityTypes.map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField id="t-party" aria-label="Party type" value={f.entityType} onValueChange={(v) => set('entityType', v as EntityType)} options={entityTypes} />
                 </Field>
               </div>
 
@@ -321,14 +313,13 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
                 </div>
                 {f.tree === 'Child' && (
                   <Field id="t-parent" label="Parent tenant" className="mt-3.5 max-w-[420px]" hint="A child keeps its own admins and data, but rolls up to the parent.">
-                    <NativeSelect id="t-parent" value={f.parent} onChange={(e) => set('parent', e.target.value)}>
-                      <option value="">Pick a parent</option>
-                      {parentOptions.map((t) => (
-                        <option key={t.slug} value={t.slug}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </NativeSelect>
+                    <SelectField
+                      id="t-parent"
+                      aria-label="Parent tenant"
+                      value={f.parent}
+                      onValueChange={(v) => set('parent', v)}
+                      options={[{ value: '', label: 'Pick a parent' }, ...parentOptions.map((t) => ({ value: t.slug, label: t.name }))]}
+                    />
                   </Field>
                 )}
               </div>
@@ -368,27 +359,31 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
               <div className="grid gap-4 border-t border-divider pt-[18px] sm:col-span-2 sm:grid-cols-2">
                 <div className="text-overline text-faint sm:col-span-2">Address</div>
                 <Field id="t-country" label="Country">
-                  <NativeSelect id="t-country" value={f.country} onChange={(e) => setF((p) => ({ ...p, country: e.target.value, district: '', city: '—' }))}>
-                    {countries.map((c) => (
-                      <option key={c.code}>{c.name}</option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField
+                    id="t-country"
+                    aria-label="Country"
+                    value={f.country}
+                    onValueChange={(v) => setF((p) => ({ ...p, country: v, district: '', city: '—' }))}
+                    options={countries.map((c) => c.name)}
+                  />
                 </Field>
                 <Field id="t-district" label="Atoll / State">
-                  <NativeSelect id="t-district" value={f.district} onChange={(e) => setF((p) => ({ ...p, district: e.target.value, city: '—' }))}>
-                    <option value="">—</option>
-                    {districts.map((g) => (
-                      <option key={g.name}>{g.name}</option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField
+                    id="t-district"
+                    aria-label="Atoll / State"
+                    value={f.district}
+                    onValueChange={(v) => setF((p) => ({ ...p, district: v, city: '—' }))}
+                    options={[{ value: '', label: '—' }, ...districts.map((g) => ({ value: g.name, label: g.name }))]}
+                  />
                 </Field>
                 <Field id="t-city" label="Island / City">
-                  <NativeSelect id="t-city" value={f.city} onChange={(e) => set('city', e.target.value)}>
-                    {cities.map((g) => (
-                      <option key={g.name}>{g.name}</option>
-                    ))}
-                    <option>—</option>
-                  </NativeSelect>
+                  <SelectField
+                    id="t-city"
+                    aria-label="Island / City"
+                    value={f.city}
+                    onValueChange={(v) => set('city', v)}
+                    options={[...cities.map((g) => g.name), '—']}
+                  />
                 </Field>
                 <Field id="t-postal" label="Postal code">
                   <input id="t-postal" value={f.postal} placeholder="20026" className={fieldClass} onChange={(e) => set('postal', e.target.value)} />
@@ -473,7 +468,7 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
               </div>
               <div className="overflow-clip rounded-[13px] border border-border bg-surface-band">
                 {hasOwner ? (
-                  <AdminRow name={f.ownerName.trim()} sub={`${f.ownerEmail.trim()} · gets the sign-in link on provision`} tag="Owner · counts as admin" />
+                  <AdminRow name={f.ownerName.trim()} sub={`${f.ownerEmail.trim()} · gets the sign-in link when you create it`} tag="Owner · counts as admin" />
                 ) : (
                   <div className="flex items-center justify-between gap-3 border-b border-divider px-4 py-3 last:border-b-0">
                     <span className="text-compact text-body">No owner yet. The owner is the tenant’s first admin.</span>
@@ -483,7 +478,7 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
                   </div>
                 )}
                 {f.admins.map((a, i) => (
-                  <AdminRow key={`${a.email}-${i}`} name={a.name} sub={`${a.idNo} · ${a.email} · invite sends on provision`} onRemove={() => set('admins', f.admins.filter((_, j) => j !== i))} />
+                  <AdminRow key={`${a.email}-${i}`} name={a.name} sub={`${a.idNo} · ${a.email} · invite sends when you create it`} onRemove={() => set('admins', f.admins.filter((_, j) => j !== i))} />
                 ))}
               </div>
 
@@ -573,8 +568,8 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
               </Button>
             )}
             {(ready || step === last) && (
-              <Button onClick={provision} disabled={create.isPending}>
-                {create.isPending ? 'Provisioning…' : 'Provision'}
+              <Button onClick={create_} disabled={create.isPending}>
+                {create.isPending ? 'Creating…' : 'Create tenant'}
               </Button>
             )}
           </StepperFooter>

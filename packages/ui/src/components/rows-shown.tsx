@@ -1,4 +1,4 @@
-import { NativeSelect } from "@workspace/ui/components/native-select"
+import { SelectField } from "@workspace/ui/components/select"
 import { cn } from "@workspace/ui/lib/utils"
 
 const STEPS = [10, 20, 50, 100] as const
@@ -29,19 +29,13 @@ function RowsShown({
     <span data-slot="rows-shown" className={cn("inline-flex items-center gap-2 tabular-nums", className)}>
       Showing
       {total > STEPS[0] ? (
-        <NativeSelect
+        <SelectField
           aria-label="Rows to show"
           value={value}
-          onChange={(e) => onLimit(e.target.value === "all" ? Infinity : Number(e.target.value))}
-          className="w-[76px] [&>select]:h-[26px] [&>select]:rounded-[7px] [&>select]:pl-2.5 [&>select]:text-caption [&>svg]:right-2 [&>svg]:size-3"
-        >
-          {steps.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-          <option value="all">All</option>
-        </NativeSelect>
+          onValueChange={(v) => onLimit(v === "all" ? Infinity : Number(v))}
+          className="h-[26px] w-[76px] rounded-[7px] pl-2.5 text-caption"
+          options={[...steps.map((s) => String(s)), { value: "all", label: "All" }]}
+        />
       ) : (
         <span>{Math.min(shown, total)}</span>
       )}

@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import { Input } from '@workspace/ui/components/input'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { useToast } from '@workspace/ui/components/toast'
-import { Drawer, DrawerField, DrawerGrid, DrawerWarning } from '@/components/drawer'
+import { FormModal, FormModalField, FormModalGrid, FormModalWarning } from '@workspace/ui/components/form-modal'
 import { useActiveCountries, useGeographies, useGeographyActions, useGeographyTypes, useTopLevelGeographies } from './queries'
 import type { AddCountryInput, GeographyType } from './types'
 
 type GeoForm = { country: string; type: GeographyType; parent: string; name: string; postal: string }
 
-/** "Add a geography" drawer. Remounts its form on every open. */
-export function AddGeographyDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** "Add a geography" modal. Remounts its form on every open. */
+export function AddGeographyModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <Drawer open={open} onClose={onClose} title="Add a geography" note="Geographies are shared across every tenant, so names should match the official register." saveLabel="Add geography" onSave={() => (document.getElementById('add-geography-form') as HTMLFormElement | null)?.requestSubmit()}>
+    <FormModal open={open} onClose={onClose} title="Add a geography" note="Geographies are shared across every tenant, so names should match the official register." saveLabel="Add geography" onSave={() => (document.getElementById('add-geography-form') as HTMLFormElement | null)?.requestSubmit()}>
       {open && <GeographyForm onDone={onClose} />}
-    </Drawer>
+    </FormModal>
   )
 }
 
@@ -41,50 +41,47 @@ function GeographyForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form id="add-geography-form" onSubmit={(e) => (e.preventDefault(), submit())}>
-      <DrawerGrid>
-        <DrawerField label="Country" htmlFor="geo-country">
-          <NativeSelect id="geo-country" value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value, parent: e.target.value }))}>
-            {countries.map((c) => (
-              <option key={c.code} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </DrawerField>
-        <DrawerField label="Geography type" htmlFor="geo-type">
-          <NativeSelect id="geo-type" value={form.type} onChange={(e) => set('type', e.target.value as GeographyType)}>
-            {types.map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </NativeSelect>
-        </DrawerField>
-        <DrawerField label="Sits under" htmlFor="geo-parent" wide hint="Pick the country itself for a top-level atoll or state.">
-          <NativeSelect id="geo-parent" value={form.parent} onChange={(e) => set('parent', e.target.value)}>
-            <option value={form.country}>{form.country}</option>
-            {topLevel.map((g) => (
-              <option key={g.name}>{g.name}</option>
-            ))}
-          </NativeSelect>
-        </DrawerField>
-        <DrawerField label="Name" htmlFor="geo-name">
+      <FormModalGrid>
+        <FormModalField label="Country" htmlFor="geo-country">
+          <SelectField
+            id="geo-country"
+            aria-label="Country"
+            value={form.country}
+            onValueChange={(v) => setForm((f) => ({ ...f, country: v, parent: v }))}
+            options={countries.map((c) => c.name)}
+          />
+        </FormModalField>
+        <FormModalField label="Geography type" htmlFor="geo-type">
+          <SelectField id="geo-type" aria-label="Geography type" value={form.type} onValueChange={(v) => set('type', v as GeographyType)} options={types} />
+        </FormModalField>
+        <FormModalField label="Sits under" htmlFor="geo-parent" wide hint="Pick the country itself for a top-level atoll or state.">
+          <SelectField
+            id="geo-parent"
+            aria-label="Sits under"
+            value={form.parent}
+            onValueChange={(v) => set('parent', v)}
+            options={[form.country, ...topLevel.map((g) => g.name)]}
+          />
+        </FormModalField>
+        <FormModalField label="Name" htmlFor="geo-name">
           <Input id="geo-name" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Eydhafushi" aria-invalid={clash || undefined} autoFocus />
-        </DrawerField>
-        <DrawerField label="Postal code (optional)" htmlFor="geo-postal">
+        </FormModalField>
+        <FormModalField label="Postal code (optional)" htmlFor="geo-postal">
           <Input id="geo-postal" value={form.postal} onChange={(e) => set('postal', e.target.value)} placeholder="06040" />
-        </DrawerField>
-      </DrawerGrid>
-      {clash && <DrawerWarning>A geography called {name} already exists. Two places with the same name confuse every tenant’s site list.</DrawerWarning>}
+        </FormModalField>
+      </FormModalGrid>
+      {clash && <FormModalWarning>A geography called {name} already exists. Two places with the same name confuse every tenant’s site list.</FormModalWarning>}
       <button type="submit" hidden />
     </form>
   )
 }
 
-/** "Add a country" drawer. Remounts its form on every open. */
-export function AddCountryDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** "Add a country" modal. Remounts its form on every open. */
+export function AddCountryModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <Drawer open={open} onClose={onClose} title="Add a country" note="Only countries added here can be picked on a tenant address." saveLabel="Add country" onSave={() => (document.getElementById('add-country-form') as HTMLFormElement | null)?.requestSubmit()}>
+    <FormModal open={open} onClose={onClose} title="Add a country" note="Only countries added here can be picked on a tenant address." saveLabel="Add country" onSave={() => (document.getElementById('add-country-form') as HTMLFormElement | null)?.requestSubmit()}>
       {open && <CountryForm onDone={onClose} />}
-    </Drawer>
+    </FormModal>
   )
 }
 
@@ -104,17 +101,17 @@ function CountryForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form id="add-country-form" onSubmit={(e) => (e.preventDefault(), submit())}>
-      <DrawerGrid>
-        <DrawerField label="Country name" htmlFor="country-name" wide>
+      <FormModalGrid>
+        <FormModalField label="Country name" htmlFor="country-name" wide>
           <Input id="country-name" value={form.name} onChange={set('name')} placeholder="Maldives" autoFocus />
-        </DrawerField>
-        <DrawerField label="Country code" htmlFor="country-code">
+        </FormModalField>
+        <FormModalField label="Country code" htmlFor="country-code">
           <Input id="country-code" value={form.code} onChange={set('code')} placeholder="MV" maxLength={2} className="uppercase" />
-        </DrawerField>
-        <DrawerField label="Dialing code" htmlFor="country-dial">
+        </FormModalField>
+        <FormModalField label="Dialing code" htmlFor="country-dial">
           <Input id="country-dial" value={form.dial} onChange={set('dial')} placeholder="+960" />
-        </DrawerField>
-      </DrawerGrid>
+        </FormModalField>
+      </FormModalGrid>
       <button type="submit" hidden />
     </form>
   )

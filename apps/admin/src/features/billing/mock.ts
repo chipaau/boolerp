@@ -25,7 +25,7 @@ export const DUNNING_POLICY: DunningPolicy = { r1: 3, r2: 7, warn: 14, susp: 30,
 
 export const DUNNING_MODES: TenantDunningMode[] = ['Platform policy', 'Reminders only — never suspend', 'Chase early — reminders at +1 and +3', 'No automated chasing']
 export const CHASE_TEMPLATES: ChaseTemplate[] = ['Polite nudge', 'Firm reminder', 'Final notice before suspension']
-/** Options offered by the billing-details drawer. */
+/** Options offered by the billing-details modal. */
 export const PAYMENT_METHODS: PaymentMethod[] = ['Bank transfer', 'Card ending 4417', 'Government voucher', 'Rolled up to parent', 'Not set']
 export const PERIODS = ['Oct 2026', 'Sep 2026', 'Aug 2026']
 

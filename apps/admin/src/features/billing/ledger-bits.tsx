@@ -23,7 +23,7 @@ export function LedgerStatusBadge({ status, size = 'sm' }: { status: LedgerStatu
 /** 'MVR 1,200' for invoices, '− MVR 418' for credits. */
 export const signedMvr = (e: LedgerLine) => (e.kind === 'Invoice' ? '' : '− ') + formatMvr(Math.abs(e.total))
 
-/** Overline heading inside drawers. */
+/** Overline heading inside modals. */
 export function Overline({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn('text-overline text-muted-foreground', className)}>{children}</div>
 }

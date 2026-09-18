@@ -17,7 +17,7 @@ export const useCountries = () => useQuery(countriesQuery()).data ?? mock.COUNTR
 export const useGeographies = () => useQuery(geographiesQuery()).data ?? mock.GEOGRAPHIES
 export const useGeographyTypes = () => mock.GEOGRAPHY_TYPES
 
-/** Active countries only (wizard/address and drawer pickers). */
+/** Active countries only (wizard/address and modal pickers). */
 export const useActiveCountries = () => {
   const list = useCountries()
   return useMemo(() => list.filter((c) => c.status === 'Active'), [list])

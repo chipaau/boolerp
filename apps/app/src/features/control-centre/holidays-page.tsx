@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { Select, SelectContent, SelectGroup, SelectGroupLabel, SelectItem, SelectTrigger, SelectValue } from '@workspace/ui/components/select'
 import { Switch } from '@workspace/ui/components/switch'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
@@ -90,26 +90,33 @@ export function HolidaysPage() {
 
         <Card className="gap-0 overflow-clip py-0">
           <div className="flex flex-wrap items-center gap-[9px] border-b border-divider px-5 py-3.5">
-            <NativeSelect value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Applies to">
-              <option value="all">Anyone</option>
-              <optgroup label="Admin units">
-                {units
-                  .map((u) => ({ id: u.id, label: unitPath(units, u.id, ' › ') }))
-                  .sort((a, b) => a.label.localeCompare(b.label))
-                  .map((u) => (
-                    <option key={u.id} value={`u:${u.id}`}>
-                      {u.label}
-                    </option>
+            <Select value={scope} onValueChange={(v) => setScope(String(v ?? ''))}>
+              <SelectTrigger aria-label="Applies to">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Anyone</SelectItem>
+                <SelectGroup>
+                  <SelectGroupLabel>Admin units</SelectGroupLabel>
+                  {units
+                    .map((u) => ({ id: u.id, label: unitPath(units, u.id, ' › ') }))
+                    .sort((a, b) => a.label.localeCompare(b.label))
+                    .map((u) => (
+                      <SelectItem key={u.id} value={`u:${u.id}`}>
+                        {u.label}
+                      </SelectItem>
+                    ))}
+                </SelectGroup>
+                <SelectGroup>
+                  <SelectGroupLabel>Sites</SelectGroupLabel>
+                  {sites.map((x) => (
+                    <SelectItem key={x.id} value={`s:${x.id}`}>
+                      {x.name}
+                    </SelectItem>
                   ))}
-              </optgroup>
-              <optgroup label="Sites">
-                {sites.map((x) => (
-                  <option key={x.id} value={`s:${x.id}`}>
-                    {x.name}
-                  </option>
-                ))}
-              </optgroup>
-            </NativeSelect>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
             <Button variant="outline" size="sm" aria-pressed={!showOff} className={cn('rounded-full font-bold', !showOff && 'bg-muted')} onClick={() => setShowOff((v) => !v)}>
               {showOff ? 'Hiding nothing' : 'Active only'}
             </Button>

@@ -6,7 +6,7 @@ import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { DropdownMenuItem } from '@workspace/ui/components/dropdown-menu'
 import { ConfirmDialog } from '@workspace/ui/components/confirm-dialog'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { useToast } from '@workspace/ui/components/toast'
 import { ToneDot } from '@workspace/ui/components/tone-dot'
 import { LinkTab, LinkTabs } from '@workspace/ui/components/tabs'
@@ -368,14 +368,16 @@ function UnitDetail({
         <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3.5 border-t border-divider pt-4">
           <div className="w-[236px] shrink-0">
             <FieldLabel>Lead</FieldLabel>
-            <NativeSelect value={unit.leadId ?? ''} disabled={!canEdit} onChange={(e) => onLead(e.target.value)}>
-              <option value="">{lead ? `Standing in: ${lead.name}` : 'No lead'}</option>
-              {deep.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} · {p.title}
-                </option>
-              ))}
-            </NativeSelect>
+            <SelectField
+              aria-label="Unit lead"
+              value={unit.leadId ?? ''}
+              disabled={!canEdit}
+              onValueChange={onLead}
+              options={[
+                { value: '', label: lead ? `Standing in: ${lead.name}` : 'No lead' },
+                ...deep.map((p) => ({ value: p.id, label: `${p.name} · ${p.title}` })),
+              ]}
+            />
           </div>
           <div>
             <FieldLabel>Order</FieldLabel>

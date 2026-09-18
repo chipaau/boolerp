@@ -11,7 +11,7 @@ import { PageTitle } from '@/components/layout/page'
 import { FilterPill, FilterSelect, FilterToolbar } from '@/components/filter-toolbar'
 import { useCountries, useGeographies, useGeographyActions, useGeographySummary } from './queries'
 import type { CountryStatus, GeographyStatus, GuardedResult } from './types'
-import { AddCountryDrawer, AddGeographyDrawer } from './geography-drawers'
+import { AddCountryModal, AddGeographyModal } from './geography-modals'
 
 export type GeographiesTab = 'places' | 'countries'
 
@@ -27,7 +27,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 /** Geographies screen: shared places (atolls, islands, cities) and the countries they sit in. */
 export function GeographiesPage({ tab, onTabChange }: { tab: GeographiesTab; onTabChange: (tab: GeographiesTab) => void }) {
   const summary = useGeographySummary()
-  const [drawer, setDrawer] = useState<GeographiesTab | null>(null)
+  const [adding, setAdding] = useState<GeographiesTab | null>(null)
 
   return (
     <div className="min-h-0 w-full overflow-y-auto">
@@ -36,7 +36,7 @@ export function GeographiesPage({ tab, onTabChange }: { tab: GeographiesTab; onT
           overline="Admin"
           title="Geographies"
           meta={`${summary.total} geographies across ${summary.activeCountries} active countries · ${summary.unused} ${summary.unused === 1 ? 'is not used by any tenant' : 'not used by any tenant'}`}
-          actions={<Button onClick={() => setDrawer(tab)}>{tab === 'places' ? 'Add a geography' : 'Add a country'}</Button>}
+          actions={<Button onClick={() => setAdding(tab)}>{tab === 'places' ? 'Add a geography' : 'Add a country'}</Button>}
           className="mb-[18px]"
         />
 
@@ -50,8 +50,8 @@ export function GeographiesPage({ tab, onTabChange }: { tab: GeographiesTab; onT
         {tab === 'places' ? <PlacesTable /> : <CountriesTable />}
       </div>
 
-      <AddGeographyDrawer open={drawer === 'places'} onClose={() => setDrawer(null)} />
-      <AddCountryDrawer open={drawer === 'countries'} onClose={() => setDrawer(null)} />
+      <AddGeographyModal open={adding === 'places'} onClose={() => setAdding(null)} />
+      <AddCountryModal open={adding === 'countries'} onClose={() => setAdding(null)} />
     </div>
   )
 }
