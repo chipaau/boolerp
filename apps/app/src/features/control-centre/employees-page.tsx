@@ -8,7 +8,7 @@ import { Checkbox } from '@workspace/ui/components/checkbox'
 import { ConfirmDialog } from '@workspace/ui/components/confirm-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@workspace/ui/components/dropdown-menu'
 import { EmptyState } from '@workspace/ui/components/empty-state'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { SearchField } from '@workspace/ui/components/search-field'
 import { Table, TableBody, TableBulkAction, TableBulkBar, TableCell, TableHead, TableHeader, TableRow, TableToolbar } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
@@ -114,31 +114,27 @@ function EmployeeList() {
         <Card className="gap-0 overflow-clip py-0">
           <TableToolbar className="px-5">
             <SearchField size="sm" placeholder="Search people, IDs, titles" value={q} onChange={(e) => setQ(e.target.value)} className="min-w-[200px] max-w-xs" />
-            <NativeSelect value={unit} onChange={(e) => setUnit(e.target.value)} className="w-[200px]">
-              <option value="all">All units</option>
-              {liveUnits(units).map((u) => (
-                <option key={u.id} value={u.id}>
-                  {unitPath(units, u.id, ' › ')}
-                </option>
-              ))}
-            </NativeSelect>
-            <NativeSelect value={site} onChange={(e) => setSite(e.target.value)} className="w-[180px]">
-              <option value="all">Any site</option>
-              <option value="none">No site assigned</option>
-              {sites.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </NativeSelect>
-            <NativeSelect value={status} onChange={(e) => setStatus(e.target.value)} className="w-[150px]">
-              <option value="all">Any status</option>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </NativeSelect>
+            <SelectField
+              aria-label="Unit"
+              value={unit}
+              onValueChange={setUnit}
+              className="w-[200px]"
+              options={[{ value: 'all', label: 'All units' }, ...liveUnits(units).map((u) => ({ value: u.id, label: unitPath(units, u.id, ' › ') }))]}
+            />
+            <SelectField
+              aria-label="Site"
+              value={site}
+              onValueChange={setSite}
+              className="w-[180px]"
+              options={[{ value: 'all', label: 'Any site' }, { value: 'none', label: 'No site assigned' }, ...sites.map((s) => ({ value: s.id, label: s.name }))]}
+            />
+            <SelectField
+              aria-label="Status"
+              value={status}
+              onValueChange={setStatus}
+              className="w-[150px]"
+              options={['all', ...STATUSES].map((s) => ({ value: s, label: s === 'all' ? 'Any status' : s }))}
+            />
             <span className="flex-1" />
             <span className="text-caption text-faint">
               {list.length} of {internal.length} people

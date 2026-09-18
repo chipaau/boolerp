@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@workspace/ui/components/button'
 import { ConfirmDialog } from '@workspace/ui/components/confirm-dialog'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { CADENCES, isOnBooks, modeHint, siteTypeById } from '@/features/org/logic'
@@ -78,13 +78,7 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
             <div className="overflow-clip rounded-[14px] border border-border">
               <div className="px-3.5 pt-3 pb-3">
                 <FieldLabel>Site type</FieldLabel>
-                <NativeSelect value={f.typeId} onChange={(e) => set({ typeId: e.target.value })}>
-                  {types.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </NativeSelect>
+                <SelectField aria-label="Site type" value={f.typeId} onValueChange={(v) => set({ typeId: v })} options={types.map((t) => ({ value: t.id, label: t.name }))} />
               </div>
               <div className="border-t border-divider bg-surface-band px-3.5 py-3">
                 <div className="mb-2 flex items-center gap-2.5">
@@ -115,25 +109,21 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
               </div>
               <div>
                 <FieldLabel>Site manager</FieldLabel>
-                <NativeSelect value={f.owner} onChange={(e) => set({ owner: e.target.value })}>
-                  <option value="">Unassigned</option>
-                  {people.filter((p) => isOnBooks(p) && p.role !== 'Staff').map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} · {p.title}
-                    </option>
-                  ))}
-                </NativeSelect>
+                <SelectField
+                  aria-label="Owner"
+                  value={f.owner}
+                  onValueChange={(v) => set({ owner: v })}
+                  options={[{ value: '', label: 'Unassigned' }, ...people.filter((p) => isOnBooks(p) && p.role !== 'Staff').map((p) => ({ value: p.id, label: `${p.name} · ${p.title}` }))]}
+                />
               </div>
               <div>
                 <FieldLabel>Parent site</FieldLabel>
-                <NativeSelect value={f.parent} onChange={(e) => set({ parent: e.target.value })}>
-                  <option value="">Top level — stands alone</option>
-                  {sites.filter((s) => s.id !== editing?.id && s.country === f.country && s.parent !== editing?.id).map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} · {s.code}
-                    </option>
-                  ))}
-                </NativeSelect>
+                <SelectField
+                  aria-label="Sits under"
+                  value={f.parent}
+                  onValueChange={(v) => set({ parent: v })}
+                  options={[{ value: '', label: 'Top level — stands alone' }, ...sites.filter((s) => s.id !== editing?.id && s.country === f.country && s.parent !== editing?.id).map((s) => ({ value: s.id, label: `${s.name} · ${s.code}` }))]}
+                />
               </div>
               <div className="text-caption leading-[1.5] text-pretty text-faint sm:col-span-2">{parentSite ? `Rolls up into ${parentSite.name} — stock reports can be read for the parent alone or with everything under it.` : `Leave standalone unless this place is a yard, counter or bay belonging to a bigger site. Only sites in ${f.country} can be a parent.`}</div>
             </div>
@@ -146,36 +136,35 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
               <div className="grid gap-3.5 sm:grid-cols-2">
                 <div>
                   <FieldLabel>Country</FieldLabel>
-                  <NativeSelect value={f.country} onChange={(e) => set({ country: e.target.value, region: '', place: '', parent: '' })}>
-                    {on.map((c) => (
-                      <option key={c.id} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField
+                    aria-label="Country"
+                    value={f.country}
+                    onValueChange={(v) => set({ country: v, region: '', place: '', parent: '' })}
+                    options={on.map((c) => c.name)}
+                  />
                 </div>
                 <div>
                   <FieldLabel>Region</FieldLabel>
-                  <NativeSelect value={f.region} onChange={(e) => set({ region: e.target.value, place: '' })} disabled={!formRegions.length}>
-                    <option value="">{formRegions.length ? 'Pick a region' : `No regions in ${f.country} yet`}</option>
-                    {formRegions.map((r) => (
-                      <option key={r.id} value={r.name}>
-                        {r.name}
-                        {r.origin === 'custom' ? ' · yours' : ''}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField
+                    aria-label="Region"
+                    value={f.region}
+                    onValueChange={(v) => set({ region: v, place: '' })}
+                    disabled={!formRegions.length}
+                    options={[
+                      { value: '', label: formRegions.length ? 'Pick a region' : `No regions in ${f.country} yet` },
+                      ...formRegions.map((r) => ({ value: r.name, label: `${r.name}${r.origin === 'custom' ? ' · yours' : ''}` })),
+                    ]}
+                  />
                 </div>
                 <div>
                   <FieldLabel>City / island</FieldLabel>
-                  <NativeSelect value={f.place} onChange={(e) => set({ place: e.target.value })} disabled={!places.length}>
-                    <option value="">{places.length ? 'Pick a city or island' : 'Pick a region first'}</option>
-                    {places.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField
+                    aria-label="City or island"
+                    value={f.place}
+                    onValueChange={(v) => set({ place: v })}
+                    disabled={!places.length}
+                    options={[{ value: '', label: places.length ? 'Pick a city or island' : 'Pick a region first' }, ...places.map((p) => ({ value: p, label: p }))]}
+                  />
                 </div>
                 <div>
                   <FieldLabel>Address</FieldLabel>
@@ -193,14 +182,18 @@ export function SiteDialog({ draft, onClose, onSaved }: { draft: SiteDraft | nul
             </div>
             {override && (
               <div className="mt-3">
-                <NativeSelect value={f.cadence} onChange={(e) => set({ cadence: e.target.value as '' | Cadence })}>
-                  <option value="">Follow the site type ({type.cadence})</option>
-                  {[...CADENCES.filter((c) => c !== 'None'), 'None' as const].map((c) => (
-                    <option key={c} value={c}>
-                      Override — {c === 'None' ? 'never counted' : c.toLowerCase()}
-                    </option>
-                  ))}
-                </NativeSelect>
+                <SelectField
+                  aria-label="Count cadence"
+                  value={f.cadence}
+                  onValueChange={(v) => set({ cadence: v as '' | Cadence })}
+                  options={[
+                    { value: '', label: `Follow the site type (${type.cadence})` },
+                    ...[...CADENCES.filter((c) => c !== 'None'), 'None' as const].map((c) => ({
+                      value: c,
+                      label: `Override — ${c === 'None' ? 'never counted' : c.toLowerCase()}`,
+                    })),
+                  ]}
+                />
                 <div className="mt-1.5 text-caption leading-[1.5] text-pretty text-faint">{f.cadence ? `This site is counted ${f.cadence === 'None' ? 'never' : f.cadence.toLowerCase()} regardless of what ${type.name} says. Changing the type later won't move it back.` : `Counted ${type.cadence === 'None' ? 'never' : type.cadence.toLowerCase()}, and follows ${type.name} if that changes.`}</div>
               </div>
             )}

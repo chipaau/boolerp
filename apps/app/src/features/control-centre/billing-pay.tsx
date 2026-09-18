@@ -7,7 +7,7 @@ import { Checkbox } from '@workspace/ui/components/checkbox'
 import { DatePicker } from '@workspace/ui/components/date-picker'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@workspace/ui/components/dialog'
 import { FileChip, FileDropzone } from '@workspace/ui/components/file-dropzone'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { Stepper, StepperFooter, StepperLayout } from '@workspace/ui/components/stepper'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
@@ -195,11 +195,7 @@ export function PayDialog({ invoiceIds, onClose }: { invoiceIds: string[] | null
               <div className="grid gap-3.5 sm:grid-cols-2">
                 <div>
                   <FieldLabel>Paid from</FieldLabel>
-                  <NativeSelect value={bank} onChange={(e) => setBank(e.target.value as PaymentBank)} aria-label="Paid from" className="w-full">
-                    {BANKS.map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField aria-label="Paid from" value={bank} onValueChange={(v) => setBank(v as PaymentBank)} className="w-full" options={BANKS} />
                 </div>
                 <div>
                   <FieldLabel>Transfer reference</FieldLabel>

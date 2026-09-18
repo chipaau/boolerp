@@ -6,7 +6,7 @@ import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { ConfirmDialog } from '@workspace/ui/components/confirm-dialog'
 import { EmptyState } from '@workspace/ui/components/empty-state'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
 import { ToneDot } from '@workspace/ui/components/tone-dot'
@@ -238,13 +238,7 @@ function SiteTypeDetail({ id }: { id: string }) {
         {used.length > 0 && (
           <div className="mt-2">
             <FieldLabel>Move those sites to</FieldLabel>
-            <NativeSelect value={target} onChange={(e) => setTarget(e.target.value)}>
-              {others.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </NativeSelect>
+            <SelectField aria-label="Move sites to" value={target} onValueChange={setTarget} options={others.map((o) => ({ value: o.id, label: o.name }))} />
             {targetType && <div className="mt-2 rounded-[11px] bg-surface-band px-[13px] py-[11px] text-compact leading-[1.5] text-body">Those sites become {targetType.name}: {modeHint(targetType.mode).split('.')[0]}, {targetType.issue ? 'issuing allowed' : 'issuing blocked'}, {targetType.bins ? 'bins tracked' : 'no bin tracking'}.</div>}
           </div>
         )}

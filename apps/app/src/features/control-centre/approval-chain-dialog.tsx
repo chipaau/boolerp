@@ -4,7 +4,7 @@ import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { DatePicker } from '@workspace/ui/components/date-picker'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { PersonAvatar } from '@/features/directory/people-bits'
@@ -167,14 +167,12 @@ export function ApprovalChainDialog({ draft, onClose }: { draft: { edit?: Approv
             <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3.5">
               <div>
                 <FieldLabel>Stand-in approver</FieldLabel>
-                <NativeSelect value={standIn} onChange={(e) => setStandIn(e.target.value)}>
-                  <option value="">No cover — requests wait</option>
-                  {standIns.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} · {p.title}
-                    </option>
-                  ))}
-                </NativeSelect>
+                <SelectField
+                  aria-label="Stand-in"
+                  value={standIn}
+                  onValueChange={setStandIn}
+                  options={[{ value: '', label: 'No cover — requests wait' }, ...standIns.map((p) => ({ value: p.id, label: `${p.name} · ${p.title}` }))]}
+                />
               </div>
               <div>
                 <FieldLabel>Until</FieldLabel>

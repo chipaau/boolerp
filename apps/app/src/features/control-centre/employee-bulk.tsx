@@ -4,7 +4,7 @@ import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
 import { FileDropzone } from '@workspace/ui/components/file-dropzone'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { Switch } from '@workspace/ui/components/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table'
 import { useToast } from '@workspace/ui/components/toast'
@@ -123,11 +123,18 @@ export function BulkDialog({ kind, ids, onClose }: { kind: BulkKind | null; ids:
               {(kind === 'role' || kind === 'unit' || kind === 'access') && (
                 <div className="mt-3">
                   <FieldLabel>{kind === 'role' ? 'New role' : kind === 'unit' ? 'Destination unit' : 'Site'}</FieldLabel>
-                  <NativeSelect value={val} onChange={(e) => setVal(e.target.value)}>
-                    {kind === 'role' && ['Staff', 'Manager', 'Admin'].map((r) => <option key={r} value={r}>{r}</option>)}
-                    {kind === 'unit' && liveUnits(units).map((u) => <option key={u.id} value={u.id}>{unitPath(units, u.id, ' › ')}</option>)}
-                    {kind === 'access' && sites.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.code}</option>)}
-                  </NativeSelect>
+                  <SelectField
+                    aria-label="New value"
+                    value={val}
+                    onValueChange={setVal}
+                    options={
+                      kind === 'role'
+                        ? ['Staff', 'Manager', 'Admin']
+                        : kind === 'unit'
+                          ? liveUnits(units).map((u) => ({ value: u.id, label: unitPath(units, u.id, ' › ') }))
+                          : sites.map((s) => ({ value: s.id, label: `${s.name} · ${s.code}` }))
+                    }
+                  />
                 </div>
               )}
               {kind === 'role' && (

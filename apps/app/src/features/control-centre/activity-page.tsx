@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback } from '@workspace/ui/components/avatar'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { SearchField } from '@workspace/ui/components/search-field'
 import { useToast } from '@workspace/ui/components/toast'
 import { downloadCsv } from '@/lib/csv'
@@ -95,29 +95,21 @@ export function ActivityPage() {
         <Card className="gap-0 overflow-clip py-0">
           <div className="flex flex-wrap items-center gap-2.5 border-b border-divider px-5 py-[13px]">
             <SearchField size="sm" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search what changed, or who changed it" className="min-w-[160px] flex-[2_1_220px]" />
-            <NativeSelect value={who} onChange={(e) => setWho(e.target.value)} aria-label="Who" className={selectClass}>
-              <option value="all">Anyone</option>
-              {unique(audit.map((a) => a.who)).map((w) => (
-                <option key={w} value={w}>
-                  {w}
-                </option>
-              ))}
-            </NativeSelect>
-            <NativeSelect value={days} onChange={(e) => setDays(e.target.value)} aria-label="When" className={selectClass}>
-              {DAYS.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
-                </option>
-              ))}
-            </NativeSelect>
-            <NativeSelect value={app} onChange={(e) => setApp(e.target.value)} aria-label="App" className={selectClass}>
-              <option value="all">All apps</option>
-              {unique([...APPS, ...audit.map((a) => a.app)]).map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </NativeSelect>
+            <SelectField
+              aria-label="Who"
+              value={who}
+              onValueChange={setWho}
+              className={selectClass}
+              options={[{ value: 'all', label: 'Anyone' }, ...unique(audit.map((a) => a.who)).map((w) => ({ value: w, label: w }))]}
+            />
+            <SelectField aria-label="When" value={days} onValueChange={setDays} className={selectClass} options={DAYS.map((d) => ({ value: d.id, label: d.label }))} />
+            <SelectField
+              aria-label="App"
+              value={app}
+              onValueChange={setApp}
+              className={selectClass}
+              options={[{ value: 'all', label: 'All apps' }, ...unique([...APPS, ...audit.map((a) => a.app)]).map((a) => ({ value: a, label: a }))]}
+            />
             <Badge variant={significant ? 'warning' : 'outline'} render={<button type="button" aria-pressed={significant} onClick={() => setSignificant((v) => !v)} />}>
               {significant ? 'Significant only' : 'All severities'}
             </Badge>

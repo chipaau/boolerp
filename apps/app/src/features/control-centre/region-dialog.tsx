@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@workspace/ui/components/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@workspace/ui/components/dialog'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { useToast } from '@workspace/ui/components/toast'
 import { useCountries, useRegionActions } from '@/features/org/queries'
 import type { Region } from '@/features/org/types'
@@ -71,14 +71,16 @@ export function RegionDialog({ draft, onClose, onSaved }: { draft: RegionDraft |
           <div className="grid gap-3.5 sm:grid-cols-2">
             <div>
               <FieldLabel>Country</FieldLabel>
-              <NativeSelect value={country} onChange={(e) => setCountry(e.target.value)} disabled={!!editing}>
-                {editing && !choices.some((c) => c.name === country) && <option value={country}>{country}</option>}
-                {choices.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </NativeSelect>
+              <SelectField
+                aria-label="Country"
+                value={country}
+                onValueChange={setCountry}
+                disabled={!!editing}
+                options={[
+                  ...(editing && !choices.some((c) => c.name === country) ? [country] : []),
+                  ...choices.map((c) => c.name),
+                ]}
+              />
             </div>
             <div>
               <FieldLabel>Region name</FieldLabel>

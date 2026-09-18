@@ -3,7 +3,7 @@ import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { Dialog, DialogContent } from '@workspace/ui/components/dialog'
 import { DatePicker } from '@workspace/ui/components/date-picker'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { Stepper, StepperFooter, StepperLayout } from '@workspace/ui/components/stepper'
 import { Switch } from '@workspace/ui/components/switch'
 import { useToast } from '@workspace/ui/components/toast'
@@ -142,36 +142,26 @@ export function EmployeeDialog({ draft, onClose, onSaved }: { draft: EmployeeDra
                 </div>
                 <div>
                   <FieldLabel>Admin unit</FieldLabel>
-                  <NativeSelect value={f.unitId} onChange={(e) => set('unitId', e.target.value)}>
-                    <option value="">Pick a unit</option>
-                    {liveUnits(units).map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {unitPath(units, u.id, ' › ')}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField
+                    aria-label="Unit"
+                    value={f.unitId}
+                    onValueChange={(v) => set('unitId', v)}
+                    options={[{ value: '', label: 'Pick a unit' }, ...liveUnits(units).map((u) => ({ value: u.id, label: unitPath(units, u.id, ' › ') }))]}
+                  />
                 </div>
                 <div>
                   <FieldLabel>Reports to</FieldLabel>
-                  <NativeSelect value={f.managerId} onChange={(e) => set('managerId', e.target.value)}>
-                    <option value="">No one — top of the tree</option>
-                    {people.filter((p) => isOnBooks(p) && p.id !== editing?.id).map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} · {p.title}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField
+                    aria-label="Reports to"
+                    value={f.managerId}
+                    onValueChange={(v) => set('managerId', v)}
+                    options={[{ value: '', label: 'No one — top of the tree' }, ...people.filter((p) => isOnBooks(p) && p.id !== editing?.id).map((p) => ({ value: p.id, label: `${p.name} · ${p.title}` }))]}
+                  />
                 </div>
                 <div className="grid gap-4 border-t border-divider pt-[18px] sm:col-span-2 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
                   <div>
                     <FieldLabel>Status</FieldLabel>
-                    <NativeSelect value={f.status} onChange={(e) => set('status', e.target.value as PersonStatus)}>
-                      {STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </NativeSelect>
+                    <SelectField aria-label="Status" value={f.status} onValueChange={(v) => set('status', v as PersonStatus)} options={STATUSES} />
                   </div>
                   <div>
                     <FieldLabel>Start date</FieldLabel>
@@ -185,13 +175,7 @@ export function EmployeeDialog({ draft, onClose, onSaved }: { draft: EmployeeDra
                   )}
                   <div>
                     <FieldLabel>Contract</FieldLabel>
-                    <NativeSelect value={f.contract} onChange={(e) => set('contract', e.target.value as Contract)}>
-                      {CONTRACTS.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </NativeSelect>
+                    <SelectField aria-label="Contract" value={f.contract} onValueChange={(v) => set('contract', v as Contract)} options={CONTRACTS} />
                   </div>
                   <div className="sm:col-span-full">
                     <FieldLabel hint=" optional">Badge / NFC card</FieldLabel>
