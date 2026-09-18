@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Button } from '@workspace/ui/components/button'
 import { DatePicker } from '@workspace/ui/components/date-picker'
 import { Dialog, DialogContent } from '@workspace/ui/components/dialog'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { Stepper, StepperFooter, StepperLayout } from '@workspace/ui/components/stepper'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
@@ -167,14 +167,13 @@ function AdminUserFlow({ editing, tenant, onDone }: { editing?: AdminUser; tenan
                 </Field>
               ) : (
                 <Field id="au-scope" label="Tenant this person runs">
-                  <NativeSelect id="au-scope" value={f.scope} onChange={(e) => set('scope', e.target.value)}>
-                    <option value="">Pick a tenant</option>
-                    {scopes.map((t) => (
-                      <option key={t.abbr} value={t.abbr}>
-                        {t.name} · {t.abbr}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField
+                    id="au-scope"
+                    aria-label="Scope"
+                    value={f.scope}
+                    onValueChange={(v) => set('scope', v)}
+                    options={[{ value: '', label: 'Pick a tenant' }, ...scopes.map((t) => ({ value: t.abbr, label: `${t.name} · ${t.abbr}` }))]}
+                  />
                 </Field>
               )}
             </div>

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { SearchField } from '@workspace/ui/components/search-field'
 
 // The design's list toolbar: a search pill, filter pills, small selects, then a right-aligned
@@ -58,12 +58,6 @@ export function FilterPill({ active, onClick, children }: { active: boolean; onC
 /** Compact select for toolbar filters. */
 export function FilterSelect<T extends string>({ value, options, onChange, label }: { value: T; options: readonly T[]; onChange: (v: T) => void; label: string }) {
   return (
-    <NativeSelect className="w-auto" aria-label={label} value={value} onChange={(e) => onChange(e.target.value as T)}>
-      {options.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
-    </NativeSelect>
+    <SelectField className="w-auto" aria-label={label} value={value} onValueChange={(v) => onChange(v as T)} options={options} />
   )
 }

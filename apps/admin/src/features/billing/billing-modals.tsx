@@ -5,7 +5,7 @@ import { Button } from '@workspace/ui/components/button'
 import { FormModal, FormModalWarning as Warn } from '@workspace/ui/components/form-modal'
 import { Input } from '@workspace/ui/components/input'
 import { Label } from '@workspace/ui/components/label'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { planByName } from '@/features/tenants/logic'
@@ -206,10 +206,7 @@ function CreditModal({ modal, onClose }: { modal: Extract<BillingModal, { kind: 
       <div className="grid grid-cols-2 gap-x-3.5 gap-y-[18px]">
         <div className="grid gap-2">
           <Label htmlFor="credit-kind">Type</Label>
-          <NativeSelect id="credit-kind" value={kind} onChange={(ev) => setKind(ev.target.value as CreditKind)}>
-            <option>Credit note</option>
-            <option>Refund</option>
-          </NativeSelect>
+          <SelectField id="credit-kind" aria-label="Type" value={kind} onValueChange={(v) => setKind(v as CreditKind)} options={['Credit note', 'Refund']} />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="credit-amount">Amount (MVR)</Label>
@@ -272,11 +269,7 @@ function ChaseModal({ onClose }: { onClose: () => void }) {
     >
       <div className="mb-5 grid gap-2">
         <Label htmlFor="chase-tpl">Message</Label>
-        <NativeSelect id="chase-tpl" value={tpl} onChange={(ev) => setTpl(ev.target.value as ChaseTemplate)}>
-          {chaseTemplates.map((t) => (
-            <option key={t}>{t}</option>
-          ))}
-        </NativeSelect>
+        <SelectField id="chase-tpl" aria-label="Message" value={tpl} onValueChange={(v) => setTpl(v as ChaseTemplate)} options={chaseTemplates} />
         <p className="text-meta text-muted-foreground">Sent to each tenant’s billing contact, copied to their tenant admins on a final notice.</p>
       </div>
       <ChaseRows open={open} skip={skip} toggle={toggle} profiles={profiles} warnDay={policy.warn} />

@@ -3,7 +3,7 @@ import { Badge } from '@workspace/ui/components/badge'
 import { FormModal, FormModalField } from '@workspace/ui/components/form-modal'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { AdminUserDialog } from '@/features/admin-users/admin-user-modal'
@@ -255,20 +255,13 @@ function BillingDetailsModal({ tenant: t, onClose }: ModalProps) {
           <Input value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="3324570" />
         </FormModalField>
         <FormModalField label="Payment method">
-          <NativeSelect value={f.method} onChange={(e) => set('method', e.target.value as PaymentMethod)}>
-            {paymentMethods.map((m) => (
-              <option key={m}>{m}</option>
-            ))}
-          </NativeSelect>
+          <SelectField aria-label="Payment method" value={f.method} onValueChange={(v) => set('method', v as PaymentMethod)} options={paymentMethods} />
         </FormModalField>
         <FormModalField label="Tax registration" hint="Leave as exempt for government bodies.">
           <Input value={f.taxId} onChange={(e) => set('taxId', e.target.value)} placeholder="GST 1024-VC" />
         </FormModalField>
         <FormModalField label="GST rate (%)">
-          <NativeSelect value={String(f.taxRate)} onChange={(e) => set('taxRate', Number(e.target.value) as 0 | 8)}>
-            <option value="0">0</option>
-            <option value="8">8</option>
-          </NativeSelect>
+          <SelectField aria-label="GST rate" value={String(f.taxRate)} onValueChange={(v) => set('taxRate', Number(v) as 0 | 8)} options={['0', '8']} />
         </FormModalField>
         <FormModalField label="PO reference" wide hint="Printed on every invoice — most government tenants will not pay without it.">
           <Input value={f.po} onChange={(e) => set('po', e.target.value)} placeholder="PO-2026-114" />
@@ -306,11 +299,7 @@ function DunningModal({ tenant: t, onClose }: ModalProps) {
       onClose={onClose}
     >
       <FormModalField label="Policy" wide hint="Overrides only this tenant. Everyone else keeps the platform policy.">
-        <NativeSelect value={mode} onChange={(e) => setMode(e.target.value as TenantDunningMode)}>
-          {dunningModes.map((m) => (
-            <option key={m}>{m}</option>
-          ))}
-        </NativeSelect>
+        <SelectField aria-label="Policy" value={mode} onValueChange={(v) => setMode(v as TenantDunningMode)} options={dunningModes} />
       </FormModalField>
     </FormModal>
   )
@@ -379,11 +368,7 @@ function ChaseModal({ tenant: t, onClose }: ModalProps) {
       <div className="mt-1.5 text-compact font-bold text-muted-foreground">{formatMvr(picks.reduce((n, e) => n + owed(e), 0))} chased in total</div>
       <div className="mt-5">
         <FormModalField label="Message" wide hint="Sent to each tenant’s billing contact, copied to their tenant admins on a final notice.">
-          <NativeSelect value={tpl} onChange={(e) => setTpl(e.target.value as ChaseTemplate)}>
-            {chaseTemplates.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </NativeSelect>
+          <SelectField aria-label="Message" value={tpl} onValueChange={(v) => setTpl(v as ChaseTemplate)} options={chaseTemplates} />
         </FormModalField>
       </div>
     </FormModal>
@@ -564,10 +549,7 @@ function CreditModal({ tenant: t, onClose, against, initialKind }: ModalProps & 
     >
       <div className="grid grid-cols-2 gap-x-[18px] gap-y-4">
         <FormModalField label="Type" hint="A credit note reduces what they owe. A refund returns money already paid.">
-          <NativeSelect value={kind} onChange={(e) => setKind(e.target.value as CreditKind)}>
-            <option>Credit note</option>
-            <option>Refund</option>
-          </NativeSelect>
+          <SelectField aria-label="Type" value={kind} onValueChange={(v) => setKind(v as CreditKind)} options={['Credit note', 'Refund']} />
         </FormModalField>
         <FormModalField label="Amount (MVR)">
           <Input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" />

@@ -3,7 +3,7 @@ import { Search, X } from 'lucide-react'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { cn } from '@workspace/ui/lib/utils'
 import { orderByHierarchy } from '@/features/tenants/logic'
 import { useTenantDirectory } from '@/features/tenants/queries'
@@ -111,11 +111,7 @@ export function LedgerToolbar({ q, onQ, picked, rollUp, hasKids, onPick, status,
         </Badge>
       ))}
 
-      <NativeSelect aria-label="Period" value={period} onChange={(e) => onPeriod(e.target.value)} className="w-[136px]">
-        {['Any period', ...periods].map((p) => (
-          <option key={p}>{p}</option>
-        ))}
-      </NativeSelect>
+      <SelectField aria-label="Period" value={period} onValueChange={onPeriod} className="w-[136px]" options={['Any period', ...periods]} />
 
       <span className="flex-1" />
       <span className="text-caption whitespace-nowrap text-muted-foreground">{count}</span>

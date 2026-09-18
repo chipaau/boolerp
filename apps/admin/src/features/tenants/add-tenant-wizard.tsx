@@ -6,7 +6,7 @@ import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { DatePicker } from '@workspace/ui/components/date-picker'
 import { Dialog, DialogContent } from '@workspace/ui/components/dialog'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
 import { Stepper, StepperFooter, StepperLayout } from '@workspace/ui/components/stepper'
 import { useToast } from '@workspace/ui/components/toast'
@@ -286,18 +286,10 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
                   <DatePicker id="t-regdate" value={f.regDate} onChange={(iso) => set('regDate', iso)} placeholder="Pick the registration date" />
                 </Field>
                 <Field id="t-org" label="Organization type">
-                  <NativeSelect id="t-org" value={f.orgType} onChange={(e) => set('orgType', e.target.value as OrgType)}>
-                    {orgTypes.map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField id="t-org" aria-label="Organisation type" value={f.orgType} onValueChange={(v) => set('orgType', v as OrgType)} options={orgTypes} />
                 </Field>
                 <Field id="t-party" label="Party type">
-                  <NativeSelect id="t-party" value={f.entityType} onChange={(e) => set('entityType', e.target.value as EntityType)}>
-                    {entityTypes.map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField id="t-party" aria-label="Party type" value={f.entityType} onValueChange={(v) => set('entityType', v as EntityType)} options={entityTypes} />
                 </Field>
               </div>
 
@@ -321,14 +313,13 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
                 </div>
                 {f.tree === 'Child' && (
                   <Field id="t-parent" label="Parent tenant" className="mt-3.5 max-w-[420px]" hint="A child keeps its own admins and data, but rolls up to the parent.">
-                    <NativeSelect id="t-parent" value={f.parent} onChange={(e) => set('parent', e.target.value)}>
-                      <option value="">Pick a parent</option>
-                      {parentOptions.map((t) => (
-                        <option key={t.slug} value={t.slug}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </NativeSelect>
+                    <SelectField
+                      id="t-parent"
+                      aria-label="Parent tenant"
+                      value={f.parent}
+                      onValueChange={(v) => set('parent', v)}
+                      options={[{ value: '', label: 'Pick a parent' }, ...parentOptions.map((t) => ({ value: t.slug, label: t.name }))]}
+                    />
                   </Field>
                 )}
               </div>
@@ -368,27 +359,31 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
               <div className="grid gap-4 border-t border-divider pt-[18px] sm:col-span-2 sm:grid-cols-2">
                 <div className="text-overline text-faint sm:col-span-2">Address</div>
                 <Field id="t-country" label="Country">
-                  <NativeSelect id="t-country" value={f.country} onChange={(e) => setF((p) => ({ ...p, country: e.target.value, district: '', city: '—' }))}>
-                    {countries.map((c) => (
-                      <option key={c.code}>{c.name}</option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField
+                    id="t-country"
+                    aria-label="Country"
+                    value={f.country}
+                    onValueChange={(v) => setF((p) => ({ ...p, country: v, district: '', city: '—' }))}
+                    options={countries.map((c) => c.name)}
+                  />
                 </Field>
                 <Field id="t-district" label="Atoll / State">
-                  <NativeSelect id="t-district" value={f.district} onChange={(e) => setF((p) => ({ ...p, district: e.target.value, city: '—' }))}>
-                    <option value="">—</option>
-                    {districts.map((g) => (
-                      <option key={g.name}>{g.name}</option>
-                    ))}
-                  </NativeSelect>
+                  <SelectField
+                    id="t-district"
+                    aria-label="Atoll / State"
+                    value={f.district}
+                    onValueChange={(v) => setF((p) => ({ ...p, district: v, city: '—' }))}
+                    options={[{ value: '', label: '—' }, ...districts.map((g) => ({ value: g.name, label: g.name }))]}
+                  />
                 </Field>
                 <Field id="t-city" label="Island / City">
-                  <NativeSelect id="t-city" value={f.city} onChange={(e) => set('city', e.target.value)}>
-                    {cities.map((g) => (
-                      <option key={g.name}>{g.name}</option>
-                    ))}
-                    <option>—</option>
-                  </NativeSelect>
+                  <SelectField
+                    id="t-city"
+                    aria-label="Island / City"
+                    value={f.city}
+                    onValueChange={(v) => set('city', v)}
+                    options={[...cities.map((g) => g.name), '—']}
+                  />
                 </Field>
                 <Field id="t-postal" label="Postal code">
                   <input id="t-postal" value={f.postal} placeholder="20026" className={fieldClass} onChange={(e) => set('postal', e.target.value)} />

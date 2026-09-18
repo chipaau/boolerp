@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Input } from '@workspace/ui/components/input'
-import { NativeSelect } from '@workspace/ui/components/native-select'
+import { SelectField } from '@workspace/ui/components/select'
 import { useToast } from '@workspace/ui/components/toast'
 import { FormModal, FormModalField, FormModalGrid, FormModalWarning } from '@workspace/ui/components/form-modal'
 import { useActiveCountries, useGeographies, useGeographyActions, useGeographyTypes, useTopLevelGeographies } from './queries'
@@ -43,28 +43,25 @@ function GeographyForm({ onDone }: { onDone: () => void }) {
     <form id="add-geography-form" onSubmit={(e) => (e.preventDefault(), submit())}>
       <FormModalGrid>
         <FormModalField label="Country" htmlFor="geo-country">
-          <NativeSelect id="geo-country" value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value, parent: e.target.value }))}>
-            {countries.map((c) => (
-              <option key={c.code} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </NativeSelect>
+          <SelectField
+            id="geo-country"
+            aria-label="Country"
+            value={form.country}
+            onValueChange={(v) => setForm((f) => ({ ...f, country: v, parent: v }))}
+            options={countries.map((c) => c.name)}
+          />
         </FormModalField>
         <FormModalField label="Geography type" htmlFor="geo-type">
-          <NativeSelect id="geo-type" value={form.type} onChange={(e) => set('type', e.target.value as GeographyType)}>
-            {types.map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </NativeSelect>
+          <SelectField id="geo-type" aria-label="Geography type" value={form.type} onValueChange={(v) => set('type', v as GeographyType)} options={types} />
         </FormModalField>
         <FormModalField label="Sits under" htmlFor="geo-parent" wide hint="Pick the country itself for a top-level atoll or state.">
-          <NativeSelect id="geo-parent" value={form.parent} onChange={(e) => set('parent', e.target.value)}>
-            <option value={form.country}>{form.country}</option>
-            {topLevel.map((g) => (
-              <option key={g.name}>{g.name}</option>
-            ))}
-          </NativeSelect>
+          <SelectField
+            id="geo-parent"
+            aria-label="Sits under"
+            value={form.parent}
+            onValueChange={(v) => set('parent', v)}
+            options={[form.country, ...topLevel.map((g) => g.name)]}
+          />
         </FormModalField>
         <FormModalField label="Name" htmlFor="geo-name">
           <Input id="geo-name" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Eydhafushi" aria-invalid={clash || undefined} autoFocus />
