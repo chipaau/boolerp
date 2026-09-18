@@ -6,8 +6,8 @@ import { cn } from '@workspace/ui/lib/utils'
 import { PageTitle } from '@/components/layout/page'
 import { childrenOf } from '@/features/tenants/logic'
 import { useTenantDirectory } from '@/features/tenants/queries'
-import { BillingDrawers } from './billing-drawers'
-import type { BillingDrawer } from './billing-drawers'
+import { BillingModals } from './billing-modals'
+import type { BillingModal } from './billing-modals'
 import { DunningPanel } from './dunning-panel'
 import { downloadLedgerCsv } from './ledger-bits'
 import type { BillingStatusFilter } from './ledger-bits'
@@ -34,7 +34,7 @@ export function BillingPage({ status, onStatusChange, view }: { status: BillingS
   const [tenantSlug, setTenantSlug] = useState<string | null>(null)
   const [rollUp, setRollUp] = useState(true)
   const [showDunning, setShowDunning] = useState(false)
-  const [drawer, setDrawer] = useState<BillingDrawer>(null)
+  const [modal, setModal] = useState<BillingModal>(null)
 
   useEffect(() => {
     if (view === 'payments') document.getElementById('payments-to-verify')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -72,7 +72,7 @@ export function BillingPage({ status, onStatusChange, view }: { status: BillingS
   }
   const chaseAll = () => {
     if (!summary.openCount) toast('No open invoices to chase.')
-    else setDrawer({ kind: 'chase' })
+    else setModal({ kind: 'chase' })
   }
   const runBilling = () => toast(`September run prepared — ${invoices.filter((i) => i.period === currentPeriod).length} invoices ready to issue.`)
 
@@ -164,10 +164,10 @@ export function BillingPage({ status, onStatusChange, view }: { status: BillingS
           </div>
         )}
 
-        <LedgerTable rows={rows} tenants={bySlug} onDrawer={setDrawer} onClear={clearFilters} />
+        <LedgerTable rows={rows} tenants={bySlug} onModal={setModal} onClear={clearFilters} />
       </div>
 
-      <BillingDrawers drawer={drawer} onChange={setDrawer} />
+      <BillingModals modal={modal} onChange={setModal} />
     </div>
   )
 }

@@ -161,10 +161,10 @@ export function useTenantProfileActions() {
     },
     /** Shallow patch of any profile field (identity, address, contact…). */
     update: (slug: string, changes: Partial<Omit<TenantProfile, 'slug'>>, seed?: TenantProfile) => change(slug, (p) => ({ ...p, ...changes }), seed),
-    /** "Plan & seats" drawer. Logs an activity line. */
+    /** "Plan & seats" modal. Logs an activity line. */
     setPlan: (slug: string, plan: PlanName, seatLimit: number, seed?: TenantProfile) =>
       change(slug, (p) => ({ ...p, plan, seatLimit }), seed, `Plan set to ${plan} with ${seatLimit} seats`),
-    /** "Parent tenant" drawer; null = standalone. Caller must block when the tenant has children. */
+    /** "Parent tenant" modal; null = standalone. Caller must block when the tenant has children. */
     setParent: (slug: string, parentSlug: string | null, seed?: TenantProfile) =>
       change(slug, (p) => ({ ...p, parentSlug }), seed, parentSlug ? `Moved under ${parentSlug.toUpperCase()}` : 'Made standalone'),
     /** Fixture-only tenants: suspend / lift suspension / activate. API tenants use the API hooks. */

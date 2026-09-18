@@ -6,8 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import type { DirectoryTenant } from '@/features/tenants/types'
-import { creditDrawerFor, useInvoiceActions } from './billing-drawers'
-import type { BillingDrawer } from './billing-drawers'
+import { creditModalFor, useInvoiceActions } from './billing-modals'
+import type { BillingModal } from './billing-modals'
 import { LedgerStatusBadge, signedMvr } from './ledger-bits'
 import { formatMvr } from './logic'
 import { useInvoicePaymentNotes } from './queries'
@@ -15,7 +15,7 @@ import { PaymentNote } from './payment-review'
 import type { LedgerLine } from './types'
 
 /** The billing ledger: invoices and credits, with the per-row action and credit/refund shortcut. */
-export function LedgerTable({ rows, tenants, onDrawer, onClear }: { rows: LedgerLine[]; tenants: Map<string, DirectoryTenant>; onDrawer: (d: BillingDrawer) => void; onClear: () => void }) {
+export function LedgerTable({ rows, tenants, onModal, onClear }: { rows: LedgerLine[]; tenants: Map<string, DirectoryTenant>; onModal: (d: BillingModal) => void; onClear: () => void }) {
   // an invoice with a slip awaiting review is verified from the payments panel, never marked paid by hand
   const paymentNotes = useInvoicePaymentNotes()
   const navigate = useNavigate()
@@ -51,7 +51,7 @@ export function LedgerTable({ rows, tenants, onDrawer, onClear }: { rows: Ledger
             return (
               <TableRow key={e.no}>
                 <TableCell>
-                  <button type="button" className="text-left outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => onDrawer({ kind: 'invoice', no: e.no })}>
+                  <button type="button" className="text-left outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => onModal({ kind: 'invoice', no: e.no })}>
                     <div className="font-mono text-caption font-bold text-foreground hover:underline">{e.no}</div>
                     {credit && (
                       <Badge variant="neutral" size="sm" className="mt-1 px-2 py-0 text-micro">
@@ -90,7 +90,7 @@ export function LedgerTable({ rows, tenants, onDrawer, onClear }: { rows: Ledger
                 <TableCell align="right">
                   <div className="flex justify-end gap-1.5">
                     {!credit && e.status !== 'Draft' && (
-                      <Button variant="ghost" size="sm" className="text-link" onClick={() => onDrawer(creditDrawerFor(e))}>
+                      <Button variant="ghost" size="sm" className="text-link" onClick={() => onModal(creditModalFor(e))}>
                         {e.status === 'Paid' ? 'Refund' : 'Credit note'}
                       </Button>
                     )}

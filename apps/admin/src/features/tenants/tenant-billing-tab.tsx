@@ -10,11 +10,11 @@ import { useBillingActions, useDunningPolicy, useTenantBilling } from '@/feature
 import { PaymentNote } from '@/features/billing/payment-review'
 import type { LedgerLine } from '@/features/billing/types'
 import type { DirectoryTenant } from './types'
-import type { TenantDrawerState } from './tenant-drawers'
+import type { TenantModalState } from './tenant-modals'
 import { DetailCard, KeyValueRows, LEDGER_TONE, LinkAction, Overline, initials } from './tenant-detail-bits'
 
 /** Tenant detail › Billing: what they pay, billing contact, group invoicing and their ledger. */
-export function TenantBillingTab({ tenant: t, onOpen }: { tenant: DirectoryTenant; onOpen: (d: TenantDrawerState) => void }) {
+export function TenantBillingTab({ tenant: t, onOpen }: { tenant: DirectoryTenant; onOpen: (d: TenantModalState) => void }) {
   const b = useTenantBilling(t.slug)
   const policy = useDunningPolicy()
   const { markPaid, issue, setGroupBilling } = useBillingActions()

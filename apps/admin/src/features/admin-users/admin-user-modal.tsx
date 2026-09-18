@@ -45,9 +45,6 @@ export function AdminUserDialog({ open, editing, tenant, onClose }: { open: bool
   )
 }
 
-/** @deprecated Old name kept so existing imports keep compiling; it is now a stepped dialog. */
-export const AdminUserDrawer = AdminUserDialog
-
 function AdminUserFlow({ editing, tenant, onDone }: { editing?: AdminUser; tenant?: DirectoryTenant; onDone: () => void }) {
   const roles = useAdminRoles()
   const { tenants } = useTenantDirectory()

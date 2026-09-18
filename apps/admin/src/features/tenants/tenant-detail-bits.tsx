@@ -2,12 +2,11 @@ import type { ReactNode } from 'react'
 import type { BadgeTone } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@workspace/ui/components/sheet'
 import { cn } from '@workspace/ui/lib/utils'
 import type { LedgerStatus } from '@/features/billing/types'
 import type { DirectoryStatus, InviteState } from './types'
 
-// Small building blocks shared by the tenant detail tabs and its drawers.
+// Small building blocks shared by the tenant detail tabs and its modals.
 
 export const STATUS_TONE: Record<DirectoryStatus, BadgeTone> = {
   active: 'success',
@@ -77,68 +76,6 @@ export function KeyValueRows({ rows }: { rows: { label: string; value: ReactNode
         </div>
       ))}
     </div>
-  )
-}
-
-/** The design's right-hand drawer: title, note, scrolling body, amber warning, Cancel + save. */
-export function DrawerShell({
-  open,
-  title,
-  note,
-  warn,
-  saveLabel,
-  saveDisabled,
-  onSave,
-  onClose,
-  children,
-}: {
-  open: boolean
-  title: ReactNode
-  note?: ReactNode
-  warn?: ReactNode
-  saveLabel: string
-  saveDisabled?: boolean
-  onSave: () => void
-  onClose: () => void
-  children: ReactNode
-}) {
-  return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full gap-0 sm:max-w-[560px]">
-        <SheetHeader className="border-b border-divider px-7 pt-6 pb-[18px]">
-          <SheetTitle className="pr-8 text-h3">{title}</SheetTitle>
-          {note && <SheetDescription className="text-compact leading-[1.5] text-muted-foreground">{note}</SheetDescription>}
-        </SheetHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto px-7 pt-[22px] pb-[26px]">
-          {children}
-          {warn && (
-            <div className="mt-[22px] flex items-start gap-2.5 rounded-xl border border-divider bg-surface-band px-[15px] py-[13px]">
-              <span aria-hidden="true" className="mt-1.5 size-[7px] shrink-0 rounded-full bg-tone-warning" />
-              <span className="text-compact leading-[1.55] text-body">{warn}</span>
-            </div>
-          )}
-        </div>
-        <SheetFooter className="flex-row items-center justify-end gap-3.5 border-t border-divider px-7 py-4">
-          <Button variant="link" size="sm" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={onSave} disabled={saveDisabled}>
-            {saveLabel}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
-  )
-}
-
-/** A labelled drawer field: label, control, optional hint. */
-export function DrawerField({ label, hint, wide, children }: { label: string; hint?: ReactNode; wide?: boolean; children: ReactNode }) {
-  return (
-    <label className={cn('block min-w-0', wide && 'col-span-full')}>
-      <span className="mb-1.5 block text-fine font-bold tracking-[0.03em] text-muted-foreground">{label}</span>
-      {children}
-      {hint && <span className="mt-1.5 block text-fine leading-[1.45] text-muted-foreground">{hint}</span>}
-    </label>
   )
 }
 

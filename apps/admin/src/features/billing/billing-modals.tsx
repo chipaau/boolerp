@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Check, TriangleAlert } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
+import { FormModal, FormModalWarning as Warn } from '@workspace/ui/components/form-modal'
 import { Input } from '@workspace/ui/components/input'
 import { Label } from '@workspace/ui/components/label'
 import { NativeSelect } from '@workspace/ui/components/native-select'
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@workspace/ui/components/sheet'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { planByName } from '@/features/tenants/logic'
@@ -16,15 +15,15 @@ import { KeyValueRows, LedgerStatusBadge, Overline, signedMvr } from './ledger-b
 import { useBillingActions, useBillingOptions, useBillingProfiles, useDunningPolicy, useLedger, useTenantBilling } from './queries'
 import type { ChaseTemplate, CreditKind, LedgerLine } from './types'
 
-/** Which billing drawer is open. */
-export type BillingDrawer =
+/** Which billing modal is open. */
+export type BillingModal =
   | { kind: 'invoice'; no: string }
   | { kind: 'credit'; against: string; tenantSlug: string; creditKind: CreditKind }
   | { kind: 'chase' }
   | null
 
-/** Opens the credit drawer for a ledger line: refunds for paid invoices, credit notes otherwise. */
-export const creditDrawerFor = (e: LedgerLine): BillingDrawer => ({ kind: 'credit', against: e.no, tenantSlug: e.tenantSlug, creditKind: e.status === 'Paid' ? 'Refund' : 'Credit note' })
+/** Opens the credit modal for a ledger line: refunds for paid invoices, credit notes otherwise. */
+export const creditModalFor = (e: LedgerLine): BillingModal => ({ kind: 'credit', against: e.no, tenantSlug: e.tenantSlug, creditKind: e.status === 'Paid' ? 'Refund' : 'Credit note' })
 
 /** Mark paid / issue a ledger invoice, with the design's toast and an undo. */
 export function useInvoiceActions() {
@@ -37,43 +36,19 @@ export function useInvoiceActions() {
   }
 }
 
-function Warn({ children }: { children: ReactNode }) {
-  return (
-    <div className="mt-[22px] flex items-start gap-2.5 rounded-md bg-surface-band px-[15px] py-[13px] text-caption text-body">
-      <TriangleAlert className="mt-0.5 size-4 shrink-0 text-tone-warning-foreground" />
-      <span>{children}</span>
-    </div>
-  )
-}
-
-function DrawerShell({ open, onClose, title, note, children, footer }: { open: boolean; onClose: () => void; title: ReactNode; note: ReactNode; children: ReactNode; footer: ReactNode }) {
-  return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="gap-0 overflow-y-auto sm:max-w-[460px]">
-        <SheetHeader className="pr-14">
-          <SheetTitle>{title}</SheetTitle>
-          <SheetDescription>{note}</SheetDescription>
-        </SheetHeader>
-        <div className="px-6 pb-2">{children}</div>
-        <SheetFooter className="flex-row flex-wrap">{footer}</SheetFooter>
-      </SheetContent>
-    </Sheet>
-  )
-}
-
-/** The billing screen's drawers (invoice document, credit/refund, chase open invoices). */
-export function BillingDrawers({ drawer, onChange }: { drawer: BillingDrawer; onChange: (d: BillingDrawer) => void }) {
+/** The billing screen's modals (invoice document, credit/refund, chase open invoices). */
+export function BillingModals({ modal, onChange }: { modal: BillingModal; onChange: (d: BillingModal) => void }) {
   const close = () => onChange(null)
   return (
     <>
-      {drawer?.kind === 'invoice' && <InvoiceDrawer no={drawer.no} onClose={close} onCredit={(e) => onChange(creditDrawerFor(e))} />}
-      {drawer?.kind === 'credit' && <CreditDrawer key={drawer.against} drawer={drawer} onClose={close} />}
-      {drawer?.kind === 'chase' && <ChaseDrawer onClose={close} />}
+      {modal?.kind === 'invoice' && <InvoiceModal no={modal.no} onClose={close} onCredit={(e) => onChange(creditModalFor(e))} />}
+      {modal?.kind === 'credit' && <CreditModal key={modal.against} modal={modal} onClose={close} />}
+      {modal?.kind === 'chase' && <ChaseModal onClose={close} />}
     </>
   )
 }
 
-function InvoiceDrawer({ no, onClose, onCredit }: { no: string; onClose: () => void; onCredit: (e: LedgerLine) => void }) {
+function InvoiceModal({ no, onClose, onCredit }: { no: string; onClose: () => void; onCredit: (e: LedgerLine) => void }) {
   const ledger = useLedger()
   const e = ledger.find((x) => x.no === no) ?? ledger[0]
   const tenant = useDirectoryTenant(e.tenantSlug)
@@ -109,9 +84,10 @@ function InvoiceDrawer({ no, onClose, onCredit }: { no: string; onClose: () => v
       : ''
 
   return (
-    <DrawerShell
+    <FormModal
       open
       onClose={onClose}
+      size="lg"
       title={<span className="font-mono">{e.no}</span>}
       note={`${tenant?.name ?? e.tenantSlug} · ${e.kind} for ${e.period} · ${e.status}`}
       footer={
@@ -184,17 +160,17 @@ function InvoiceDrawer({ no, onClose, onCredit }: { no: string; onClose: () => v
         </Button>
       </div>
       {warn && <Warn>{warn}</Warn>}
-    </DrawerShell>
+    </FormModal>
   )
 }
 
-function CreditDrawer({ drawer, onClose }: { drawer: Extract<BillingDrawer, { kind: 'credit' }>; onClose: () => void }) {
+function CreditModal({ modal, onClose }: { modal: Extract<BillingModal, { kind: 'credit' }>; onClose: () => void }) {
   const ledger = useLedger()
-  const invoice = ledger.find((x) => x.no === drawer.against)
-  const tenant = useDirectoryTenant(drawer.tenantSlug)
+  const invoice = ledger.find((x) => x.no === modal.against)
+  const tenant = useDirectoryTenant(modal.tenantSlug)
   const { issueCredit } = useBillingActions()
   const toast = useToast()
-  const [kind, setKind] = useState<CreditKind>(drawer.creditKind)
+  const [kind, setKind] = useState<CreditKind>(modal.creditKind)
   const [amount, setAmount] = useState(String(invoice?.total ?? ''))
   const [reason, setReason] = useState('')
 
@@ -209,17 +185,17 @@ function CreditDrawer({ drawer, onClose }: { drawer: Extract<BillingDrawer, { ki
       return
     }
     if (over) return
-    const { no, undo } = issueCredit({ tenantSlug: drawer.tenantSlug, against: drawer.against, kind, amount: amt, reason })
+    const { no, undo } = issueCredit({ tenantSlug: modal.tenantSlug, against: modal.against, kind, amount: amt, reason })
     onClose()
-    toast(`${no} issued for ${formatMvr(amt)} against ${drawer.against}.`, { undo })
+    toast(`${no} issued for ${formatMvr(amt)} against ${modal.against}.`, { undo })
   }
 
   return (
-    <DrawerShell
+    <FormModal
       open
       onClose={onClose}
       title={isRefund ? 'Refund a payment' : 'Issue a credit note'}
-      note={`${isRefund ? 'Money goes back to ' : 'Credit is applied against '}${drawer.against} for ${tenant?.name ?? 'this tenant'}.`}
+      note={`${isRefund ? 'Money goes back to ' : 'Credit is applied against '}${modal.against} for ${tenant?.name ?? 'this tenant'}.`}
       footer={
         <>
           <Button onClick={save} disabled={over}>{isRefund ? 'Issue refund' : 'Issue credit note'}</Button>
@@ -245,12 +221,12 @@ function CreditDrawer({ drawer, onClose }: { drawer: Extract<BillingDrawer, { ki
           <Input id="credit-reason" placeholder="Seat count corrected after a mid-month leaver" value={reason} onChange={(ev) => setReason(ev.target.value)} />
         </div>
       </div>
-      {over && <Warn>That is more than the {formatMvr(cap)} on {drawer.against}. Credits cannot exceed the original document.</Warn>}
-    </DrawerShell>
+      {over && <Warn>That is more than the {formatMvr(cap)} on {modal.against}. Credits cannot exceed the original document.</Warn>}
+    </FormModal>
   )
 }
 
-function ChaseDrawer({ onClose }: { onClose: () => void }) {
+function ChaseModal({ onClose }: { onClose: () => void }) {
   const ledger = useLedger()
   const profiles = useBillingProfiles()
   const policy = useDunningPolicy()
@@ -281,9 +257,10 @@ function ChaseDrawer({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <DrawerShell
+    <FormModal
       open
       onClose={onClose}
+      size="lg"
       title="Chase open invoices"
       note={`${open.length} invoice(s) are issued and unpaid. Pick who gets a reminder and what it says.`}
       footer={
@@ -305,7 +282,7 @@ function ChaseDrawer({ onClose }: { onClose: () => void }) {
       <ChaseRows open={open} skip={skip} toggle={toggle} profiles={profiles} warnDay={policy.warn} />
       <div className="mt-1.5 text-caption font-bold text-muted-foreground">{formatMvr(picks.reduce((n, e) => n + owed(e), 0))} chased in total</div>
       {tpl === 'Final notice before suspension' && <Warn>A final notice states the date access stops. It should not be the first thing a tenant hears.</Warn>}
-    </DrawerShell>
+    </FormModal>
   )
 }
 
