@@ -45,9 +45,9 @@ export function Overline({ children, className }: { children: ReactNode; classNa
 /** A text action that sits at the right of a card heading ("Edit", "See all"). */
 export function LinkAction({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="text-compact font-bold text-link hover:underline">
+    <Button variant="link" size="sm" onClick={onClick} className="text-compact font-bold">
       {children}
-    </button>
+    </Button>
   )
 }
 

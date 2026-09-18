@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Badge } from '@workspace/ui/components/badge'
+import { Button } from '@workspace/ui/components/button'
 import { Card } from '@workspace/ui/components/card'
 import { NativeSelect } from '@workspace/ui/components/native-select'
 import { SearchField } from '@workspace/ui/components/search-field'
@@ -39,9 +40,9 @@ export function FilterToolbar({
 /** Sage "Clear filters" text button. */
 export function ClearFilters({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="text-meta font-bold whitespace-nowrap text-link hover:underline">
+    <Button variant="link" size="sm" onClick={onClick} className="text-meta font-bold whitespace-nowrap">
       Clear filters
-    </button>
+    </Button>
   )
 }
 
