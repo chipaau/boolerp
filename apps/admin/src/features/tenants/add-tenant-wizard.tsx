@@ -25,14 +25,14 @@ const STEPS = [
   { title: 'Contact & address', hint: 'Who we write to' },
   { title: 'Apps & modules', hint: 'What they can open' },
   { title: 'Admin users', hint: 'At least one admin' },
-  { title: 'Review', hint: 'Last look before it goes live' }, // hint must not contain "provision": the e2e clicks the button named Provision
+  { title: 'Review', hint: 'Last look before it goes live' },
 ]
 const HEADINGS: [string, string][] = [
-  ['Who they are', 'Name, slug, code and owner are what provisioning needs. Once they are in you can provision straight away and fill in the rest later.'],
+  ['Who they are', 'Name, slug, code and owner are all it takes to create the tenant. Once they are in you can create it straight away and fill in the rest later.'],
   ['How we reach them', 'Invites and billing notices go to the contact e-mail. Everything here is optional.'],
   ['What they can open', 'Control Centre and Calendar come with every tenant. Switch on the other apps they pay for, down to the module.'],
-  ['Who runs it', 'A tenant needs at least one admin. The owner is the first; add anyone else who should get an invite on provision.'],
-  ['Check before you provision', 'Everything you have set, in one place. The owner’s sign-in link is created the moment you provision.'],
+  ['Who runs it', 'A tenant needs at least one admin. The owner is the first; add anyone else who should be invited when the tenant is created.'],
+  ['Check it over', 'Everything you have set, in one place. The owner’s sign-in link is created the moment you do.'],
 ]
 const appLabel = (a: AppName) => a
 
@@ -75,7 +75,7 @@ const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
 /**
  * Add a tenant in a large stepped dialog (the New employee pattern): a Stepper rail on the left,
  * one step body on the right. A step can only be moved past once complete; later steps stay locked
- * until then. "Provision" calls the real API and is offered from every step as soon as the required
+ * until then. "Create tenant" calls the real provisioning API and is offered from every step as soon as the required
  * details (name, slug, code, owner) are in: the owner is the required admin and Control Centre +
  * Calendar are included, so nothing on a later step can block it. Everything the API does not take
  * yet (plan, apps, geography, parent, extra admins) is saved to the fixture profile afterwards.
@@ -172,7 +172,7 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
       admins: [...p.admins, { name: p.aName.trim(), idNo: p.aId.trim() || (p.nat === 'Maldivian' ? 'ID pending' : 'Passport pending'), email: p.aEmail.trim(), nat: p.nat }],
       aName: '', aId: '', aEmail: '',
     }))
-    toast('Added. The invite sends when you provision the tenant.')
+    toast('Added. The invite sends when you create the tenant.')
   }
 
   const profileFrom = (slug: string, name: string, status: TenantProfile['status']): TenantProfile => {
@@ -196,7 +196,7 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
     }
   }
 
-  const provision = () => {
+  const create_ = () => {
     const bad = STEPS.findIndex((_, i) => !complete(i))
     if (bad >= 0) {
       blocked(bad)
@@ -218,10 +218,10 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
         // Wait for the list to hold the new tenant, so its row carries the API id (and the API
         // lifecycle buttons) the moment the list shows it.
         await apiList.refetch()
-        toast(`${res.tenant.name} provisioned`)
+        toast(`${res.tenant.name} created`)
         onProvisioned({ name: res.tenant.name, recoveryLink: res.recovery_link })
       },
-      onError: (e) => toast(e instanceof Error ? e.message : 'Could not provision tenant', { ok: false }),
+      onError: (e) => toast(e instanceof Error ? e.message : 'Could not create tenant', { ok: false }),
     })
   }
 
@@ -237,11 +237,11 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
   const extraApps = optional.filter((a) => f.apps[a.name]).length
   const last = STEPS.length - 1
   const notes = [
-    ready ? 'Ready to provision. The other steps are optional.' : 'Name, slug, code and owner are all that provisioning needs.',
+    ready ? 'Ready to create. The other steps are optional.' : 'Name, slug, code and owner are all it needs.',
     'Optional. Left blank, notices go to the owner.',
     `Control Centre and Calendar are included${extraApps ? ` · ${extraApps} more ${extraApps === 1 ? 'app' : 'apps'}` : ''}.`,
-    adminCount ? `${adminCount} ${adminCount === 1 ? 'admin' : 'admins'} will be invited on provision.` : 'Add at least one admin to continue.',
-    'Nothing is created until you provision.',
+    adminCount ? `${adminCount} ${adminCount === 1 ? 'admin' : 'admins'} will be invited when you create it.` : 'Add at least one admin to continue.',
+    'Nothing is created until you press the button.',
   ]
 
   return (
@@ -473,7 +473,7 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
               </div>
               <div className="overflow-clip rounded-[13px] border border-border bg-surface-band">
                 {hasOwner ? (
-                  <AdminRow name={f.ownerName.trim()} sub={`${f.ownerEmail.trim()} · gets the sign-in link on provision`} tag="Owner · counts as admin" />
+                  <AdminRow name={f.ownerName.trim()} sub={`${f.ownerEmail.trim()} · gets the sign-in link when you create it`} tag="Owner · counts as admin" />
                 ) : (
                   <div className="flex items-center justify-between gap-3 border-b border-divider px-4 py-3 last:border-b-0">
                     <span className="text-compact text-body">No owner yet. The owner is the tenant’s first admin.</span>
@@ -483,7 +483,7 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
                   </div>
                 )}
                 {f.admins.map((a, i) => (
-                  <AdminRow key={`${a.email}-${i}`} name={a.name} sub={`${a.idNo} · ${a.email} · invite sends on provision`} onRemove={() => set('admins', f.admins.filter((_, j) => j !== i))} />
+                  <AdminRow key={`${a.email}-${i}`} name={a.name} sub={`${a.idNo} · ${a.email} · invite sends when you create it`} onRemove={() => set('admins', f.admins.filter((_, j) => j !== i))} />
                 ))}
               </div>
 
@@ -573,8 +573,8 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
               </Button>
             )}
             {(ready || step === last) && (
-              <Button onClick={provision} disabled={create.isPending}>
-                {create.isPending ? 'Provisioning…' : 'Provision'}
+              <Button onClick={create_} disabled={create.isPending}>
+                {create.isPending ? 'Creating…' : 'Create tenant'}
               </Button>
             )}
           </StepperFooter>
