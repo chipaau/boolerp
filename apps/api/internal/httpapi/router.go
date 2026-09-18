@@ -6,6 +6,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -44,6 +45,7 @@ type Module = module.Module
 // own routes, not any module's; every feature route, /me included, comes from a Module now.
 func New(platform PlatformDeps, modules ...Module) http.Handler {
 	r := chi.NewRouter()
+	r.Use(sanitizeInboundRequestID)
 	r.Use(middleware.RequestID)
 	r.Use(echoRequestID)
 	r.Use(middleware.RealIP)
@@ -53,6 +55,9 @@ func New(platform PlatformDeps, modules ...Module) http.Handler {
 	// Root-level, so no handler can be reached with untrimmed strings or an unbounded body — a
 	// handler that forgets is not a way to bypass it.
 	r.Use(SanitizeBody)
+	// The session cookie spans *.bool.mv, so SameSite=Lax treats sibling subdomains as same-site and
+	// cannot protect one tenant's host from another's. This refuses cross-origin writes outright.
+	r.Use(RequireSameOrigin)
 	// Recoverer sits INNERMOST on purpose: it converts a panic into a 500 written through the
 	// response writers AccessLog and MetricsMiddleware wrapped, so a panicking request is recorded
 	// as a 500 instead of going unobserved. Outside them, its 500 bypassed both.
@@ -78,6 +83,34 @@ func New(platform PlatformDeps, modules ...Module) http.Handler {
 	// otelhttp creates the root span per request (UC-OBS-01/02); a no-op wrapper when tracing isn't
 	// configured (SetupTracing left the default no-op TracerProvider in place).
 	return otelhttp.NewHandler(r, "erp-api")
+}
+
+// maxInboundRequestIDLen bounds a caller-supplied id. Long enough for a UUID, a W3C trace id, or
+// chi's own host/counter form; short enough that it can't be used to bloat a log line or an audit row.
+const maxInboundRequestIDLen = 128
+
+// inboundRequestIDPattern is what a correlation id may contain: letters, digits, and the few
+// separators real id schemes use. Deliberately excludes whitespace, quotes and control characters,
+// which are what make a forged id dangerous once it reaches a log line or a JSON field.
+var inboundRequestIDPattern = regexp.MustCompile(`^[A-Za-z0-9._/+=-]+$`)
+
+// sanitizeInboundRequestID drops a caller-supplied X-Request-Id that isn't plausibly an id, before
+// chi's RequestID middleware adopts it.
+//
+// Accepting the header is deliberate — it lets a caller's own correlation id flow through our logs,
+// traces and audit rows — but the value was taken verbatim, of any length and any content, and then
+// written to audit_log.request_id. An audit trail whose correlation key is attacker-chosen can be
+// made to collide with another request's, or to carry whatever a reader of those logs will render.
+// Rejecting the implausible keeps the interoperability and drops the forgery: chi then mints its own.
+func sanitizeInboundRequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if id := r.Header.Get(middleware.RequestIDHeader); id != "" {
+			if len(id) > maxInboundRequestIDLen || !inboundRequestIDPattern.MatchString(id) {
+				r.Header.Del(middleware.RequestIDHeader)
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // echoRequestID returns the request id on EVERY response, not just the failures respond.Error

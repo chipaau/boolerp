@@ -9,9 +9,15 @@ import (
 	"strings"
 )
 
-// maxRequestBody is a blanket ceiling on any request body, so no handler can be made to buffer an
-// unbounded one by forgetting its own limit. Individual routes may still cap themselves tighter.
-const maxRequestBody = 1 << 20 // 1 MiB
+// Every request body is capped, but not at the same size — a single limit is either too small for an
+// upload or too large to buffer. Individual routes may still cap themselves tighter.
+const (
+	// maxInspectableBody bounds bodies this middleware reads into memory whole.
+	maxInspectableBody = 1 << 20 // 1 MiB
+	// maxStreamedBody bounds uploads, which are never buffered here — the handler consumes them as a
+	// stream. Generous enough for a scanned receipt or signed PDF, finite so nothing is unbounded.
+	maxStreamedBody = 16 << 20 // 16 MiB
+)
 
 // sensitiveFields are never trimmed: leading or trailing whitespace can be deliberate in a secret,
 // and silently altering one turns a correct credential into a failing login with no explanation.
@@ -39,12 +45,21 @@ var sensitiveFields = map[string]bool{
 // its own message — as do streamed types (uploads), which must not be buffered to be inspected.
 func SanitizeBody(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Body == nil || r.ContentLength == 0 || isStreamedContentType(r) {
+		if r.Body == nil || r.ContentLength == 0 {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
+		// Cap BEFORE deciding whether to inspect. Returning early for streamed types skipped the cap
+		// entirely, so the bodies most worth bounding — uploads — were the only unbounded ones, which
+		// is the opposite of what this middleware claimed to do.
+		if isStreamedContentType(r) {
+			r.Body = http.MaxBytesReader(w, r.Body, maxStreamedBody)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		r.Body = http.MaxBytesReader(w, r.Body, maxInspectableBody)
 		raw, err := io.ReadAll(r.Body)
 		if err != nil {
 			// Over the cap, or the client vanished mid-upload. MaxBytesReader has already set the

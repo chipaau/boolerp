@@ -18,6 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # compose.yaml interpolates ${VAR} with no fallbacks, so it needs the environment file even to
+      # parse cleanly for a service that doesn't read it.
+      - name: Create .env from the committed example
+        run: cp .env.example .env
       - name: Run Go test suite
         run: docker compose run --rm test
 
@@ -70,6 +74,12 @@ jobs:
         run: |
           docker build -f docker/node.Dockerfile -t erp-node .
           docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm install --frozen-lockfile
+
+      # .env is gitignored and is the only place config values live, so CI creates it the same way a
+      # developer does. compose.yaml interpolates ${VAR} with no fallback — without this, every
+      # variable would be empty and the stack would fail rather than quietly start on stale defaults.
+      - name: Create .env from the committed example
+        run: cp .env.example .env
 
       - name: Bring up the dev stack
         run: docker compose up -d --build

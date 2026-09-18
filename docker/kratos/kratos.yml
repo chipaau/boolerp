@@ -6,7 +6,7 @@
 # follow-ups. Secrets here are throwaway dev values.
 version: v1.3.1
 
-dsn: postgres://erp:erp@postgres:5432/kratos?sslmode=disable
+# dsn comes from the DSN environment variable (KRATOS_DSN in .env) — no credentials in this file.
 
 serve:
   public:

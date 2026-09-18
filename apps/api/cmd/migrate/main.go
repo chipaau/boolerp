@@ -17,8 +17,6 @@ import (
 	"github.com/boolmv/erp/internal/db"
 )
 
-const defaultDSN = "postgres://erp:erp@postgres:5432/erp?sslmode=disable"
-
 func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	flag.Parse()
@@ -32,9 +30,13 @@ func main() {
 		args = flag.Args()[1:]
 	}
 
+	// No fallback: MIGRATE_DSN connects as the schema OWNER, so a default here would be a
+	// privileged credential compiled into the binary — and a deployment that forgot to set it would
+	// migrate whatever database the default happened to reach. Local values live in .env.
 	dsn := os.Getenv("MIGRATE_DSN")
 	if dsn == "" {
-		dsn = defaultDSN
+		slog.Error("MIGRATE_DSN is not set (local setup: cp .env.example .env)")
+		os.Exit(1)
 	}
 
 	if err := run(command, dsn, args); err != nil {

@@ -1,17 +1,31 @@
 apiVersion: api.cerbos.dev/v1
 description: >
-  Operator (apps/admin) actions on the tenant resource: listing, provisioning, and the
-  suspend/reactivate/archive lifecycle. Enforced per-handler via httpapi.AdminRoute — never a
-  blanket middleware, since a check with no resource loaded can't evaluate attribute-based grants.
+  Operator (apps/admin) actions on the tenant resource: reading the directory, provisioning, and the
+  suspend/reactivate/archive lifecycle. Enforced by auth.OperatorsOnly (membership of the internal
+  tenant, which grants the `operator` derived role) plus auth.RequirePermission per route.
+
+  Every rule requires BOTH the operator derived role AND a specific capability. Membership of the
+  internal tenant alone grants nothing: it used to grant `list`/`get`, so anyone with any internal
+  role could read the entire customer directory.
+
+  `platform:*` is a LITERAL capability slug, not a pattern — a role granting it holds every platform
+  capability. It is spelled out in each rule because CEL matches the string, so a capability like
+  `platform:tenants:archive` is NOT covered by it implicitly.
 resourcePolicy:
   version: default
   resource: tenant
   importDerivedRoles:
     - common
   rules:
+    # Reading the tenant directory is itself privileged — it is the customer list.
     - actions: ["list", "get"]
       effect: EFFECT_ALLOW
       derivedRoles: [operator]
+      condition:
+        match:
+          expr: >
+            "platform:tenants:read" in request.principal.roles ||
+            "platform:*" in request.principal.roles
 
     - actions: ["provision"]
       effect: EFFECT_ALLOW
@@ -22,11 +36,23 @@ resourcePolicy:
             "platform:tenants:provision" in request.principal.roles ||
             "platform:*" in request.principal.roles
 
-    - actions: ["suspend", "reactivate", "archive"]
+    # Reversible: suspend and its undo travel together.
+    - actions: ["suspend", "reactivate"]
       effect: EFFECT_ALLOW
       derivedRoles: [operator]
       condition:
         match:
           expr: >
             "platform:tenants:suspend" in request.principal.roles ||
+            "platform:*" in request.principal.roles
+
+    # Irreversible, so it is its own capability. Archiving used to be gated on the SUSPEND capability,
+    # meaning anyone who could pause a tenant could also end it permanently.
+    - actions: ["archive"]
+      effect: EFFECT_ALLOW
+      derivedRoles: [operator]
+      condition:
+        match:
+          expr: >
+            "platform:tenants:archive" in request.principal.roles ||
             "platform:*" in request.principal.roles

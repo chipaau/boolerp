@@ -49,14 +49,18 @@ func fakeAuthzCerbos() *httptest.Server {
 			return false
 		}
 
+		// Mirrors docker/cerbos/policies/resource_tenant.yaml. Every action needs the operator
+		// derived role AND a specific capability — internal membership alone grants nothing.
 		allowed := false
 		switch action {
 		case "list", "get":
-			allowed = isInternal
+			allowed = isInternal && (has("platform:tenants:read") || has("platform:*"))
 		case "provision":
 			allowed = isInternal && (has("platform:tenants:provision") || has("platform:*"))
-		case "suspend", "reactivate", "archive":
+		case "suspend", "reactivate":
 			allowed = isInternal && (has("platform:tenants:suspend") || has("platform:*"))
+		case "archive":
+			allowed = isInternal && (has("platform:tenants:archive") || has("platform:*"))
 		}
 		effect := "EFFECT_DENY"
 		if allowed {
@@ -122,7 +126,7 @@ func setupNonMemberFixture(t *testing.T, slugSuffix string) pgtype.UUID {
 // setupOperatorFixture adds a user as a plain (non-owner — only one owner is allowed per tenant,
 // and several tests share one internal tenant) active member of the shared internal tenant,
 // optionally with a role granting the given capability.
-func setupOperatorFixture(t *testing.T, slugSuffix string, capability string) (userID pgtype.UUID) {
+func setupOperatorFixture(t *testing.T, slugSuffix string, capabilities ...string) (userID pgtype.UUID) {
 	t.Helper()
 	ctx := context.Background()
 	q := sqlc.New(env.Pool)
@@ -139,7 +143,7 @@ func setupOperatorFixture(t *testing.T, slugSuffix string, capability string) (u
 		t.Fatalf("insert active membership: %v", err)
 	}
 
-	if capability != "" {
+	if len(capabilities) > 0 {
 		app, err := q.GetAppByCode(ctx, "control-centre")
 		if err != nil {
 			t.Fatalf("GetAppByCode: %v", err)
@@ -148,8 +152,13 @@ func setupOperatorFixture(t *testing.T, slugSuffix string, capability string) (u
 		if err != nil {
 			t.Fatalf("CreateRole: %v", err)
 		}
-		if _, err := q.CreateRoleCapability(ctx, sqlc.CreateRoleCapabilityParams{RoleID: role.ID, Capability: capability}); err != nil {
-			t.Fatalf("CreateRoleCapability: %v", err)
+		for _, capability := range capabilities {
+			if capability == "" {
+				continue
+			}
+			if _, err := q.CreateRoleCapability(ctx, sqlc.CreateRoleCapabilityParams{RoleID: role.ID, Capability: capability}); err != nil {
+				t.Fatalf("CreateRoleCapability(%s): %v", capability, err)
+			}
 		}
 		if _, err := q.CreateUserRole(ctx, sqlc.CreateUserRoleParams{TenantID: tenant.ID, UserID: userID, RoleID: role.ID}); err != nil {
 			t.Fatalf("CreateUserRole: %v", err)
@@ -221,7 +230,7 @@ func TestAuthzMiddleware_DeniesNonInternalMember(t *testing.T) {
 }
 
 func TestAuthzMiddleware_AllowsInternalMemberForListAction(t *testing.T) {
-	userID := setupOperatorFixture(t, "list-ok", "")
+	userID := setupOperatorFixture(t, "list-ok", "platform:tenants:read")
 	h, called := buildGatedTestHandler(t, "list")
 
 	rec := doAdminRequest(h, userID)

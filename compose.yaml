@@ -74,10 +74,7 @@ services:
 
   postgres:
     image: postgres:18
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-erp}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-erp}
-      POSTGRES_DB: ${POSTGRES_DB:-erp}
+    env_file: .env
     volumes:
       - pgdata:/var/lib/postgresql
     networks:
@@ -89,7 +86,7 @@ services:
       # started, and postgres then restarted for real underneath them: "the database system is
       # starting up" / "database erp does not exist" / connection refused. The bootstrap server never
       # listens on TCP, so this stays unhealthy until the real one is up.
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U erp -d erp"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -102,10 +99,7 @@ services:
       dockerfile: docker/go.Dockerfile
     working_dir: /w/apps/api
     command: go run -buildvcs=false ./cmd/provision-dev
-    environment:
-      APP_DSN: ${APP_DSN:-postgres://erp_app:erp_app@postgres:5432/erp?sslmode=disable}
-      APP_KRATOS_PUBLIC_URL: ${APP_KRATOS_PUBLIC_URL:-http://kratos:4433}
-      APP_KRATOS_ADMIN_URL: ${APP_KRATOS_ADMIN_URL:-http://kratos:4434}
+    env_file: .env
     volumes:
       - .:/w
       - gocache:/root/.cache/go-build
@@ -129,8 +123,7 @@ services:
     # owns — Go's VCS-stamping git calls can fail on CI runners (ownership/shallow-clone mismatch);
     # we don't need embedded VCS info in a dev binary anyway.
     command: go run -buildvcs=false ./cmd/migrate up
-    environment:
-      MIGRATE_DSN: ${MIGRATE_DSN:-postgres://erp:erp@postgres:5432/erp?sslmode=disable}
+    env_file: .env
     volumes:
       - .:/w
       - gocache:/root/.cache/go-build
@@ -167,21 +160,10 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    environment:
-      APP_ENV: ${APP_ENV:-dev}
-      # API connects as the NON-OWNER erp_app role (created by the migrate step).
-      APP_DSN: ${APP_DSN:-postgres://erp_app:erp_app@postgres:5432/erp?sslmode=disable}
-      APP_PORT: "${APP_PORT:-8080}"
-      APP_REDIS_URL: ${APP_REDIS_URL:-redis://redis:6379}
-      # Kratos public = whoami; admin = provisioning/revocation (internal-only). Cerbos = authz PDP.
-      APP_KRATOS_PUBLIC_URL: ${APP_KRATOS_PUBLIC_URL:-http://kratos:4433}
-      APP_KRATOS_ADMIN_URL: ${APP_KRATOS_ADMIN_URL:-http://kratos:4434}
-      APP_CERBOS_HTTP_URL: ${APP_CERBOS_HTTP_URL:-http://cerbos:3592}
-      # On by default in dev now that somewhere to send them actually exists locally (tempo/
-      # prometheus below) — see internal/observability's tracing.go/metrics.go for the opt-in,
-      # no-op-when-unset behavior this relies on.
-      APP_OTLP_ENDPOINT: ${APP_OTLP_ENDPOINT:-tempo:4318}
-      APP_METRICS_ENABLED: ${APP_METRICS_ENABLED:-true}
+    # The whole environment comes from .env (see .env.example). Naming variables here would put the
+    # config back in the repo one layer up, and a variable this list forgot is one the service starts
+    # without — APP_SHUTDOWN_TIMEOUT was exactly that.
+    env_file: .env
     volumes:
       - .:/w
       - gocache:/root/.cache/go-build
@@ -298,9 +280,9 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD:-erp}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
     command: >
-      sh -c "psql -h postgres -U ${POSTGRES_USER:-erp} -d ${POSTGRES_DB:-erp} -tc \"SELECT 1 FROM pg_database WHERE datname='kratos'\" | grep -q 1 || psql -h postgres -U ${POSTGRES_USER:-erp} -d ${POSTGRES_DB:-erp} -c 'CREATE DATABASE kratos'"
+      sh -c "psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -tc \"SELECT 1 FROM pg_database WHERE datname='kratos'\" | grep -q 1 || psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c 'CREATE DATABASE kratos'"
     networks:
       - internal
     restart: "no"
@@ -312,7 +294,7 @@ services:
       kratos-initdb:
         condition: service_completed_successfully
     environment:
-      DSN: postgres://${POSTGRES_USER:-erp}:${POSTGRES_PASSWORD:-erp}@postgres:5432/kratos?sslmode=disable
+      DSN: ${KRATOS_DSN}
     volumes:
       - ./docker/kratos:/etc/config/kratos:ro
     command: ["migrate", "sql", "-e", "--yes"]
@@ -330,7 +312,7 @@ services:
       mailpit:
         condition: service_started
     environment:
-      DSN: postgres://${POSTGRES_USER:-erp}:${POSTGRES_PASSWORD:-erp}@postgres:5432/kratos?sslmode=disable
+      DSN: ${KRATOS_DSN}
     volumes:
       - ./docker/kratos:/etc/config/kratos:ro
     command: ["serve", "-c", "/etc/config/kratos/kratos.yml", "--dev", "--watch-courier"]
@@ -444,10 +426,9 @@ services:
   # logs for this trace" jumps straight to the matching Loki lines via trace_id.
   grafana:
     image: grafana/grafana:13.2.1
-    environment:
-      GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    # Anonymous admin with no login form — a deliberate dev convenience and a production hazard, so
+    # it lives in .env where it is visible rather than buried in this file.
+    env_file: .env
     volumes:
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana-data:/var/lib/grafana

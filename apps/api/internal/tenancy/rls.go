@@ -78,12 +78,35 @@ func CheckRLSCoverage(ctx context.Context, db Querier) error {
 			return fmt.Errorf("tenancy: rls guard: table %q does not have FORCE ROW LEVEL SECURITY", t)
 		}
 
-		var policyCount int
-		if err := db.QueryRow(ctx, `SELECT count(*) FROM pg_policies WHERE tablename = $1`, t).Scan(&policyCount); err != nil {
+		// A policy must not only exist but actually scope by tenant_id. "Has a policy" was the whole
+		// check, so a policy that never mentions tenant_id — USING (true), or one written against some
+		// other column — satisfied the guard while isolating nothing.
+		var policiesMentioningTenant int
+		if err := db.QueryRow(ctx, `
+			SELECT count(*) FROM pg_policies
+			WHERE tablename = $1
+			  AND (coalesce(qual, '') LIKE '%tenant_id%' OR coalesce(with_check, '') LIKE '%tenant_id%')`,
+			t).Scan(&policiesMentioningTenant); err != nil {
 			return fmt.Errorf("tenancy: rls guard: table %q: count policies: %w", t, err)
 		}
-		if policyCount == 0 {
-			return fmt.Errorf("tenancy: rls guard: table %q has no RLS policy", t)
+		if policiesMentioningTenant == 0 {
+			return fmt.Errorf("tenancy: rls guard: table %q has no RLS policy that scopes by tenant_id", t)
+		}
+
+		// tenant_id must default from the session, so a query never has to name it and therefore can't
+		// name the wrong one (.claude/rules/tenancy.md). UC-FND-06 always said the guard checks this;
+		// it didn't, and three tables had been missing the default since they were created.
+		var hasTenantDefault bool
+		if err := db.QueryRow(ctx, `
+			SELECT coalesce(column_default, '') LIKE '%app.current_tenant%'
+			FROM information_schema.columns
+			WHERE table_schema = 'public' AND table_name = $1 AND column_name = 'tenant_id'`,
+			t).Scan(&hasTenantDefault); err != nil {
+			return fmt.Errorf("tenancy: rls guard: table %q: read tenant_id default: %w", t, err)
+		}
+		if !hasTenantDefault {
+			return fmt.Errorf(
+				"tenancy: rls guard: table %q has no DEFAULT current_setting('app.current_tenant') on tenant_id", t)
 		}
 	}
 	return nil

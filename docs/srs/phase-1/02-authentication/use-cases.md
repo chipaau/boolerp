@@ -84,7 +84,12 @@ validates sessions (`whoami`) and never sees credentials.
 
 ## UC-AUTH-11 — Instant revocation on disable/suspend *(system)*
 - **Actor:** Chi/Operator · **Trigger:** a user is disabled (03) or a tenant is suspended (04).
-- **Main flow:** Chi calls the Kratos **admin API** to deactivate the identity and/or revoke its sessions → next `whoami` returns 401.
+- **Main flow (identity disabled):** Chi calls the Kratos **admin API** to deactivate the identity and
+  revoke its sessions → next `whoami` returns 401.
+- **Main flow (tenant suspended):** no session is touched. The tenant-resolution middleware refuses the
+  member's next request with **403** + `code: tenant_suspended`, so the client can offer to switch tenant
+  or sign out; a non-member still gets 404 and learns nothing. Revoking here would sign a member out of
+  other tenants they still belong to, since a Kratos session is per identity, not per tenant.
 - **Postcondition:** access removed within one request cycle (no waiting for token expiry).
 
 ## UC-AUTH-12 — Preserve deep link through login

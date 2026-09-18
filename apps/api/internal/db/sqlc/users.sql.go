@@ -50,6 +50,37 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const getActiveUserForSession = `-- name: GetActiveUserForSession :one
+
+SELECT id, email, name, name_i18n, phone, status, last_login_at, created_at, updated_at FROM users WHERE id = $1 AND status = 'active'
+`
+
+// Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
+// The admission check run on EVERY authenticated request: does this Kratos subject have a row, and
+// is that account still active? A read, deliberately — the identical check used to be an UPDATE, so
+// every request took a row lock, left a dead tuple behind, and made the API unable to serve reads
+// from a replica. The write it replaced now happens only when there is something to write (see
+// SyncUserOnLogin).
+//
+// status = 'active' is enforced here rather than left to Kratos session revocation having worked
+// (FR-MEM-05 / UC-AUTH-11): a live session for a since-disabled user matches no row and is refused.
+func (q *Queries) GetActiveUserForSession(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getActiveUserForSession, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.NameI18n,
+		&i.Phone,
+		&i.Status,
+		&i.LastLoginAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT id, email, name, name_i18n, phone, status, last_login_at, created_at, updated_at FROM users WHERE id = $1
 `
@@ -72,7 +103,6 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 }
 
 const syncUserOnLogin = `-- name: SyncUserOnLogin :one
-
 UPDATE users SET
   email         = $2,
   name          = $3,
@@ -92,8 +122,8 @@ type SyncUserOnLoginParams struct {
 	Phone    pgtype.Text `json:"phone"`
 }
 
-// Platform identity projection (control-plane; not tenant-scoped). id = Kratos subject.
-// Refresh the mirror from the Kratos identity traits and stamp the sign-in (UC-MEM-08).
+// Refresh the mirror from the Kratos identity traits and stamp the sign-in (UC-MEM-08). Run only
+// when the traits have actually drifted or the stamp has gone stale — not on every request.
 // UPDATE-only on purpose: there is no self-registration, so a user exists only because provisioning
 // or an invite created it. An unknown subject matches no row and returns pgx.ErrNoRows, which the
 // caller turns into 403 — authenticating with Kratos (password, passkey, or a future OIDC provider)

@@ -5,6 +5,7 @@ package sqlc_test
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/boolmv/erp/internal/db/sqlc"
@@ -99,5 +100,48 @@ func TestArchiveTenant_SetsActiveToAndIsIrreversibleInThisPass(t *testing.T) {
 	}
 	if !archived.ActiveTo.Valid {
 		t.Fatal("archive must set active_to (marks the tenant as ceased)")
+	}
+}
+
+// tree_key was allocated with SELECT MAX(tree_key)+1 — a read-then-insert that two concurrent
+// provisions could both win, leaving one to die on tenants_tree_key_key. Allocation is atomic now, so
+// concurrent callers can never receive the same value. Run through the pool rather than a single tx,
+// because that is what makes them genuinely concurrent.
+func TestNextTenantTreeKey_ConcurrentAllocationsAreUnique(t *testing.T) {
+	ctx := context.Background()
+	q := sqlc.New(env.Pool)
+
+	const callers = 24
+	keys := make(chan int64, callers)
+	errs := make(chan error, callers)
+	var wg sync.WaitGroup
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			k, err := q.NextTenantTreeKey(ctx)
+			if err != nil {
+				errs <- err
+				return
+			}
+			keys <- k
+		}()
+	}
+	wg.Wait()
+	close(keys)
+	close(errs)
+
+	for err := range errs {
+		t.Fatalf("NextTenantTreeKey: %v", err)
+	}
+	seen := map[int64]bool{}
+	for k := range keys {
+		if seen[k] {
+			t.Fatalf("tree_key %d was handed to two concurrent callers", k)
+		}
+		seen[k] = true
+	}
+	if len(seen) != callers {
+		t.Fatalf("want %d distinct keys, got %d", callers, len(seen))
 	}
 }

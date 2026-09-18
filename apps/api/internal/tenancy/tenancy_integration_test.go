@@ -5,6 +5,7 @@ package tenancy_test
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,7 @@ import (
 	"github.com/boolmv/erp/internal/auth"
 	"github.com/boolmv/erp/internal/db/sqlc"
 	"github.com/boolmv/erp/internal/dbtest"
+	"github.com/boolmv/erp/internal/rls"
 	"github.com/boolmv/erp/internal/tenancy"
 )
 
@@ -102,11 +104,31 @@ func TestCheckRLSCoverage_CatchesMissingRLSAndPassesConfigured(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "test_unprotected") {
 		t.Fatalf("want an error: forced but still no policy, got %v", err)
 	}
+	// A policy that exists but scopes by something other than tenant_id isolates nothing — "has a
+	// policy" used to be the whole check.
+	if _, err := tx.Exec(ctx, `CREATE POLICY test_unprotected_useless ON test_unprotected USING (true)`); err != nil {
+		t.Fatalf("create useless policy: %v", err)
+	}
+	err = tenancy.CheckRLSCoverage(ctx, tx)
+	if err == nil || !strings.Contains(err.Error(), "scopes by tenant_id") {
+		t.Fatalf("want an error: a policy that never mentions tenant_id, got %v", err)
+	}
+
 	if _, err := tx.Exec(ctx, `CREATE POLICY test_unprotected_isolation ON test_unprotected USING (tenant_id = current_setting('app.current_tenant')::uuid)`); err != nil {
 		t.Fatalf("create policy: %v", err)
 	}
+	// Still not covered: without the column default a query has to name tenant_id itself, and can
+	// therefore name the wrong one. UC-FND-06 has always required the guard to check this.
+	err = tenancy.CheckRLSCoverage(ctx, tx)
+	if err == nil || !strings.Contains(err.Error(), "no DEFAULT") {
+		t.Fatalf("want an error: policy is right but tenant_id has no session default, got %v", err)
+	}
+
+	if _, err := tx.Exec(ctx, `ALTER TABLE test_unprotected ALTER COLUMN tenant_id SET DEFAULT current_setting('app.current_tenant')::uuid`); err != nil {
+		t.Fatalf("set tenant_id default: %v", err)
+	}
 	if err := tenancy.CheckRLSCoverage(ctx, tx); err != nil {
-		t.Fatalf("want no error once forced + policied (rest of the real schema already passes), got %v", err)
+		t.Fatalf("want no error once forced + scoped + defaulted (the real schema already passes), got %v", err)
 	}
 }
 
@@ -251,22 +273,132 @@ func TestRequireTenant_NotYetStartedMembershipIsNotFound(t *testing.T) {
 	}
 }
 
-func TestRequireTenant_SuspendedTenantIsForbidden(t *testing.T) {
-	tenant, ownerID := setupMiddlewareFixture(t, "test-mw-suspended")
-	if _, err := env.Pool.Exec(context.Background(), `UPDATE tenants SET status = 'suspended' WHERE id = $1`, tenant.ID); err != nil {
+// A MEMBER of a non-active tenant already knows it exists, so they get a machine-readable code the
+// SPA can branch on — offering "switch tenant" or "sign out" instead of a dead end. Sessions are NOT
+// revoked: they're per identity, so revoking would sign a multi-tenant member out of tenants that
+// are still perfectly active.
+func TestRequireTenant_MemberOfInactiveTenantGetsACode(t *testing.T) {
+	for _, tc := range []struct{ status, wantCode string }{
+		{"suspended", "tenant_suspended"},
+		{"archived", "tenant_archived"},
+	} {
+		t.Run(tc.status, func(t *testing.T) {
+			tenant, ownerID := setupMiddlewareFixture(t, "test-mw-"+tc.status)
+			if _, err := env.Pool.Exec(context.Background(),
+				`UPDATE tenants SET status = $2 WHERE id = $1`, tenant.ID, tc.status); err != nil {
+				t.Fatalf("set status: %v", err)
+			}
+
+			mw := tenancy.NewMiddleware(env.Pool)
+			h := mw.RequireTenant(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
+
+			req := httptest.NewRequest(http.MethodGet, "http://test-mw-"+tc.status+".bool.test/v1/x", nil)
+			req = req.WithContext(auth.WithPrincipal(req.Context(), &auth.Principal{ID: uuidToString(ownerID)}))
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusForbidden {
+				t.Fatalf("want 403 for a %s tenant, got %d", tc.status, rec.Code)
+			}
+			var body struct {
+				Code      string `json:"code"`
+				RequestID string `json:"request_id"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decode %q: %v", rec.Body.String(), err)
+			}
+			if body.Code != tc.wantCode {
+				t.Fatalf("want code %q so the SPA can act on it, got %q", tc.wantCode, body.Code)
+			}
+		})
+	}
+}
+
+// The disclosure rule: a NON-member must not be able to tell a suspended tenant from one that never
+// existed. Checking status before membership answered 403 here, confirming the slug to anyone who
+// asked — which is precisely what the 404s elsewhere in this middleware exist to prevent.
+func TestRequireTenant_NonMemberCannotTellSuspendedFromNonexistent(t *testing.T) {
+	tenant, _ := setupMiddlewareFixture(t, "test-mw-suspended-private")
+	if _, err := env.Pool.Exec(context.Background(),
+		`UPDATE tenants SET status = 'suspended' WHERE id = $1`, tenant.ID); err != nil {
 		t.Fatalf("suspend tenant: %v", err)
 	}
-	principalID := uuidToString(ownerID)
+	stranger := newTestUUID(t)
+	if _, err := sqlc.New(env.Pool).CreateUser(context.Background(), sqlc.CreateUserParams{
+		ID: stranger, Email: "stranger-suspended@example.test", Name: "Stranger",
+	}); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
 
 	mw := tenancy.NewMiddleware(env.Pool)
-	h := mw.RequireTenant(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	h := mw.RequireTenant(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
 
-	req := httptest.NewRequest(http.MethodGet, "http://test-mw-suspended.bool.test/v1/x", nil)
-	req = req.WithContext(auth.WithPrincipal(req.Context(), &auth.Principal{ID: principalID}))
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	suspended := httptest.NewRequest(http.MethodGet, "http://test-mw-suspended-private.bool.test/v1/x", nil)
+	suspended = suspended.WithContext(auth.WithPrincipal(suspended.Context(), &auth.Principal{ID: uuidToString(stranger)}))
+	suspendedRec := httptest.NewRecorder()
+	h.ServeHTTP(suspendedRec, suspended)
 
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("want 403 for a suspended tenant, got %d", rec.Code)
+	absent := httptest.NewRequest(http.MethodGet, "http://test-mw-no-such-tenant-at-all.bool.test/v1/x", nil)
+	absent = absent.WithContext(auth.WithPrincipal(absent.Context(), &auth.Principal{ID: uuidToString(stranger)}))
+	absentRec := httptest.NewRecorder()
+	h.ServeHTTP(absentRec, absent)
+
+	if suspendedRec.Code != http.StatusNotFound {
+		t.Fatalf("a non-member must get 404 for a suspended tenant, got %d: %s",
+			suspendedRec.Code, suspendedRec.Body.String())
+	}
+	if suspendedRec.Code != absentRec.Code {
+		t.Fatalf("suspended (%d) and nonexistent (%d) must be indistinguishable to a non-member",
+			suspendedRec.Code, absentRec.Code)
+	}
+}
+
+// A nested WithTenant must not change the tenant the ENCLOSING transaction is running as.
+//
+// set_config LOCAL is scoped to the transaction, not the savepoint that pgx makes for a nested
+// Begin. A rollback undoes it, but a successful release does not — so an inner scope that commits
+// used to leave the outer transaction running as the inner tenant for everything afterwards. Nothing
+// calls it that way today, but auth.DBTX accepts a pgx.Tx, so BuildOperatorPrincipal can be invoked
+// inside another tenant's transaction, and the leak would be silent.
+func TestWithTenant_NestedScopeDoesNotLeakIntoTheOuterTransaction(t *testing.T) {
+	ctx := context.Background()
+	outer := newTestUUID(t)
+	inner := newTestUUID(t)
+
+	err := tenancy.WithTenant(ctx, env.Pool, outer, func(ctx context.Context, tx pgx.Tx) error {
+		// Nest a second scope on the SAME transaction and let it succeed. rls.WithTenant is the
+		// nestable one — it takes any Beginner, which is how auth.BuildOperatorPrincipal ends up
+		// running inside a transaction a handler already opened.
+		if err := rls.WithTenant(ctx, tx, inner, func(ctx context.Context, tx pgx.Tx) error {
+			var got string
+			if err := tx.QueryRow(ctx, `SELECT current_setting('app.current_tenant')`).Scan(&got); err != nil {
+				return err
+			}
+			if got != uuidToString(inner) {
+				t.Errorf("inner scope: want %s, got %s", uuidToString(inner), got)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		// Back outside it, the outer tenant must still be in force.
+		var after, visible string
+		if err := tx.QueryRow(ctx,
+			`SELECT current_setting('app.current_tenant'), current_setting('app.visible_tenants')`,
+		).Scan(&after, &visible); err != nil {
+			return err
+		}
+		if after != uuidToString(outer) {
+			t.Errorf("the inner scope leaked: outer transaction is now running as %s, want %s",
+				after, uuidToString(outer))
+		}
+		if visible != "{"+uuidToString(outer)+"}" {
+			t.Errorf("visible_tenants leaked: %s", visible)
+		}
+		return errRollbackOnly
+	})
+	if err != errRollbackOnly {
+		t.Fatalf("WithTenant: unexpected error %v", err)
 	}
 }

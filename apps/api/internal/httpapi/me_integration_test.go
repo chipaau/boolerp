@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -229,5 +230,91 @@ func TestMeUnauthenticated(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("status: want 401, got %d", resp.StatusCode)
+	}
+}
+
+// Admission is a read. It used to be an UPDATE, so every authenticated request took a row lock,
+// left a dead tuple behind and made the API unable to serve reads from a replica. The write now
+// happens only when the Kratos traits have drifted or the login stamp has gone stale — so a burst of
+// requests from one signed-in user must leave the row untouched after the first.
+func TestMeRepeatedRequestsDoNotRewriteTheUserRow(t *testing.T) {
+	// Its own identity: tests in this package share one committed database, so reusing testUID would
+	// collide with TestMeEndToEnd's user.
+	const uid = "018f7d3a-0000-7000-8000-0000000000fd"
+	const email = "repeat@malecouncil.mv"
+	k := fakeKratosFor(uid, email)
+	defer k.Close()
+	c := fakeCerbos(true)
+	defer c.Close()
+	cerbos := auth.NewCerbos(c.URL)
+
+	id, _ := auth.ParseUUID(uid)
+	ctx := context.Background()
+	if _, err := sqlc.New(env.Pool).CreateUser(ctx, sqlc.CreateUserParams{
+		ID: id, Email: email, Name: "Operator",
+	}); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+
+	h := httpapi.New(httpapi.PlatformDeps{
+		Pool: env.Pool, Kratos: auth.NewKratos(k.URL, k.URL), Cerbos: cerbos,
+	}, auth.Register(env.Pool, cerbos))
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	call := func() {
+		req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/me", nil)
+		req.Header.Set("Cookie", "ory_kratos_session=abc")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("request: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status: want 200, got %d", resp.StatusCode)
+		}
+	}
+
+	// First call stamps the login (the row has never been used).
+	call()
+	q := sqlc.New(env.Pool)
+	first, err := q.GetUserByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetUserByID: %v", err)
+	}
+	if !first.LastLoginAt.Valid {
+		t.Fatal("want the first request to stamp last_login_at")
+	}
+
+	// Subsequent calls have nothing to write: same traits, stamp still fresh.
+	for i := 0; i < 3; i++ {
+		call()
+	}
+	after, err := q.GetUserByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetUserByID: %v", err)
+	}
+	if !after.UpdatedAt.Time.Equal(first.UpdatedAt.Time) {
+		t.Fatalf("the user row was rewritten by a request with nothing to change (updated_at %v -> %v)",
+			first.UpdatedAt.Time, after.UpdatedAt.Time)
+	}
+	if !after.LastLoginAt.Time.Equal(first.LastLoginAt.Time) {
+		t.Fatalf("last_login_at was rewritten within the stamp interval (%v -> %v)",
+			first.LastLoginAt.Time, after.LastLoginAt.Time)
+	}
+
+	// But a stale stamp must still be refreshed — the column has to stay meaningful.
+	if _, err := env.Pool.Exec(ctx,
+		`UPDATE users SET last_login_at = now() - interval '1 hour' WHERE id = $1`, id); err != nil {
+		t.Fatalf("age the stamp: %v", err)
+	}
+	call()
+	refreshed, err := q.GetUserByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetUserByID: %v", err)
+	}
+	if !refreshed.LastLoginAt.Time.After(first.LastLoginAt.Time.Add(-time.Hour)) ||
+		refreshed.LastLoginAt.Time.Before(first.LastLoginAt.Time) {
+		t.Fatalf("want a stale stamp refreshed, got %v", refreshed.LastLoginAt.Time)
 	}
 }

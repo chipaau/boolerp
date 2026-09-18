@@ -28,8 +28,14 @@
 - **Roles:** `roles:manage`, `roles:assign`
 - **Tenant:** `tenant:manage-settings`, `tenant:manage-visibility`, `tenant:manage-hierarchy` *(operator)*
 - **Audit:** `audit:view`
-- **Platform (internal only):** `platform:tenants:provision`, `platform:tenants:suspend`,
-  `platform:support:access`, `platform:*`
+- **Platform (internal only):** `platform:tenants:read`, `platform:tenants:provision`,
+  `platform:tenants:suspend`, `platform:tenants:archive`, `platform:support:access`, `platform:*`
+  - Extended 2026-09-18: `platform:tenants:read` and `platform:tenants:archive` added. Reading the
+    tenant directory required no capability at all — internal membership alone listed every customer —
+    and the irreversible archive was gated on the capability for the reversible suspend.
+  - `platform:*` is a **literal** slug meaning "every platform capability", not a pattern Cerbos
+    expands. Policies match the string, so each rule names it explicitly alongside its own capability;
+    a new `platform:…` capability is NOT covered by it until its rule says so.
 
 ## Resolved 2026-09-02
 - Four-eyes approver: **any two distinct internal-tenant admins** (no dedicated approver role).
