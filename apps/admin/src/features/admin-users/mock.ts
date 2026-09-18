@@ -1,6 +1,5 @@
 // UI fixtures — shapes pending SRS/data-model review; replaced at integration.
 // Seed data from the Bool Admin design (.design/login/Bool Workspace/Bool Admin.dc.html).
-import avatar5 from '@workspace/assets/avatars/avatar-5.jpg'
 import type { AdminUser, RoleDef } from './types'
 
 export const ADMIN_USERS: AdminUser[] = [
@@ -20,11 +19,3 @@ export const ROLES: RoleDef[] = [
   { key: 'Read only', note: 'Looks at tenants and reports. No changes at all.' },
 ]
 
-/**
- * Operator photos by email (or name when the session has no email). The same person has the same
- * picture as in the workspace app (org fixture EMP-017). At integration this goes: the avatar comes
- * from the identity's picture trait instead.
- */
-export const OPERATOR_AVATARS: { email: string; name: string; src: string }[] = [
-  { email: 'mariyam@bool.co', name: 'Mariyam Ahmed', src: avatar5 },
-]

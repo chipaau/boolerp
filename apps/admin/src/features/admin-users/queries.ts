@@ -46,13 +46,3 @@ export function useAdminUserActions() {
     resendInvite: (idNo: string): Undo => swap((l) => l.map((u) => (u.idNo === idNo ? { ...u, invite: 'Invited' } : u))),
   }
 }
-
-/**
- * The signed-in operator's photo, matched by email then name. Fixture-backed; at integration this
- * reads the identity's picture instead.
- */
-export function useOperatorAvatar(email: string, name: string): string | undefined {
-  const e = email.trim().toLowerCase()
-  const n = name.trim().toLowerCase()
-  return mock.OPERATOR_AVATARS.find((a) => (e && a.email.toLowerCase() === e) || a.name.toLowerCase() === n)?.src
-}

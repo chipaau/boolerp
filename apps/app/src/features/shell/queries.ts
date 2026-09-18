@@ -1,6 +1,9 @@
 // The shell data seam. These are non-suspending: chrome renders immediately and the counts / bell
 // fill in when they arrive, which is also how it should behave against the real API.
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { identityPhoto } from '@workspace/auth'
+import { useCurrentUser } from '@/components/layout/user-context'
+import type { CurrentUser } from '@/components/layout/user-context'
 import * as mock from './mock'
 import type { AvatarChoice, Feedback, Membership, NavCounts, Notification, SavedView, SupportLink } from './types'
 
@@ -12,7 +15,8 @@ export const navCountsQuery = (app: string) =>
 
 export const savedViewsQuery = (app: string) =>
   queryOptions({ queryKey: key('saved-views', app), queryFn: async (): Promise<SavedView[]> => mock.SAVED_VIEWS[app] ?? [] })
-export const membershipQuery = () => queryOptions({ queryKey: key('membership'), queryFn: async (): Promise<Membership> => mock.MEMBERSHIP })
+export const membershipQuery = (user: CurrentUser) =>
+  queryOptions({ queryKey: key('membership'), queryFn: async (): Promise<Membership> => ({ ...mock.MEMBERSHIP, avatar: identityPhoto(user) }) })
 export const avatarChoicesQuery = () => queryOptions({ queryKey: key('avatar-choices'), queryFn: async (): Promise<AvatarChoice[]> => mock.AVATAR_CHOICES })
 export const supportLinksQuery = () => queryOptions({ queryKey: key('support-links'), queryFn: async (): Promise<SupportLink[]> => mock.SUPPORT_LINKS })
 
@@ -25,7 +29,7 @@ const NO_LINKS: SupportLink[] = []
 export const useNotifications = () => useQuery(notificationsQuery()).data ?? NONE
 export const useNavCounts = (app: string) => useQuery(navCountsQuery(app)).data ?? NO_COUNTS
 export const useSavedViews = (app: string) => useQuery(savedViewsQuery(app)).data ?? NO_VIEWS
-export const useMembership = () => useQuery(membershipQuery()).data
+export const useMembership = () => useQuery(membershipQuery(useCurrentUser())).data
 export const useAvatarChoices = () => useQuery(avatarChoicesQuery()).data ?? NO_CHOICES
 export const useSupportLinks = () => useQuery(supportLinksQuery()).data ?? NO_LINKS
 

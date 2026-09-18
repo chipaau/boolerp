@@ -1,6 +1,5 @@
-import { logout } from '@workspace/auth'
+import { identityPhoto, logout } from '@workspace/auth'
 import { AccountMenu } from '@workspace/ui/components/workspace-header'
-import { useOperatorAvatar } from '@/features/admin-users/queries'
 import { useCurrentUser } from './user-context'
 
 /**
@@ -9,6 +8,5 @@ import { useCurrentUser } from './user-context'
  */
 export function UserMenu() {
   const user = useCurrentUser()
-  const avatar = useOperatorAvatar(user.email, user.name)
-  return <AccountMenu user={user} avatarSrc={avatar} items={[{ key: 'signout', label: 'Sign out', destructive: true, onClick: () => void logout() }]} />
+  return <AccountMenu user={user} avatarSrc={identityPhoto(user)} items={[{ key: 'signout', label: 'Sign out', destructive: true, onClick: () => void logout() }]} />
 }

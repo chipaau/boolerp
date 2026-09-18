@@ -45,7 +45,8 @@ export const SAVED_VIEWS: Record<string, SavedView[]> = {
   ],
 }
 
-export const MEMBERSHIP: Membership = { role: 'Admin', avatar: avatar5 }
+/** The photo is not here: it belongs to the identity (see `identityPhoto` in @workspace/auth). */
+export const MEMBERSHIP: Membership = { role: 'Admin' }
 
 /** Stand-in portraits until the workspace supplies its own Bool set. */
 export const AVATAR_CHOICES: AvatarChoice[] = [
