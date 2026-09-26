@@ -51,8 +51,14 @@ See [employee scope](hrms/employees.md) and [execution](platform/execution.md).
 ## Current CI boundary
 
 The Go job runs formatting checks, vet, tests, and compilation in Docker against
-`apps/api` only. There are no application test cases in the initial scaffold yet;
-`go test ./...` currently checks package compilation. Archived API tests are not run.
+`apps/api` only. Step 1 adds configuration and logging tests plus subprocess checks
+of the real API entry point: startup, health, invalid settings, occupied ports,
+SIGTERM shutdown, forced termination by a second signal, and structured lifecycle/error
+logs. HTTP server tests hold a request open to verify successful draining and
+connection closure at the shutdown deadline. Configuration errors and sensitive
+log attributes are checked for value disclosure. Tests use isolated
+environment values and need no database/cache services. Domain/application tests
+will follow those implementations. Archived API tests are not run.
 Frontend typecheck/build jobs remain, but the legacy E2E job is explicitly disabled
 until the new API and identity contract are integrated. See
 [repository transfer](repository-transfer.md).
