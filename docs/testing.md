@@ -62,3 +62,10 @@ will follow those implementations. Archived API tests are not run.
 Frontend typecheck/build jobs remain, but the legacy E2E job is explicitly disabled
 until the new API and identity contract are integrated. See
 [repository transfer](repository-transfer.md).
+
+Step 2 adds routing/HEAD/method tests, safe problem responses, request correlation,
+private-data omission, malformed JSON, body limits, origin checks, and forwarded
+header spoofing tests. Real TCP checks exercise slow header/body reads, expired
+response writes, idle connection closure, oversized headers, chunked body limits,
+and panics after a partial response. JSON decode fixtures exist only in tests;
+the public API still exposes only liveness. CI's push branch is now `dev`.

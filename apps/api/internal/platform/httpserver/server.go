@@ -11,8 +11,12 @@ import (
 )
 
 type Options struct {
-	Address         string
-	ShutdownTimeout time.Duration
+	Address           string
+	ShutdownTimeout   time.Duration
+	ReadHeaderTimeout time.Duration
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	IdleTimeout       time.Duration
 }
 
 func Run(ctx context.Context, options Options, logger *slog.Logger, handler http.Handler) error {
@@ -22,10 +26,14 @@ func Run(ctx context.Context, options Options, logger *slog.Logger, handler http
 	}
 
 	server := &http.Server{
-		Handler:           handler,
-		ReadHeaderTimeout: 5 * time.Second,
-		IdleTimeout:       60 * time.Second,
-		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		Handler:                      handler,
+		ReadHeaderTimeout:            options.ReadHeaderTimeout,
+		ReadTimeout:                  options.ReadTimeout,
+		WriteTimeout:                 options.WriteTimeout,
+		IdleTimeout:                  options.IdleTimeout,
+		MaxHeaderBytes:               32 << 10,
+		DisableGeneralOptionsHandler: true,
+		ErrorLog:                     slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 	defer server.Close()
 

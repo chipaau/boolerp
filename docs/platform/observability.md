@@ -1,6 +1,7 @@
 # Tracing and logging
 
-Status: runtime structured logging implemented in platform step 1. Tracing is
+Status: runtime structured logging implemented in step 1; request correlation and
+HTTP logging implemented in step 2. Tracing is
 confirmed as required; its tooling and operational policy remain proposed.
 
 Tracing explains the execution path and timing of a request or background operation.
@@ -32,7 +33,8 @@ bodies, provider responses, or private employee content. The current runtime doe
 not read or log the reserved database/cache credentials.
 
 See [runtime configuration](../development.md#runtime-configuration) for defaults
-and validation. Request logs/correlation, tracing, and metrics are later increments.
+and validation. See [HTTP foundation](http.md) for generated request IDs, safe
+request logs, and panic diagnostics. Tracing and metrics remain later increments.
 
 ## Proposed tracing baseline
 
@@ -47,8 +49,9 @@ configuration by this documentation.
 
 ## Open decisions
 
-Choose instrumentation libraries, propagation conventions, trusted request-ID
-handling, sampling, exporter/backend, retention, and default self-host behavior.
+Choose instrumentation libraries, trace propagation, sampling, exporter/backend,
+retention, and default self-host behavior. Any future acceptance of upstream
+request IDs needs an explicit trust policy; step 2 always generates its own IDs.
 Decide what limited identifiers are permitted as attributes without exposing personal data.
 
 Credentials, session tokens, employee payloads, and cache values must not be logged

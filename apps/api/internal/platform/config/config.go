@@ -15,6 +15,15 @@ type Config struct {
 	ShutdownTimeout time.Duration
 	LogFormat       string
 	LogLevel        slog.Level
+	HTTP            HTTP
+}
+
+type HTTP struct {
+	MaxBodyBytes      int64
+	ReadHeaderTimeout time.Duration
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	IdleTimeout       time.Duration
 }
 
 // Load reads process environment settings. Unset or empty values use defaults.
@@ -44,9 +53,32 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 	}
 	cfg.Port = int(port)
 
-	cfg.ShutdownTimeout, err = time.ParseDuration(value("APP_SHUTDOWN_TIMEOUT", "10s"))
-	if err != nil || cfg.ShutdownTimeout <= 0 {
-		return Config{}, errors.New("APP_SHUTDOWN_TIMEOUT must be a positive Go duration, such as 10s")
+	for _, setting := range []struct {
+		key      string
+		fallback string
+		target   *time.Duration
+	}{
+		{"APP_SHUTDOWN_TIMEOUT", "10s", &cfg.ShutdownTimeout},
+		{"APP_HTTP_READ_HEADER_TIMEOUT", "5s", &cfg.HTTP.ReadHeaderTimeout},
+		{"APP_HTTP_READ_TIMEOUT", "15s", &cfg.HTTP.ReadTimeout},
+		{"APP_HTTP_WRITE_TIMEOUT", "30s", &cfg.HTTP.WriteTimeout},
+		{"APP_HTTP_IDLE_TIMEOUT", "60s", &cfg.HTTP.IdleTimeout},
+	} {
+		duration, err := time.ParseDuration(value(setting.key, setting.fallback))
+		if err != nil || duration <= 0 {
+			return Config{}, errors.New(setting.key + " must be a positive Go duration, such as 10s")
+		}
+		*setting.target = duration
+	}
+	if cfg.HTTP.ReadHeaderTimeout > cfg.HTTP.ReadTimeout {
+		return Config{}, errors.New("APP_HTTP_READ_HEADER_TIMEOUT must not exceed APP_HTTP_READ_TIMEOUT")
+	}
+	if cfg.HTTP.WriteTimeout <= cfg.HTTP.ReadTimeout {
+		return Config{}, errors.New("APP_HTTP_WRITE_TIMEOUT must exceed APP_HTTP_READ_TIMEOUT to allow an error response")
+	}
+	cfg.HTTP.MaxBodyBytes, err = strconv.ParseInt(value("APP_HTTP_MAX_BODY_BYTES", "1048576"), 10, 64)
+	if err != nil || cfg.HTTP.MaxBodyBytes <= 0 {
+		return Config{}, errors.New("APP_HTTP_MAX_BODY_BYTES must be a positive integer")
 	}
 
 	if cfg.LogFormat != "json" && cfg.LogFormat != "text" {

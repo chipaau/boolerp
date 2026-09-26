@@ -1,6 +1,6 @@
 # Bool ERP documentation
 
-Updated: 2026-09-26.
+Updated: 2026-09-27.
 
 This is the current documentation for a fresh Go API in the GitHub `boolmv/erp`
 monorepo at `/Users/chipaau/code/bool/erp`. See [repository transfer](repository-transfer.md)
@@ -9,8 +9,8 @@ The implementation scope is the platform backbone and HRMS employee records.
 Frontend integration is deferred.
 
 The previous API is preserved in `apps/api.bak/`. The rebuild contains a
-standard-library HTTP entry point, validated runtime configuration, and structured
-logging. Start with the [development commands](development.md); persistence,
+standard-library HTTP foundation, validated runtime configuration, and structured
+request logging. Start with the [development commands](development.md); persistence,
 platform policy modules, tracing, and employee behavior remain to be implemented.
 
 ## Start here
@@ -26,6 +26,7 @@ platform policy modules, tracing, and employee behavior remain to be implemented
 
 | Area | Document |
 | --- | --- |
+| HTTP routing, errors, and request limits | [HTTP foundation](platform/http.md) |
 | Identity and authentication | [Identity](platform/identity.md) |
 | Tenants, memberships, and domains | [Tenancy](platform/tenancy.md) |
 | Access decisions | [Authorization](platform/authorization.md) |
