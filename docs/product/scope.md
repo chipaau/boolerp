@@ -45,6 +45,10 @@ The user subsequently authorized platform delivery step 1. Runtime environment
 configuration, validation, structured logging, redaction, and explicit dependency
 wiring are implemented; see [development](../development.md).
 
+On 2026-09-27, the user authorized platform step 2 on a new branch from `dev`.
+The [HTTP foundation](../platform/http.md) is implemented; liveness remains the
+only public operation.
+
 This does not approve employee tables, identity/authorization providers, database
 migrations, or frontend integration. Empty directories reserve the proposed
 boundaries; they are not implemented platform capabilities. Continue layer by layer.

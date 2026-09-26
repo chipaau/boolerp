@@ -1,6 +1,6 @@
 # Development and repository layout
 
-Updated: 2026-09-26.
+Updated: 2026-09-27.
 
 The active checkout is `/Users/chipaau/code/bool/erp`, remote
 `git@github.com:boolmv/erp.git`. Do not run the rebuild from the sibling `go-erp`
@@ -11,9 +11,12 @@ The fresh API lives in `apps/api/` in this monorepo. The previous source is pres
 in `apps/api.bak/`; its migrations, providers, and frontend consumers are not the
 rebuild baseline.
 
-The current branch is `api-rebuild`. The first executable layer contains a simple
+Steps 0–1 were merged into `dev` at `639101d`. Step 2 is developed on
+`feat/api-http-foundation` from that commit. The first executable layer contains a simple
 Go entry point, bootstrap wiring, a standard-library HTTP server, and a liveness
 endpoint. Platform step 1 adds runtime configuration and structured logging.
+Step 2 adds the [HTTP foundation](platform/http.md), including request correlation,
+problem responses, recovery, limits, and browser/proxy boundaries.
 The remaining proposed directories contain `.gitkeep` placeholders.
 They do not implement platform features or employee behavior.
 
@@ -74,6 +77,11 @@ silently removed.
 | `APP_SHUTDOWN_TIMEOUT` | `10s` | Positive Go duration, such as `10s` or `500ms` |
 | `APP_LOG_FORMAT` | `json` | `json` or `text` |
 | `APP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` (case-insensitive) |
+| `APP_HTTP_MAX_BODY_BYTES` | `1048576` | Positive integer; maximum consumed request body size in bytes |
+| `APP_HTTP_READ_HEADER_TIMEOUT` | `5s` | Positive Go duration; no greater than the full read timeout |
+| `APP_HTTP_READ_TIMEOUT` | `15s` | Positive Go duration; full request read, including the body |
+| `APP_HTTP_WRITE_TIMEOUT` | `30s` | Positive Go duration; greater than the read timeout to leave room for a failure response |
+| `APP_HTTP_IDLE_TIMEOUT` | `60s` | Positive Go duration; wait between keep-alive requests |
 
 Invalid settings stop startup before opening the listener. The JSON error goes to
 stdout and identifies the variable without echoing its value. This fallback format
@@ -119,7 +127,10 @@ curl --fail http://127.0.0.1:8080/api/healthz
 
 The response is `200` with JSON `{"status":"ok"}`. This is process liveness,
 not dependency readiness. There are no authenticated or employee endpoints yet;
-unknown paths return `404`. Invalid listen addresses or occupied ports terminate
+unknown paths return a JSON `404` problem, and unsupported methods return `405`
+with `Allow`. Responses reaching the handler include a generated `X-Request-ID`.
+See the [HTTP contract](platform/http.md) for input/error and browser policies.
+Invalid listen addresses or occupied ports terminate
 startup with an error. SIGINT/SIGTERM initiates shutdown with the configured
 deadline (ten seconds by default), allowing active requests to finish. Connections
 still active at the deadline are closed and the process exits with an error. A
@@ -153,6 +164,9 @@ termination by a second signal. The subprocess tests run the actual entry-point 
 isolated environment settings and without PostgreSQL or Redis. Docker must be
 running for compilation and runtime checks; configuration validation alone does
 not prove them.
+
+Step 2 adds HTTP contract tests and real TCP checks for request limits, slow
+clients, and interrupted responses. CI runs on pull requests and pushes to `dev`.
 
 ## Tooling
 

@@ -65,7 +65,11 @@ func records(t *testing.T, output []byte) []map[string]any {
 }
 
 func TestInvalidConfigurationExitsWithSafeJSON(t *testing.T) {
-	for _, key := range []string{"APP_ENV", "APP_PORT", "APP_SHUTDOWN_TIMEOUT", "APP_LOG_FORMAT", "APP_LOG_LEVEL"} {
+	for _, key := range []string{
+		"APP_ENV", "APP_PORT", "APP_SHUTDOWN_TIMEOUT", "APP_LOG_FORMAT", "APP_LOG_LEVEL",
+		"APP_HTTP_MAX_BODY_BYTES", "APP_HTTP_READ_HEADER_TIMEOUT", "APP_HTTP_READ_TIMEOUT",
+		"APP_HTTP_WRITE_TIMEOUT", "APP_HTTP_IDLE_TIMEOUT",
+	} {
 		t.Run(key, func(t *testing.T) {
 			cmd := apiCommand(t, key+"=invalid-secret")
 			output, err := cmd.Output()
@@ -167,11 +171,17 @@ func TestAPILifecycle(t *testing.T) {
 		t.Fatalf("shutdown error: %v; stderr: %s", exitErr, stderr.String())
 	}
 	logs := records(t, output.Bytes())
-	if len(logs) != 3 || logs[0]["msg"] != "HTTP server started" || logs[1]["msg"] != "HTTP server stopping" || logs[2]["msg"] != "API stopped" {
+	var lifecycle []map[string]any
+	for _, record := range logs {
+		if record["msg"] != "HTTP request completed" {
+			lifecycle = append(lifecycle, record)
+		}
+	}
+	if len(lifecycle) != 3 || lifecycle[0]["msg"] != "HTTP server started" || lifecycle[1]["msg"] != "HTTP server stopping" || lifecycle[2]["msg"] != "API stopped" {
 		t.Fatalf("unexpected lifecycle logs: %v", logs)
 	}
-	if logs[1]["timeout"] != "250ms" {
-		t.Fatalf("shutdown timeout was not configured: %v", logs[1])
+	if lifecycle[1]["timeout"] != "250ms" {
+		t.Fatalf("shutdown timeout was not configured: %v", lifecycle[1])
 	}
 	for _, record := range logs {
 		if record["service"] != "api" || record["environment"] != "test" {
@@ -225,7 +235,9 @@ func TestSecondSignalInterruptsShutdown(t *testing.T) {
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		t.Fatal(err)
 	}
-	if !scanner.Scan() || !strings.Contains(scanner.Text(), "HTTP server stopping") {
+	for scanner.Scan() && strings.Contains(scanner.Text(), "HTTP request completed") {
+	}
+	if !strings.Contains(scanner.Text(), "HTTP server stopping") {
 		t.Fatal("API did not begin graceful shutdown")
 	}
 	if err := cmd.Process.Signal(os.Interrupt); err != nil {

@@ -2,6 +2,7 @@
 
 Status: hexagonal modular-monolith direction selected; directory scaffold,
 HTTP entry point, runtime configuration, and structured logging implemented.
+Step 2 adds the shared [HTTP foundation](../platform/http.md).
 Remaining contracts and tool choices are proposed. See
 [the decision register](../decisions/README.md).
 
@@ -13,6 +14,8 @@ unless listed as current below; they are not approved tables or contracts.
 Current runtime code lives in `cmd/api`, `internal/bootstrap`, and
 `internal/platform/{config,httpserver,observability}`. It implements validated
 configuration, structured logging, process lifecycle, and `GET /api/healthz`.
+HTTP boundary helpers provide routing fallbacks, request correlation/recovery,
+JSON responses/decoding, and input limits within the same infrastructure package.
 The entry point loads configuration and constructs the logger; bootstrap passes
 explicit settings and the logger to the HTTP server. No global logger is replaced.
 `APP_PORT` defaults to 8080. There are no external Go dependencies or `go.sum`.
@@ -152,7 +155,8 @@ query interface alone does not remove dependency on generated persistence types.
 | Go | Selected |
 | PostgreSQL | Selected |
 | Redis caching | Selected |
-| Chi, pgx, sqlc, Goose | Recommended candidates; not re-confirmed for the fresh implementation |
+| HTTP routing | Standard-library ServeMux retained in step 2 |
+| pgx, sqlc, Goose | Recommended candidates; not re-confirmed for the fresh implementation |
 | Structured slog logs | Implemented in platform step 1; JSON/info to stdout by default |
 | OpenTelemetry | Proposed; propagation, exporter, and operational policy open |
 | Authentication and authorization engines | Open; former providers are not inherited |

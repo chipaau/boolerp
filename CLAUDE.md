@@ -14,3 +14,4 @@ Read the [current documentation](docs/README.md) and
 @.claude/rules/monorepo.md
 @.claude/rules/frontend.md
 @.claude/rules/testing.md
+@.claude/rules/security.md
