@@ -65,7 +65,11 @@ func records(t *testing.T, output []byte) []map[string]any {
 }
 
 func TestInvalidConfigurationExitsWithSafeJSON(t *testing.T) {
-	for _, key := range []string{"APP_ENV", "APP_PORT", "APP_SHUTDOWN_TIMEOUT", "APP_LOG_FORMAT", "APP_LOG_LEVEL"} {
+	for _, key := range []string{
+		"APP_ENV", "APP_PORT", "APP_SHUTDOWN_TIMEOUT", "APP_LOG_FORMAT", "APP_LOG_LEVEL",
+		"APP_HTTP_MAX_BODY_BYTES", "APP_HTTP_READ_HEADER_TIMEOUT", "APP_HTTP_READ_TIMEOUT",
+		"APP_HTTP_WRITE_TIMEOUT", "APP_HTTP_IDLE_TIMEOUT",
+	} {
 		t.Run(key, func(t *testing.T) {
 			cmd := apiCommand(t, key+"=invalid-secret")
 			output, err := cmd.Output()

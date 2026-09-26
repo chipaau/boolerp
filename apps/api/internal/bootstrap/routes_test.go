@@ -30,8 +30,13 @@ func TestHealthAndFallbackUseHTTPFoundation(t *testing.T) {
 			if test.method == http.MethodHead && response.Body.Len() != 0 {
 				t.Fatal("HEAD returned a body")
 			}
-			if test.method == http.MethodGet && test.status == 200 && strings.TrimSpace(response.Body.String()) != `{"status":"ok"}` {
-				t.Fatalf("health payload changed: %s", response.Body.String())
+			if test.method == http.MethodGet && test.status == 200 {
+				if strings.TrimSpace(response.Body.String()) != `{"status":"ok"}` {
+					t.Fatalf("health payload changed: %s", response.Body.String())
+				}
+				if response.Header().Get("Cache-Control") != "no-store" {
+					t.Fatal("health response can be cached")
+				}
 			}
 		})
 	}

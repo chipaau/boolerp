@@ -94,6 +94,8 @@ func TestRoutingAndCorrelation(t *testing.T) {
 		{"DELETE", "/items/1", 405, "GET, HEAD"},
 		{"PUT", "/items", 405, "POST"},
 		{"OPTIONS", "/items", 405, "POST"},
+		{"CONNECT", "/items/1", 405, "GET, HEAD"},
+		{"TRACE", "/items/1", 405, "GET, HEAD"},
 	} {
 		t.Run(test.method+test.path, func(t *testing.T) {
 			response := httptest.NewRecorder()

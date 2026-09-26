@@ -75,14 +75,14 @@ func TestLoadRejectsInvalidSettings(t *testing.T) {
 	tests := map[string][]string{
 		"APP_ENV":                      {"unknown", " prod "},
 		"APP_PORT":                     {"0", "-1", "65536", "999999999999999999999", "http", "127.0.0.1:8080", " 8080"},
-		"APP_SHUTDOWN_TIMEOUT":         {"0s", "-1s", "10", "999999999999999999999h"},
+		"APP_SHUTDOWN_TIMEOUT":         {"0s", "-1s", "10", "999ns", "6m"},
 		"APP_LOG_FORMAT":               {"yaml", "JSON"},
 		"APP_LOG_LEVEL":                {"trace", "INFO+1"},
-		"APP_HTTP_MAX_BODY_BYTES":      {"0", "-1", "many", "999999999999999999999"},
-		"APP_HTTP_READ_HEADER_TIMEOUT": {"0s", "-1s", "10", "20s"},
-		"APP_HTTP_READ_TIMEOUT":        {"0s", "-1s", "10", "1s", "30s"},
-		"APP_HTTP_WRITE_TIMEOUT":       {"0s", "-1s", "10", "15s"},
-		"APP_HTTP_IDLE_TIMEOUT":        {"0s", "-1s", "10"},
+		"APP_HTTP_MAX_BODY_BYTES":      {"0", "-1", "many", "999999999999999999999", "104857601"},
+		"APP_HTTP_READ_HEADER_TIMEOUT": {"0s", "-1s", "10", "20s", "999ns", "2m"},
+		"APP_HTTP_READ_TIMEOUT":        {"0s", "-1s", "10", "1s", "30s", "999ns", "6m"},
+		"APP_HTTP_WRITE_TIMEOUT":       {"0s", "-1s", "10", "15s", "999ns", "11m"},
+		"APP_HTTP_IDLE_TIMEOUT":        {"0s", "-1s", "10", "999ns", "11m"},
 	}
 	for key, values := range tests {
 		for _, value := range values {

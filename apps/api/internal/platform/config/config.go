@@ -56,17 +56,18 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 	for _, setting := range []struct {
 		key      string
 		fallback string
+		ceiling  time.Duration
 		target   *time.Duration
 	}{
-		{"APP_SHUTDOWN_TIMEOUT", "10s", &cfg.ShutdownTimeout},
-		{"APP_HTTP_READ_HEADER_TIMEOUT", "5s", &cfg.HTTP.ReadHeaderTimeout},
-		{"APP_HTTP_READ_TIMEOUT", "15s", &cfg.HTTP.ReadTimeout},
-		{"APP_HTTP_WRITE_TIMEOUT", "30s", &cfg.HTTP.WriteTimeout},
-		{"APP_HTTP_IDLE_TIMEOUT", "60s", &cfg.HTTP.IdleTimeout},
+		{"APP_SHUTDOWN_TIMEOUT", "10s", 5 * time.Minute, &cfg.ShutdownTimeout},
+		{"APP_HTTP_READ_HEADER_TIMEOUT", "5s", time.Minute, &cfg.HTTP.ReadHeaderTimeout},
+		{"APP_HTTP_READ_TIMEOUT", "15s", 5 * time.Minute, &cfg.HTTP.ReadTimeout},
+		{"APP_HTTP_WRITE_TIMEOUT", "30s", 10 * time.Minute, &cfg.HTTP.WriteTimeout},
+		{"APP_HTTP_IDLE_TIMEOUT", "60s", 10 * time.Minute, &cfg.HTTP.IdleTimeout},
 	} {
 		duration, err := time.ParseDuration(value(setting.key, setting.fallback))
-		if err != nil || duration <= 0 {
-			return Config{}, errors.New(setting.key + " must be a positive Go duration, such as 10s")
+		if err != nil || duration < time.Millisecond || duration > setting.ceiling {
+			return Config{}, errors.New(setting.key + " must be between 1ms and " + setting.ceiling.String())
 		}
 		*setting.target = duration
 	}
@@ -76,9 +77,10 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 	if cfg.HTTP.WriteTimeout <= cfg.HTTP.ReadTimeout {
 		return Config{}, errors.New("APP_HTTP_WRITE_TIMEOUT must exceed APP_HTTP_READ_TIMEOUT to allow an error response")
 	}
+	const maxBodyCeiling = 100 << 20 // 100 MiB
 	cfg.HTTP.MaxBodyBytes, err = strconv.ParseInt(value("APP_HTTP_MAX_BODY_BYTES", "1048576"), 10, 64)
-	if err != nil || cfg.HTTP.MaxBodyBytes <= 0 {
-		return Config{}, errors.New("APP_HTTP_MAX_BODY_BYTES must be a positive integer")
+	if err != nil || cfg.HTTP.MaxBodyBytes <= 0 || cfg.HTTP.MaxBodyBytes > maxBodyCeiling {
+		return Config{}, errors.New("APP_HTTP_MAX_BODY_BYTES must be between 1 and 104857600")
 	}
 
 	if cfg.LogFormat != "json" && cfg.LogFormat != "text" {
