@@ -8,10 +8,10 @@ for the corrected workspace and preserved security-review work.
 The implementation scope is the platform backbone and HRMS employee records.
 Frontend integration is deferred.
 
-The previous API is preserved in `apps/api.bak/`. The first rebuild layer contains
-a standard-library HTTP entry point and the proposed directory scaffold. Start
-with the [development commands](development.md); platform and employee behavior
-remain to be implemented.
+The previous API is preserved in `apps/api.bak/`. The rebuild contains a
+standard-library HTTP entry point, validated runtime configuration, and structured
+logging. Start with the [development commands](development.md); persistence,
+platform policy modules, tracing, and employee behavior remain to be implemented.
 
 ## Start here
 
@@ -20,7 +20,7 @@ remain to be implemented.
 3. [API rebuild decision](adr/0001-api-rebuild.md)
 4. [Backend structure](architecture/backend.md)
 5. [Employee request lifecycle](architecture/request-lifecycle.md)
-6. [Sequential roadmap](roadmap.md)
+6. [Sequential roadmap and platform delivery plan](roadmap.md)
 
 ## Component documents
 

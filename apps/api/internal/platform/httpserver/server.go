@@ -4,22 +4,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"time"
 )
 
-func Run(ctx context.Context, address string, handler http.Handler) error {
-	listener, err := net.Listen("tcp", address)
+type Options struct {
+	Address         string
+	ShutdownTimeout time.Duration
+}
+
+func Run(ctx context.Context, options Options, logger *slog.Logger, handler http.Handler) error {
+	listener, err := net.Listen("tcp", options.Address)
 	if err != nil {
-		return fmt.Errorf("listen on %s: %w", address, err)
+		return fmt.Errorf("listen on %s: %w", options.Address, err)
 	}
 
 	server := &http.Server{
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
+		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 	defer server.Close()
 
@@ -28,7 +34,7 @@ func Run(ctx context.Context, address string, handler http.Handler) error {
 		serverErrors <- server.Serve(listener)
 	}()
 
-	log.Printf("API listening on %s", listener.Addr())
+	logger.Info("HTTP server started", "address", listener.Addr().String())
 
 	select {
 	case err := <-serverErrors:
@@ -37,7 +43,8 @@ func Run(ctx context.Context, address string, handler http.Handler) error {
 		}
 		return fmt.Errorf("serve HTTP: %w", err)
 	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		logger.Info("HTTP server stopping", "timeout", options.ShutdownTimeout.String())
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), options.ShutdownTimeout)
 		defer cancel()
 
 		if err := server.Shutdown(shutdownCtx); err != nil {

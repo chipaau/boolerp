@@ -1,18 +1,21 @@
 # Backend architecture
 
-Status: hexagonal modular-monolith direction selected; directory scaffold and
-minimal HTTP entry point created. Detailed contracts and tool choices remain
-proposed. See [the decision register](../decisions/README.md).
+Status: hexagonal modular-monolith direction selected; directory scaffold,
+HTTP entry point, runtime configuration, and structured logging implemented.
+Remaining contracts and tool choices are proposed. See
+[the decision register](../decisions/README.md).
 
 The new API lives in `apps/api/`; the previous implementation is preserved in
 `apps/api.bak/`. The target directories are scaffolded with `.gitkeep` files where
 implementation is deferred. Filenames in this tree illustrate future responsibilities
 unless listed as current below; they are not approved tables or contracts.
 
-The current Go files are `cmd/api/main.go`, `internal/bootstrap/wiring.go`,
-`internal/bootstrap/routes.go`, and `internal/platform/httpserver/server.go`.
-Only process lifecycle and `GET /api/healthz` are implemented. `APP_PORT` defaults
-to 8080. This scaffold has no external Go dependencies and needs no `go.sum`.
+Current runtime code lives in `cmd/api`, `internal/bootstrap`, and
+`internal/platform/{config,httpserver,observability}`. It implements validated
+configuration, structured logging, process lifecycle, and `GET /api/healthz`.
+The entry point loads configuration and constructs the logger; bootstrap passes
+explicit settings and the logger to the HTTP server. No global logger is replaced.
+`APP_PORT` defaults to 8080. There are no external Go dependencies or `go.sum`.
 
 ## Target layout
 
@@ -150,7 +153,8 @@ query interface alone does not remove dependency on generated persistence types.
 | PostgreSQL | Selected |
 | Redis caching | Selected |
 | Chi, pgx, sqlc, Goose | Recommended candidates; not re-confirmed for the fresh implementation |
-| Structured slog logs and OpenTelemetry | Recommended; exporter and operational policy open |
+| Structured slog logs | Implemented in platform step 1; JSON/info to stdout by default |
+| OpenTelemetry | Proposed; propagation, exporter, and operational policy open |
 | Authentication and authorization engines | Open; former providers are not inherited |
 | Queue implementation and Redis client | Open |
 
