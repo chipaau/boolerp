@@ -1,8 +1,6 @@
 name: erp
 
 # Local dev stack. Attaches to the shared external `proxy` network (Traefik) at *.bool.test.
-# JS services use the erp Node 24 + pnpm 11 dev image (docker/node.Dockerfile).
-# Grows service-by-service (postgres, kratos, cerbos, api, admin, website) as we build them.
 
 x-node: &node
   build:
@@ -34,43 +32,11 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      # tenant subdomains → the app SPA (low priority; fixed hosts like admin.* win at higher priority)
       - "traefik.http.routers.erp-app.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`)"
       - traefik.http.routers.erp-app.entrypoints=web
       - traefik.http.routers.erp-app.priority=1
       - traefik.http.routers.erp-app.service=erp-app
       - traefik.http.services.erp-app.loadbalancer.server.port=3000
-
-  admin:
-    <<: *node
-    command: pnpm --filter admin dev
-    networks:
-      - proxy
-      - internal
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=proxy
-      # fixed operator host (priority 10 beats the tenant HostRegexp)
-      - "traefik.http.routers.erp-admin.rule=Host(`admin.bool.test`)"
-      - traefik.http.routers.erp-admin.entrypoints=web
-      - traefik.http.routers.erp-admin.priority=10
-      - traefik.http.routers.erp-admin.service=erp-admin
-      - traefik.http.services.erp-admin.loadbalancer.server.port=3000
-
-  website:
-    <<: *node
-    command: pnpm --filter website dev
-    networks:
-      - proxy
-      - internal
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=proxy
-      - "traefik.http.routers.erp-website.rule=Host(`website.bool.test`) || Host(`bool.test`)"
-      - traefik.http.routers.erp-website.entrypoints=web
-      - traefik.http.routers.erp-website.priority=10
-      - traefik.http.routers.erp-website.service=erp-website
-      - traefik.http.services.erp-website.loadbalancer.server.port=3000
 
   postgres:
     image: postgres:18
@@ -80,90 +46,31 @@ services:
     networks:
       - internal
     healthcheck:
-      # -h 127.0.0.1 forces the check over TCP, which is what every dependent actually uses. Without
-      # it pg_isready probes the unix socket, and the entrypoint's bootstrap server (initdb, started
-      # with listen_addresses='') answers there — so the healthcheck went green mid-init, dependents
-      # started, and postgres then restarted for real underneath them: "the database system is
-      # starting up" / "database erp does not exist" / connection refused. The bootstrap server never
-      # listens on TCP, so this stays unhealthy until the real one is up.
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
       interval: 5s
       timeout: 3s
       retries: 10
-
-  # one-shot: seeds dev logins (malecouncil owner + internal operator). Safe to re-run.
-  # Needs Kratos admin (identity creation) and a migrated DB (role/tenant rows).
-  provision-dev:
-    build:
-      context: .
-      dockerfile: docker/go.Dockerfile
-    working_dir: /w/apps/api
-    command: go run -buildvcs=false ./cmd/provision-dev
-    env_file: .env
-    volumes:
-      - .:/w
-      - gocache:/root/.cache/go-build
-      - gomod:/go/pkg/mod
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      kratos:
-        condition: service_started
-    networks:
-      - internal
-    restart: "no"
-
-  # one-shot: applies embedded Goose migrations as the OWNER, then exits. api waits on it.
-  migrate:
-    build:
-      context: .
-      dockerfile: docker/go.Dockerfile
-    working_dir: /w/apps/api
-    # -buildvcs=false: this directory is a bind-mounted checkout, not a git clone the container
-    # owns — Go's VCS-stamping git calls can fail on CI runners (ownership/shallow-clone mismatch);
-    # we don't need embedded VCS info in a dev binary anyway.
-    command: go run -buildvcs=false ./cmd/migrate up
-    env_file: .env
-    volumes:
-      - .:/w
-      - gocache:/root/.cache/go-build
-      - gomod:/go/pkg/mod
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - internal
-    restart: "no"
 
   api:
     build:
       context: .
       dockerfile: docker/go.Dockerfile
     working_dir: /w/apps/api
-    # Hot reload: air watches apps/api/**/*.go, rebuilds, and restarts the process (see
-    # apps/api/.air.toml). Dev-only — scaling to multiple replicas uses docker/api.Dockerfile's
-    # prebuilt static binary instead, never this rebuild-on-boot image.
-    command: air
+    command: ["sh", "-c", "go build -buildvcs=false -o /tmp/bool-api ./cmd/api && exec /tmp/bool-api"]
+    env_file: .env
+    environment:
+      APP_PORT: "${APP_PORT:-8080}"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:${APP_PORT:-8080}/api/healthz"]
       interval: 5s
       timeout: 3s
       retries: 5
       start_period: 60s
-    # Self-host default is stdout structured logs, zero external backends (see internal/observability's
-    # own doc comment) — but stdout alone isn't durable: Docker's json-file driver keeps it on disk
-    # (docker compose logs api works after a restart) as long as it's bounded, so cap it here rather
-    # than leaving it to grow forever. A request_id in an error response (see internal/respond.Error)
-    # is enough to grep these files for its matching log line even without any log aggregator.
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "5"
-    # The whole environment comes from .env (see .env.example). Naming variables here would put the
-    # config back in the repo one layer up, and a variable this list forgot is one the service starts
-    # without — APP_SHUTDOWN_TIMEOUT was exactly that.
-    env_file: .env
     volumes:
       - .:/w
       - gocache:/root/.cache/go-build
@@ -173,66 +80,21 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-      kratos:
-        condition: service_started
-      cerbos:
-        condition: service_healthy
     networks:
       - proxy
       - internal
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      # same-origin /api/* on every subdomain → the Go API. The Go router itself has no /api prefix
-      # in its own path space (see internal/httpapi/router.go) — Traefik strips it before forwarding,
-      # same pattern as the Kratos /auth router below.
+      # same-origin /api/* on every subdomain → the Go API (priority beats the SPA routers)
       - "traefik.http.routers.erp-api.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && PathPrefix(`/api`)"
       - traefik.http.routers.erp-api.entrypoints=web
       - traefik.http.routers.erp-api.priority=20
-      - "traefik.http.routers.erp-api.middlewares=erp-api-strip"
-      - "traefik.http.middlewares.erp-api-strip.stripprefix.prefixes=/api"
       - traefik.http.routers.erp-api.service=erp-api
-      - traefik.http.services.erp-api.loadbalancer.server.port=8080
-      # fixed host, direct to the API — no /api prefix needed at all here, this host IS the API
-      # (e.g. api.bool.test/v1/me, api.bool.test/healthz); same service as above.
-      - "traefik.http.routers.erp-api-host.rule=Host(`api.bool.test`)"
-      - traefik.http.routers.erp-api-host.entrypoints=web
-      - traefik.http.routers.erp-api-host.priority=10
-      - traefik.http.routers.erp-api-host.service=erp-api
-
-  # Integration tests (Testcontainers). NOT started by `up` (test profile) — run with:
-  #   docker compose run --rm test
-  # Spawns a sibling Postgres via the mounted docker socket; HOST_OVERRIDE lets the in-container
-  # test process reach the sibling's published port on OrbStack. Ryuk off — the harness self-cleans.
-  test:
-    profiles: ["test"]
-    build:
-      context: .
-      dockerfile: docker/go.Dockerfile
-    working_dir: /w/apps/api
-    command: go test -buildvcs=false -tags=integration ./...
-    environment:
-      DOCKER_HOST: unix:///var/run/docker.sock
-      TESTCONTAINERS_RYUK_DISABLED: "true"
-      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
-    # OrbStack/Docker Desktop define host.docker.internal by default; plain Linux dockerd (CI
-    # runners) don't — this magic extra_hosts value works on both, so the "test" service reaches the
-    # sibling Postgres container's published port the same way in CI as it does locally.
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - .:/w
-      - gocache:/root/.cache/go-build
-      - gomod:/go/pkg/mod
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - internal
+      - "traefik.http.services.erp-api.loadbalancer.server.port=${APP_PORT:-8080}"
 
   redis:
     image: redis:8-alpine
-    # cache + rate-limit backend; ephemeral (no persistence). Add a volume if used for a job queue.
     command: redis-server --save "" --appendonly no
     networks:
       - internal
@@ -241,213 +103,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-
-  # dev mail catcher — Kratos courier delivers activation/recovery/verification mail here.
-  # UI at http://mail.bool.test ; SMTP on :1025 (internal).
-  mailpit:
-    image: axllent/mailpit:latest
-    networks:
-      - proxy
-      - internal
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=proxy
-      - "traefik.http.routers.erp-mail.rule=Host(`mail.bool.test`)"
-      - traefik.http.routers.erp-mail.entrypoints=web
-      - traefik.http.routers.erp-mail.priority=10
-      - traefik.http.routers.erp-mail.service=erp-mail
-      - traefik.http.services.erp-mail.loadbalancer.server.port=8025
-
-  # Cerbos PDP — authz decisions (internal-only, never proxied). Policies mounted from docker/cerbos.
-  cerbos:
-    image: ghcr.io/cerbos/cerbos:0.44.0
-    command: ["server", "--config=/config/config.yaml"]
-    volumes:
-      - ./docker/cerbos/config:/config:ro
-      - ./docker/cerbos/policies:/policies:ro
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD", "/cerbos", "healthcheck", "--config=/config/config.yaml"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-  # one-shot: create the `kratos` database (separate from erp) if absent. Kratos owns its schema.
-  kratos-initdb:
-    image: postgres:18
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-    command: >
-      sh -c "psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -tc \"SELECT 1 FROM pg_database WHERE datname='kratos'\" | grep -q 1 || psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c 'CREATE DATABASE kratos'"
-    networks:
-      - internal
-    restart: "no"
-
-  # one-shot: apply Kratos' own SQL migrations to the kratos DB.
-  kratos-migrate:
-    image: oryd/kratos:v1.3.1
-    depends_on:
-      kratos-initdb:
-        condition: service_completed_successfully
-    environment:
-      DSN: ${KRATOS_DSN}
-    volumes:
-      - ./docker/kratos:/etc/config/kratos:ro
-    command: ["migrate", "sql", "-e", "--yes"]
-    networks:
-      - internal
-    restart: "no"
-
-  # Ory Kratos — identity + sessions. Public served same-origin under /auth on tenant subdomains
-  # (Traefik strips /auth). Admin (4434) stays internal-only.
-  kratos:
-    image: oryd/kratos:v1.3.1
-    depends_on:
-      kratos-migrate:
-        condition: service_completed_successfully
-      mailpit:
-        condition: service_started
-    environment:
-      DSN: ${KRATOS_DSN}
-    volumes:
-      - ./docker/kratos:/etc/config/kratos:ro
-    command: ["serve", "-c", "/etc/config/kratos/kratos.yml", "--dev", "--watch-courier"]
-    networks:
-      - proxy
-      - internal
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=proxy
-      # same-origin /auth/* on tenant subdomains → Kratos public (strip /auth before forwarding)
-      - "traefik.http.routers.erp-kratos.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && PathPrefix(`/auth`)"
-      - traefik.http.routers.erp-kratos.entrypoints=web
-      - traefik.http.routers.erp-kratos.priority=20
-      - "traefik.http.routers.erp-kratos.middlewares=erp-kratos-strip"
-      - "traefik.http.middlewares.erp-kratos-strip.stripprefix.prefixes=/auth"
-      - traefik.http.routers.erp-kratos.service=erp-kratos
-      - traefik.http.services.erp-kratos.loadbalancer.server.port=4433
-
-  # --- Local observability stack (component 07) --------------------------------------------------
-  # Mirrors the recommended SaaS/self-host backend (Grafana Loki + Tempo + Prometheus — see
-  # docs/srs/phase-1/07-observability/checklist.md's still-open "SaaS backend choice"; this is what
-  # that choice would look like, not a commitment to it) so tracing/logging/metrics are actually
-  # visible locally, not just wired in code with nowhere to send them. Internal-only except Grafana.
-
-  # Scrapes the API's own /metrics (APP_METRICS_ENABLED, opt-in — on by default in this dev stack).
-  # Exposed directly (not just through Grafana) for ad-hoc PromQL/targets debugging.
-  prometheus:
-    image: prom/prometheus:v3.14.0
-    volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    networks:
-      - proxy
-      - internal
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=proxy
-      - "traefik.http.routers.erp-prometheus.rule=Host(`prometheus.bool.test`)"
-      - traefik.http.routers.erp-prometheus.entrypoints=web
-      # priority 30: beats erp-api's HostRegexp(*.bool.test)+PathPrefix(/api) router (prio 20),
-      # which would otherwise hijack prometheus.bool.test/api/* (PromQL API lives under /api/v1)
-      - traefik.http.routers.erp-prometheus.priority=30
-      - traefik.http.routers.erp-prometheus.service=erp-prometheus
-      - traefik.http.services.erp-prometheus.loadbalancer.server.port=9090
-
-  # Accepts OTLP traces from the API (APP_OTLP_ENDPOINT, opt-in — on by default in this dev stack).
-  # Exposed directly for its own HTTP API (e.g. /api/search) — no UI of its own, normally queried
-  # through Grafana, but useful to hit straight for debugging.
-  tempo:
-    image: grafana/tempo:3.0.0
-    command: ["-config.file=/etc/tempo.yml"]
-    volumes:
-      - ./docker/tempo/tempo.yml:/etc/tempo.yml:ro
-      - tempo-data:/var/tempo
-    networks:
-      - proxy
-      - internal
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=proxy
-      - "traefik.http.routers.erp-tempo.rule=Host(`tempo.bool.test`)"
-      - traefik.http.routers.erp-tempo.entrypoints=web
-      # priority 30: same erp-api /api/* collision as erp-prometheus above (Tempo's own API is /api/*)
-      - traefik.http.routers.erp-tempo.priority=30
-      - traefik.http.routers.erp-tempo.service=erp-tempo
-      - traefik.http.services.erp-tempo.loadbalancer.server.port=3200
-
-  # Log storage — promtail below ships every container's stdout here. Exposed directly for its own
-  # HTTP API (e.g. /loki/api/v1/query_range) — same reasoning as Tempo above.
-  loki:
-    image: grafana/loki:3.7.7
-    command: ["-config.file=/etc/loki/loki.yml"]
-    volumes:
-      - ./docker/loki/loki.yml:/etc/loki/loki.yml:ro
-      - loki-data:/loki
-    networks:
-      - proxy
-      - internal
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=proxy
-      - "traefik.http.routers.erp-loki.rule=Host(`loki.bool.test`)"
-      - traefik.http.routers.erp-loki.entrypoints=web
-      - traefik.http.routers.erp-loki.priority=10
-      - traefik.http.routers.erp-loki.service=erp-loki
-      - traefik.http.services.erp-loki.loadbalancer.server.port=3100
-
-  # Ships every container's stdout to Loki via Docker service discovery — the api container's JSON
-  # log lines are parsed so request_id/trace_id (see internal/respond.Error, internal/observability's
-  # RequestLogger) are queryable fields, not just raw text. Exposed for its own target-discovery
-  # debug page (which containers is it actually tailing).
-  promtail:
-    image: grafana/promtail:3.6.8
-    command: ["-config.file=/etc/promtail/promtail.yml"]
-    volumes:
-      - ./docker/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - proxy
-      - internal
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=proxy
-      - "traefik.http.routers.erp-promtail.rule=Host(`promtail.bool.test`)"
-      - traefik.http.routers.erp-promtail.entrypoints=web
-      - traefik.http.routers.erp-promtail.priority=10
-      - traefik.http.routers.erp-promtail.service=erp-promtail
-      - traefik.http.services.erp-promtail.loadbalancer.server.port=9080
-
-  # Single pane of glass over all three — provisioned datasources, no manual setup. Tempo's "view
-  # logs for this trace" jumps straight to the matching Loki lines via trace_id.
-  grafana:
-    image: grafana/grafana:13.2.1
-    # Anonymous admin with no login form — a deliberate dev convenience and a production hazard, so
-    # it lives in .env where it is visible rather than buried in this file.
-    env_file: .env
-    volumes:
-      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
-      - grafana-data:/var/lib/grafana
-    depends_on:
-      - prometheus
-      - loki
-      - tempo
-    networks:
-      - proxy
-      - internal
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=proxy
-      - "traefik.http.routers.erp-grafana.rule=Host(`grafana.bool.test`)"
-      - traefik.http.routers.erp-grafana.entrypoints=web
-      # priority 30: same erp-api /api/* collision — Grafana's UI lives on its own /api/* endpoints
-      - traefik.http.routers.erp-grafana.priority=30
-      - traefik.http.routers.erp-grafana.service=erp-grafana
-      - traefik.http.services.erp-grafana.loadbalancer.server.port=3000
 
 networks:
   proxy:
@@ -460,7 +115,3 @@ volumes:
   gocache:
   gomod:
   pnpm-store:
-  prometheus-data:
-  tempo-data:
-  loki-data:
-  grafana-data:

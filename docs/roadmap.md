@@ -1,48 +1,44 @@
-# Roadmap
+# Sequential roadmap
 
-## Phase 1 — Foundation (identity, tenancy, authz, observability)
+Updated: 2026-09-26.
 
-Everything a business module needs before it can exist. No IMS/HRMS/Procurement/Performance until
-Phase 1 is `Confirmed`.
+This is an implementation sequence, not approval to implement all steps.
+Resolve one decision at a time using the [decision register](decisions/README.md).
 
-| # | Component | Purpose | Status |
-|---|---|---|---|
-| 01 | Platform foundation | Chi skeleton, config, RLS `WithTenant`, `/bootstrap`, seeding, **docker/compose unit**, **self-host first-run** | 🟡 Partially Implemented |
-| 02 | Authentication & sessions | Ory Kratos: password + MFA + passkeys + OIDC, `whoami` validation, session revocation; custom UI in apps/app | 🟢 Confirmed |
-| 03 | Identity & membership | Global `users` (= Kratos subject), `tenant_users`, invites, owner, seat tracking (enforce P2) | 🟡 In Review |
-| 04 | Tenant management | Lifecycle, provisioning engine, hierarchy (ltree/`tree_key`), **visibility: auto-subordinate + mutual-affiliated (hierarchy-bounded)**, suspension | 🟡 Partially Implemented (flat CRUD; hierarchy/visibility deferred) |
-| 05 | Authorization (Cerbos) | Cerbos PDP integration + role/capability/user-role **administration**; internal/operator-tenant model; four-eyes + support-access grants | 🟡 Partially Implemented (enforcement wired; tenant-facing role admin not built) |
-| 06 | Audit | `audit_log` auto-capture (changed-cols + snapshot-on-delete), immutability, ≥7y retention | 🟡 Partially Implemented (tenant lifecycle only; no generic capture layer) |
-| 07 | Observability | Distributed tracing (OpenTelemetry), structured logging, correlation IDs, metrics, health; stdout-default self-host | ✅ Implemented (sampling strategy + SaaS backend choice still open) |
-| 08 | Onboarding & billing | Website self-serve (Odoo-style): plans/pricelists, subscriptions, payment gateway (fake driver → BML), coupons, provisioning trigger + seat enforcement. **Sequenced last; SaaS-only; on-prem sales-gated.** | 🔴 Draft |
+| Stage | Outcome | Current status |
+| --- | --- | --- |
+| 0. Documentation baseline | Fresh branch, current scope/decisions, archived history, centralized agent rules, four-service Compose | Documentation/configuration milestone; no new application implementation |
+| 0a. Executable scaffold | Preserve apps/api.bak; create target directories, main, bootstrap, HTTP lifecycle, and a liveness endpoint | Verified in Docker: build, formatting, vet, liveness, graceful shutdown, invalid-port failure, and standalone image build |
+| 1. Tenant model | Agree what a tenant represents and its relationship to a licensed customer | Next discussion, D01 |
+| 2. Isolation and persistence | Confirm data boundary, application ports, transaction approach, and candidate Go libraries | Open |
+| 3. Identity and authorization | Decide domain-aware login, memberships, permissions, providers, and revocation | Open |
+| 4. Operational contracts | Specify audit, tracing, Redis cache behavior, and required background execution | Open |
+| 5. First schema and foundation | Extend the minimal executable with approved configuration, persistence, migrations, and meaningful tests; approve tables individually | Initial executable scaffold exists; remaining foundation not started |
+| 6. Employee operation | Implement one approved employee operation through domain/application/adapters, including access, audit, and trace | Not started |
+| 7. Cache-backed employee read | Prove scoped Redis caching, invalidation, and failure behavior for a concrete read | Not started |
+| 8. Deployment proof | Verify installation, same-release SaaS/self-host behavior, licensing, upgrades, and restore | Open design; implementation not started |
+| 9. Frontend integration | Define/generate client contract, connect frontend, add browser validation, package assets as agreed | Deferred |
 
-> **Scope note:** components **01**, **03**, the **visibility model in 04**, and **08 Onboarding & billing**
-> (pulled in 2026-08-13 — self-serve website onboarding in Phase 1) are additions beyond the
-> initially-listed five (auth, tenant mgmt, permission, tracing, audit).
->
-> **UI homes:** tenant-facing foundation surfaces (own users, roles, org units, sites, settings) live in
-> the **Control Centre** module of `apps/app`. Operator-facing surfaces (provisioning, suspension,
-> impersonation, cross-tenant) live in **`apps/admin`**.
->
-> **Process:** every component follows **Idea → Expansion → Review → Implementation**; every use case
-> ships with **unit + integration + Playwright e2e** tests (see `README.md` + `.claude/rules/testing.md`).
+Deployment constraints inform earlier choices; postponing implementation does not
+mean ignoring custom-domain or self-host requirements during identity design.
 
-## Phase 2+ (not now)
+## Build layer by layer
 
-- Real payment gateway (**BML/MPGS**) swapped in behind the port; recurring billing / renewals / invoicing.
-- Business modules, in order: **IMS → HRMS → Procurement → Performance** (each its own confirmed SRS + DB model).
+1. **Executable and HTTP shell:** current scaffold; liveness only, no application operations.
+2. **Runtime configuration and logging:** agree configuration/error contracts and
+   structured logging before expanding startup behavior.
+3. **PostgreSQL and Redis infrastructure:** select clients and define connection,
+   timeout, and readiness behavior without creating unapproved tables.
+4. **Identity, tenancy, and authorization:** settle their model decisions one at
+   a time, then enforce the application execution boundary.
+5. **Transactions, audit, tracing, and caching:** implement the approved contracts
+   and their integration checks; keep these capabilities distinct.
+6. **Employee domain, application, and adapters:** approve the employee model and
+   implement one complete operation before expanding its API.
 
-## Orphaned platform topics — proposed placement (pending review)
+The previous API is preserved in `apps/api.bak`. It is not a source of inherited
+implementation decisions, and its migrations must not be used for the new API.
+Keep existing databases intact unless a separate data migration/reset is authorized.
 
-Docs consolidation (2026-09-11) surfaced platform-level topics from the prior codebase's
-`DB-PLATFORM.md` that don't map to any line above. Proposed placements below — **none of these are
-decided**; they need the same explicit sign-off as a new roadmap line or table.
-
-| Topic | Prior tables | Proposal | Why |
-|---|---|---|---|
-| **Module activation** | `module_activations`, `module_admins` | Already placed — component **06 (Audit)**/foundation, per `data-model/DB-FOUNDATION.md`'s deferred list. `module_admins` isn't explicitly named there; piggyback it on the same landing. | No new decision needed, just confirming it's tracked. |
-| **Sites** | `site_types`, `site_categories`, `sites`, `org_unit_sites` | New Phase 1 component — **09 Sites & locations**, sequenced after 04 (Tenant management). | Physical locations are tenant-scoped infrastructure every business module needs (IMS storage points, HRMS device sites) — fits Phase 1's own "everything a business module needs before it can exist" framing, not tenant lifecycle itself. |
-| **Party registry** | `parties` (party_types/classification already ✅ in DB-FOUNDATION) | Defer to Phase 2 — first module that needs it (likely HRMS employee-as-party or Procurement supplier-as-party) defines its initial shape. | No Phase 1 component currently needs a generic party master record; `users`/`tenant_users` already cover human identity. Forcing it into Phase 1 speculatively risks the wrong shape. |
-| **Workflow engine** | `workflow_definitions`, `workflow_instances`, `workflow_steps` | **Open — needs a real decision, not a default.** Option A: new Phase 1 component (approval chains are load-bearing for nearly every Phase 2 module). Option B: Phase 2, first module (Procurement PR approval, or HRMS leave approval) builds its own, extracted into a shared engine once a second consumer exists. | This is the biggest-scope item here — a generic workflow engine is substantial work; deferring risks each module reinventing approval chains, building early risks over-engineering before there's a second real consumer. |
-| **Documents & numbering** | `document_templates`, `documents`, `numbering_series` | Defer to Phase 2. | The gapless-numbering *invariant* is already documented (`.claude/rules/tenancy.md`); the tables themselves aren't needed until something issues numbered documents (invoices, POs, IUL letters) — and invoicing itself is already Phase 2+ per this roadmap. |
-| **Notifications** | `notification_templates`, `notification_log` | Defer to Phase 2, with a note: component 05's four-eyes approval flows (role-change proposals, access grants) may want a Phase 1 notification stub sooner than the business modules do. | Kratos's own courier already covers auth-related mail (component 02); generic in-app/SMS notification infra is otherwise business-module-driven. |
+Do not expand the business scope beyond employee records or build a generic
+framework before the first complete operation proves the backbone.

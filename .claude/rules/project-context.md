@@ -1,27 +1,20 @@
-# Project context
+# Project context rules
 
-**What:** `erp` is a from-scratch Go rewrite of the existing Laravel **Bool ERP**. The product
-is a multi-tenant ERP (inventory/IMS, HRMS, procurement, performance, …) sold as global SaaS and
-also self-hostable by a single institution (e.g. a ministry) that runs it for itself and its
-subordinate facilities.
+The active scope is documented in [product/scope.md](../../docs/product/scope.md)
+and [ADR 0001](../../docs/adr/0001-api-rebuild.md).
 
-**Clients:** Maldivian government (councils, ministries, health facilities), plus private
-companies. Regulated / institutional-trust posture — audit, per-tenant data lifecycle, and
-prompt access revocation matter.
+- Treat the API as a fresh implementation in the existing monorepo.
+- The previous API is archived at `apps/api.bak/`; leave it out of new-API builds
+  and do not modify or execute its migrations without an explicit request.
+- Do not derive new schemas, routes, provider choices, or business behavior from the
+  previous API or sibling repositories unless explicitly asked to research them.
+- Focus on the platform backbone and HRMS employee records only.
+- Defer frontend integration; frontend code is not the contract for the new API.
+- Preserve SaaS and self-hosted requirements in design without inventing deployment
+  or licensing decisions that have not been confirmed.
+- Use the [roadmap](../../docs/roadmap.md) to keep work sequential and bounded.
 
-**Deployment (dual target, one codebase):**
-- **SaaS:** many tenants, regional clusters for residency, operator-provisioned (not self-serve at scale).
-- **Self-hosted:** one institution + its sub-tenants on their own box, operated by non-experts.
-  Optimize for *one artifact, one migration command, minimal moving parts.*
-
-**Tenant counts** are bounded (hundreds to low thousands of paying institutions), never millions.
-
-## Decisions locked
-
-1. **Isolation model: pooled + Postgres RLS** (2026-08-13) — reverses `../erp`'s schema-per-tenant.
-   See `tenancy.md`.
-2. **Grain: `tenant_id` only** — no `company_id`; multi-entity = the tenant hierarchy. See `tenancy.md`.
-
-Next order of work: write erp **ADR 0001** (tenancy, mirroring the `../erp` ADR format) →
-**confirm the tenancy-spine table DDL** (`tenants`, `tenant_users`, `tenant_visibility_grants`,
-`users`, roles) per the data-model rule → scaffold the `docker/` unit + minimal Chi skeleton.
+The canonical checkout is `/Users/chipaau/code/bool/erp`, with the GitHub remote
+`git@github.com:boolmv/erp.git`. The sibling `go-erp` checkout is not the active
+workspace. See [repository transfer](../../docs/repository-transfer.md) before
+recovering saved security-review work or changing branches.
