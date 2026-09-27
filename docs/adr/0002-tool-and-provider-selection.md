@@ -13,9 +13,9 @@ decide every policy or operational contract around it.
 
 ## Decision
 
-- Use chi as the Go API HTTP framework. The existing step 2 foundation currently
-  uses the standard-library `http.ServeMux`; migrate it to chi before adding
-  business routes. Keep domain and application code independent of chi.
+- Use chi as the Go API HTTP framework. Step 2a migrated the foundation to chi
+  before business routes were added. Keep domain and application code independent
+  of chi.
 - Use PostgreSQL as the application database. The platform foundation uses
   pgx/v5 pgxpool and Goose; sqlc remains deferred until an approved table needs
   generated queries.
@@ -35,6 +35,9 @@ decide every policy or operational contract around it.
 
 - These component selections do not mean their integrations are implemented.
 - Existing implementation status is documented separately from selected direction.
+- Canonical path cleanup uses 307 Temporary Redirect and preserves the request
+  method, body, and query. This is an intentional behavior change from the prior
+  ServeMux redirect; see C23 and the [HTTP contract](../platform/http.md).
 - Detailed contracts remain open in the [decision register](../decisions/README.md)
   and their component documents.
 - A suitable S3 Go SDK should be used rather than hand-writing S3 protocol code;

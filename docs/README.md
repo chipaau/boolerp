@@ -10,10 +10,10 @@ Frontend integration is deferred.
 
 The previous API is preserved in `apps/api.bak/`. The rebuild contains an HTTP
 foundation, validated runtime configuration, structured request logging, and a
-PostgreSQL pool/readiness/migration foundation. Chi is the selected HTTP framework;
-the current foundation still uses `net/http` ServeMux pending its migration. Start with
-the [development commands](development.md); application persistence, platform
-policy modules, tracing, and employee behavior remain to be implemented.
+PostgreSQL pool/readiness/migration foundation. Chi is selected and implemented
+as the HTTP framework; the shared `httpserver` package remains framework-agnostic.
+Start with the [development commands](development.md); application persistence,
+platform policy modules, tracing, and employee behavior remain to be implemented.
 
 ## Start here
 

@@ -11,21 +11,22 @@ import (
 	"time"
 )
 
-// NewHandler applies the shared HTTP boundary to a private ServeMux. It trusts
-// neither inbound request IDs nor forwarded client/host/protocol headers.
-func NewHandler(router *http.ServeMux, logger *slog.Logger, maxBodyBytes int64) http.Handler {
+// NewHandler applies the shared HTTP boundary to a router. It trusts neither
+// inbound request IDs nor forwarded client/host/protocol headers.
+func NewHandler(router http.Handler, logger *slog.Logger, maxBodyBytes int64) http.Handler {
 	origins := http.NewCrossOriginProtection()
 	origins.SetDenyHandler(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		WriteProblem(writer, request, http.StatusForbidden, "Cross-origin requests are not allowed.")
 	}))
-	next := origins.Handler(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		serveRoute(router, writer, request)
-	}))
+	next := origins.Handler(router)
 
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		started := time.Now()
 		id := rand.Text()
-		request = request.WithContext(context.WithValue(request.Context(), requestIDKey{}, id))
+		var pattern string
+		ctx := context.WithValue(request.Context(), requestIDKey{}, id)
+		ctx = context.WithValue(ctx, routePatternKey{}, &pattern)
+		request = request.WithContext(ctx)
 		for key := range request.Header {
 			lower := strings.ToLower(key)
 			if lower == "forwarded" || lower == "x-real-ip" || strings.HasPrefix(lower, "x-forwarded-") || lower == "x-request-id" {
@@ -41,7 +42,7 @@ func NewHandler(router *http.ServeMux, logger *slog.Logger, maxBodyBytes int64) 
 			// Route templates are registered by the server; URLs, query strings,
 			// hostnames, headers, and bodies can contain private caller data.
 			requestLogger.Info("HTTP request completed", "method", logMethod(request.Method),
-				"route", request.Pattern, "status", response.status, "bytes", response.bytes,
+				"route", pattern, "status", response.status, "bytes", response.bytes,
 				"duration_ms", float64(time.Since(started).Microseconds())/1000, "aborted", aborted)
 		}()
 		defer func() {

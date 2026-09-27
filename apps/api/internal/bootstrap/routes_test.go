@@ -1,7 +1,9 @@
 package bootstrap
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -9,6 +11,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/boolmv/erp/internal/platform/httpserver"
+	"github.com/go-chi/chi/v5"
 )
 
 func TestHealthAndFallbackUseHTTPFoundation(t *testing.T) {
@@ -16,9 +21,10 @@ func TestHealthAndFallbackUseHTTPFoundation(t *testing.T) {
 	for _, test := range []struct {
 		method, path string
 		status       int
+		allow        string
 	}{
-		{"GET", "/api/healthz", 200}, {"HEAD", "/api/healthz", 200},
-		{"POST", "/api/healthz", 405}, {"GET", "/missing", 404},
+		{"GET", "/api/healthz", 200, ""}, {"HEAD", "/api/healthz", 200, ""},
+		{"POST", "/api/healthz", 405, "GET, HEAD"}, {"GET", "/missing", 404, ""},
 	} {
 		t.Run(test.method+test.path, func(t *testing.T) {
 			response := httptest.NewRecorder()
@@ -28,6 +34,9 @@ func TestHealthAndFallbackUseHTTPFoundation(t *testing.T) {
 			}
 			if test.status >= 400 && response.Header().Get("Content-Type") != "application/problem+json" {
 				t.Fatal("fallback did not use JSON problem details")
+			}
+			if got := response.Header().Get("Allow"); got != test.allow {
+				t.Fatalf("Allow = %q, want %q", got, test.allow)
 			}
 			if test.method == http.MethodHead && response.Body.Len() != 0 {
 				t.Fatal("HEAD returned a body")
@@ -41,6 +50,39 @@ func TestHealthAndFallbackUseHTTPFoundation(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCanonicalPathRedirectUsesMethodPreservingStatus(t *testing.T) {
+	handler := routes(slog.New(slog.NewJSONHandler(io.Discard, nil)), 1024, func(context.Context) error { return nil }, time.Second)
+	request := httptest.NewRequest(http.MethodPost, "/api//healthz?check=ready", strings.NewReader("body"))
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusTemporaryRedirect || response.Header().Get("Location") != "/api/healthz?check=ready" {
+		t.Fatalf("unexpected canonical redirect: status=%d location=%q", response.Code, response.Header().Get("Location"))
+	}
+}
+
+func TestRoutePatternIsCapturedWhenHandlerPanics(t *testing.T) {
+	var logs bytes.Buffer
+	router := chi.NewRouter()
+	router.Use(captureRoutePattern)
+	router.Get("/private/{id}", func(http.ResponseWriter, *http.Request) {
+		panic("private handler panic")
+	})
+	handler := httpserver.NewHandler(router, slog.New(slog.NewJSONHandler(&logs, nil)), 1024)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/private/123", nil))
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("panic response status = %d, want 500", response.Code)
+	}
+	entries := strings.Split(strings.TrimSpace(logs.String()), "\n")
+	var completion map[string]any
+	if err := json.Unmarshal([]byte(entries[len(entries)-1]), &completion); err != nil {
+		t.Fatalf("parse completion log: %v", err)
+	}
+	if completion["route"] != "/private/{id}" {
+		t.Fatalf("panic completion log route = %v, want /private/{id}", completion["route"])
 	}
 }
 

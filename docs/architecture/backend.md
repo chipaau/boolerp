@@ -161,7 +161,7 @@ query interface alone does not remove dependency on generated persistence types.
 | Go | Selected |
 | PostgreSQL | Selected |
 | Redis caching | Selected |
-| HTTP routing | chi selected; step 2 foundation currently uses standard-library ServeMux pending migration |
+| HTTP routing | chi selected and implemented; routes registered in bootstrap, httpserver remains framework-agnostic |
 | pgx/v5 pgxpool | Selected and implemented for the PostgreSQL pool |
 | Goose | Selected and implemented for explicit migrations |
 | sqlc | Deferred until an approved table needs generated queries |

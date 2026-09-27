@@ -12,9 +12,11 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 )
 
-func startNetworkServer(t *testing.T, options Options, router *http.ServeMux, maxBodyBytes int64) string {
+func startNetworkServer(t *testing.T, options Options, router http.Handler, maxBodyBytes int64) string {
 	t.Helper()
 	ctx, cancel := context.WithCancel(t.Context())
 	output := lifecycleOutput{make(chan string, 1), make(chan struct{}, 1)}
@@ -46,8 +48,8 @@ func dialServer(t *testing.T, address string) net.Conn {
 }
 
 func TestBodyReadDeadlineAndChunkedLimit(t *testing.T) {
-	router := http.NewServeMux()
-	router.HandleFunc("POST /input", func(writer http.ResponseWriter, request *http.Request) {
+	router := chi.NewRouter()
+	router.Post("/input", func(writer http.ResponseWriter, request *http.Request) {
 		var input struct {
 			Name string `json:"name"`
 		}
@@ -92,8 +94,8 @@ func TestBodyReadDeadlineAndChunkedLimit(t *testing.T) {
 
 func TestWriteDeadline(t *testing.T) {
 	entered := make(chan struct{}, 1)
-	router := http.NewServeMux()
-	router.HandleFunc("GET /slow", func(writer http.ResponseWriter, request *http.Request) {
+	router := chi.NewRouter()
+	router.Get("/slow", func(writer http.ResponseWriter, request *http.Request) {
 		entered <- struct{}{}
 		<-time.After(500 * time.Millisecond)
 		io.WriteString(writer, "late response")
@@ -118,8 +120,8 @@ func TestWriteDeadline(t *testing.T) {
 }
 
 func TestHeaderSizeLimit(t *testing.T) {
-	router := http.NewServeMux()
-	router.HandleFunc("GET /health", func(writer http.ResponseWriter, request *http.Request) {
+	router := chi.NewRouter()
+	router.Get("/health", func(writer http.ResponseWriter, request *http.Request) {
 		t.Error("oversized headers reached the handler")
 	})
 	address := startNetworkServer(t, Options{ReadHeaderTimeout: time.Second, ReadTimeout: time.Second, WriteTimeout: 2 * time.Second, IdleTimeout: time.Second}, router, 1024)
@@ -141,8 +143,8 @@ func TestHeaderSizeLimit(t *testing.T) {
 }
 
 func TestHeaderAndIdleDeadlines(t *testing.T) {
-	router := http.NewServeMux()
-	router.HandleFunc("GET /health", func(writer http.ResponseWriter, request *http.Request) { writer.WriteHeader(http.StatusNoContent) })
+	router := chi.NewRouter()
+	router.Get("/health", func(writer http.ResponseWriter, request *http.Request) { writer.WriteHeader(http.StatusNoContent) })
 	address := startNetworkServer(t, Options{
 		ReadHeaderTimeout: 100 * time.Millisecond, ReadTimeout: time.Second,
 		WriteTimeout: time.Second, IdleTimeout: 100 * time.Millisecond,
@@ -181,8 +183,8 @@ func TestHeaderAndIdleDeadlines(t *testing.T) {
 }
 
 func TestPanicAfterCommitAbortsConnection(t *testing.T) {
-	router := http.NewServeMux()
-	router.HandleFunc("GET /partial", func(writer http.ResponseWriter, request *http.Request) {
+	router := chi.NewRouter()
+	router.Get("/partial", func(writer http.ResponseWriter, request *http.Request) {
 		io.WriteString(writer, "partial")
 		if err := http.NewResponseController(writer).Flush(); err != nil {
 			panic(err)
