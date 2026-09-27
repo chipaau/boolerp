@@ -26,6 +26,8 @@ would remain outside distributed releases.
 Self-hosted authentication, operational dependencies, and telemetry export must be
 deliberately configured rather than rely on implicit SaaS infrastructure.
 Frontend embedding and distribution are deferred until frontend integration.
+File/object storage uses the S3 API; development uses `chipaau/minio`, while the
+production provider and SDK remain open. See [storage](storage.md).
 
 ## Open decisions
 

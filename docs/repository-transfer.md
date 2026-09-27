@@ -67,10 +67,12 @@ startup, or data reset was performed.
 
 ## Frontend and automation boundary
 
-The retained frontend has Kratos login/session flows and some real operator API
-calls, but its employee data is still fixture-backed. Removing legacy providers
-from Compose intentionally disconnects those flows during the rebuild. Their
-presence does not approve providers or routes for the new API.
+At the time of transfer, the retained frontend had Kratos login/session flows and
+some real operator API calls, but its employee data was fixture-backed. Removing
+legacy providers from Compose intentionally disconnected those flows during the
+rebuild; their presence alone did not approve providers or routes for the new API.
+Kratos and Cerbos are now selected for the new API by the user; see
+[ADR 0002](adr/0002-tool-and-provider-selection.md).
 
 CI now checks the new Go scaffold in Docker, while retaining frontend build jobs.
 The legacy browser E2E job is explicitly disabled until frontend integration

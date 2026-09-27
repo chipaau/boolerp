@@ -1,6 +1,7 @@
 # Identity and authentication
 
-Status: required backbone capability; provider, session model, and data model open.
+Status: required backbone capability; Ory Kratos is selected for identity and
+authentication. Session, domain, provisioning, and data-model contracts remain open.
 
 ## Design scope
 

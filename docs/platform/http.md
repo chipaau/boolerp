@@ -1,10 +1,15 @@
 # HTTP foundation
 
-Implemented in platform step 2, 2026-09-27. The API uses Go's standard-library
-`http.ServeMux` and the helpers in `internal/platform/httpserver`. No HTTP framework
-or business endpoints are introduced by this increment.
+Chi is the selected API HTTP framework (C19, [ADR 0002](../adr/0002-tool-and-provider-selection.md)).
+The platform step 2 foundation, implemented 2026-09-27, currently uses Go's
+standard-library `http.ServeMux` and helpers in `internal/platform/httpserver`.
+Migrate that routing foundation to chi in an authorized implementation increment
+before adding business routes. No business endpoints were introduced in step 2.
 
 ## Routing and responses
+
+The behavior below describes the current `ServeMux` implementation and is the
+contract to preserve while moving routing to chi.
 
 `GET /api/healthz` still returns `200` with `{"status":"ok"}`. `HEAD` returns the
 same status and headers without a body. Routes use method-aware ServeMux patterns;

@@ -8,9 +8,10 @@ for the corrected workspace and preserved security-review work.
 The implementation scope is the platform backbone and HRMS employee records.
 Frontend integration is deferred.
 
-The previous API is preserved in `apps/api.bak/`. The rebuild contains a
-standard-library HTTP foundation, validated runtime configuration, structured
-request logging, and a PostgreSQL pool/readiness/migration foundation. Start with
+The previous API is preserved in `apps/api.bak/`. The rebuild contains an HTTP
+foundation, validated runtime configuration, structured request logging, and a
+PostgreSQL pool/readiness/migration foundation. Chi is the selected HTTP framework;
+the current foundation still uses `net/http` ServeMux pending its migration. Start with
 the [development commands](development.md); application persistence, platform
 policy modules, tracing, and employee behavior remain to be implemented.
 
@@ -19,9 +20,10 @@ policy modules, tracing, and employee behavior remain to be implemented.
 1. [Product scope](product/scope.md)
 2. [Confirmed decisions and open questions](decisions/README.md)
 3. [API rebuild decision](adr/0001-api-rebuild.md)
-4. [Backend structure](architecture/backend.md)
-5. [Employee request lifecycle](architecture/request-lifecycle.md)
-6. [Sequential roadmap and platform delivery plan](roadmap.md)
+4. [Framework and provider decisions](adr/0002-tool-and-provider-selection.md)
+5. [Backend structure](architecture/backend.md)
+6. [Employee request lifecycle](architecture/request-lifecycle.md)
+7. [Sequential roadmap and platform delivery plan](roadmap.md)
 
 ## Component documents
 
@@ -29,6 +31,7 @@ policy modules, tracing, and employee behavior remain to be implemented.
 | --- | --- |
 | HTTP routing, errors, and request limits | [HTTP foundation](platform/http.md) |
 | PostgreSQL pool, readiness, and migrations | [PostgreSQL foundation](platform/postgres.md) |
+| File and object storage | [Storage](platform/storage.md) |
 | Identity and authentication | [Identity](platform/identity.md) |
 | Tenants, memberships, and domains | [Tenancy](platform/tenancy.md) |
 | Access decisions | [Authorization](platform/authorization.md) |

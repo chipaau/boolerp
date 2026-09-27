@@ -27,8 +27,9 @@ Dhivehi-content, and binary/container licensing requirements.
 
 - Previous implementation and archived approvals do not constrain the new API.
 - No employee or platform schema is approved by this ADR.
-- Tenant semantics, isolation, persistence ports, concrete libraries, identity,
-  authorization, operational contracts, and licensing details remain open.
+- Tenant semantics, isolation, persistence ports, operational contracts, and
+  licensing details remain open. Confirmed frameworks and providers are recorded
+  in [ADR 0002](0002-tool-and-provider-selection.md).
 - Discuss the [open decisions](../decisions/README.md) one at a time.
 - Preserve earlier documents as explicitly superseded [historical material](../archive/README.md).
 - Do not claim existing code or example structures are an implemented rebuild.

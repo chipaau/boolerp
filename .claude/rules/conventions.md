@@ -10,6 +10,17 @@
 - Confirm data models table by table before implementing tables, migrations, or queries
   against them. Record explicit approval once; do not infer it from illustrative examples.
 - Be critical, explain practical trade-offs, and verify claims when evidence is needed.
+- Prefer established, maintained frameworks, libraries, and SDKs that fit the
+  confirmed architecture and use case. Do not build in-house substitutes for
+  capabilities a suitable ecosystem tool already provides.
+- When a choice would change an architectural boundary, external provider,
+  dependency, operational contract, or user-visible behavior, explain the concrete
+  need, recommend an option with trade-offs, and ask the user before deciding or
+  implementing it. Record the user's decision in the decision register and an
+  ADR when it affects architecture. Do not turn a recommendation into a decision.
+- Suggest established patterns when they solve a concrete problem; explain the
+  benefit and cost, and leave the choice open until the user confirms it. Routine
+  implementation details inside a confirmed decision do not require repeated approval.
 - Do not change unrelated files, remove existing data, or repair the previous API
   merely to keep it running during the rebuild.
 
