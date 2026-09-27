@@ -56,9 +56,13 @@ of the real API entry point: startup, health, invalid settings, occupied ports,
 SIGTERM shutdown, forced termination by a second signal, and structured lifecycle/error
 logs. HTTP server tests hold a request open to verify successful draining and
 connection closure at the shutdown deadline. Configuration errors and sensitive
-log attributes are checked for value disclosure. Tests use isolated
-environment values and need no database/cache services. Domain/application tests
-will follow those implementations. Archived API tests are not run.
+log attributes are checked for value disclosure. Step 1 subprocess tests use
+isolated environment values and need no database/cache services. The API CI job
+also starts a fresh PostgreSQL 18 service for the step 3 integration check, which
+creates disposable test roles, applies a test-only migration, checks runtime DML
+and denied DDL, verifies runtime access to Goose history is denied, then removes
+its test tables. Domain/application tests will follow
+those implementations. Archived API tests are not run.
 Frontend typecheck/build jobs remain, but the legacy E2E job is explicitly disabled
 until the new API and identity contract are integrated. See
 [repository transfer](repository-transfer.md).
@@ -67,5 +71,5 @@ Step 2 adds routing/HEAD/method tests, safe problem responses, request correlati
 private-data omission, malformed JSON, body limits, origin checks, and forwarded
 header spoofing tests. Real TCP checks exercise slow header/body reads, expired
 response writes, idle connection closure, oversized headers, chunked body limits,
-and panics after a partial response. JSON decode fixtures exist only in tests;
-the public API still exposes only liveness. CI's push branch is now `dev`.
+and panics after a partial response. Step 3 adds pool/readiness checks, migration
+tooling, and isolated PostgreSQL role/migration verification. CI's push branch is `dev`.

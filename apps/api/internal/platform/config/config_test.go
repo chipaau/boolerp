@@ -25,6 +25,9 @@ func TestLoadDefaultsAndOverrides(t *testing.T) {
 			MaxBodyBytes: 1048576, ReadHeaderTimeout: 5 * time.Second,
 			ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second,
 		},
+		Database: Database{
+			DSN: "postgres://erp_app:erp_app@postgres:5432/erp?sslmode=disable", MaxConns: 20, PingTimeout: 2 * time.Second,
+		},
 	}
 	tests := []struct {
 		name   string
@@ -47,6 +50,8 @@ func TestLoadDefaultsAndOverrides(t *testing.T) {
 				"APP_LOG_FORMAT": "text", "APP_LOG_LEVEL": "WARN",
 				"APP_HTTP_MAX_BODY_BYTES": "2048", "APP_HTTP_READ_HEADER_TIMEOUT": "1s",
 				"APP_HTTP_READ_TIMEOUT": "2s", "APP_HTTP_WRITE_TIMEOUT": "3s", "APP_HTTP_IDLE_TIMEOUT": "4s",
+				"APP_DSN": "postgres://custom:custom@db:5432/custom?sslmode=disable",
+				"APP_DB_MAX_CONNS": "5", "APP_DB_PING_TIMEOUT": "500ms",
 			},
 			want: Config{
 				Environment: "prod", Port: 65535, ShutdownTimeout: 250 * time.Millisecond,
@@ -54,6 +59,9 @@ func TestLoadDefaultsAndOverrides(t *testing.T) {
 				HTTP: HTTP{
 					MaxBodyBytes: 2048, ReadHeaderTimeout: time.Second,
 					ReadTimeout: 2 * time.Second, WriteTimeout: 3 * time.Second, IdleTimeout: 4 * time.Second,
+				},
+				Database: Database{
+					DSN: "postgres://custom:custom@db:5432/custom?sslmode=disable", MaxConns: 5, PingTimeout: 500 * time.Millisecond,
 				},
 			},
 		},
@@ -83,6 +91,8 @@ func TestLoadRejectsInvalidSettings(t *testing.T) {
 		"APP_HTTP_READ_TIMEOUT":        {"0s", "-1s", "10", "1s", "30s", "999ns", "6m"},
 		"APP_HTTP_WRITE_TIMEOUT":       {"0s", "-1s", "10", "15s", "999ns", "11m"},
 		"APP_HTTP_IDLE_TIMEOUT":        {"0s", "-1s", "10", "999ns", "11m"},
+		"APP_DB_MAX_CONNS":             {"0", "-1", "many", "1001"},
+		"APP_DB_PING_TIMEOUT":          {"0s", "-1s", "10", "60s1ns"},
 	}
 	for key, values := range tests {
 		for _, value := range values {
@@ -101,7 +111,7 @@ func TestValidationErrorsDoNotEchoValues(t *testing.T) {
 	for _, key := range []string{
 		"APP_ENV", "APP_PORT", "APP_SHUTDOWN_TIMEOUT", "APP_LOG_FORMAT", "APP_LOG_LEVEL",
 		"APP_HTTP_MAX_BODY_BYTES", "APP_HTTP_READ_HEADER_TIMEOUT", "APP_HTTP_READ_TIMEOUT",
-		"APP_HTTP_WRITE_TIMEOUT", "APP_HTTP_IDLE_TIMEOUT",
+		"APP_HTTP_WRITE_TIMEOUT", "APP_HTTP_IDLE_TIMEOUT", "APP_DB_MAX_CONNS", "APP_DB_PING_TIMEOUT",
 	} {
 		t.Run(key, func(t *testing.T) {
 			_, err := Load(lookup(map[string]string{key: secret}))

@@ -69,6 +69,7 @@ func TestInvalidConfigurationExitsWithSafeJSON(t *testing.T) {
 		"APP_ENV", "APP_PORT", "APP_SHUTDOWN_TIMEOUT", "APP_LOG_FORMAT", "APP_LOG_LEVEL",
 		"APP_HTTP_MAX_BODY_BYTES", "APP_HTTP_READ_HEADER_TIMEOUT", "APP_HTTP_READ_TIMEOUT",
 		"APP_HTTP_WRITE_TIMEOUT", "APP_HTTP_IDLE_TIMEOUT",
+		"APP_DB_MAX_CONNS", "APP_DB_PING_TIMEOUT",
 	} {
 		t.Run(key, func(t *testing.T) {
 			cmd := apiCommand(t, key+"=invalid-secret")
@@ -145,6 +146,17 @@ func TestAPILifecycle(t *testing.T) {
 	}
 	if !healthy {
 		t.Fatal("API did not become healthy")
+	}
+	readinessClient := &http.Client{Timeout: 3 * time.Second}
+	defer readinessClient.CloseIdleConnections()
+	readyResponse, err := readinessClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/readyz", port))
+	if err != nil {
+		t.Fatal(err)
+	}
+	readyBody, readErr := io.ReadAll(readyResponse.Body)
+	readyResponse.Body.Close()
+	if readErr != nil || readyResponse.StatusCode != http.StatusServiceUnavailable || bytes.Contains(readyBody, []byte("reserved-secret")) {
+		t.Fatalf("database outage was not reported safely: status=%d body=%q error=%v", readyResponse.StatusCode, readyBody, readErr)
 	}
 
 	// A second process must fail clearly when it cannot acquire the same port.

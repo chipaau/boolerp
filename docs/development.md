@@ -11,14 +11,10 @@ The fresh API lives in `apps/api/` in this monorepo. The previous source is pres
 in `apps/api.bak/`; its migrations, providers, and frontend consumers are not the
 rebuild baseline.
 
-Steps 0–1 were merged into `dev` at `639101d`. Step 2 is developed on
-`feat/api-http-foundation` from that commit. The first executable layer contains a simple
-Go entry point, bootstrap wiring, a standard-library HTTP server, and a liveness
-endpoint. Platform step 1 adds runtime configuration and structured logging.
-Step 2 adds the [HTTP foundation](platform/http.md), including request correlation,
-problem responses, recovery, limits, and browser/proxy boundaries.
-The remaining proposed directories contain `.gitkeep` placeholders.
-They do not implement platform features or employee behavior.
+Steps 0–2 are merged into `dev`. Step 3 adds the
+[PostgreSQL foundation](platform/postgres.md): a pgxpool lifecycle, readiness,
+an explicit Goose migration command, and separated database roles. No application
+tables or employee behavior are implemented.
 
 ## Locations
 
@@ -56,11 +52,11 @@ docker compose config --services
 
 The API command builds the new binary inside its development container and executes
 it directly so shutdown signals reach the server. Runtime settings are described
-below. PostgreSQL/Redis connection variables are reserved
-for later layers; no database/cache connection or migration runs at startup.
+below. The API creates its PostgreSQL pool at startup, checks the database through
+`/api/readyz`, and does not run migrations automatically. Redis remains for a later layer.
 
 Do not run migrations from `apps/api.bak` or reset existing volumes. The new
-`cmd/migrate` and `cmd/worker` directories are placeholders, not runnable commands.
+`cmd/migrate` is an explicit migration command; `cmd/worker` remains a placeholder.
 A standalone migration service is not part of this Compose baseline.
 
 ## Runtime configuration
@@ -82,12 +78,28 @@ silently removed.
 | `APP_HTTP_READ_TIMEOUT` | `15s` | Positive Go duration; full request read, including the body |
 | `APP_HTTP_WRITE_TIMEOUT` | `30s` | Positive Go duration; greater than the read timeout to leave room for a failure response |
 | `APP_HTTP_IDLE_TIMEOUT` | `60s` | Positive Go duration; wait between keep-alive requests |
+| `APP_DSN` | local Compose runtime-role DSN | PostgreSQL connection string for the restricted runtime role |
+| `APP_DB_MAX_CONNS` | `20` | Pool maximum from 1 to 1000 |
+| `APP_DB_PING_TIMEOUT` | `2s` | Positive readiness ping timeout, up to one minute |
 
 Invalid settings stop startup before opening the listener. The JSON error goes to
 stdout and identifies the variable without echoing its value. This fallback format
 also applies when `APP_LOG_FORMAT` or `APP_LOG_LEVEL` is invalid. Valid settings
 configure the injected `slog` logger; lifecycle messages obey its level threshold.
 See [logging and redaction](platform/observability.md) for the field policy.
+
+`POSTGRES_USER` and `POSTGRES_PASSWORD` are only for database initialization and
+administration. On a newly initialized volume, Compose creates separate runtime
+and migration roles. The API receives only `APP_DSN`; it never receives
+`MIGRATE_DSN` or the cluster-owner password. The PostgreSQL init script does not
+run again for an existing `pgdata` volume; provision and verify the restricted
+roles through the database administration process without resetting that volume.
+See [the role and migration instructions](platform/postgres.md).
+
+The API builds a lazy PostgreSQL pool at startup and reports database availability
+through `/api/readyz`; `/api/healthz` remains process liveness. A PostgreSQL outage
+does not expose database error details or prevent the liveness endpoint from starting.
+Redis connection variables remain reserved for a later layer.
 
 ## Start the API
 
@@ -98,18 +110,19 @@ cd /Users/chipaau/code/bool/erp
 docker compose up --build api
 ```
 
-For the current liveness-only layer, `docker compose up -d --build --no-deps api`
-starts only the API and avoids touching database/cache services.
+`docker compose up -d --build --no-deps api` starts only the API. Liveness remains
+available without dependencies, while readiness reports PostgreSQL as unavailable.
 
 The full command above starts the API and its configured PostgreSQL/Redis dependencies, not the frontend.
-The API does not use those dependencies yet. Stop the sibling `go-erp` API before
+The API uses PostgreSQL readiness; Redis is not used yet. Stop the sibling `go-erp` API before
 using this checkout so two wildcard routers do not compete. Through the existing local proxy:
 
 ```sh
 curl --fail http://cyryx.bool.test/api/healthz
 ```
 
-For an isolated run without the proxy, PostgreSQL, Redis, or frontend:
+For an isolated run without the proxy, PostgreSQL, Redis, or frontend, process
+liveness is available and readiness returns `503` until PostgreSQL is connected:
 
 ```sh
 docker run --rm --init \
@@ -125,8 +138,8 @@ In another terminal:
 curl --fail http://127.0.0.1:8080/api/healthz
 ```
 
-The response is `200` with JSON `{"status":"ok"}`. This is process liveness,
-not dependency readiness. There are no authenticated or employee endpoints yet;
+The response is `200` with JSON `{"status":"ok"}`. This is process liveness;
+`/api/readyz` checks PostgreSQL connectivity. There are no authenticated or employee endpoints yet;
 unknown paths return a JSON `404` problem, and unsupported methods return `405`
 with `Allow`. Responses reaching the handler include a generated `X-Request-ID`.
 See the [HTTP contract](platform/http.md) for input/error and browser policies.
@@ -146,8 +159,8 @@ docker compose restart api
 
 ## Validate the runtime
 
-The new module uses the Go 1.27 development baseline and standard-library packages
-only. No dependency installation, `go.sum`, database, or generated code is required.
+The module uses the Go 1.27 development baseline, pgx/v5, and Goose. No generated
+query code is included; sqlc remains deferred until an approved table needs queries.
 With the Go image available locally, these checks can run without container networking:
 
 ```sh

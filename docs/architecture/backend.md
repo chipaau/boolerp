@@ -2,8 +2,9 @@
 
 Status: hexagonal modular-monolith direction selected; directory scaffold,
 HTTP entry point, runtime configuration, and structured logging implemented.
-Step 2 adds the shared [HTTP foundation](../platform/http.md).
-Remaining contracts and tool choices are proposed. See
+Step 2 adds the shared [HTTP foundation](../platform/http.md). Step 3 implements the
+[PostgreSQL foundation](../platform/postgres.md), without approving application
+tables. Remaining policy contracts and tool choices are proposed. See
 [the decision register](../decisions/README.md).
 
 The new API lives in `apps/api/`; the previous implementation is preserved in
@@ -11,14 +12,17 @@ The new API lives in `apps/api/`; the previous implementation is preserved in
 implementation is deferred. Filenames in this tree illustrate future responsibilities
 unless listed as current below; they are not approved tables or contracts.
 
-Current runtime code lives in `cmd/api`, `internal/bootstrap`, and
-`internal/platform/{config,httpserver,observability}`. It implements validated
-configuration, structured logging, process lifecycle, and `GET /api/healthz`.
+Current runtime code lives in `cmd/api`, `cmd/migrate`, `internal/bootstrap`, and
+`internal/platform/{config,httpserver,observability,postgres}`. It implements
+validated configuration, structured logging, process lifecycle, PostgreSQL
+pooling, `GET /api/healthz`, and database readiness at `GET /api/readyz`.
 HTTP boundary helpers provide routing fallbacks, request correlation/recovery,
 JSON responses/decoding, and input limits within the same infrastructure package.
 The entry point loads configuration and constructs the logger; bootstrap passes
 explicit settings and the logger to the HTTP server. No global logger is replaced.
-`APP_PORT` defaults to 8080. There are no external Go dependencies or `go.sum`.
+`APP_PORT` defaults to 8080. pgx/v5 implements the PostgreSQL pool and Goose
+provides the explicit migration command. There are no generated query packages
+or application schema migrations yet.
 
 ## Target layout
 
@@ -111,9 +115,10 @@ apps/api/
   go.sum
 ```
 
-Empty worker/migration directories do not contain runnable commands. There are no
-SQL migrations, generated query files, employee types, or OpenAPI contract yet.
-The sqlc paths illustrate the recommended persistence option. Identity and
+The worker directory is a placeholder. The migration command is implemented,
+but there are no application SQL migrations, generated query files, employee
+types, or OpenAPI contract yet. The sqlc paths illustrate the deferred query
+generation option. Identity and
 authorization provider adapters are added only after their engines are selected.
 The `web` directory and generated frontend client belong to later integration.
 A worker executable does not imply an additional Compose service now.
@@ -156,7 +161,9 @@ query interface alone does not remove dependency on generated persistence types.
 | PostgreSQL | Selected |
 | Redis caching | Selected |
 | HTTP routing | Standard-library ServeMux retained in step 2 |
-| pgx, sqlc, Goose | Recommended candidates; not re-confirmed for the fresh implementation |
+| pgx/v5 pgxpool | Selected and implemented for the PostgreSQL pool |
+| Goose | Selected and implemented for explicit migrations |
+| sqlc | Deferred until an approved table needs generated queries |
 | Structured slog logs | Implemented in platform step 1; JSON/info to stdout by default |
 | OpenTelemetry | Proposed; propagation, exporter, and operational policy open |
 | Authentication and authorization engines | Open; former providers are not inherited |

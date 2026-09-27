@@ -1,16 +1,18 @@
 package bootstrap
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestHealthAndFallbackUseHTTPFoundation(t *testing.T) {
-	handler := routes(slog.New(slog.NewJSONHandler(io.Discard, nil)), 1024)
+	handler := routes(slog.New(slog.NewJSONHandler(io.Discard, nil)), 1024, func(context.Context) error { return nil }, time.Second)
 	for _, test := range []struct {
 		method, path string
 		status       int
@@ -37,6 +39,30 @@ func TestHealthAndFallbackUseHTTPFoundation(t *testing.T) {
 				if response.Header().Get("Cache-Control") != "no-store" {
 					t.Fatal("health response can be cached")
 				}
+			}
+		})
+	}
+}
+
+func TestReadinessReportsDatabaseState(t *testing.T) {
+	tests := []struct {
+		name   string
+		check  func(context.Context) error
+		status int
+	}{
+		{name: "available", check: func(context.Context) error { return nil }, status: http.StatusOK},
+		{name: "unavailable", check: func(context.Context) error { return context.DeadlineExceeded }, status: http.StatusServiceUnavailable},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			handler := routes(slog.New(slog.NewJSONHandler(io.Discard, nil)), 1024, test.check, time.Second)
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/readyz", nil))
+			if response.Code != test.status || response.Header().Get("X-Request-ID") == "" {
+				t.Fatalf("unexpected readiness response: status=%d headers=%v", response.Code, response.Header())
+			}
+			if test.status == http.StatusServiceUnavailable && strings.Contains(response.Body.String(), "DeadlineExceeded") {
+				t.Fatal("readiness response exposed an internal error")
 			}
 		})
 	}
