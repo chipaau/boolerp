@@ -50,6 +50,8 @@ func TestLoadDefaultsAndOverrides(t *testing.T) {
 				"APP_LOG_FORMAT": "text", "APP_LOG_LEVEL": "WARN",
 				"APP_HTTP_MAX_BODY_BYTES": "2048", "APP_HTTP_READ_HEADER_TIMEOUT": "1s",
 				"APP_HTTP_READ_TIMEOUT": "2s", "APP_HTTP_WRITE_TIMEOUT": "3s", "APP_HTTP_IDLE_TIMEOUT": "4s",
+				"APP_DSN": "postgres://custom:custom@db:5432/custom?sslmode=disable",
+				"APP_DB_MAX_CONNS": "5", "APP_DB_PING_TIMEOUT": "500ms",
 			},
 			want: Config{
 				Environment: "prod", Port: 65535, ShutdownTimeout: 250 * time.Millisecond,
@@ -59,7 +61,7 @@ func TestLoadDefaultsAndOverrides(t *testing.T) {
 					ReadTimeout: 2 * time.Second, WriteTimeout: 3 * time.Second, IdleTimeout: 4 * time.Second,
 				},
 				Database: Database{
-					DSN: "postgres://erp_app:erp_app@postgres:5432/erp?sslmode=disable", MaxConns: 20, PingTimeout: 2 * time.Second,
+					DSN: "postgres://custom:custom@db:5432/custom?sslmode=disable", MaxConns: 5, PingTimeout: 500 * time.Millisecond,
 				},
 			},
 		},
