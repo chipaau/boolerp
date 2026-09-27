@@ -16,6 +16,7 @@ type Config struct {
 	LogFormat       string
 	LogLevel        slog.Level
 	HTTP            HTTP
+	Database        Database
 }
 
 type HTTP struct {
@@ -24,6 +25,12 @@ type HTTP struct {
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
 	IdleTimeout       time.Duration
+}
+
+type Database struct {
+	DSN         string
+	MaxConns    int32
+	PingTimeout time.Duration
 }
 
 // Load reads process environment settings. Unset or empty values use defaults.
@@ -39,6 +46,9 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 	cfg := Config{
 		Environment: value("APP_ENV", "dev"),
 		LogFormat:   value("APP_LOG_FORMAT", "json"),
+		Database: Database{
+			DSN: value("APP_DSN", "postgres://erp_app:erp_app@postgres:5432/erp?sslmode=disable"),
+		},
 	}
 
 	switch cfg.Environment {
@@ -82,6 +92,15 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 	if err != nil || cfg.HTTP.MaxBodyBytes <= 0 || cfg.HTTP.MaxBodyBytes > maxBodyCeiling {
 		return Config{}, errors.New("APP_HTTP_MAX_BODY_BYTES must be between 1 and 104857600")
 	}
+	maxConns, err := strconv.ParseInt(value("APP_DB_MAX_CONNS", "20"), 10, 32)
+	if err != nil || maxConns < 1 || maxConns > 1000 {
+		return Config{}, errors.New("APP_DB_MAX_CONNS must be between 1 and 1000")
+	}
+	cfg.Database.MaxConns = int32(maxConns)
+	cfg.Database.PingTimeout, err = time.ParseDuration(value("APP_DB_PING_TIMEOUT", "2s"))
+	if err != nil || cfg.Database.PingTimeout < time.Millisecond || cfg.Database.PingTimeout > time.Minute {
+		return Config{}, errors.New("APP_DB_PING_TIMEOUT must be between 1ms and 1m")
+	}
 
 	if cfg.LogFormat != "json" && cfg.LogFormat != "text" {
 		return Config{}, errors.New("APP_LOG_FORMAT must be json or text")
@@ -101,4 +120,14 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// MigrationDSN loads only the credential used by the explicit migration command.
+// It is deliberately separate from the API process configuration.
+func MigrationDSN(lookup func(string) (string, bool)) (string, error) {
+	dsn, ok := lookup("MIGRATE_DSN")
+	if !ok || dsn == "" {
+		return "", errors.New("MIGRATE_DSN is required")
+	}
+	return dsn, nil
 }

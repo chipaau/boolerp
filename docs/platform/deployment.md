@@ -12,8 +12,9 @@ Status: dual deployment and licensing requirements confirmed; implementation ope
 - Licensing discourages unauthorized resale; customer-controlled binaries are not tamper-proof.
 
 The current development Compose service set is exactly api, app, postgres, and redis.
-The API currently has an HTTP scaffold, runtime configuration, and structured
-logging. Frontend integration and a production release have not been implemented.
+The API includes runtime configuration, structured logging, an HTTP foundation,
+and PostgreSQL pool/readiness/migration tooling. Frontend integration and a
+production release have not been implemented.
 
 ## Proposed direction
 

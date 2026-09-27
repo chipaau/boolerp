@@ -146,6 +146,17 @@ func TestAPILifecycle(t *testing.T) {
 	if !healthy {
 		t.Fatal("API did not become healthy")
 	}
+	readinessClient := &http.Client{Timeout: 3 * time.Second}
+	defer readinessClient.CloseIdleConnections()
+	readyResponse, err := readinessClient.Get(fmt.Sprintf("http://127.0.0.1:%d/api/readyz", port))
+	if err != nil {
+		t.Fatal(err)
+	}
+	readyBody, readErr := io.ReadAll(readyResponse.Body)
+	readyResponse.Body.Close()
+	if readErr != nil || readyResponse.StatusCode != http.StatusServiceUnavailable || bytes.Contains(readyBody, []byte("reserved-secret")) {
+		t.Fatalf("database outage was not reported safely: status=%d body=%q error=%v", readyResponse.StatusCode, readyBody, readErr)
+	}
 
 	// A second process must fail clearly when it cannot acquire the same port.
 	conflict := apiCommand(t, fmt.Sprintf("APP_PORT=%d", port), "APP_LOG_LEVEL=error")

@@ -14,15 +14,36 @@ jobs:
   api-tests:
     name: API runtime checks
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: erp_owner
+          POSTGRES_PASSWORD: step3_owner_password
+          POSTGRES_DB: erp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U erp_owner -d erp_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      POSTGRES_TEST_SETUP_DSN: postgres://erp_owner:step3_owner_password@localhost:5432/erp_test?sslmode=disable
+      POSTGRES_TEST_MIGRATE_DSN: postgres://erp_step3_test_migrate:step3-test-migration@localhost:5432/erp_test?sslmode=disable
+      POSTGRES_TEST_APP_DSN: postgres://erp_step3_test_app:step3-test-runtime@localhost:5432/erp_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - name: Build the Go dev image
         run: docker build -f docker/go.Dockerfile -t erp-go .
       - name: Check formatting, vet, test and build
         run: |
-          docker run --rm --network none \
+          docker run --rm --network host \
+            -e POSTGRES_TEST_SETUP_DSN \
+            -e POSTGRES_TEST_MIGRATE_DSN \
+            -e POSTGRES_TEST_APP_DSN \
             -v "${{ github.workspace }}/apps/api:/src:ro" -w /src erp-go \
-            sh -ec 'test -z "$(gofmt -l cmd internal)"; go vet ./...; go test ./...; go build -buildvcs=false -o /tmp/bool-api ./cmd/api'
+            sh -ec 'test -z "$(gofmt -l cmd internal)"; go vet ./...; go test ./...; go build -buildvcs=false -o /tmp/bool-api ./cmd/api; go build -buildvcs=false -o /tmp/bool-migrate ./cmd/migrate'
 
   # Typecheck + build each frontend app, in the same Node 24 + pnpm 11 image dev/CI both use
   # (docker/node.Dockerfile) — never the runner's own Node.

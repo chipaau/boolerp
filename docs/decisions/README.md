@@ -1,6 +1,6 @@
 # Decision register
 
-Updated: 2026-09-27. Decisions are made one at a time.
+Updated: 2026-09-28. Decisions are made one at a time.
 
 ## Confirmed baseline
 
@@ -23,13 +23,15 @@ Updated: 2026-09-27. Decisions are made one at a time.
 | C15 | The canonical repository is the GitHub erp checkout; create api-rebuild from updated develop and preserve the newer frontend and security-review work. |
 | C16 | Implement platform delivery step 1: runtime configuration, validation, structured logging, redaction, and explicit runtime wiring. |
 | C17 | After merging step 1 into the updated dev branch, implement step 2 (HTTP foundation) on a new branch. |
+| C18 | After step 2 merges, implement step 3 on a new branch using pgx/v5 pgxpool and Goose; defer sqlc until the first table is approved. |
 
 The initial `api-rebuild` branch was created from `develop` at `70eb43a` and merged
-into `dev` at `639101d`. Step 2 uses `feat/api-http-foundation` from that merge.
-See [repository transfer](../repository-transfer.md) for preserved work. The first scaffold uses Go's standard library
-for startup, graceful shutdown, and `GET /api/healthz`, with no external Go dependencies.
-This is an initial implementation choice, not a decision against a future router or
-provider. The Go 1.27 module baseline matches the existing development container.
+into `dev` at `639101d`. Step 2 used `feat/api-http-foundation`; step 3 uses
+`feat/api-postgres-foundation` from updated `dev`.
+See [repository transfer](../repository-transfer.md) for preserved work. The initial
+scaffold used Go's standard library for startup, graceful shutdown, and
+`GET /api/healthz`. Step 3 adds pgx/v5 and Goose for its approved PostgreSQL foundation.
+The Go 1.27 module baseline matches the existing development container.
 
 Platform step 1 now adds a typed environment configuration loader and standard-library
 `slog` logging. Its implementation contract is JSON/info logs to stdout by default,
@@ -45,9 +47,15 @@ configured body/network limits. Its initial browser/proxy policy enables no
 cross-origin CORS access and trusts no forwarded headers. The exact contract and
 remaining identity/deployment boundaries are in [HTTP foundation](../platform/http.md).
 
-Domain/application layers, database access, Redis access, audit, and tracing are
-not implemented by creating their directories. Worker/migration executables and
-generated query/client contracts remain placeholders.
+Step 3 selects pgx/v5 pgxpool for the runtime connection pool and Goose for the
+explicit migration command. Runtime and migration credentials are separate;
+the API does not receive the migration DSN. sqlc is deferred until the first
+approved table needs queries. See the [PostgreSQL foundation](../platform/postgres.md).
+
+Application persistence, Redis access, audit, and tracing are not implemented by
+creating their directories. `cmd/migrate` is implemented but has no application
+migrations. The worker executable and generated query/client contracts remain
+placeholders.
 
 ## Open decisions
 
@@ -55,7 +63,7 @@ generated query/client contracts remain placeholders.
 | --- | --- | --- |
 | D01 | Tenant versus licensed customer | Does one customer operate one tenant or a hierarchy of tenants? What does a tenant represent? |
 | D02 | Tenant isolation and visibility | Pooled PostgreSQL tables with tenant_id and RLS are proposed; parent access, control-plane scope, and mutation policies need agreement. |
-| D03 | Backend tools and persistence boundary | Step 2 retains standard-library ServeMux for HTTP. pgx, sqlc, and Goose remain candidates. Thin application-owned ports are recommended; no generic repository framework. Direct sqlc in application code would reopen C02's independence boundary. |
+| D03 | Backend tools and persistence boundary | For step 3, pgx/v5 pgxpool and Goose are selected for pool management and ordered migrations. Defer sqlc until the first approved table/query. Thin module-owned persistence ports remain recommended; no generic repository framework. |
 | D04 | Identity, sessions, and domain login | Choose the authentication provider/session authority and validate default domains, unrelated custom domains, and self-hosted login together. |
 | D05 | Authorization | Agree role/permission semantics, provider or in-process implementation, and access revocation behavior. |
 | D06 | Transaction and audit contracts | Agree operation boundaries, audit capture, immutability, denied-action recording, redaction, and retention. |
