@@ -1,6 +1,7 @@
 # Authorization
 
-Status: required backbone capability; permission model and engine open.
+Status: required backbone capability; Cerbos is selected as the policy engine.
+Permission model and integration contracts remain open.
 
 ## Required boundary
 

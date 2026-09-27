@@ -118,8 +118,9 @@ apps/api/
 The worker directory is a placeholder. The migration command is implemented,
 but there are no application SQL migrations, generated query files, employee
 types, or OpenAPI contract yet. The sqlc paths illustrate the deferred query
-generation option. Identity and
-authorization provider adapters are added only after their engines are selected.
+generation option. Kratos and Cerbos adapters are planned against the confirmed
+provider choices; their detailed integration contracts remain open in the
+[decision register](../decisions/README.md).
 The `web` directory and generated frontend client belong to later integration.
 A worker executable does not imply an additional Compose service now.
 
@@ -160,13 +161,15 @@ query interface alone does not remove dependency on generated persistence types.
 | Go | Selected |
 | PostgreSQL | Selected |
 | Redis caching | Selected |
-| HTTP routing | Standard-library ServeMux retained in step 2 |
+| HTTP routing | chi selected; step 2 foundation currently uses standard-library ServeMux pending migration |
 | pgx/v5 pgxpool | Selected and implemented for the PostgreSQL pool |
 | Goose | Selected and implemented for explicit migrations |
 | sqlc | Deferred until an approved table needs generated queries |
 | Structured slog logs | Implemented in platform step 1; JSON/info to stdout by default |
 | OpenTelemetry | Proposed; propagation, exporter, and operational policy open |
-| Authentication and authorization engines | Open; former providers are not inherited |
+| Identity/authentication | Ory Kratos selected; integration and lifecycle contracts open |
+| Authorization | Cerbos selected; policy model and enforcement contracts open |
+| File/object storage | S3 API selected; `chipaau/minio` (project's exact MinIO fork) selected for development |
 | Queue implementation and Redis client | Open |
 
 Audit and tracing are required. The request lifecycle and their relationship to
