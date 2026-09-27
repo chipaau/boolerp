@@ -61,6 +61,9 @@ func TestCanonicalPathRedirectUsesMethodPreservingStatus(t *testing.T) {
 	if response.Code != http.StatusTemporaryRedirect || response.Header().Get("Location") != "/api/healthz?check=ready" {
 		t.Fatalf("unexpected canonical redirect: status=%d location=%q", response.Code, response.Header().Get("Location"))
 	}
+	if response.Header().Get("Content-Type") != "application/problem+json" {
+		t.Fatalf("redirect did not use JSON problem details: Content-Type=%q", response.Header().Get("Content-Type"))
+	}
 }
 
 func TestRoutePatternIsCapturedWhenHandlerPanics(t *testing.T) {

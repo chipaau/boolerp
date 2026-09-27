@@ -70,7 +70,8 @@ func redirectCleanPath(next http.Handler) http.Handler {
 			if request.URL.RawQuery != "" {
 				target += "?" + request.URL.RawQuery
 			}
-			http.Redirect(writer, request, target, http.StatusTemporaryRedirect)
+			writer.Header().Set("Location", target)
+			httpserver.WriteProblem(writer, request, http.StatusTemporaryRedirect, "")
 			return
 		}
 		next.ServeHTTP(writer, request)

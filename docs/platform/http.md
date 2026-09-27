@@ -37,6 +37,13 @@ are not copied into problems. Successful JSON responses use `application/json`.
 `WriteJSON` encodes before committing a response and returns encoding/write errors
 to the adapter. Employee-specific error mapping and validation remain part of D11.
 
+## JSON-only responses
+
+All application-level responses use JSON. Success payloads use
+`application/json`; errors and redirects use `application/problem+json`
+(RFC 9457). Protocol-level errors produced by Go's HTTP server before
+handlers run (e.g. 431 for oversized headers) may not carry a JSON body.
+
 ## Correlation, logging, and recovery
 
 - Every request reaching the handler receives a fresh random `X-Request-ID`.
