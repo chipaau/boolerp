@@ -99,6 +99,16 @@ The defaults are 5 seconds for headers, 15 seconds for the full request read,
 See [runtime settings](../development.md#runtime-configuration) for overrides.
 The server sets `MaxHeaderBytes` to 32 KiB; Go's parser applies this limit.
 
+**Rebuild status (step 2b):** `httpserver.NewServer` applies these deadlines and
+`MaxHeaderBytes`, and routes the server's own diagnostics (for example handler
+panics or TLS handshake errors) to the application logger at error level through
+`slog.NewLogLogger`. The body limit is `chi/middleware.RequestSize`, which wraps the
+body in `http.MaxBytesReader`; a handler reading past the limit receives
+`*http.MaxBytesError`. Turning that into a `413` response is part of step 2d.
+`chi/middleware.Timeout` is not used yet: the network deadlines above already bound
+slow clients, and a per-request handler deadline becomes useful once handlers do
+database work (step 3).
+
 These are network deadlines. They do not preempt computation inside a handler or
 provide an application operation timeout. An expired write deadline can close the
 connection without a JSON response. Requests rejected by the HTTP parser before

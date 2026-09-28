@@ -67,6 +67,16 @@ services:
     command: ["sh", "-c", "go build -buildvcs=false -o /tmp/bool-api ./cmd/api && exec /tmp/bool-api"]
     # Longer than APP_SHUTDOWN_TIMEOUT (10s) so Docker's SIGKILL does not cut graceful shutdown short.
     stop_grace_period: 15s
+    # `docker compose up --watch` restarts the container when API source changes;
+    # the command above rebuilds, and the restart uses the normal graceful shutdown.
+    develop:
+      watch:
+        - action: restart
+          path: ./apps/api
+          include:
+            - "**/*.go"
+            - go.mod
+            - go.sum
     environment:
       APP_ENV: ${APP_ENV:-dev}
       APP_PORT: "${APP_PORT:-8080}"

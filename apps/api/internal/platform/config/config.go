@@ -25,6 +25,14 @@ type Config struct {
 	// ShutdownTimeout bounds graceful shutdown: how long in-flight requests may
 	// take to finish after SIGINT/SIGTERM before connections are closed.
 	ShutdownTimeout time.Duration `env:"APP_SHUTDOWN_TIMEOUT" envDefault:"10s" validate:"gt=0,max=5m"`
+
+	// HTTP server limits. Headers must arrive within the full read timeout, and the
+	// write timeout must exceed the read timeout to leave room for an error response.
+	HTTPMaxBodyBytes      int64         `env:"APP_HTTP_MAX_BODY_BYTES" envDefault:"1048576" validate:"min=1,max=104857600"`
+	HTTPReadHeaderTimeout time.Duration `env:"APP_HTTP_READ_HEADER_TIMEOUT" envDefault:"5s" validate:"gt=0,max=1m,ltefield=HTTPReadTimeout"`
+	HTTPReadTimeout       time.Duration `env:"APP_HTTP_READ_TIMEOUT" envDefault:"15s" validate:"gt=0,max=5m"`
+	HTTPWriteTimeout      time.Duration `env:"APP_HTTP_WRITE_TIMEOUT" envDefault:"30s" validate:"gt=0,max=10m,gtfield=HTTPReadTimeout"`
+	HTTPIdleTimeout       time.Duration `env:"APP_HTTP_IDLE_TIMEOUT" envDefault:"60s" validate:"gt=0,max=10m"`
 }
 
 // Load reads settings from environ, which uses the os.Environ "KEY=value" form.
@@ -82,10 +90,17 @@ func envName(field reflect.StructField) string {
 	return name
 }
 
-// rule formats a failed validation rule, such as "max=65535".
+// rule formats a failed validation rule, such as "max=65535". Cross-field rules
+// (gtfield, ltefield, ...) name another Go field; report its variable instead.
 func rule(fe validator.FieldError) string {
-	if fe.Param() == "" {
+	param := fe.Param()
+	if param == "" {
 		return fe.Tag()
 	}
-	return fe.Tag() + "=" + fe.Param()
+	if strings.HasSuffix(fe.Tag(), "field") {
+		if field, ok := reflect.TypeFor[Config]().FieldByName(param); ok {
+			param = envName(field)
+		}
+	}
+	return fe.Tag() + "=" + param
 }
