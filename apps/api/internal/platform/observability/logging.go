@@ -5,19 +5,23 @@ import (
 	"io"
 	"log/slog"
 	"slices"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
 )
 
 // Redacted replaces the value of a sensitive attribute.
 const Redacted = "[REDACTED]"
 
 // NewLogger returns a logger writing to w. format is "json" or "text"; anything
-// else falls back to JSON. Sensitive attributes are redacted by name.
+// else falls back to JSON. Sensitive attributes are redacted by name, and records
+// logged with a request's context carry its request_id.
 func NewLogger(w io.Writer, format string, level slog.Leveler) *slog.Logger {
 	opts := &slog.HandlerOptions{Level: level, ReplaceAttr: redact}
+	var h slog.Handler = slog.NewJSONHandler(w, opts)
 	if format == "text" {
-		return slog.New(slog.NewTextHandler(w, opts))
+		h = slog.NewTextHandler(w, opts)
 	}
-	return slog.New(slog.NewJSONHandler(w, opts))
+	return slog.New(requestid.LogHandler(h))
 }
 
 // redact is a slog ReplaceAttr hook. slog calls it for every attribute,
