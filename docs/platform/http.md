@@ -48,6 +48,28 @@ handlers run (e.g. 431 for oversized headers) may not carry a JSON body.
 
 ## Correlation, logging, and recovery
 
+**Rebuild status (step 2c):** implemented with libraries rather than the custom
+wrapper described in the target contract below.
+
+- `internal/platform/requestid` wraps `go-chi/traceid` (C33, C34). Every request
+  after the liveness check gets a new UUIDv7, returned in `X-Request-Id`; any
+  inbound `X-Request-Id` is deleted first, so clients cannot choose IDs.
+  `requestid.FromContext(ctx)` exposes it, and the logger's handler adds it as
+  `request_id` to every record logged with the request's context.
+- `go-chi/httplog/v3` writes one record per request using OpenTelemetry attribute
+  names (`SchemaOTEL`): method, `url.full`, `url.path`, `server.address`,
+  `client.address`, user agent, status, duration, and body sizes, plus the
+  `Content-Type`/`Origin` request headers and `Content-Type` response header.
+  2xx/3xx log at INFO, 4xx at WARN (except 429), 5xx at ERROR. The liveness check
+  is answered before the logger and is not logged. Panic recovery is left to step 2e
+  (`RecoverPanics: false`).
+- Difference from the target contract below: request logs now include the full URL
+  (with query), host, client address, and user agent instead of only the route
+  pattern. The client address is the proxy's until step 2f decides which forwarded
+  header to trust.
+
+Target contract from the removed implementation:
+
 - Every request reaching the handler receives a fresh random `X-Request-ID`.
   Incoming IDs are discarded. `RequestID(ctx)` makes the ID available to HTTP
   adapters; problem responses and request logs use the same value.

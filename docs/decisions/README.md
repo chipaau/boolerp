@@ -38,6 +38,8 @@ Updated: 2026-09-28. Decisions are made one at a time.
 | C30 | `APP_SHUTDOWN_TIMEOUT` must be at least `APP_HTTP_WRITE_TIMEOUT` (validator `gtefield`), so graceful shutdown can finish any request the server allows. Defaults: shutdown `35s` (maximum `10m`), Compose `stop_grace_period: 40s`. Trade-off: a deploy can wait up to 35s while a slow request finishes. |
 | C31 | `net/http` server diagnostics (`http.Server.ErrorLog`) are logged at WARN, not ERROR, because most are client-caused (TLS handshake failures, malformed requests). Application failures and recovered panics (step 2e) log at ERROR. |
 | C32 | CI runs `go test -race`. The Go dev and CI image (`docker/go.Dockerfile`) is the Debian-based `golang:1.27` because the race detector needs cgo; the production build image (`docker/api.Dockerfile`) is unchanged. |
+| C33 | The server always generates its own request ID and returns it in `X-Request-Id`; any client-supplied `X-Request-Id` is discarded, because request IDs are log evidence. Accepting IDs from a trusted proxy is left to step 2f. |
+| C34 | Request IDs use `github.com/go-chi/traceid` (v0.3.0; UUIDv7, response header, `request_id` on every context-aware log record) instead of chi's `middleware.RequestID`, whose IDs embed the server hostname and would expose container/pod names to clients. Request logging uses `github.com/go-chi/httplog/v3` with the OpenTelemetry schema, in line with the planned OpenTelemetry tracing. |
 
 **Reset notice (C24):** the paragraphs below describe the contracts of the removed
 implementation. Treat them as the rebuild target; nothing in `apps/api` is

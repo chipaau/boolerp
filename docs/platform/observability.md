@@ -1,8 +1,8 @@
 # Tracing and logging
 
 Status: runtime logging and redaction are rebuilt in step 1b
-(`internal/platform/observability`, C29). Request correlation and HTTP request
-logging are the rebuild target for step 2. Tracing is
+(`internal/platform/observability`, C29). Request IDs and HTTP request logging are
+rebuilt in step 2c (`internal/platform/requestid`, `go-chi/httplog`; C33, C34). Tracing is
 confirmed as required; its tooling and operational policy remain proposed.
 
 Tracing explains the execution path and timing of a request or background operation.
@@ -59,7 +59,9 @@ configuration by this documentation.
 
 Choose instrumentation libraries, trace propagation, sampling, exporter/backend,
 retention, and default self-host behavior. Any future acceptance of upstream
-request IDs needs an explicit trust policy; step 2 always generates its own IDs.
+request IDs needs an explicit trust policy; step 2c always generates its own IDs (C33).
+The request ID (`request_id`) is for support and log correlation; OpenTelemetry trace
+IDs from step 5 will be a separate identifier unless a later decision merges them.
 Decide what limited identifiers are permitted as attributes without exposing personal data.
 
 Credentials, session tokens, employee payloads, and cache values must not be logged

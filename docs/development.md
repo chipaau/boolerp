@@ -152,7 +152,7 @@ curl --fail http://127.0.0.1:8080/api/healthz
 The response is `200` with `text/plain` body `.` from chi's `Heartbeat` (C25). This is process liveness;
 `/api/readyz` checks PostgreSQL connectivity. There are no authenticated or employee endpoints yet;
 unknown paths return a JSON `404` problem, and unsupported methods return `405`
-with `Allow`. Responses reaching the handler include a generated `X-Request-ID`.
+with `Allow`. Responses after the liveness check include a server-generated `X-Request-Id` (UUIDv7).
 See the [HTTP contract](platform/http.md) for input/error and browser policies.
 Invalid listen addresses or occupied ports terminate
 startup with an error. SIGINT/SIGTERM initiates shutdown with the configured
