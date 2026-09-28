@@ -97,12 +97,15 @@ Decoder checks use test-only routes. There is no public test/echo endpoint.
 The defaults are 5 seconds for headers, 15 seconds for the full request read,
 30 seconds for response writes, and 60 seconds between keep-alive requests.
 See [runtime settings](../development.md#runtime-configuration) for overrides.
-The server sets `MaxHeaderBytes` to 32 KiB; Go's parser applies this limit.
+The server sets `MaxHeaderBytes` to 32 KiB; Go's parser applies this limit plus
+4096 bytes of slack, so headers up to about 36 KiB are accepted.
 
 **Rebuild status (step 2b):** `httpserver.NewServer` applies these deadlines and
 `MaxHeaderBytes`, and routes the server's own diagnostics (for example handler
-panics or TLS handshake errors) to the application logger at error level through
-`slog.NewLogLogger`. The body limit is `chi/middleware.RequestSize`, which wraps the
+panics or TLS handshake errors) to the application logger at warn level (C31) through
+`slog.NewLogLogger`. These arrive as one free-form `msg` string, so name-based
+redaction does not apply to them; a panic value containing a secret would be
+logged. Step 2e's panic recovery should intercept panics before net/http logs them. The body limit is `chi/middleware.RequestSize`, which wraps the
 body in `http.MaxBytesReader`; a handler reading past the limit receives
 `*http.MaxBytesError`. Turning that into a `413` response is part of step 2d.
 `chi/middleware.Timeout` is not used yet: the network deadlines above already bound

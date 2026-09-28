@@ -56,9 +56,14 @@ Tests use Go's `testing` package with `stretchr/testify` assertions (C28). Use
 continues, like `t.Error`). Do not use testify's `mock` or `suite` packages
 without a separate decision.
 
+Tests run with the race detector (`go test -race`) in CI (C32). It needs cgo, so the
+Go dev image (`docker/go.Dockerfile`) is the Debian-based `golang:1.27`, not Alpine.
+Tests that share state between goroutines, such as a log buffer written by a server
+goroutine, must synchronize it.
+
 ## Current CI boundary
 
-**Reset (C24, 2026-09-28):** the `API tests` CI job runs formatting, vet, tests,
+**Reset (C24, 2026-09-28):** the `API tests` CI job runs formatting, vet, tests with `-race`,
 and the `cmd/api` build in Docker. It has no PostgreSQL service; that returns with
 step 3. The checks below describe the rebuild target, not current CI.
 

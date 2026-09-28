@@ -81,7 +81,7 @@ silently removed.
 | --- | --- | --- |
 | `APP_ENV` | `dev` | `dev`, `test`, `staging`, `prod`; an operational log label, not an access-control or deployment-mode switch |
 | `APP_PORT` | `8080` | Decimal TCP port from 1 to 65535 |
-| `APP_SHUTDOWN_TIMEOUT` | `10s` | Positive Go duration up to `5m`, such as `10s` or `500ms` |
+| `APP_SHUTDOWN_TIMEOUT` | `35s` | Positive Go duration up to `10m`; at least `APP_HTTP_WRITE_TIMEOUT` so any allowed request can finish (C30) |
 | `APP_LOG_FORMAT` | `json` | `json` or `text` |
 | `APP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` (case-insensitive) |
 | `APP_HTTP_MAX_BODY_BYTES` | `1048576` | Integer from 1 to 104857600 (100 MiB); maximum consumed request body size in bytes |
@@ -139,7 +139,7 @@ liveness is available and readiness returns `503` until PostgreSQL is connected:
 docker run --rm --init \
   -p 127.0.0.1:8080:8080 \
   -v "$PWD/apps/api:/src:ro" \
-  -w /src golang:1.27-alpine \
+  -w /src golang:1.27 \
   sh -c 'go build -buildvcs=false -o /tmp/bool-api ./cmd/api && exec /tmp/bool-api'
 ```
 
@@ -156,14 +156,14 @@ with `Allow`. Responses reaching the handler include a generated `X-Request-ID`.
 See the [HTTP contract](platform/http.md) for input/error and browser policies.
 Invalid listen addresses or occupied ports terminate
 startup with an error. SIGINT/SIGTERM initiates shutdown with the configured
-deadline (ten seconds by default), allowing active requests to finish. Connections
+deadline (35 seconds by default), allowing active requests to finish. Connections
 still active at the deadline are closed and the process exits with an error. A
 second SIGINT/SIGTERM forces termination during shutdown: after the first signal
 the handler is removed (`signal.NotifyContext` plus `context.AfterFunc`), so the
 second uses Go's default action and the process exits with status 128 + signal
 (143 for SIGTERM). A clean shutdown exits 0. Startup/shutdown and failure logs use
-the configured structured logger. Compose sets `stop_grace_period: 15s` so Docker's
-SIGKILL comes after the default 10-second shutdown deadline.
+the configured structured logger. Compose sets `stop_grace_period: 40s` so Docker's
+SIGKILL comes after the default 35-second shutdown deadline.
 
 To rebuild automatically on changes, start the API with Compose watch. It restarts
 the container when a `.go` file, `go.mod`, or `go.sum` under `apps/api` changes; the
@@ -183,13 +183,13 @@ docker compose restart api
 
 The module uses the Go 1.27 development baseline, pgx/v5, and Goose. No generated
 query code is included; sqlc remains deferred until an approved table needs queries.
-With the Go image available locally, these checks can run without container networking:
+The same checks CI runs, using the Debian-based Go image (the race detector needs cgo):
 
 ```sh
-docker run --rm --network none \
+docker run --rm \
   -v "$PWD/apps/api:/src:ro" \
-  -w /src golang:1.27-alpine \
-  sh -ec 'test -z "$(gofmt -l cmd internal)"; go vet ./...; go test ./...; go build -o /tmp/bool-api ./cmd/api'
+  -w /src golang:1.27 \
+  sh -ec 'test -z "$(gofmt -l .)"; go vet ./...; go test -race ./...; go build -o /tmp/bool-api ./cmd/api'
 ```
 
 The test suite checks configuration defaults/validation, safe error messages,

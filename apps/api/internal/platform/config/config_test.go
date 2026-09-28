@@ -16,7 +16,7 @@ func defaults() Config {
 		Port:                  8080,
 		LogFormat:             "json",
 		LogLevel:              slog.LevelInfo,
-		ShutdownTimeout:       10 * time.Second,
+		ShutdownTimeout:       35 * time.Second,
 		HTTPMaxBodyBytes:      1 << 20,
 		HTTPReadHeaderTimeout: 5 * time.Second,
 		HTTPReadTimeout:       15 * time.Second,
@@ -45,7 +45,7 @@ func TestLoadDefaults(t *testing.T) {
 func TestLoadValues(t *testing.T) {
 	cfg, err := Load([]string{
 		"APP_ENV=prod", "APP_PORT=9000", "APP_LOG_FORMAT=text", "APP_LOG_LEVEL=DEBUG",
-		"APP_SHUTDOWN_TIMEOUT=500ms", "APP_HTTP_MAX_BODY_BYTES=2048",
+		"APP_SHUTDOWN_TIMEOUT=3s", "APP_HTTP_MAX_BODY_BYTES=2048",
 		"APP_HTTP_READ_HEADER_TIMEOUT=2s", "APP_HTTP_READ_TIMEOUT=2s",
 		"APP_HTTP_WRITE_TIMEOUT=3s", "APP_HTTP_IDLE_TIMEOUT=4s",
 	})
@@ -55,7 +55,7 @@ func TestLoadValues(t *testing.T) {
 		Port:                  9000,
 		LogFormat:             "text",
 		LogLevel:              slog.LevelDebug,
-		ShutdownTimeout:       500 * time.Millisecond,
+		ShutdownTimeout:       3 * time.Second,
 		HTTPMaxBodyBytes:      2048,
 		HTTPReadHeaderTimeout: 2 * time.Second,
 		HTTPReadTimeout:       2 * time.Second,
@@ -80,7 +80,12 @@ func TestLoadInvalid(t *testing.T) {
 		{"shutdown timeout not a duration", []string{"APP_SHUTDOWN_TIMEOUT=s3cret"}, "APP_SHUTDOWN_TIMEOUT", "s3cret"},
 		{"shutdown timeout zero", []string{"APP_SHUTDOWN_TIMEOUT=0s"}, "APP_SHUTDOWN_TIMEOUT", ""},
 		{"shutdown timeout negative", []string{"APP_SHUTDOWN_TIMEOUT=-1s"}, "APP_SHUTDOWN_TIMEOUT", ""},
-		{"shutdown timeout too long", []string{"APP_SHUTDOWN_TIMEOUT=6m"}, "APP_SHUTDOWN_TIMEOUT", "6m"},
+		{"shutdown timeout too long", []string{"APP_SHUTDOWN_TIMEOUT=11m"}, "APP_SHUTDOWN_TIMEOUT", "11m"},
+		{
+			"shutdown timeout below write timeout",
+			[]string{"APP_SHUTDOWN_TIMEOUT=10s", "APP_HTTP_WRITE_TIMEOUT=30s"},
+			"APP_SHUTDOWN_TIMEOUT", "HTTPWriteTimeout", // names APP_HTTP_WRITE_TIMEOUT instead
+		},
 		{"body limit not a number", []string{"APP_HTTP_MAX_BODY_BYTES=s3cret"}, "APP_HTTP_MAX_BODY_BYTES", "s3cret"},
 		{"body limit zero", []string{"APP_HTTP_MAX_BODY_BYTES=0"}, "APP_HTTP_MAX_BODY_BYTES", ""},
 		{"body limit too large", []string{"APP_HTTP_MAX_BODY_BYTES=104857601"}, "APP_HTTP_MAX_BODY_BYTES", "104857601"},

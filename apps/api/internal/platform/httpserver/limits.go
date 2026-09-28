@@ -6,8 +6,9 @@ import (
 	"time"
 )
 
-// MaxHeaderBytes caps the request line plus headers. Go's parser enforces it and
-// answers 431 Request Header Fields Too Large.
+// MaxHeaderBytes caps the request line plus headers. net/http adds 4096 bytes of
+// slack, so the effective limit is about 36 KiB; beyond it Go answers
+// 431 Request Header Fields Too Large.
 const MaxHeaderBytes = 32 << 10 // 32 KiB
 
 // Limits are the network deadlines applied by http.Server. They bound slow or
@@ -21,7 +22,8 @@ type Limits struct {
 
 // NewServer returns an http.Server with the limits applied. The server's own
 // diagnostics (for example "http: TLS handshake error" or a handler panic)
-// are written to logger at error level instead of the standard log package.
+// are written to logger instead of the standard log package, at warn level
+// because most are caused by clients rather than server faults (C31).
 func NewServer(handler http.Handler, logger *slog.Logger, l Limits) *http.Server {
 	return &http.Server{
 		Handler:           handler,
@@ -30,6 +32,6 @@ func NewServer(handler http.Handler, logger *slog.Logger, l Limits) *http.Server
 		WriteTimeout:      l.WriteTimeout,
 		IdleTimeout:       l.IdleTimeout,
 		MaxHeaderBytes:    MaxHeaderBytes,
-		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelWarn),
 	}
 }

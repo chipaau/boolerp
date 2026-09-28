@@ -23,8 +23,9 @@ type Config struct {
 	// caarlos0/env uses that: "debug", "INFO", "warn", "error", or offsets like "info+2".
 	LogLevel slog.Level `env:"APP_LOG_LEVEL" envDefault:"info"`
 	// ShutdownTimeout bounds graceful shutdown: how long in-flight requests may
-	// take to finish after SIGINT/SIGTERM before connections are closed.
-	ShutdownTimeout time.Duration `env:"APP_SHUTDOWN_TIMEOUT" envDefault:"10s" validate:"gt=0,max=5m"`
+	// take to finish after SIGINT/SIGTERM before connections are closed. It must
+	// be at least the write timeout, so any request the server allows can finish (C30).
+	ShutdownTimeout time.Duration `env:"APP_SHUTDOWN_TIMEOUT" envDefault:"35s" validate:"gt=0,max=10m,gtefield=HTTPWriteTimeout"`
 
 	// HTTP server limits. Headers must arrive within the full read timeout, and the
 	// write timeout must exceed the read timeout to leave room for an error response.

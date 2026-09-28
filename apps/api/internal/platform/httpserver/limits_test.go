@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,20 +18,24 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
 )
 
-// short limits keep the network tests fast.
-var short = Limits{
-	ReadHeaderTimeout: 200 * time.Millisecond,
-	ReadTimeout:       300 * time.Millisecond,
-	WriteTimeout:      400 * time.Millisecond,
-	IdleTimeout:       300 * time.Millisecond,
-}
+// quick is the deadline under test; slow is long enough never to fire.
+const (
+	quick = 300 * time.Millisecond
+	slow  = 5 * time.Second
+)
+
+// relaxed has every deadline slow. Each test shortens only the limit it checks,
+// so the test fails if that one limit is removed; Go falls back to ReadTimeout
+// when ReadHeaderTimeout or IdleTimeout is zero, so a shared short ReadTimeout
+// would hide a missing header or idle limit.
+var relaxed = Limits{ReadHeaderTimeout: slow, ReadTimeout: slow, WriteTimeout: slow, IdleTimeout: slow}
 
 // serveLimited starts NewServer on a free port and returns its address.
-func serveLimited(t *testing.T, handler http.Handler, logger *slog.Logger) string {
+func serveLimited(t *testing.T, handler http.Handler, logger *slog.Logger, l Limits) string {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	srv := NewServer(handler, logger, short)
+	srv := NewServer(handler, logger, l)
 	go func() { _ = srv.Serve(ln) }()
 	t.Cleanup(func() { _ = srv.Close() })
 	return ln.Addr().String()
@@ -43,15 +48,35 @@ func dial(t *testing.T, addr string) net.Conn {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = conn.Close() })
 	// A safety deadline: no test should block longer than this.
-	require.NoError(t, conn.SetDeadline(time.Now().Add(5*time.Second)))
+	require.NoError(t, conn.SetDeadline(time.Now().Add(2*slow)))
 	return conn
 }
 
-// closedByServer reports whether the server closed conn without sending anything.
-func closedByServer(t *testing.T, conn net.Conn) bool {
+// closedWithin reports whether the server closed conn, sending nothing, within d.
+func closedWithin(t *testing.T, conn net.Conn, d time.Duration) bool {
 	t.Helper()
+	start := time.Now()
 	n, err := conn.Read(make([]byte, 1))
-	return n == 0 && err == io.EOF
+	return n == 0 && err == io.EOF && time.Since(start) < d
+}
+
+// syncBuffer is a bytes.Buffer safe for the server goroutine to write while the
+// test goroutine reads.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 var discard = slog.New(slog.DiscardHandler)
@@ -59,20 +84,24 @@ var discard = slog.New(slog.DiscardHandler)
 func ok(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") }
 
 func TestSlowHeadersAreCutOff(t *testing.T) {
-	conn := dial(t, serveLimited(t, http.HandlerFunc(ok), discard))
+	l := relaxed
+	l.ReadHeaderTimeout = quick
+	conn := dial(t, serveLimited(t, http.HandlerFunc(ok), discard, l))
 	_, err := io.WriteString(conn, "GET / HTTP/1.1\r\nHost: x\r\n") // headers never finish
 
 	require.NoError(t, err)
-	assert.True(t, closedByServer(t, conn))
+	assert.True(t, closedWithin(t, conn, slow))
 }
 
 func TestSlowBodyIsCutOff(t *testing.T) {
+	l := relaxed
+	l.ReadTimeout = quick
 	bodyErr := make(chan error, 1)
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := io.ReadAll(r.Body)
 		bodyErr <- err
 	})
-	conn := dial(t, serveLimited(t, handler, discard))
+	conn := dial(t, serveLimited(t, handler, discard, l))
 	// Declare 10 bytes but send only 2; the read deadline must stop the handler waiting.
 	_, err := io.WriteString(conn, "POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\n\r\nab")
 	require.NoError(t, err)
@@ -80,13 +109,14 @@ func TestSlowBodyIsCutOff(t *testing.T) {
 	select {
 	case err := <-bodyErr:
 		assert.Error(t, err)
-	case <-time.After(5 * time.Second):
+	case <-time.After(slow):
 		t.Fatal("handler was not released by the read timeout")
 	}
 }
 
 func TestOversizedHeadersAreRejected(t *testing.T) {
-	conn := dial(t, serveLimited(t, http.HandlerFunc(ok), discard))
+	conn := dial(t, serveLimited(t, http.HandlerFunc(ok), discard, relaxed))
+	// Exceed MaxHeaderBytes plus the 4096 bytes of slack net/http adds.
 	big := strings.Repeat("a", MaxHeaderBytes+4096)
 	_, err := io.WriteString(conn, "GET / HTTP/1.1\r\nHost: x\r\nX-Big: "+big+"\r\n\r\n")
 	require.NoError(t, err)
@@ -98,11 +128,13 @@ func TestOversizedHeadersAreRejected(t *testing.T) {
 }
 
 func TestSlowResponsesAreCutOff(t *testing.T) {
+	l := relaxed
+	l.WriteTimeout = quick
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		time.Sleep(2 * short.WriteTimeout) // the write deadline passes first
+		time.Sleep(2 * quick) // the write deadline passes first
 		_, _ = io.WriteString(w, "late")
 	})
-	resp, err := http.Get("http://" + serveLimited(t, handler, discard))
+	resp, err := http.Get("http://" + serveLimited(t, handler, discard, l))
 	if err == nil {
 		_, err = io.ReadAll(resp.Body)
 		resp.Body.Close()
@@ -111,7 +143,9 @@ func TestSlowResponsesAreCutOff(t *testing.T) {
 }
 
 func TestIdleConnectionsAreClosed(t *testing.T) {
-	conn := dial(t, serveLimited(t, http.HandlerFunc(ok), discard))
+	l := relaxed
+	l.IdleTimeout = quick
+	conn := dial(t, serveLimited(t, http.HandlerFunc(ok), discard, l))
 	_, err := io.WriteString(conn, "GET / HTTP/1.1\r\nHost: x\r\n\r\n")
 	require.NoError(t, err)
 
@@ -122,18 +156,20 @@ func TestIdleConnectionsAreClosed(t *testing.T) {
 	resp.Body.Close()
 
 	// Keep-alive: send nothing more. The server closes the idle connection.
+	start := time.Now()
 	_, err = reader.ReadByte()
 	assert.ErrorIs(t, err, io.EOF)
+	assert.Less(t, time.Since(start), slow, "closed by the idle timeout, not a slower limit")
 }
 
 func TestServerDiagnosticsUseTheLogger(t *testing.T) {
-	var buf bytes.Buffer
+	var buf syncBuffer
 	logger := observability.NewLogger(&buf, "json", slog.LevelInfo)
 	handler := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		panic("boom") // net/http reports handler panics through ErrorLog
 	})
-	_, _ = http.Get("http://" + serveLimited(t, handler, logger))
+	_, _ = http.Get("http://" + serveLimited(t, handler, logger, relaxed))
 
 	require.Eventually(t, func() bool { return strings.Contains(buf.String(), "boom") }, 2*time.Second, 10*time.Millisecond)
-	assert.Contains(t, buf.String(), `"level":"ERROR"`)
+	assert.Contains(t, buf.String(), `"level":"WARN"`)
 }
