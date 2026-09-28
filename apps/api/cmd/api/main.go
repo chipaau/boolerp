@@ -44,16 +44,6 @@ func run() int {
 	// returns, so a second signal terminates a process stuck while draining.
 	context.AfterFunc(ctx, stop)
 
-	r := chi.NewRouter()
-
-	// Liveness (C25). Middleware must be registered before any route.
-	r.Use(middleware.Heartbeat("/api/healthz"))
-
-	// chi runs middleware only once at least one route exists.
-	r.Get("/api", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
-
 	// Listening separately from serving makes a busy port a startup error,
 	// and "api listening" is logged only once the port is actually bound.
 	addr := net.JoinHostPort("", strconv.Itoa(cfg.Port))
@@ -64,10 +54,33 @@ func run() int {
 	}
 	logger.Info("api listening", "address", ln.Addr().String())
 
-	srv := &http.Server{Handler: r}
+	srv := httpserver.NewServer(newRouter(cfg.HTTPMaxBodyBytes), logger, httpserver.Limits{
+		ReadHeaderTimeout: cfg.HTTPReadHeaderTimeout,
+		ReadTimeout:       cfg.HTTPReadTimeout,
+		WriteTimeout:      cfg.HTTPWriteTimeout,
+		IdleTimeout:       cfg.HTTPIdleTimeout,
+	})
 	if err := httpserver.Serve(ctx, logger, srv, ln, cfg.ShutdownTimeout); err != nil {
 		logger.Error("api stopped with error", "error", err)
 		return 1
 	}
 	return 0
+}
+
+// newRouter builds the chi router and its middleware. It returns chi.Router,
+// not http.Handler, so tests can add routes behind the real middleware.
+func newRouter(maxBodyBytes int64) chi.Router {
+	r := chi.NewRouter()
+
+	// Liveness (C25). Middleware must be registered before any route.
+	r.Use(middleware.Heartbeat("/api/healthz"))
+	// Handlers reading more than maxBodyBytes get an *http.MaxBytesError.
+	r.Use(middleware.RequestSize(maxBodyBytes))
+
+	// chi runs middleware only once at least one route exists.
+	r.Get("/api", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	return r
 }

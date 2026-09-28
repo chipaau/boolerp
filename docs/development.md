@@ -60,8 +60,8 @@ A standalone migration service is not part of this Compose baseline.
 
 ## Runtime configuration
 
-**Rebuild status (steps 1a–2a):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
-`APP_LOG_LEVEL`, and `APP_SHUTDOWN_TIMEOUT` are implemented in `internal/platform/config` with `caarlos0/env`
+**Rebuild status (steps 1a–2b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
+`APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, and the five `APP_HTTP_*` limits are implemented in `internal/platform/config` with `caarlos0/env`
 (C26) and `go-playground/validator` (C27). Each remaining variable below is added
 with the step that uses it. `APP_LOG_LEVEL` is parsed by `slog.Level` itself, so it
 also accepts slog offsets such as `info+2`.
@@ -84,11 +84,11 @@ silently removed.
 | `APP_SHUTDOWN_TIMEOUT` | `10s` | Positive Go duration up to `5m`, such as `10s` or `500ms` |
 | `APP_LOG_FORMAT` | `json` | `json` or `text` |
 | `APP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` (case-insensitive) |
-| `APP_HTTP_MAX_BODY_BYTES` | `1048576` | Positive integer; maximum consumed request body size in bytes |
-| `APP_HTTP_READ_HEADER_TIMEOUT` | `5s` | Positive Go duration; no greater than the full read timeout |
-| `APP_HTTP_READ_TIMEOUT` | `15s` | Positive Go duration; full request read, including the body |
-| `APP_HTTP_WRITE_TIMEOUT` | `30s` | Positive Go duration; greater than the read timeout to leave room for a failure response |
-| `APP_HTTP_IDLE_TIMEOUT` | `60s` | Positive Go duration; wait between keep-alive requests |
+| `APP_HTTP_MAX_BODY_BYTES` | `1048576` | Integer from 1 to 104857600 (100 MiB); maximum consumed request body size in bytes |
+| `APP_HTTP_READ_HEADER_TIMEOUT` | `5s` | Positive Go duration up to `1m`; no greater than the full read timeout |
+| `APP_HTTP_READ_TIMEOUT` | `15s` | Positive Go duration up to `5m`; full request read, including the body |
+| `APP_HTTP_WRITE_TIMEOUT` | `30s` | Positive Go duration up to `10m`; greater than the read timeout to leave room for a failure response |
+| `APP_HTTP_IDLE_TIMEOUT` | `60s` | Positive Go duration up to `10m`; wait between keep-alive requests |
 | `APP_DSN` | local Compose runtime-role DSN | PostgreSQL connection string for the restricted runtime role |
 | `APP_DB_MAX_CONNS` | `20` | Pool maximum from 1 to 1000 |
 | `APP_DB_PING_TIMEOUT` | `2s` | Positive readiness ping timeout, up to one minute |
