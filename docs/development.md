@@ -165,8 +165,15 @@ second uses Go's default action and the process exits with status 128 + signal
 the configured structured logger. Compose sets `stop_grace_period: 15s` so Docker's
 SIGKILL comes after the default 10-second shutdown deadline.
 
-The container does not watch source changes. After editing the API, restart its
-development container to rebuild:
+To rebuild automatically on changes, start the API with Compose watch. It restarts
+the container when a `.go` file, `go.mod`, or `go.sum` under `apps/api` changes; the
+restart goes through the normal graceful shutdown and the command rebuilds:
+
+```sh
+docker compose up --watch --no-deps api
+```
+
+Without `--watch`, the container does not watch source changes. Restart it to rebuild:
 
 ```sh
 docker compose restart api
