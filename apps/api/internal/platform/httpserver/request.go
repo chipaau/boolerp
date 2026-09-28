@@ -13,6 +13,16 @@ import (
 )
 
 type requestIDKey struct{}
+type routePatternKey struct{}
+
+// SetRoutePattern writes the matched route template into the slot allocated by
+// NewHandler. Routers call this after matching so the request log records the
+// template instead of the concrete URL.
+func SetRoutePattern(ctx context.Context, pattern string) {
+	if p, ok := ctx.Value(routePatternKey{}).(*string); ok {
+		*p = pattern
+	}
+}
 
 // RequestID returns the server-generated correlation ID, or an empty string
 // outside the HTTP foundation. It is not an identity or authorization claim.

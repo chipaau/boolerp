@@ -1,22 +1,24 @@
 # HTTP foundation
 
-Chi is the selected API HTTP framework (C19, [ADR 0002](../adr/0002-tool-and-provider-selection.md)).
-The platform step 2 foundation, implemented 2026-09-27, currently uses Go's
-standard-library `http.ServeMux` and helpers in `internal/platform/httpserver`.
-Migrate that routing foundation to chi in an authorized implementation increment
-before adding business routes. No business endpoints were introduced in step 2.
+Chi is the API HTTP framework (C19, [ADR 0002](../adr/0002-tool-and-provider-selection.md)),
+implemented in step 2a (2026-09-28). Routes are registered on a `chi.NewRouter()`
+in `internal/bootstrap/routes.go`; the `httpserver` package accepts any
+`http.Handler` and remains framework-agnostic.
 
 ## Routing and responses
 
-The behavior below describes the current `ServeMux` implementation and is the
-contract to preserve while moving routing to chi.
+`GET /api/healthz` returns `200` with `{"status":"ok"}`. `HEAD` returns the
+same status and headers without a body. Routes are registered with chi's typed
+method helpers (`router.Get`, `router.Head`); path parameters use chi's URL
+parameter extraction, and chi populates `request.PathValue` for compatibility.
+`redirectCleanPath` issues a `307 Temporary Redirect` whenever `path.Clean`
+changes the path, including double slashes, dot segments, or a trailing slash.
+It preserves the request method, body, and query; this intentionally differs
+from the previous ServeMux canonical-path redirect behavior (C23).
 
-`GET /api/healthz` still returns `200` with `{"status":"ok"}`. `HEAD` returns the
-same status and headers without a body. Routes use method-aware ServeMux patterns;
-path parameters and canonical-path redirects retain the router's behavior.
-
-Unknown routes return `404`. Unsupported methods return `405` with the router's
-`Allow` header. Application-level HTTP failures use
+Unknown routes return `404`. Unsupported methods return `405` with an `Allow`
+header computed by probing the router for each standard HTTP method.
+Application-level HTTP failures use
 [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457.html):
 
 ```json
@@ -35,11 +37,20 @@ are not copied into problems. Successful JSON responses use `application/json`.
 `WriteJSON` encodes before committing a response and returns encoding/write errors
 to the adapter. Employee-specific error mapping and validation remain part of D11.
 
+## JSON-only responses
+
+All application-level responses use JSON. Success payloads use
+`application/json`; errors and redirects use `application/problem+json`
+(RFC 9457). Protocol-level errors produced by Go's HTTP server before
+handlers run (e.g. 431 for oversized headers) may not carry a JSON body.
+
 ## Correlation, logging, and recovery
 
 - Every request reaching the handler receives a fresh random `X-Request-ID`.
   Incoming IDs are discarded. `RequestID(ctx)` makes the ID available to HTTP
   adapters; problem responses and request logs use the same value.
+- A `captureRoutePattern` middleware stores chi's matched route pattern into a
+  context slot so the outer handler can log it without importing chi.
 - Request logs record the registered route pattern, a bounded method label,
   status, bytes written, elapsed milliseconds, and whether the response was aborted.
   Status is zero if a request was aborted before any final response status.
