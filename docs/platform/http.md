@@ -102,7 +102,7 @@ The server sets `MaxHeaderBytes` to 32 KiB; Go's parser applies this limit plus
 
 **Rebuild status (step 2b):** `httpserver.NewServer` applies these deadlines and
 `MaxHeaderBytes`, and routes the server's own diagnostics (for example handler
-panics or TLS handshake errors) to the application logger at error level through
+panics or TLS handshake errors) to the application logger at warn level (C31) through
 `slog.NewLogLogger`. These arrive as one free-form `msg` string, so name-based
 redaction does not apply to them; a panic value containing a secret would be
 logged. Step 2e's panic recovery should intercept panics before net/http logs them. The body limit is `chi/middleware.RequestSize`, which wraps the

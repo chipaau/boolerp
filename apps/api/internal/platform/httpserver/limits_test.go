@@ -171,5 +171,5 @@ func TestServerDiagnosticsUseTheLogger(t *testing.T) {
 	_, _ = http.Get("http://" + serveLimited(t, handler, logger, relaxed))
 
 	require.Eventually(t, func() bool { return strings.Contains(buf.String(), "boom") }, 2*time.Second, 10*time.Millisecond)
-	assert.Contains(t, buf.String(), `"level":"ERROR"`)
+	assert.Contains(t, buf.String(), `"level":"WARN"`)
 }

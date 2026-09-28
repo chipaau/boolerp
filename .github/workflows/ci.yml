@@ -22,7 +22,7 @@ jobs:
         run: |
           docker run --rm \
             -v "${{ github.workspace }}/apps/api:/src:ro" -w /src erp-go \
-            sh -ec 'test -z "$(gofmt -l .)"; go vet ./...; go test ./...; go build -buildvcs=false -o /tmp/bool-api ./cmd/api'
+            sh -ec 'test -z "$(gofmt -l .)"; go vet ./...; go test -race ./...; go build -buildvcs=false -o /tmp/bool-api ./cmd/api'
 
   # Typecheck + build each frontend app, in the same Node 24 + pnpm 11 image dev/CI both use
   # (docker/node.Dockerfile) — never the runner's own Node.
