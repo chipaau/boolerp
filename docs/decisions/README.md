@@ -31,6 +31,9 @@ Updated: 2026-09-28. Decisions are made one at a time.
 | C23 | Redirect paths changed by `path.Clean` with 307 Temporary Redirect, preserving the request method, body, and query. This intentionally differs from ServeMux's canonical-path redirect behavior. |
 | C24 | On 2026-09-28 the user removed the `apps/api` implementation (branch `chore/reset-api`) to rebuild it from scratch for understanding. Rebuild order: a simple chi server, then configuration, then logging, then the remaining platform steps. Tool selections and contracts from C14–C23 still stand; their earlier implementation status does not. |
 | C25 | Liveness uses chi's `middleware.Heartbeat("/api/healthz")`: `GET`/`HEAD` return `200` with `text/plain` body `.`. This replaces the earlier JSON `{"status":"ok"}` liveness response, following the framework-first rule. |
+| C26 | Load runtime configuration from the process environment with `github.com/caarlos0/env/v11` (v11.4.1). The binary does not read dotenv files; `joho/godotenv` was considered and rejected because Compose already supplies `.env` values and reading files from the working directory is a risk for self-hosted installs. |
+| C27 | Validate configuration with `github.com/go-playground/validator/v10` struct tags, chosen over a hand-written `Validate()` so one validation approach can later serve request input as well. Request-validation use remains to be confirmed when HTTP input is added. |
+| C28 | Use `github.com/stretchr/testify` (v1.12.1) for test assertions, limited to the `require` and `assert` packages; `mock` and `suite` are not adopted. Tests otherwise use the standard `testing` package. |
 
 **Reset notice (C24):** the paragraphs below describe the contracts of the removed
 implementation. Treat them as the rebuild target; nothing in `apps/api` is

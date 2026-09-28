@@ -48,6 +48,14 @@ coverage percentage.
 
 See [employee scope](hrms/employees.md) and [execution](platform/execution.md).
 
+## Test tooling
+
+Tests use Go's `testing` package with `stretchr/testify` assertions (C28). Use
+`require` when the test cannot continue after a failure (it stops the test, like
+`t.Fatal`) and `assert` for independent checks (it records the failure and
+continues, like `t.Error`). Do not use testify's `mock` or `suite` packages
+without a separate decision.
+
 ## Current CI boundary
 
 **Reset (C24, 2026-09-28):** `apps/api` currently has no Go module, so the checks

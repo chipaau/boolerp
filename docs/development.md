@@ -60,6 +60,18 @@ A standalone migration service is not part of this Compose baseline.
 
 ## Runtime configuration
 
+**Rebuild status (step 1a):** `APP_ENV` and `APP_PORT` are implemented in
+`internal/platform/config` with `caarlos0/env` (C26) and `go-playground/validator`
+(C27). Each remaining variable below is added with the step that uses it. Until
+step 1b, invalid-configuration errors are written by the standard `log` package
+to stderr, not as JSON.
+
+**Documented gap:** `caarlos0/env` parse errors (`env.ParseError`) embed the
+rejected value and name the Go field. `config.Load` replaces them with the variable
+name and expected type, such as `APP_PORT: invalid int`. Validation errors use the
+`env` tag as the field name and never include `FieldError.Value()`. Parsing stops
+before validation, so a parse error hides validation errors for other variables.
+
 Settings are read once from the process environment at startup. Compose loads
 `.env`; the binary does not read dotenv files itself. Unset or empty settings use
 the defaults below. Nonempty values must satisfy validation; whitespace is not

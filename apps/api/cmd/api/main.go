@@ -2,13 +2,23 @@ package main
 
 import (
 	"log"
+	"net"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/config"
 )
 
 func main() {
+	cfg, err := config.Load(os.Environ())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	r := chi.NewRouter()
 
 	// Liveness (C25). Middleware must be registered before any route.
@@ -19,6 +29,7 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	log.Println("api listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	addr := net.JoinHostPort("", strconv.Itoa(cfg.Port))
+	log.Printf("api listening on %s (environment %s)", addr, cfg.Environment)
+	log.Fatal(http.ListenAndServe(addr, r))
 }
