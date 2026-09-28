@@ -58,8 +58,9 @@ without a separate decision.
 
 ## Current CI boundary
 
-**Reset (C24, 2026-09-28):** `apps/api` currently has no Go module, so the checks
-below describe the rebuild target; the Go CI job cannot pass until step 0 is rebuilt.
+**Reset (C24, 2026-09-28):** the `API tests` CI job runs formatting, vet, tests,
+and the `cmd/api` build in Docker. It has no PostgreSQL service; that returns with
+step 3. The checks below describe the rebuild target, not current CI.
 
 The Go job runs formatting checks, vet, tests, and compilation in Docker against
 `apps/api` only. Step 1 adds configuration and logging tests plus subprocess checks
