@@ -60,11 +60,11 @@ A standalone migration service is not part of this Compose baseline.
 
 ## Runtime configuration
 
-**Rebuild status (step 1a):** `APP_ENV` and `APP_PORT` are implemented in
-`internal/platform/config` with `caarlos0/env` (C26) and `go-playground/validator`
-(C27). Each remaining variable below is added with the step that uses it. Until
-step 1b, invalid-configuration errors are written by the standard `log` package
-to stderr, not as JSON.
+**Rebuild status (steps 1a–1b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`, and
+`APP_LOG_LEVEL` are implemented in `internal/platform/config` with `caarlos0/env`
+(C26) and `go-playground/validator` (C27). Each remaining variable below is added
+with the step that uses it. `APP_LOG_LEVEL` is parsed by `slog.Level` itself, so it
+also accepts slog offsets such as `info+2`.
 
 **Documented gap:** `caarlos0/env` parse errors (`env.ParseError`) embed the
 rejected value and name the Go field. `config.Load` replaces them with the variable
