@@ -13,7 +13,7 @@ decide every policy or operational contract around it.
 
 ## Decision
 
-- Use chi as the Go API HTTP framework. Step 2a migrated the foundation to chi
+- Use chi as the Go API HTTP framework. The pre-reset step 2a migrated the foundation to chi
   before business routes were added. Keep domain and application code independent
   of chi.
 - Use PostgreSQL as the application database. The platform foundation uses

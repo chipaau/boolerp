@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/go-playground/validator/v10"
@@ -21,6 +22,9 @@ type Config struct {
 	// slog.Level parses itself (it implements encoding.TextUnmarshaler), and
 	// caarlos0/env uses that: "debug", "INFO", "warn", "error", or offsets like "info+2".
 	LogLevel slog.Level `env:"APP_LOG_LEVEL" envDefault:"info"`
+	// ShutdownTimeout bounds graceful shutdown: how long in-flight requests may
+	// take to finish after SIGINT/SIGTERM before connections are closed.
+	ShutdownTimeout time.Duration `env:"APP_SHUTDOWN_TIMEOUT" envDefault:"10s" validate:"gt=0,max=5m"`
 }
 
 // Load reads settings from environ, which uses the os.Environ "KEY=value" form.

@@ -3,6 +3,7 @@ package config
 import (
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,20 +12,29 @@ import (
 func TestLoadDefaults(t *testing.T) {
 	for name, environ := range map[string][]string{
 		"unset": nil,
-		"empty": {"APP_ENV=", "APP_PORT=", "APP_LOG_FORMAT=", "APP_LOG_LEVEL="},
+		"empty": {"APP_ENV=", "APP_PORT=", "APP_LOG_FORMAT=", "APP_LOG_LEVEL=", "APP_SHUTDOWN_TIMEOUT="},
 	} {
 		t.Run(name, func(t *testing.T) {
 			cfg, err := Load(environ)
 			require.NoError(t, err)
-			assert.Equal(t, Config{Environment: "dev", Port: 8080, LogFormat: "json", LogLevel: slog.LevelInfo}, cfg)
+			assert.Equal(t, Config{
+				Environment: "dev", Port: 8080, LogFormat: "json", LogLevel: slog.LevelInfo,
+				ShutdownTimeout: 10 * time.Second,
+			}, cfg)
 		})
 	}
 }
 
 func TestLoadValues(t *testing.T) {
-	cfg, err := Load([]string{"APP_ENV=prod", "APP_PORT=9000", "APP_LOG_FORMAT=text", "APP_LOG_LEVEL=DEBUG"})
+	cfg, err := Load([]string{
+		"APP_ENV=prod", "APP_PORT=9000", "APP_LOG_FORMAT=text", "APP_LOG_LEVEL=DEBUG",
+		"APP_SHUTDOWN_TIMEOUT=500ms",
+	})
 	require.NoError(t, err)
-	assert.Equal(t, Config{Environment: "prod", Port: 9000, LogFormat: "text", LogLevel: slog.LevelDebug}, cfg)
+	assert.Equal(t, Config{
+		Environment: "prod", Port: 9000, LogFormat: "text", LogLevel: slog.LevelDebug,
+		ShutdownTimeout: 500 * time.Millisecond,
+	}, cfg)
 }
 
 func TestLoadInvalid(t *testing.T) {
@@ -40,6 +50,10 @@ func TestLoadInvalid(t *testing.T) {
 		{"unknown environment", []string{"APP_ENV=s3cret"}, "APP_ENV", "s3cret"},
 		{"unknown log format", []string{"APP_LOG_FORMAT=s3cret"}, "APP_LOG_FORMAT", "s3cret"},
 		{"unknown log level", []string{"APP_LOG_LEVEL=s3cret"}, "APP_LOG_LEVEL", "s3cret"},
+		{"shutdown timeout not a duration", []string{"APP_SHUTDOWN_TIMEOUT=s3cret"}, "APP_SHUTDOWN_TIMEOUT", "s3cret"},
+		{"shutdown timeout zero", []string{"APP_SHUTDOWN_TIMEOUT=0s"}, "APP_SHUTDOWN_TIMEOUT", ""},
+		{"shutdown timeout negative", []string{"APP_SHUTDOWN_TIMEOUT=-1s"}, "APP_SHUTDOWN_TIMEOUT", ""},
+		{"shutdown timeout too long", []string{"APP_SHUTDOWN_TIMEOUT=6m"}, "APP_SHUTDOWN_TIMEOUT", "6m"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

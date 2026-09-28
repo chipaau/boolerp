@@ -60,8 +60,8 @@ A standalone migration service is not part of this Compose baseline.
 
 ## Runtime configuration
 
-**Rebuild status (steps 1a–1b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`, and
-`APP_LOG_LEVEL` are implemented in `internal/platform/config` with `caarlos0/env`
+**Rebuild status (steps 1a–2a):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
+`APP_LOG_LEVEL`, and `APP_SHUTDOWN_TIMEOUT` are implemented in `internal/platform/config` with `caarlos0/env`
 (C26) and `go-playground/validator` (C27). Each remaining variable below is added
 with the step that uses it. `APP_LOG_LEVEL` is parsed by `slog.Level` itself, so it
 also accepts slog offsets such as `info+2`.
@@ -81,7 +81,7 @@ silently removed.
 | --- | --- | --- |
 | `APP_ENV` | `dev` | `dev`, `test`, `staging`, `prod`; an operational log label, not an access-control or deployment-mode switch |
 | `APP_PORT` | `8080` | Decimal TCP port from 1 to 65535 |
-| `APP_SHUTDOWN_TIMEOUT` | `10s` | Positive Go duration, such as `10s` or `500ms` |
+| `APP_SHUTDOWN_TIMEOUT` | `10s` | Positive Go duration up to `5m`, such as `10s` or `500ms` |
 | `APP_LOG_FORMAT` | `json` | `json` or `text` |
 | `APP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` (case-insensitive) |
 | `APP_HTTP_MAX_BODY_BYTES` | `1048576` | Positive integer; maximum consumed request body size in bytes |
@@ -158,8 +158,12 @@ Invalid listen addresses or occupied ports terminate
 startup with an error. SIGINT/SIGTERM initiates shutdown with the configured
 deadline (ten seconds by default), allowing active requests to finish. Connections
 still active at the deadline are closed and the process exits with an error. A
-second SIGINT/SIGTERM forces termination during shutdown. Startup/shutdown and
-failure logs use the configured structured logger.
+second SIGINT/SIGTERM forces termination during shutdown: after the first signal
+the handler is removed (`signal.NotifyContext` plus `context.AfterFunc`), so the
+second uses Go's default action and the process exits with status 128 + signal
+(143 for SIGTERM). A clean shutdown exits 0. Startup/shutdown and failure logs use
+the configured structured logger. Compose sets `stop_grace_period: 15s` so Docker's
+SIGKILL comes after the default 10-second shutdown deadline.
 
 The container does not watch source changes. After editing the API, restart its
 development container to rebuild:

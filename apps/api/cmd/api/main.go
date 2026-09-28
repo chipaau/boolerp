@@ -1,16 +1,20 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
 )
 
@@ -33,6 +37,13 @@ func run() int {
 	logger := observability.NewLogger(os.Stdout, cfg.LogFormat, cfg.LogLevel).
 		With("service", "api", "environment", cfg.Environment)
 
+	// ctx is cancelled by the first SIGINT (Ctrl+C) or SIGTERM (docker stop).
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	// Once ctx is cancelled, stop listening for signals. The default behaviour
+	// returns, so a second signal terminates a process stuck while draining.
+	context.AfterFunc(ctx, stop)
+
 	r := chi.NewRouter()
 
 	// Liveness (C25). Middleware must be registered before any route.
@@ -43,10 +54,19 @@ func run() int {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
+	// Listening separately from serving makes a busy port a startup error,
+	// and "api listening" is logged only once the port is actually bound.
 	addr := net.JoinHostPort("", strconv.Itoa(cfg.Port))
-	logger.Info("api listening", "address", addr)
-	if err := http.ListenAndServe(addr, r); err != nil {
-		logger.Error("api stopped", "error", err)
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		logger.Error("startup failed", "error", err)
+		return 1
+	}
+	logger.Info("api listening", "address", ln.Addr().String())
+
+	srv := &http.Server{Handler: r}
+	if err := httpserver.Serve(ctx, logger, srv, ln, cfg.ShutdownTimeout); err != nil {
+		logger.Error("api stopped with error", "error", err)
 		return 1
 	}
 	return 0
