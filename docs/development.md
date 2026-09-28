@@ -149,7 +149,7 @@ In another terminal:
 curl --fail http://127.0.0.1:8080/api/healthz
 ```
 
-The response is `200` with `text/plain` body `.` from chi's `Heartbeat` (C25). This is process liveness;
+The response is `200` with JSON `{"status":"ok"}` (C36). This is process liveness;
 `/api/readyz` checks PostgreSQL connectivity. There are no authenticated or employee endpoints yet;
 unknown paths return a JSON `404` problem, and unsupported methods return `405`
 with `Allow`. Responses after the liveness check include a server-generated `X-Request-Id` (UUIDv7).
