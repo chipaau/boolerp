@@ -9,8 +9,25 @@ in `internal/bootstrap/routes.go` and the `httpserver` package accepted any
 
 ## Routing and responses
 
-`GET /api/healthz` is served by chi's `middleware.Heartbeat` (C25): `GET` and
-`HEAD` return `200` with `text/plain` body `.`, before routing and other middleware. Routes are registered with chi's typed
+Every response the API writes is JSON (C35); Go's own pre-handler protocol errors
+(400, 431, 505) are plain text and are the only exception. `GET /api/healthz` is a
+normal route returning `200` `{"status":"ok"}`; `HEAD` is answered through
+`chi/middleware.GetHead` (C36). Health checks are not request-logged.
+
+**Rebuild status (step 2d):** errors are RFC 9457 problem details (C37), written by
+`problem.Error(w, r, status, detail)`:
+
+```json
+{"type":"about:blank","title":"Not Found","status":404,
+ "detail":"No resource exists at this path.",
+ "instance":"urn:uuid:01a0e954-861b-71d3-9eba-8c575de9436d"}
+```
+
+`instance` is the request ID, so a client can quote it and support can find the log
+line. Unknown paths return 404; known paths with an unrouted method return 405 with
+`Allow` (for example `GET, HEAD`). All responses carry `X-Content-Type-Options:
+nosniff`. Mapping `*http.MaxBytesError` to 413 (and other body errors to 400/415)
+is added with the first handler that reads a request body, together with its decoder. Routes are registered with chi's typed
 method helpers (`router.Get`, `router.Head`); path parameters use chi's URL
 parameter extraction, and chi populates `request.PathValue` for compatibility.
 `redirectCleanPath` issues a `307 Temporary Redirect` whenever `path.Clean`

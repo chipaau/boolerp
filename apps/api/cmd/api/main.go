@@ -4,20 +4,14 @@ import (
 	"context"
 	"log/slog"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/httplog/v3"
-
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
-	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
 )
 
 func main() {
@@ -67,35 +61,4 @@ func run() int {
 		return 1
 	}
 	return 0
-}
-
-// newRouter builds the chi router and its middleware. It returns chi.Router,
-// not http.Handler, so tests can add routes behind the real middleware.
-// Middleware runs in the order registered, and must be registered before routes.
-func newRouter(logger *slog.Logger, maxBodyBytes int64) chi.Router {
-	r := chi.NewRouter()
-
-	// Liveness (C25) answers first, so health checks are neither logged nor counted.
-	r.Use(middleware.Heartbeat("/api/healthz"))
-	// Assign a server-generated request ID (C33) before anything logs.
-	r.Use(requestid.Middleware)
-	// One log line per request, with OpenTelemetry attribute names (C34). The
-	// request ID is added by the logger's handler from the request context.
-	r.Use(httplog.RequestLogger(logger, &httplog.Options{
-		Level:  slog.LevelInfo, // every response except OPTIONS
-		Schema: httplog.SchemaOTEL,
-		// Panic recovery is step 2e; until then panics are logged and re-raised.
-		RecoverPanics:      false,
-		LogRequestHeaders:  []string{"Content-Type", "Origin"},
-		LogResponseHeaders: []string{"Content-Type"},
-	}))
-	// Handlers reading more than maxBodyBytes get an *http.MaxBytesError.
-	r.Use(middleware.RequestSize(maxBodyBytes))
-
-	// chi runs middleware only once at least one route exists.
-	r.Get("/api", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	return r
 }
