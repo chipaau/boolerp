@@ -6,8 +6,9 @@ import (
 	"time"
 )
 
-// MaxHeaderBytes caps the request line plus headers. Go's parser enforces it and
-// answers 431 Request Header Fields Too Large.
+// MaxHeaderBytes caps the request line plus headers. net/http adds 4096 bytes of
+// slack, so the effective limit is about 36 KiB; beyond it Go answers
+// 431 Request Header Fields Too Large.
 const MaxHeaderBytes = 32 << 10 // 32 KiB
 
 // Limits are the network deadlines applied by http.Server. They bound slow or

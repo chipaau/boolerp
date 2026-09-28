@@ -77,6 +77,8 @@ services:
             - "**/*.go"
             - go.mod
             - go.sum
+          ignore:
+            - "**/*_test.go"
     environment:
       APP_ENV: ${APP_ENV:-dev}
       APP_PORT: "${APP_PORT:-8080}"
