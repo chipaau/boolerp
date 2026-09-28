@@ -24,7 +24,7 @@ Updated: 2026-09-28. Decisions are made one at a time.
 | C16 | Implement platform delivery step 1: runtime configuration, validation, structured logging, redaction, and explicit runtime wiring. |
 | C17 | After merging step 1 into the updated dev branch, implement step 2 (HTTP foundation) on a new branch. |
 | C18 | After step 2 merges, implement step 3 on a new branch using pgx/v5 pgxpool and Goose; defer sqlc until the first table is approved. |
-| C19 | Use chi as the Go API HTTP framework. Step 2a migrated the HTTP foundation from `net/http` ServeMux to chi/v5; shared HTTP middleware behavior is preserved. Canonical redirect behavior is recorded in C23. |
+| C19 | Use chi as the Go API HTTP framework. The pre-reset step 2a migrated the HTTP foundation from `net/http` ServeMux to chi/v5; shared HTTP middleware behavior is preserved. Canonical redirect behavior is recorded in C23. |
 | C20 | Use Ory Kratos as the identity and authentication system; session, provisioning, domain, and account contracts remain open. |
 | C21 | Use Cerbos as the authorization policy engine; roles, resources, policy inputs, and revocation behavior remain open. |
 | C22 | Use the S3 API for file/object storage; use `chipaau/minio`, the project's exact MinIO fork, as the development server. Production provider and Go SDK remain open. |
@@ -58,7 +58,7 @@ of D07; it does not select tracing or broader telemetry policy.
 
 Step 2's implementation introduces RFC 9457 problem responses, server-generated
 request IDs, safe request logs, panic recovery, and configured body/network limits.
-Step 2a migrated routing from `net/http` ServeMux to chi/v5, preserving the shared
+The pre-reset step 2a migrated routing from `net/http` ServeMux to chi/v5, preserving the shared
 middleware behavior. Canonical path cleanup intentionally uses the method-preserving
 307 policy recorded in C23. Its initial browser/proxy policy enables no
 cross-origin CORS access and trusts no forwarded headers. The exact contract and

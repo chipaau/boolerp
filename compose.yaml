@@ -65,6 +65,8 @@ services:
       dockerfile: docker/go.Dockerfile
     working_dir: /w/apps/api
     command: ["sh", "-c", "go build -buildvcs=false -o /tmp/bool-api ./cmd/api && exec /tmp/bool-api"]
+    # Longer than APP_SHUTDOWN_TIMEOUT (10s) so Docker's SIGKILL does not cut graceful shutdown short.
+    stop_grace_period: 15s
     environment:
       APP_ENV: ${APP_ENV:-dev}
       APP_PORT: "${APP_PORT:-8080}"
