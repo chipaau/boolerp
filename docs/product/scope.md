@@ -49,6 +49,9 @@ On 2026-09-27, the user authorized platform step 2 on a new branch from `dev`.
 The [HTTP foundation](../platform/http.md) is implemented; liveness remains the
 only public operation.
 
+On 2026-09-28 the user removed that implementation to rebuild the API from
+scratch, starting with a simple chi server, then configuration, then logging (C24).
+
 This does not approve employee tables, identity/authorization integration
 contracts, application database migrations, or frontend integration. Empty
 directories reserve the proposed boundaries; they are not implemented platform

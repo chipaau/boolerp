@@ -11,10 +11,9 @@ The fresh API lives in `apps/api/` in this monorepo. The previous source is pres
 in `apps/api.bak/`; its migrations, providers, and frontend consumers are not the
 rebuild baseline.
 
-Steps 0–2 are merged into `dev`. Step 3 adds the
-[PostgreSQL foundation](platform/postgres.md): a pgxpool lifecycle, readiness,
-an explicit Goose migration command, and separated database roles. No application
-tables or employee behavior are implemented.
+**Reset (C24, 2026-09-28):** the implementation of steps 0–3 was removed to rebuild
+the API from scratch. The commands, settings, and layout below describe the rebuild
+target and will not work until the corresponding roadmap step is rebuilt.
 
 ## Locations
 
@@ -138,7 +137,7 @@ In another terminal:
 curl --fail http://127.0.0.1:8080/api/healthz
 ```
 
-The response is `200` with JSON `{"status":"ok"}`. This is process liveness;
+The response is `200` with `text/plain` body `.` from chi's `Heartbeat` (C25). This is process liveness;
 `/api/readyz` checks PostgreSQL connectivity. There are no authenticated or employee endpoints yet;
 unknown paths return a JSON `404` problem, and unsupported methods return `405`
 with `Allow`. Responses reaching the handler include a generated `X-Request-ID`.

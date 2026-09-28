@@ -13,6 +13,13 @@
 - Prefer established, maintained frameworks, libraries, and SDKs that fit the
   confirmed architecture and use case. Do not build in-house substitutes for
   capabilities a suitable ecosystem tool already provides.
+- Before writing any feature, check whether the selected framework or tool
+  already provides it (for HTTP: chi, `chi/middleware`, and go-chi packages such
+  as `cors` and `httplog`; otherwise the Go standard library). Use the provided
+  feature. Write custom code only for a verified gap, and record that gap and why
+  the framework feature is insufficient in the component document. If the
+  framework's behavior differs from a recorded contract, raise the difference
+  with the user instead of reimplementing it.
 - When a choice would change an architectural boundary, external provider,
   dependency, operational contract, or user-visible behavior, explain the concrete
   need, recommend an option with trade-offs, and ask the user before deciding or

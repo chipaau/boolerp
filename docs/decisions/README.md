@@ -29,6 +29,12 @@ Updated: 2026-09-28. Decisions are made one at a time.
 | C21 | Use Cerbos as the authorization policy engine; roles, resources, policy inputs, and revocation behavior remain open. |
 | C22 | Use the S3 API for file/object storage; use `chipaau/minio`, the project's exact MinIO fork, as the development server. Production provider and Go SDK remain open. |
 | C23 | Redirect paths changed by `path.Clean` with 307 Temporary Redirect, preserving the request method, body, and query. This intentionally differs from ServeMux's canonical-path redirect behavior. |
+| C24 | On 2026-09-28 the user removed the `apps/api` implementation (branch `chore/reset-api`) to rebuild it from scratch for understanding. Rebuild order: a simple chi server, then configuration, then logging, then the remaining platform steps. Tool selections and contracts from C14–C23 still stand; their earlier implementation status does not. |
+| C25 | Liveness uses chi's `middleware.Heartbeat("/api/healthz")`: `GET`/`HEAD` return `200` with `text/plain` body `.`. This replaces the earlier JSON `{"status":"ok"}` liveness response, following the framework-first rule. |
+
+**Reset notice (C24):** the paragraphs below describe the contracts of the removed
+implementation. Treat them as the rebuild target; nothing in `apps/api` is
+currently implemented.
 
 The initial `api-rebuild` branch was created from `develop` at `70eb43a` and merged
 into `dev` at `639101d`. Step 2 used `feat/api-http-foundation`; step 3 uses

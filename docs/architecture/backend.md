@@ -1,10 +1,9 @@
 # Backend architecture
 
-Status: hexagonal modular-monolith direction selected; directory scaffold,
-HTTP entry point, runtime configuration, and structured logging implemented.
-Step 2 adds the shared [HTTP foundation](../platform/http.md). Step 3 implements the
-[PostgreSQL foundation](../platform/postgres.md), without approving application
-tables. Remaining policy contracts and tool choices are proposed. See
+Status: hexagonal modular-monolith direction selected. The earlier implementation
+was removed for a step-by-step rebuild (C24); the layout below is the target, and the
+[HTTP foundation](../platform/http.md) and [PostgreSQL foundation](../platform/postgres.md)
+describe target contracts, without approving application tables. Remaining policy contracts and tool choices are proposed. See
 [the decision register](../decisions/README.md).
 
 The new API lives in `apps/api/`; the previous implementation is preserved in

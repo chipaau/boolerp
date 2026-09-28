@@ -1,14 +1,16 @@
 # HTTP foundation
 
-Chi is the API HTTP framework (C19, [ADR 0002](../adr/0002-tool-and-provider-selection.md)),
-implemented in step 2a (2026-09-28). Routes are registered on a `chi.NewRouter()`
-in `internal/bootstrap/routes.go`; the `httpserver` package accepts any
-`http.Handler` and remains framework-agnostic.
+Status: target contract; the implementation was removed for the rebuild (C24).
+
+Chi is the API HTTP framework (C19, [ADR 0002](../adr/0002-tool-and-provider-selection.md)).
+In the removed implementation, routes were registered on a `chi.NewRouter()`
+in `internal/bootstrap/routes.go` and the `httpserver` package accepted any
+`http.Handler`, remaining framework-agnostic.
 
 ## Routing and responses
 
-`GET /api/healthz` returns `200` with `{"status":"ok"}`. `HEAD` returns the
-same status and headers without a body. Routes are registered with chi's typed
+`GET /api/healthz` is served by chi's `middleware.Heartbeat` (C25): `GET` and
+`HEAD` return `200` with `text/plain` body `.`, before routing and other middleware. Routes are registered with chi's typed
 method helpers (`router.Get`, `router.Head`); path parameters use chi's URL
 parameter extraction, and chi populates `request.PathValue` for compatibility.
 `redirectCleanPath` issues a `307 Temporary Redirect` whenever `path.Clean`

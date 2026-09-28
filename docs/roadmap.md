@@ -8,9 +8,9 @@ Resolve one decision at a time using the [decision register](decisions/README.md
 | Stage | Outcome | Current status |
 | --- | --- | --- |
 | 0. Documentation baseline | Fresh branch, current scope/decisions, archived history, centralized agent rules, four-service Compose | Documentation/configuration milestone; no new application implementation |
-| 0a. Executable scaffold | Preserve apps/api.bak; create target directories, main, bootstrap, HTTP lifecycle, and a liveness endpoint | Verified in Docker: build, formatting, vet, liveness, graceful shutdown, invalid-port failure, and standalone image build |
+| 0a. Executable scaffold | Preserve apps/api.bak; start the rebuild with a simple chi server (platform step 0) | Done on 2026-09-28 (platform step 0) |
 | 1. Tenant model | Agree what a tenant represents and its relationship to a licensed customer | Next discussion, D01 |
-| 2. Platform implementation | Deliver the increments below; resolve D02–D12 as needed and approve tables individually | Steps 1–3 and chi adoption (2a) implemented and verified; later increments proposed |
+| 2. Platform implementation | Deliver the increments below; resolve D02–D12 as needed and approve tables individually | Reset on 2026-09-28 (C24); step 0 done, step 1a next |
 | 3. Platform acceptance | Prove protected operations, audit, tracing, caching, domains, and same-release SaaS/self-host installation, licensing, upgrades, and restore | Not started |
 | 4. Employee operation | Resolve D11 and implement one approved employee operation through domain/application/adapters, including access, audit, and trace | Not started |
 | 5. Cache-backed employee read | Prove scoped Redis caching, invalidation, and failure behavior for a concrete employee read | Not started |
@@ -21,8 +21,9 @@ mean ignoring custom-domain or self-host requirements during identity design.
 
 ## Platform delivery plan
 
-Status: scaffold, steps 1–3, and chi adoption (2a) are implemented and verified.
-Later increments are proposed. This breaks
+Status: the earlier implementation of steps 0–3 was removed on 2026-09-28 so the
+API can be rebuilt from scratch for understanding (C24). The tool selections from
+those steps still stand; no step is currently implemented. This breaks
 the platform stage above into small increments, including the backend deployment
 proof, so there is a clear platform milestone before HRMS.
 
@@ -33,11 +34,11 @@ not just more directories.
 
 | Step | Add | Completion check | Decisions needed before implementation |
 | --- | --- | --- | --- |
-| 0 | **Executable scaffold:** bootstrap, HTTP server, liveness, graceful shutdown. | Existing scaffold verification recorded above. **Done.** | C14 confirmed. |
-| 1 | **Runtime configuration and logging:** typed configuration, validation, startup/shutdown logs, secret redaction, explicit dependency wiring. | **Done.** Docker formatting, vet, tests, and build passed; subprocess checks cover health, invalid settings, port conflicts, SIGTERM, and structured logs. Redaction checks cover sensitive attributes/groups. | C16 authorizes this increment; implemented settings and logging contract recorded in development/observability docs. D07 remains open for tracing. |
-| 2 | **HTTP foundation:** routing, shared error responses, request correlation, panic recovery, body limits, timeouts, and proxy/CORS rules needed by the selected deployment. | **Done.** Docker formatting, vet, tests, and build passed. HTTP and real TCP checks prove error/ID consistency, request limits, recovery, network deadlines, and the initial origin/proxy policy. | C17 authorizes this increment; [HTTP contract](platform/http.md) records its implementation choices. Identity-specific browser protections remain part of D04. |
-| 2a | **Adopt chi:** move the HTTP foundation from `net/http` ServeMux to the selected chi framework before adding business routes; preserve shared middleware behavior. | **Done.** Route, method/HEAD, 404/405/Allow, canonical redirects, correlation, recovery, and real TCP checks pass with chi. Docker formatting, vet, and full test suite verified. | C19 selects chi; canonical redirect semantics are intentionally changed by C23 and documented in the [HTTP contract](platform/http.md). |
-| 3 | **PostgreSQL foundation:** pool lifecycle, connection deadlines, readiness, migration command, and separate runtime/migration privileges. | **Done.** Docker formatting, vet, tests, and both binaries build. A fresh PostgreSQL 18 cluster verifies the init script, Goose applies a test-only migration, the runtime role can perform DML but cannot access migration history, create schema objects, or alter sequences, and both test roles are cleaned up. The production image includes the migration executable. | C18 confirms pgx/v5 pgxpool and Goose for this foundation; sqlc is deferred to the first approved table. No application tables are included. |
+| 0 | **Simple chi server:** Go module, `cmd/api` entry point, a chi router, and `GET /api/healthz` liveness, built and run in Docker. | The server builds and runs in Docker and liveness responds. **Done** (2026-09-28): gofmt/vet pass in Docker; the Compose `api` service is healthy and `http://cyryx.bool.test/api/healthz` returns `200 .` through Traefik. | C14, C19, C24. |
+| 1a | **Runtime configuration:** typed configuration loaded from the environment, validation, safe error messages, and explicit dependency wiring. | Valid settings start the server; invalid settings fail at startup without disclosing values. | C16 contract, rebuilt under C24. |
+| 1b | **Logging:** `slog` structured logging, startup/shutdown logs, format/level settings, and redaction of sensitive attributes. | Logs are structured and sensitive attributes are redacted. | C16 contract, rebuilt under C24. D07 remains open for tracing. |
+| 2 | **HTTP foundation on chi:** use `chi/middleware` and go-chi packages first (for example RequestID, Recoverer, Timeout, RequestSize, CleanPath/RedirectSlashes, ClientIPFrom*, `go-chi/cors`); write custom code only for documented gaps. Covers graceful shutdown, shared error responses, request correlation, panic recovery, body limits, timeouts, canonical redirects, and proxy/CORS rules needed by the selected deployment. | HTTP and real TCP checks prove error/ID consistency, request limits, recovery, network deadlines, shutdown draining, and the initial origin/proxy policy. | C17, C19, C23; the [HTTP contract](platform/http.md) is the target. Identity-specific browser protections remain part of D04. |
+| 3 | **PostgreSQL foundation:** pool lifecycle, connection deadlines, readiness, migration command, and separate runtime/migration privileges. | A fresh PostgreSQL cluster proves the pool, readiness, a test-only Goose migration, and that the runtime role can perform DML but cannot run DDL or access migration history. | C18: pgx/v5 pgxpool and Goose; sqlc deferred to the first approved table. The [PostgreSQL contract](platform/postgres.md) is the target. |
 | 4 | **Redis foundation:** client lifecycle, configuration, deadlines, and dependency health behavior. | Real Redis connection, cancellation, cleanup, and outage behavior verified. This proves connectivity only. | Redis client and operational failure/readiness policy from D08. |
 | 5 | **Request tracing:** propagation, HTTP spans, log correlation, PostgreSQL/Redis instrumentation, and configurable export. | A request can be followed across infrastructure; sensitive payloads are absent; exporter failure follows the agreed policy. | Remaining D07 choices, including self-hosted defaults. |
 | 6 | **Tenancy and transaction boundary:** approved tenant persistence, trusted tenant context, isolated reads/writes, and application-owned transactions. | Cross-tenant reads/writes, missing context, rollback, and pooled connection reuse tested; use the restricted runtime role if RLS is selected. | D01, D02, the transaction portion of D06, and the required tenancy tables. |
@@ -71,12 +72,9 @@ their later implementation position does not postpone those design checks.
 4. Run the relevant Docker-based checks from the [verification strategy](testing.md),
    update the component document, and record evidence before marking it done.
 
-**Recommended next implementation increment: step 4, Redis foundation.**
-The chi migration is complete. Resolve D08's
-Redis client and readiness/outage policy before adding its lifecycle.
-Connectivity alone will not prove caching behavior, which still needs a concrete
-approved read. The PostgreSQL foundation is complete, and application tables
-remain subject to individual approval.
+**Next implementation increment: step 1a, runtime configuration**, followed by
+logging (1b). Each step should be small enough to run and
+understand before moving on. Application tables remain subject to individual approval.
 
 ## When the platform is done
 

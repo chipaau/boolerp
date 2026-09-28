@@ -1,7 +1,7 @@
 # Tracing and logging
 
-Status: runtime structured logging implemented in step 1; request correlation and
-HTTP logging implemented in step 2. Tracing is
+Status: the logging and request-correlation contracts below are the rebuild target
+for steps 1b and 2; their implementation was removed (C24). Tracing is
 confirmed as required; its tooling and operational policy remain proposed.
 
 Tracing explains the execution path and timing of a request or background operation.

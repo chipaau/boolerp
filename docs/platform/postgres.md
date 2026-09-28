@@ -1,7 +1,7 @@
 # PostgreSQL foundation
 
-Status: platform step 3 foundation implemented; application persistence and
-tables remain unapproved. PostgreSQL is the only selected application database.
+Status: target contract for platform step 3; the implementation was removed for
+the rebuild (C24). Application persistence and tables remain unapproved. PostgreSQL is the only selected application database.
 
 ## Runtime pool and readiness
 
