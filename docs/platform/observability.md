@@ -1,7 +1,8 @@
 # Tracing and logging
 
-Status: the logging and request-correlation contracts below are the rebuild target
-for steps 1b and 2; their implementation was removed (C24). Tracing is
+Status: runtime logging and redaction are rebuilt in step 1b
+(`internal/platform/observability`, C29). Request correlation and HTTP request
+logging are the rebuild target for step 2. Tracing is
 confirmed as required; its tooling and operational policy remain proposed.
 
 Tracing explains the execution path and timing of a request or background operation.
@@ -12,19 +13,25 @@ accountable changes.
 
 - Standard-library `log/slog` handlers write to stdout. JSON is the default;
   `APP_LOG_FORMAT=text` selects readable text. `APP_LOG_LEVEL` controls filtering.
-- The logger is constructed at the entry point and passed explicitly through
-  bootstrap to the HTTP server. Standard HTTP server diagnostics use the same handler.
+- The logger is constructed at the entry point and passed explicitly. Passing it to
+  the HTTP server's diagnostics and to `go-chi/httplog` request logs is step 2.
 - Runtime events include `service=api`, environment, and the relevant address or
   shutdown timeout. Successful start, shutdown initiation, and shutdown completion
   are info events; startup/shutdown failures are error events.
 - Configuration is validated before listening. Invalid configuration produces a
   JSON error using a fallback logger and exits nonzero, even if logging settings
   are invalid. Errors name the setting without repeating its supplied value.
-- Structured attribute and group names containing `password`, `secret`, `token`,
-  `credential`, `authorization`, `cookie`, `dsn`, `apikey`, `privatekey`, `accesskey`,
-  or `signingkey`, or ending in `url`, have their values replaced with `[REDACTED]`.
+- Structured attribute and group names containing `password`, `passwd`, `secret`,
+  `token`, `credential`, `authorization`, `bearer`, `jwt`, `cookie`, `session`, `dsn`,
+  `apikey`, `privatekey`, `accesskey`, `signingkey`, or `encryptionkey`, or ending in
+  `url`, have their values replaced with `[REDACTED]`. The list lives in
+  `internal/platform/observability/sensitive.go`. `session` intentionally over-redacts
+  (for example `session_count`); a bare `key` is not listed because it would hide
+  ordinary names such as `cache_key`.
   Matching ignores case, underscores, and hyphens. It also applies to attributes
-  attached with `With` and groups created with `WithGroup`.
+  attached with `With` and groups created with `WithGroup`. This is implemented with
+  slog's `HandlerOptions.ReplaceAttr` hook; the word list is the documented gap that
+  slog does not provide.
 
 Redaction is based on attribute/group names. It does not inspect arbitrary
 messages, error strings, maps, or structs stored under other keys. Call sites must

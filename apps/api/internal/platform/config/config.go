@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"strings"
 
@@ -16,6 +17,10 @@ import (
 type Config struct {
 	Environment string `env:"APP_ENV" envDefault:"dev" validate:"oneof=dev test staging prod"`
 	Port        int    `env:"APP_PORT" envDefault:"8080" validate:"min=1,max=65535"`
+	LogFormat   string `env:"APP_LOG_FORMAT" envDefault:"json" validate:"oneof=json text"`
+	// slog.Level parses itself (it implements encoding.TextUnmarshaler), and
+	// caarlos0/env uses that: "debug", "INFO", "warn", "error", or offsets like "info+2".
+	LogLevel slog.Level `env:"APP_LOG_LEVEL" envDefault:"info"`
 }
 
 // Load reads settings from environ, which uses the os.Environ "KEY=value" form.

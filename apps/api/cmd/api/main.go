@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -11,13 +11,27 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/observability"
 )
 
 func main() {
+	os.Exit(run())
+}
+
+// run returns the process exit code. Keeping os.Exit in main lets deferred
+// calls in run complete before the process exits.
+func run() int {
 	cfg, err := config.Load(os.Environ())
 	if err != nil {
-		log.Fatal(err)
+		// The logging settings may be the invalid ones, so use a fixed fallback.
+		observability.NewLogger(os.Stdout, "json", slog.LevelInfo).
+			With("service", "api").
+			Error("startup failed", "error", err)
+		return 1
 	}
+
+	logger := observability.NewLogger(os.Stdout, cfg.LogFormat, cfg.LogLevel).
+		With("service", "api", "environment", cfg.Environment)
 
 	r := chi.NewRouter()
 
@@ -30,6 +44,10 @@ func main() {
 	})
 
 	addr := net.JoinHostPort("", strconv.Itoa(cfg.Port))
-	log.Printf("api listening on %s (environment %s)", addr, cfg.Environment)
-	log.Fatal(http.ListenAndServe(addr, r))
+	logger.Info("api listening", "address", addr)
+	if err := http.ListenAndServe(addr, r); err != nil {
+		logger.Error("api stopped", "error", err)
+		return 1
+	}
+	return 0
 }
