@@ -14,6 +14,7 @@ import (
 // environment, first, so later entries in environ override them.
 var requiredDB = []string{
 	"APP_DB_HOST=postgres", "APP_DB_NAME=erp", "APP_DB_USER=erp_app", "APP_DB_PASSWORD=s3cret",
+	"APP_REDIS_HOST=redis",
 }
 
 func withDB(environ []string) []string {
@@ -36,6 +37,7 @@ func defaults() Config {
 			Host: "postgres", Port: 5432, Name: "erp", User: "erp_app", Password: "s3cret",
 			SSLMode: "verify-full", MaxConns: 20, PingTimeout: 2 * time.Second,
 		},
+		Redis: Redis{Host: "redis", Port: 6379, TLS: true, Timeout: 500 * time.Millisecond},
 	}
 }
 
@@ -48,6 +50,7 @@ func TestLoadDefaults(t *testing.T) {
 			"APP_HTTP_WRITE_TIMEOUT=", "APP_HTTP_IDLE_TIMEOUT=",
 			"APP_HTTP_TRUSTED_PROXY_HOPS=", "APP_HTTP_ALLOWED_ORIGINS=",
 			"APP_DB_PORT=", "APP_DB_SSLMODE=", "APP_DB_MAX_CONNS=", "APP_DB_PING_TIMEOUT=",
+			"APP_REDIS_PORT=", "APP_REDIS_DB=", "APP_REDIS_TLS=", "APP_REDIS_TIMEOUT=",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -67,6 +70,8 @@ func TestLoadValues(t *testing.T) {
 		"APP_HTTP_TRUSTED_PROXY_HOPS=2", "APP_HTTP_ALLOWED_ORIGINS=https://app.bool.mv,http://localhost:3000",
 		"APP_DB_HOST=10.0.0.5", "APP_DB_PORT=6543", "APP_DB_SSLMODE=disable", "APP_DB_MAX_CONNS=5",
 		"APP_DB_PING_TIMEOUT=500ms",
+		"APP_REDIS_HOST=10.0.0.6", "APP_REDIS_PORT=6380", "APP_REDIS_USERNAME=cache",
+		"APP_REDIS_PASSWORD=s3cret-redis", "APP_REDIS_DB=2", "APP_REDIS_TLS=false", "APP_REDIS_TIMEOUT=250ms",
 	}))
 	require.NoError(t, err)
 	assert.Equal(t, Config{
@@ -84,6 +89,10 @@ func TestLoadValues(t *testing.T) {
 		DB: DB{
 			Host: "10.0.0.5", Port: 6543, Name: "erp", User: "erp_app", Password: "s3cret",
 			SSLMode: "disable", MaxConns: 5, PingTimeout: 500 * time.Millisecond,
+		},
+		Redis: Redis{
+			Host: "10.0.0.6", Port: 6380, Username: "cache", Password: "s3cret-redis", DB: 2,
+			TLS: false, Timeout: 250 * time.Millisecond,
 		},
 	}, cfg)
 }
@@ -125,6 +134,11 @@ func TestLoadInvalid(t *testing.T) {
 		{"SSL mode unknown", []string{"APP_DB_SSLMODE=s3cret"}, "APP_DB_SSLMODE", "s3cret"},
 		{"max conns zero", []string{"APP_DB_MAX_CONNS=0"}, "APP_DB_MAX_CONNS", ""},
 		{"max conns too many", []string{"APP_DB_MAX_CONNS=1001"}, "APP_DB_MAX_CONNS", "1001"},
+		{"redis host empty", []string{"APP_REDIS_HOST="}, "APP_REDIS_HOST", ""},
+		{"redis port not a number", []string{"APP_REDIS_PORT=s3cret"}, "APP_REDIS_PORT: invalid int", "s3cret"},
+		{"redis DB too large", []string{"APP_REDIS_DB=16"}, "APP_REDIS_DB", ""},
+		{"redis TLS not a bool", []string{"APP_REDIS_TLS=s3cret"}, "APP_REDIS_TLS: invalid bool", "s3cret"},
+		{"redis timeout zero", []string{"APP_REDIS_TIMEOUT=0s"}, "APP_REDIS_TIMEOUT", ""},
 		{"ping timeout zero", []string{"APP_DB_PING_TIMEOUT=0s"}, "APP_DB_PING_TIMEOUT", ""},
 		{"ping timeout too long", []string{"APP_DB_PING_TIMEOUT=2m"}, "APP_DB_PING_TIMEOUT", "2m"},
 		{"max conns not a number", []string{"APP_DB_MAX_CONNS=s3cret"}, "APP_DB_MAX_CONNS", "s3cret"},
@@ -185,22 +199,13 @@ func TestSliceErrorsNameVariableAndIndex(t *testing.T) {
 	assert.ErrorContains(t, err, "APP_HTTP_ALLOWED_ORIGINS[1]: must satisfy origin")
 }
 
-// TestFieldNamesAreUnique protects parse-error redaction: caarlos0/env reports
-// only a field's name, so two groups of one settings struct must never share one.
-func TestFieldNamesAreUnique(t *testing.T) {
-	for _, top := range []reflect.Type{reflect.TypeFor[Config](), reflect.TypeFor[Migrate]()} {
-		seen := map[string]string{}
-		for i := range top.NumField() {
-			group := top.Field(i)
-			for j := range group.Type.NumField() {
-				name := group.Type.Field(j).Name
-				if other, ok := seen[name]; ok {
-					t.Errorf("%s: field %s is in both %s and %s", top.Name(), name, other, group.Name)
-				}
-				seen[name] = group.Name
-			}
-		}
-	}
+// TestSameFieldNameInTwoGroups: groups are parsed separately, so a parse error
+// in DB.Port and one in Redis.Port are each named by their own variable.
+func TestSameFieldNameInTwoGroups(t *testing.T) {
+	_, err := Load(withDB([]string{"APP_DB_PORT=x", "APP_REDIS_PORT=y"}))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "APP_DB_PORT: invalid int")
+	assert.ErrorContains(t, err, "APP_REDIS_PORT: invalid int")
 }
 
 func TestEveryFieldHasAVariable(t *testing.T) {
@@ -208,7 +213,7 @@ func TestEveryFieldHasAVariable(t *testing.T) {
 	for path, variable := range api.byPath {
 		assert.Regexp(t, `^APP_[A-Z_]+$`, variable, path)
 	}
-	assert.Len(t, api.byPath, 20, "update this count when adding a setting")
+	assert.Len(t, api.byPath, 27, "update this count when adding a setting")
 
 	migrate := variables(reflect.TypeFor[Migrate]())
 	for path, variable := range migrate.byPath {

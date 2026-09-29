@@ -106,6 +106,9 @@ services:
       APP_DB_SSLMODE: ${APP_DB_SSLMODE:-disable}
       APP_DB_MAX_CONNS: ${APP_DB_MAX_CONNS:-20}
       APP_DB_PING_TIMEOUT: ${APP_DB_PING_TIMEOUT:-2s}
+      # Local Redis has no password or TLS; the application default is TLS on (C53).
+      APP_REDIS_HOST: ${APP_REDIS_HOST:-redis}
+      APP_REDIS_TLS: ${APP_REDIS_TLS:-false}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:${APP_PORT:-8080}/api/healthz"]
       interval: 5s

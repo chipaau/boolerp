@@ -13,6 +13,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
 	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
+	"github.com/boolmv/erp/apps/api/internal/platform/redis"
 )
 
 func main() {
@@ -59,6 +60,27 @@ func run() int {
 	}
 	defer pool.Close()
 	logger.Info("database pool created", "max_conns", cfg.DB.MaxConns)
+
+	redis.RouteLogs(logger)
+	// Redis is a cache and optional at runtime (C52): the client connects
+	// lazily, and an unreachable Redis is reported but does not stop startup.
+	cache := redis.NewClient(redis.Settings{
+		Host:     cfg.Redis.Host,
+		Port:     cfg.Redis.Port,
+		Username: cfg.Redis.Username,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+		TLS:      cfg.Redis.TLS,
+		Timeout:  cfg.Redis.Timeout,
+	})
+	defer cache.Close()
+	go func() {
+		if err := cache.Ping(ctx).Err(); err != nil {
+			logger.Warn("redis unreachable; cache reads fall back to PostgreSQL", "error", err)
+			return
+		}
+		logger.Info("redis reachable")
+	}()
 
 	// Listening separately from serving makes a busy port a startup error,
 	// and "api listening" is logged only once the port is actually bound.

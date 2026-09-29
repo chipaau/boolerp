@@ -1,7 +1,8 @@
 // Package config loads and validates runtime settings from the process environment.
 //
 // Settings are grouped by concern, one file per group: app.go (APP_*), log.go
-// (APP_LOG_*), http.go (APP_HTTP_*), and database.go (APP_DB_*). Each group is a
+// (APP_LOG_*), http.go (APP_HTTP_*), database.go (APP_DB_*), and redis.go
+// (APP_REDIS_*). Each group is a
 // struct whose env tags are joined to its envPrefix, so DB.Host reads APP_DB_HOST.
 // cmd/migrate has its own settings (migrate.go, MIGRATE_*), loaded by LoadMigrate.
 package config
@@ -21,10 +22,11 @@ import (
 // variable (env, joined to the group's envPrefix), its default when unset or
 // empty (envDefault), and its rules (validate).
 type Config struct {
-	App  App  `envPrefix:"APP_"`
-	Log  Log  `envPrefix:"APP_LOG_"`
-	HTTP HTTP `envPrefix:"APP_HTTP_"`
-	DB   DB   `envPrefix:"APP_DB_"`
+	App   App   `envPrefix:"APP_"`
+	Log   Log   `envPrefix:"APP_LOG_"`
+	HTTP  HTTP  `envPrefix:"APP_HTTP_"`
+	DB    DB    `envPrefix:"APP_DB_"`
+	Redis Redis `envPrefix:"APP_REDIS_"`
 }
 
 // Load reads the API's settings from environ, which uses the os.Environ
@@ -50,9 +52,25 @@ func load[T any](environ []string, acrossGroups validator.StructLevelFunc) (T, e
 	var zero T
 	names := variables(reflect.TypeFor[T]())
 
-	cfg, err := env.ParseAsWithOptions[T](env.Options{Environment: env.ToMap(environ)})
-	if err != nil {
-		return zero, redactParseErrors(err, names)
+	// Parse one group at a time, with its prefix. caarlos0/env's ParseError
+	// reports only the field name, so a parse error is resolved within its own
+	// group; groups may therefore reuse field names (DB.Host, Redis.Host).
+	var cfg T
+	vars := env.ToMap(environ)
+	top := reflect.ValueOf(&cfg).Elem()
+	var msgs []string
+	for i := range top.NumField() {
+		group := top.Type().Field(i)
+		err := env.ParseWithOptions(top.Field(i).Addr().Interface(), env.Options{
+			Environment: vars,
+			Prefix:      group.Tag.Get("envPrefix"),
+		})
+		if err != nil {
+			msgs = append(msgs, redactParseErrors(err, names.groups[group.Name])...)
+		}
+	}
+	if len(msgs) > 0 {
+		return zero, fmt.Errorf("invalid configuration: %s", strings.Join(msgs, "; "))
 	}
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
@@ -87,47 +105,49 @@ func load[T any](environ []string, acrossGroups validator.StructLevelFunc) (T, e
 }
 
 // variableNames maps each setting of one settings struct to its environment
-// variable, by Go field path ("DB.Port") and by field name ("Port"). Field names
-// are unique across groups (a test enforces this), because caarlos0/env's
-// ParseError reports only the field name.
+// variable: by Go field path ("DB.Port"), and per group by field name
+// (groups["DB"]["Port"]), since a parse error names only the field.
 type variableNames struct {
 	byPath map[string]string
-	byName map[string]string
+	groups map[string]map[string]string
 }
 
 func variables(top reflect.Type) variableNames {
-	n := variableNames{byPath: map[string]string{}, byName: map[string]string{}}
+	n := variableNames{byPath: map[string]string{}, groups: map[string]map[string]string{}}
 	for i := range top.NumField() {
 		group := top.Field(i)
 		prefix := group.Tag.Get("envPrefix")
+		n.groups[group.Name] = map[string]string{}
 		for j := range group.Type.NumField() {
 			f := group.Type.Field(j)
 			name, _, _ := strings.Cut(f.Tag.Get("env"), ",")
 			n.byPath[group.Name+"."+f.Name] = prefix + name
-			n.byName[f.Name] = prefix + name
+			n.groups[group.Name][f.Name] = prefix + name
 		}
 	}
 	return n
 }
 
-// redactParseErrors replaces env.ParseError messages, which embed the rejected
-// value (for example `parsing "abc"`), with the variable name and expected type.
-// This is the documented gap in caarlos0/env; other env errors contain only names.
-func redactParseErrors(err error, names variableNames) error {
+// redactParseErrors returns one message per error in err, replacing
+// env.ParseError messages, which embed the rejected value (for example
+// `parsing "abc"`), with the variable name and expected type. byName maps the
+// group's field names to variables. This is the documented gap in
+// caarlos0/env; its other errors contain only names.
+func redactParseErrors(err error, byName map[string]string) []string {
 	var agg env.AggregateError
 	if !errors.As(err, &agg) {
-		return err
+		return []string{err.Error()}
 	}
 	msgs := make([]string, 0, len(agg.Errors))
 	for _, e := range agg.Errors {
 		var pe env.ParseError
 		if errors.As(e, &pe) {
-			msgs = append(msgs, fmt.Sprintf("%s: invalid %s", names.byName[pe.Name], pe.Type))
+			msgs = append(msgs, fmt.Sprintf("%s: invalid %s", byName[pe.Name], pe.Type))
 			continue
 		}
 		msgs = append(msgs, e.Error())
 	}
-	return fmt.Errorf("invalid configuration: %s", strings.Join(msgs, "; "))
+	return msgs
 }
 
 // path returns a failed field's path without the top struct's name, such as

@@ -39,6 +39,8 @@ jobs:
           done
           docker logs postgres
           exit 1
+      - name: Start Redis
+        run: docker run -d --name redis --network ci redis:8-alpine
       - name: Build the Go dev image
         run: docker build -f docker/go.Dockerfile -t erp-go .
       - name: Check formatting, vet, test and build
@@ -47,6 +49,7 @@ jobs:
             -e POSTGRES_TEST_HOST=postgres -e POSTGRES_TEST_DB=erp \
             -e POSTGRES_TEST_APP_USER=erp_app -e POSTGRES_TEST_APP_PASSWORD="$PGPASS_APP" \
             -e POSTGRES_TEST_MIGRATE_USER=erp_migrate -e POSTGRES_TEST_MIGRATE_PASSWORD="$PGPASS_MIGRATE" \
+            -e REDIS_TEST_HOST=redis \
             -v "${{ github.workspace }}/apps/api:/src:ro" -w /src erp-go \
             sh -ec 'test -z "$(gofmt -l .)"; go vet ./...; go test -race ./...; go build -buildvcs=false -o /tmp/bool-api ./cmd/api; go build -buildvcs=false -o /tmp/bool-migrate ./cmd/migrate'
       # The production image must stay buildable, and its migrate command must run.
