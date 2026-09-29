@@ -94,7 +94,14 @@ services:
       APP_HTTP_TRUSTED_PROXY_HOPS: ${APP_HTTP_TRUSTED_PROXY_HOPS:-1}
       # The frontend is same-origin through Traefik, so no cross-origin access by default (C41).
       APP_HTTP_ALLOWED_ORIGINS: ${APP_HTTP_ALLOWED_ORIGINS:-}
-      APP_DSN: ${APP_DSN:-postgres://erp_app:erp_app@postgres:5432/erp?sslmode=disable}
+      # Runtime role only; derived from the role PostgreSQL creates, so they stay in sync (C43).
+      APP_DB_HOST: ${APP_DB_HOST:-postgres}
+      APP_DB_PORT: ${APP_DB_PORT:-5432}
+      APP_DB_NAME: ${POSTGRES_DB:-erp}
+      APP_DB_USER: ${POSTGRES_APP_USER:-erp_app}
+      APP_DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-erp_app}
+      # Local PostgreSQL has no certificate; the application default is verify-full.
+      APP_DB_SSLMODE: ${APP_DB_SSLMODE:-disable}
       APP_DB_MAX_CONNS: ${APP_DB_MAX_CONNS:-20}
       APP_DB_PING_TIMEOUT: ${APP_DB_PING_TIMEOUT:-2s}
     healthcheck:

@@ -60,8 +60,10 @@ A standalone migration service is not part of this Compose baseline.
 
 ## Runtime configuration
 
+**Layout (C44):** settings are grouped by concern in `internal/platform/config`: `app.go` (`APP_ENV`, `APP_PORT`, `APP_SHUTDOWN_TIMEOUT`), `log.go` (`APP_LOG_*`), `http.go` (`APP_HTTP_*`), and `database.go` (`APP_DB_*`). Add a setting to its group's file; a new concern gets its own file and `envPrefix`.
+
 **Rebuild status (steps 1a–2b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
-`APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, and `APP_HTTP_ALLOWED_ORIGINS` are implemented in `internal/platform/config` with `caarlos0/env`
+`APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, `APP_HTTP_ALLOWED_ORIGINS`, the six `APP_DB_*` connection settings, and `APP_DB_MAX_CONNS` are implemented in `internal/platform/config` with `caarlos0/env`
 (C26) and `go-playground/validator` (C27). Each remaining variable below is added
 with the step that uses it. `APP_LOG_LEVEL` is parsed by `slog.Level` itself, so it
 also accepts slog offsets such as `info+2`.
@@ -91,7 +93,12 @@ silently removed.
 | `APP_HTTP_IDLE_TIMEOUT` | `60s` | Positive Go duration up to `10m`; wait between keep-alive requests |
 | `APP_HTTP_TRUSTED_PROXY_HOPS` | `0` (Compose: `1`) | Integer 0–10; reverse proxies appending to `X-Forwarded-For` (C40). `0` ignores forwarded headers |
 | `APP_HTTP_ALLOWED_ORIGINS` | empty | Comma-separated origins (`https://app.example`), no wildcards, allowed cross-origin (C41). Empty allows none |
-| `APP_DSN` | local Compose runtime-role DSN | PostgreSQL connection string for the restricted runtime role |
+| `APP_DB_HOST` | none (required) | PostgreSQL host name or IP (C43) |
+| `APP_DB_PORT` | `5432` | TCP port from 1 to 65535 |
+| `APP_DB_NAME` | none (required) | Database name |
+| `APP_DB_USER` | none (required) | The restricted runtime role |
+| `APP_DB_PASSWORD` | none (required) | The runtime role's password. A secret: never logged or echoed in errors; no URL escaping needed |
+| `APP_DB_SSLMODE` | `verify-full` (Compose: `disable`) | `disable`, `require`, `verify-ca`, or `verify-full`; `allow`/`prefer` are rejected |
 | `APP_DB_MAX_CONNS` | `20` | Pool maximum from 1 to 1000 |
 | `APP_DB_PING_TIMEOUT` | `2s` | Positive readiness ping timeout, up to one minute |
 
@@ -103,7 +110,7 @@ See [logging and redaction](platform/observability.md) for the field policy.
 
 `POSTGRES_USER` and `POSTGRES_PASSWORD` are only for database initialization and
 administration. On a newly initialized volume, Compose creates separate runtime
-and migration roles. The API receives only `APP_DSN`; it never receives
+and migration roles. The API receives only the runtime role's `APP_DB_*` settings; it never receives
 `MIGRATE_DSN` or the cluster-owner password. The PostgreSQL init script does not
 run again for an existing `pgdata` volume; provision and verify the restricted
 roles through the database administration process without resetting that volume.

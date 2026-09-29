@@ -5,6 +5,18 @@ the rebuild (C24). Application persistence and tables remain unapproved. Postgre
 
 ## Runtime pool and readiness
 
+**Rebuild status (step 3a):** `internal/platform/postgres.NewPool` builds the pool
+from the separate `APP_DB_*` settings (C43) and `APP_DB_MAX_CONNS` (C42), building the
+connection URL with `net/url` so the password needs no escaping. It does not connect: pgxpool opens
+connections on first use, so the API starts and answers liveness while PostgreSQL
+is down. `main` closes the pool with a deferred `Close`, which runs after the HTTP
+server has shut down. Settings pgx cannot use fail startup with a fixed message;
+pgx's parse error is not wrapped because its password redaction is best effort.
+Other pool settings keep pgx defaults. TLS defaults to `verify-full`; Compose uses
+`disable` because the local server has no certificate. Readiness is step 3b.
+
+Target contract from the removed implementation:
+
 The API creates one pgx/v5 `pgxpool` during bootstrap and closes it after HTTP
 shutdown. Pool construction validates the connection string but is lazy: it does
 not block liveness while PostgreSQL is unavailable. `GET /api/healthz` remains a
@@ -48,7 +60,7 @@ On a new, empty Compose PostgreSQL volume, the initialization script creates:
   their sequences; it cannot call `setval` to change sequence values. It also
   cannot access the migration-history schema or table.
 
-Compose passes the API only its explicit `APP_*` settings and `APP_DSN`; it does
+Compose passes the API only its explicit `APP_*` settings, including the runtime role's `APP_DB_*`; it does
 not pass the cluster-owner password or migration DSN. Supply `MIGRATE_DSN` only
 to the explicit migration command. Replace example passwords outside local
 development, and keep each DSN in sync with its role credentials.
@@ -56,7 +68,7 @@ development, and keep each DSN in sync with its role credentials.
 The PostgreSQL image runs initialization scripts only when its data directory is
 first created. Existing volumes are preserved and are not modified or reset by
 this implementation. An existing installation must have an administrator
-provision and verify the two restricted roles and grants before using `APP_DSN`.
+provision and verify the two restricted roles and grants before configuring `APP_DB_USER`.
 The initialization script is idempotent for missing roles but deliberately does
 not reset existing role passwords.
 
