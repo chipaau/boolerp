@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 // DB holds the PostgreSQL connection for the restricted runtime role (APP_DB_*,
 // C43). Host, name, user, and password are required with no defaults: a default
 // would put credentials in code. The password is a secret, never logged or
@@ -16,4 +18,6 @@ type DB struct {
 	SSLMode string `env:"SSLMODE" envDefault:"verify-full" validate:"oneof=disable require verify-ca verify-full"`
 	// MaxConns caps the connection pool.
 	MaxConns int32 `env:"MAX_CONNS" envDefault:"20" validate:"min=1,max=1000"`
+	// PingTimeout bounds the readiness check's database ping (C45).
+	PingTimeout time.Duration `env:"PING_TIMEOUT" envDefault:"2s" validate:"gt=0,max=1m"`
 }

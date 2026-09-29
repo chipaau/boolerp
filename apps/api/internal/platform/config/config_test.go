@@ -34,7 +34,7 @@ func defaults() Config {
 		},
 		DB: DB{
 			Host: "postgres", Port: 5432, Name: "erp", User: "erp_app", Password: "s3cret",
-			SSLMode: "verify-full", MaxConns: 20,
+			SSLMode: "verify-full", MaxConns: 20, PingTimeout: 2 * time.Second,
 		},
 	}
 }
@@ -47,7 +47,7 @@ func TestLoadDefaults(t *testing.T) {
 			"APP_HTTP_MAX_BODY_BYTES=", "APP_HTTP_READ_HEADER_TIMEOUT=", "APP_HTTP_READ_TIMEOUT=",
 			"APP_HTTP_WRITE_TIMEOUT=", "APP_HTTP_IDLE_TIMEOUT=",
 			"APP_HTTP_TRUSTED_PROXY_HOPS=", "APP_HTTP_ALLOWED_ORIGINS=",
-			"APP_DB_PORT=", "APP_DB_SSLMODE=", "APP_DB_MAX_CONNS=",
+			"APP_DB_PORT=", "APP_DB_SSLMODE=", "APP_DB_MAX_CONNS=", "APP_DB_PING_TIMEOUT=",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -66,6 +66,7 @@ func TestLoadValues(t *testing.T) {
 		"APP_HTTP_WRITE_TIMEOUT=3s", "APP_HTTP_IDLE_TIMEOUT=4s",
 		"APP_HTTP_TRUSTED_PROXY_HOPS=2", "APP_HTTP_ALLOWED_ORIGINS=https://app.bool.mv,http://localhost:3000",
 		"APP_DB_HOST=10.0.0.5", "APP_DB_PORT=6543", "APP_DB_SSLMODE=disable", "APP_DB_MAX_CONNS=5",
+		"APP_DB_PING_TIMEOUT=500ms",
 	}))
 	require.NoError(t, err)
 	assert.Equal(t, Config{
@@ -82,7 +83,7 @@ func TestLoadValues(t *testing.T) {
 		},
 		DB: DB{
 			Host: "10.0.0.5", Port: 6543, Name: "erp", User: "erp_app", Password: "s3cret",
-			SSLMode: "disable", MaxConns: 5,
+			SSLMode: "disable", MaxConns: 5, PingTimeout: 500 * time.Millisecond,
 		},
 	}, cfg)
 }
@@ -124,6 +125,8 @@ func TestLoadInvalid(t *testing.T) {
 		{"SSL mode unknown", []string{"APP_DB_SSLMODE=s3cret"}, "APP_DB_SSLMODE", "s3cret"},
 		{"max conns zero", []string{"APP_DB_MAX_CONNS=0"}, "APP_DB_MAX_CONNS", ""},
 		{"max conns too many", []string{"APP_DB_MAX_CONNS=1001"}, "APP_DB_MAX_CONNS", "1001"},
+		{"ping timeout zero", []string{"APP_DB_PING_TIMEOUT=0s"}, "APP_DB_PING_TIMEOUT", ""},
+		{"ping timeout too long", []string{"APP_DB_PING_TIMEOUT=2m"}, "APP_DB_PING_TIMEOUT", "2m"},
 		{"max conns not a number", []string{"APP_DB_MAX_CONNS=s3cret"}, "APP_DB_MAX_CONNS", "s3cret"},
 		{"proxy hops not a number", []string{"APP_HTTP_TRUSTED_PROXY_HOPS=s3cret"}, "APP_HTTP_TRUSTED_PROXY_HOPS", "s3cret"},
 		{"proxy hops negative", []string{"APP_HTTP_TRUSTED_PROXY_HOPS=-1"}, "APP_HTTP_TRUSTED_PROXY_HOPS", ""},
@@ -203,5 +206,5 @@ func TestEveryFieldHasAVariable(t *testing.T) {
 	for path, variable := range variablesByPath {
 		assert.Regexp(t, `^APP_[A-Z_]+$`, variable, path)
 	}
-	assert.Len(t, variablesByPath, 19, "update this count when adding a setting")
+	assert.Len(t, variablesByPath, 20, "update this count when adding a setting")
 }

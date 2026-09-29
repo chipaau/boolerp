@@ -74,6 +74,8 @@ func run() int {
 		MaxBodyBytes:     cfg.HTTP.MaxBodyBytes,
 		TrustedProxyHops: cfg.HTTP.TrustedProxyHops,
 		AllowedOrigins:   cfg.HTTP.AllowedOrigins,
+		CheckReady:       pool.Ping,
+		ReadyTimeout:     cfg.DB.PingTimeout,
 	})
 	if err != nil {
 		logger.Error("startup failed", "error", err)
