@@ -7,21 +7,38 @@ describe target contracts, without approving application tables. Remaining polic
 [the decision register](../decisions/README.md).
 
 The new API lives in `apps/api/`; the previous implementation is preserved in
-`apps/api.bak/`. The target directories are scaffolded with `.gitkeep` files where
-implementation is deferred. Filenames in this tree illustrate future responsibilities
-unless listed as current below; they are not approved tables or contracts.
+`apps/api.bak/`. Directories are created only when a step needs them. Filenames in
+the target tree below illustrate future responsibilities unless listed as current;
+they are not approved tables or contracts.
 
-Current runtime code lives in `cmd/api`, `cmd/migrate`, `internal/bootstrap`, and
-`internal/platform/{config,httpserver,observability,postgres}`. It implements
-validated configuration, structured logging, process lifecycle, PostgreSQL
-pooling, `GET /api/healthz`, and database readiness at `GET /api/readyz`.
-HTTP boundary helpers provide routing fallbacks, request correlation/recovery,
-JSON responses/decoding, and input limits within the same infrastructure package.
-The entry point loads configuration and constructs the logger; bootstrap passes
-explicit settings and the logger to the HTTP server. No global logger is replaced.
-`APP_PORT` defaults to 8080. pgx/v5 implements the PostgreSQL pool and Goose
-provides the explicit migration command. There are no generated query packages
-or application schema migrations yet.
+**Current layout (rebuild, step 4):**
+
+```text
+apps/api/
+  cmd/
+    api/main.go          process concerns: config, logger, signals, exit code
+    migrate/main.go      explicit migrations with MIGRATE_DB_* (C46, C47)
+  internal/
+    bootstrap/           application assembly, one file per dependency
+      bootstrap.go       Run: build dependencies, serve, close in reverse order
+      database.go        PostgreSQL pool from config.DB
+      redis.go           Redis client from config.Redis
+      http.go            router, middleware, liveness/readiness, http.Server
+    platform/
+      config/            settings grouped by concern (C44)
+      httpserver/        server limits and graceful shutdown (framework-agnostic)
+      observability/     slog logger and redaction
+      postgres/          pool, database/sql for Goose, migrations
+      problem/           RFC 9457 errors and panic recovery
+      redis/             fail-fast Redis client
+      requestid/         request IDs
+```
+
+`main` loads configuration, builds the logger, and hands both to `bootstrap.Run`,
+which constructs every dependency explicitly (no global container), serves HTTP,
+and closes dependencies after the server has shut down. A new dependency gets its
+own `bootstrap/<name>.go`. There are no application modules, generated query
+packages, or application migrations yet.
 
 ## Target layout
 
