@@ -71,5 +71,6 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 	logger.Info("api listening", "address", ln.Addr().String())
 
-	return httpserver.Serve(ctx, logger, newServer(router, cfg.HTTP, logger), ln, cfg.App.ShutdownTimeout)
+	handler := traceHTTP(router, tr)
+	return httpserver.Serve(ctx, logger, newServer(handler, cfg.HTTP, logger), ln, cfg.App.ShutdownTimeout)
 }

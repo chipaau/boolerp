@@ -3,9 +3,12 @@ package bootstrap
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 
+	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/exporters/autoexport"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -94,3 +97,44 @@ type exportOff struct{}
 
 func (exportOff) ExportSpans(context.Context, []sdktrace.ReadOnlySpan) error { return nil }
 func (exportOff) Shutdown(context.Context) error                             { return nil }
+
+// traceHTTP wraps the whole router so each request gets one server span that
+// covers every middleware (C57). The span is named and tagged by chi's route
+// pattern by spanNameFromRoute, which runs inside the router.
+//
+// Every request is treated as public (C58): a client's traceparent becomes a
+// link, never the parent, so clients cannot choose trace IDs or switch
+// sampling off for their own requests. Health and readiness checks are not
+// traced.
+func traceHTTP(handler http.Handler, tr *tracing) http.Handler {
+	return otelhttp.NewHandler(handler, "http.server",
+		otelhttp.WithTracerProvider(tr.provider),
+		otelhttp.WithPropagators(tr.propagator),
+		otelhttp.WithPublicEndpointFn(func(*http.Request) bool { return true }),
+		otelhttp.WithFilter(func(r *http.Request) bool {
+			return r.URL.Path != livenessPath && r.URL.Path != readinessPath
+		}),
+	)
+}
+
+// spanNameFromRoute names the request's span after routing, for example
+// "GET /api/employees/{id}" instead of "GET". It is the documented gap in
+// otelhttp with chi: otelhttp renames spans from r.Pattern, but chi sets
+// Pattern on its own copy of the request, which otelhttp never sees.
+// Unmatched requests (404, 405) keep otelhttp's name, the method alone, so raw
+// paths never become span names.
+func spanNameFromRoute(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r)
+		// The route context is shared, so the pattern is known once next returns.
+		rctx := chi.RouteContext(r.Context())
+		if rctx == nil {
+			return
+		}
+		if pattern := rctx.RoutePattern(); pattern != "" {
+			span := trace.SpanFromContext(r.Context())
+			span.SetName(r.Method + " " + pattern)
+			span.SetAttributes(semconv.HTTPRoute(pattern))
+		}
+	})
+}

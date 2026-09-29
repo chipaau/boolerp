@@ -28,9 +28,9 @@ const (
 	readinessPath = "/api/readyz"
 )
 
-// newServer wraps router in an http.Server with the configured network limits.
-func newServer(router http.Handler, cfg config.HTTP, logger *slog.Logger) *http.Server {
-	return httpserver.NewServer(router, logger, httpserver.Limits{
+// newServer wraps handler in an http.Server with the configured network limits.
+func newServer(handler http.Handler, cfg config.HTTP, logger *slog.Logger) *http.Server {
+	return httpserver.NewServer(handler, logger, httpserver.Limits{
 		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
 		ReadTimeout:       cfg.ReadTimeout,
 		WriteTimeout:      cfg.WriteTimeout,
@@ -66,6 +66,9 @@ func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
 	crossOrigin.SetDenyHandler(http.HandlerFunc(crossOriginDenied))
 
 	r := chi.NewRouter()
+
+	// Name the request's trace span by route pattern once routing is done (C57).
+	r.Use(spanNameFromRoute)
 
 	// Client IP first: the request logger reads it from the context (C40).
 	// With N trusted hops, the client is the Nth X-Forwarded-For entry from the

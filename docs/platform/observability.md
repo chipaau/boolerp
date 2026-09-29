@@ -55,8 +55,15 @@ background, and the last ones are flushed on shutdown (within 5 seconds, after t
 HTTP server and dependencies close); `console` prints spans for local debugging.
 Every span carries `service.name` (`bool-erp-api` unless `OTEL_SERVICE_NAME` is set).
 Sampling is the SDK default, every request (C56). OpenTelemetry's own errors,
-such as a failed export, are logged at WARN. HTTP, log, PostgreSQL, and Redis
-instrumentation follow in steps 5b–5d.
+such as a failed export, are logged at WARN. Log, PostgreSQL, and Redis instrumentation
+follow in steps 5c–5d.
+
+**HTTP spans (step 5b):** `otelhttp` wraps the router, so each request has one server
+span covering all middleware (C57). Spans are named by route pattern
+(`GET /api/employees/{id}`) with `http.route`, method, status, and sizes; unmatched
+requests are named by method only. Health and readiness checks are not traced, and
+5xx responses mark the span as an error. A client's `traceparent` is recorded as a
+link; the API always starts its own trace (C58).
 
 | Variable | Default here | Purpose |
 | --- | --- | --- |
