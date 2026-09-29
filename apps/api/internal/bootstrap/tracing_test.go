@@ -3,12 +3,15 @@ package bootstrap
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -189,4 +192,35 @@ func TestRequestLogCarriesTraceIDAndSpanCarriesRequestID(t *testing.T) {
 	assert.Equal(t, span.SpanContext().TraceID().String(), line[observability.TraceIDKey], "log → trace")
 	assert.Equal(t, requestID, line[requestid.LogKey])
 	assert.Equal(t, requestID, attr(span, "request.id"), "request ID → trace")
+}
+
+func TestErrorThrottle(t *testing.T) {
+	var logs bytes.Buffer
+	clock := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	throttle := newErrorThrottle(slog.New(slog.NewJSONHandler(&logs, nil)), time.Minute, func() time.Time { return clock })
+	fail := errors.New("traces export: connection refused")
+
+	throttle.Handle(fail) // the first failure is logged at once
+	for range 11 {
+		clock = clock.Add(5 * time.Second) // the exporter's retry interval
+		throttle.Handle(fail)              // suppressed within the minute
+	}
+	clock = clock.Add(5 * time.Second) // one minute after the first
+	throttle.Handle(fail)
+
+	lines := logLines(t, &logs)
+	require.Len(t, lines, 2, "one line per minute, not one per failure")
+	assert.Equal(t, "WARN", lines[0]["level"])
+	assert.NotContains(t, lines[0], "suppressed")
+	assert.EqualValues(t, 11, lines[1]["suppressed"], "the summary counts what was dropped")
+}
+
+func TestErrorThrottleIsSafeForConcurrentUse(t *testing.T) {
+	throttle := newErrorThrottle(slog.New(slog.DiscardHandler), time.Minute, time.Now)
+	var wg sync.WaitGroup
+	for range 50 {
+		wg.Go(func() { throttle.Handle(errors.New("boom")) })
+	}
+	wg.Wait()
+	assert.Equal(t, 49, throttle.suppressed)
 }

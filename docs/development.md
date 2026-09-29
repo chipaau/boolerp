@@ -31,7 +31,7 @@ target and will not work until the corresponding roadmap step is rebuilt.
 
 ## Compose baseline
 
-[compose.yaml](../compose.yaml) contains only `api`, `app`, `postgres`, and `redis`.
+[compose.yaml](../compose.yaml) started with `api`, `app`, `postgres`, and `redis` (C08) and adds services when a step needs them: `jaeger` for viewing traces (C63).
 PostgreSQL stores data in the `erp_pgdata` volume (C49). When it is empty, first
 start creates the `erp` database and `10-roles.sh` creates the runtime and migration
 roles and the `migrations` schema, as Laravel Sail does. Tables come from
