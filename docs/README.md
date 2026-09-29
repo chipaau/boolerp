@@ -29,6 +29,7 @@ starting with a simple chi server.
 | Area | Document |
 | --- | --- |
 | HTTP routing, errors, and request limits | [HTTP foundation](platform/http.md) |
+| API conventions (versioning, naming, IDs, lists, OpenAPI) | [API conventions](platform/api-conventions.md) |
 | PostgreSQL pool, readiness, and migrations | [PostgreSQL foundation](platform/postgres.md) |
 | File and object storage | [Storage](platform/storage.md) |
 | Identity and authentication | [Identity](platform/identity.md) |
