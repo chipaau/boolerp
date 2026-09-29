@@ -45,7 +45,8 @@ down command). A failure reports the migration file, PostgreSQL's message, and
 SQLSTATE code, never the statement text or PostgreSQL's detail, which can contain
 row values. SIGINT/SIGTERM cancel the run; the overall deadline is five minutes.
 Logs are JSON through the application logger. There are no application migrations
-yet.
+yet; with the first approved module table they move to per-module folders, each
+with its own history table, run in a fixed module order (C48).
 
 Target contract from the removed implementation:
 

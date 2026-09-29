@@ -32,9 +32,13 @@ target and will not work until the corresponding roadmap step is rebuilt.
 ## Compose baseline
 
 [compose.yaml](../compose.yaml) contains only `api`, `app`, `postgres`, and `redis`.
-Existing PostgreSQL storage and Go cache volumes are retained. Redis is currently
-configured without persistence for its cache role. Keep Compose project name `erp`
-to retain the existing `erp_pgdata` identity. Preserve the current `.env`; on a
+PostgreSQL stores data in the `erp_pgdata` volume (C49). When it is empty, first
+start creates the `erp` database and `10-roles.sh` creates the runtime and migration
+roles and the `migrations` schema, as Laravel Sail does. Tables come from
+`cmd/migrate`. To start over locally, remove the volume deliberately
+(`docker compose down` then `docker volume rm erp_pgdata`); nothing removes it
+automatically. Go cache volumes are retained. Redis is currently configured without persistence for its cache role.
+Keep Compose project name `erp` so volume names stay stable. Preserve the current `.env`; on a
 new checkout only, initialize it from `.env.example`. Removed service volumes are
 not deleted.
 

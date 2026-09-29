@@ -52,10 +52,10 @@ jobs:
       # The production image must stay buildable, and its migrate command must run.
       - name: Build the production image and run its migrations
         run: |
-          docker build -f docker/api.Dockerfile -t erp-api .
+          docker build -f docker/api.Dockerfile -t erp-api-release .
           docker run --rm --network ci --entrypoint /usr/local/bin/migrate \
             -e MIGRATE_DB_HOST=postgres -e MIGRATE_DB_NAME=erp -e MIGRATE_DB_USER=erp_migrate \
-            -e MIGRATE_DB_PASSWORD="$PGPASS_MIGRATE" -e MIGRATE_DB_SSLMODE=disable erp-api
+            -e MIGRATE_DB_PASSWORD="$PGPASS_MIGRATE" -e MIGRATE_DB_SSLMODE=disable erp-api-release
 
   # Typecheck + build each frontend app, in the same Node 24 + pnpm 11 image dev/CI both use
   # (docker/node.Dockerfile) — never the runner's own Node.
