@@ -68,7 +68,9 @@ by `docker/postgres/init/10-roles.sh` (the same script as Compose), then runs
 formatting, vet, and `go test -race` with the `POSTGRES_TEST_*` variables set, so the
 database tests run: pool connection, migrations (once, concurrent runs, failure
 reporting, connection failure), and the runtime role's privileges. It builds both
-binaries, builds the production image, and runs that image's `migrate` command.
+binaries, builds the production image, and runs that image's `migrate` command. A
+Redis container (`REDIS_TEST_HOST`) lets the Redis client test run against a real
+server; without it that test is skipped.
 
 To run the database tests locally, start the same kind of container and pass
 `POSTGRES_TEST_HOST`, `POSTGRES_TEST_DB`, `POSTGRES_TEST_APP_USER`/`_PASSWORD`, and

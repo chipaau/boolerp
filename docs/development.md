@@ -64,10 +64,10 @@ A standalone migration service is not part of this Compose baseline.
 
 ## Runtime configuration
 
-**Layout (C44):** settings are grouped by concern in `internal/platform/config`: `app.go` (`APP_ENV`, `APP_PORT`, `APP_SHUTDOWN_TIMEOUT`), `log.go` (`APP_LOG_*`), `http.go` (`APP_HTTP_*`), and `database.go` (`APP_DB_*`). Add a setting to its group's file; a new concern gets its own file and `envPrefix`.
+**Layout (C44):** settings are grouped by concern in `internal/platform/config`: `app.go` (`APP_ENV`, `APP_PORT`, `APP_SHUTDOWN_TIMEOUT`), `log.go` (`APP_LOG_*`), `http.go` (`APP_HTTP_*`), and `database.go` (`APP_DB_*`), and `redis.go` (`APP_REDIS_*`). Add a setting to its group's file; a new concern gets its own file and `envPrefix`.
 
 **Rebuild status (steps 1a–2b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
-`APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, `APP_HTTP_ALLOWED_ORIGINS`, the six `APP_DB_*` connection settings, `APP_DB_MAX_CONNS`, and `APP_DB_PING_TIMEOUT` are implemented in `internal/platform/config` with `caarlos0/env`
+`APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, `APP_HTTP_ALLOWED_ORIGINS`, the six `APP_DB_*` connection settings, `APP_DB_MAX_CONNS`, `APP_DB_PING_TIMEOUT`, and the seven `APP_REDIS_*` settings are implemented in `internal/platform/config` with `caarlos0/env`
 (C26) and `go-playground/validator` (C27). Each remaining variable below is added
 with the step that uses it. `APP_LOG_LEVEL` is parsed by `slog.Level` itself, so it
 also accepts slog offsets such as `info+2`.
@@ -105,6 +105,13 @@ silently removed.
 | `APP_DB_SSLMODE` | `verify-full` (Compose: `disable`) | `disable`, `require`, `verify-ca`, or `verify-full`; `allow`/`prefer` are rejected |
 | `APP_DB_MAX_CONNS` | `20` | Pool maximum from 1 to 1000 |
 | `APP_DB_PING_TIMEOUT` | `2s` | Positive readiness ping timeout, up to one minute (C45) |
+| `APP_REDIS_HOST` | none (required) | Redis host name or IP (C53) |
+| `APP_REDIS_PORT` | `6379` | TCP port from 1 to 65535 |
+| `APP_REDIS_USERNAME` | empty | Redis ACL user; optional, but production should use authentication |
+| `APP_REDIS_PASSWORD` | empty | A secret; optional locally, set in production |
+| `APP_REDIS_DB` | `0` | Redis database number, 0–15 |
+| `APP_REDIS_TLS` | `true` (Compose: `false`) | Encrypt and verify the server certificate |
+| `APP_REDIS_TIMEOUT` | `500ms` | Bound on each connect, read, and write, up to `10s`; an unavailable cache fails fast (C52) |
 
 Invalid settings stop startup before opening the listener. The JSON error goes to
 stdout and identifies the variable without echoing its value. This fallback format
