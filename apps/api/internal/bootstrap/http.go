@@ -81,6 +81,8 @@ func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
 	}
 	// Assign a server-generated request ID (C33) before anything logs.
 	r.Use(requestid.Middleware)
+	// Record it on the request's span, so a trace can be found from a request ID (C59).
+	r.Use(spanRequestID)
 	// One log line per request, with OpenTelemetry attribute names (C34). The
 	// request ID is added by the logger's handler from the request context.
 	r.Use(httplog.RequestLogger(logger, &httplog.Options{

@@ -14,14 +14,15 @@ const Redacted = "[REDACTED]"
 
 // NewLogger returns a logger writing to w. format is "json" or "text"; anything
 // else falls back to JSON. Sensitive attributes are redacted by name, and records
-// logged with a request's context carry its request_id.
+// logged with a request's context carry its request_id and, when the request is
+// traced, its trace_id and span_id.
 func NewLogger(w io.Writer, format string, level slog.Leveler) *slog.Logger {
 	opts := &slog.HandlerOptions{Level: level, ReplaceAttr: redact}
 	var h slog.Handler = slog.NewJSONHandler(w, opts)
 	if format == "text" {
 		h = slog.NewTextHandler(w, opts)
 	}
-	return slog.New(requestid.LogHandler(h))
+	return slog.New(requestid.LogHandler(traceHandler{h}))
 }
 
 // redact is a slog ReplaceAttr hook. slog calls it for every attribute,

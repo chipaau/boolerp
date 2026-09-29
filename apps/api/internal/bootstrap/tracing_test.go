@@ -21,6 +21,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/observability"
+	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
 )
 
 func TestTracingOffByDefault(t *testing.T) {
@@ -166,4 +169,24 @@ func TestClientTraceContextIsLinkedNotContinued(t *testing.T) {
 	assert.False(t, span.Parent().IsValid(), "no parent from the client")
 	require.Len(t, span.Links(), 1)
 	assert.Equal(t, clientTrace, span.Links()[0].SpanContext.TraceID().String(), "kept as a link")
+}
+
+func TestRequestLogCarriesTraceIDAndSpanCarriesRequestID(t *testing.T) {
+	recorder := tracetest.NewSpanRecorder()
+	tr := &tracing{
+		provider:   sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder)),
+		propagator: propagation.TraceContext{},
+	}
+	router, logs := withTestRoute(t)
+	rec := httptest.NewRecorder()
+	traceHTTP(router, tr).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/test", nil))
+
+	require.Len(t, recorder.Ended(), 1)
+	span := recorder.Ended()[0]
+	requestID := rec.Header().Get(requestid.Header)
+
+	line := logLines(t, logs)[0]
+	assert.Equal(t, span.SpanContext().TraceID().String(), line[observability.TraceIDKey], "log → trace")
+	assert.Equal(t, requestID, line[requestid.LogKey])
+	assert.Equal(t, requestID, attr(span, "request.id"), "request ID → trace")
 }
