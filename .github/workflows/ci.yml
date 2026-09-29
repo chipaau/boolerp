@@ -20,7 +20,7 @@ jobs:
       PGPASS_APP: ci_app
       PGPASS_MIGRATE: ci_migrate
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # A fresh PostgreSQL initialized by the same roles script as Compose, so the
       # tests prove the real privilege model.
       - name: Start PostgreSQL with the application roles
@@ -70,7 +70,7 @@ jobs:
       matrix:
         app: [app, admin]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the shared Node dev image
         run: docker build -f docker/node.Dockerfile -t erp-node .
       - name: Install workspace dependencies
@@ -90,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [api-tests, frontend]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Create the shared proxy network
         run: docker network create proxy

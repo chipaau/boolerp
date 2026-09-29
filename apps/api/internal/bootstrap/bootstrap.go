@@ -43,13 +43,16 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		}
 	}()
 
-	pool, err := newPool(ctx, cfg.DB, logger)
+	pool, err := newPool(ctx, cfg.DB, tr, logger)
 	if err != nil {
 		return fmt.Errorf("database: %w", err)
 	}
 	defer pool.Close()
 
-	cache := newCache(ctx, cfg.Redis, logger)
+	cache, err := newCache(ctx, cfg.Redis, tr, logger)
+	if err != nil {
+		return fmt.Errorf("redis: %w", err)
+	}
 	defer cache.Close()
 
 	router, err := newRouter(logger, routerConfig{
