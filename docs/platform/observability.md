@@ -78,6 +78,17 @@ never arguments (cached values or keys). Instrumentation is attached only when
 tracing is on. The background Redis reachability check at startup produces a few
 standalone spans; readiness pings do not.
 
+**Export failures (step 5e):** exporting never slows or fails requests; during a
+collector outage up to 2,048 spans wait and newer ones are dropped. Export errors are
+logged at WARN once, then at most once a minute with a `suppressed` count (C62).
+
+**Viewing traces locally (step 5e):** `docker compose up` starts Jaeger, and the API
+exports to it by default in development (C63). Open `http://jaeger.bool.test`, pick the
+`bool-erp-api` service, and search; each trace shows the request span with its
+PostgreSQL and Redis child spans, and the `request.id` attribute matches the response's
+`X-Request-Id`. Set `OTEL_TRACES_EXPORTER=none` in `.env` to stop exporting. Jaeger
+keeps traces in memory, so they are gone when it restarts.
+
 | Variable | Default here | Purpose |
 | --- | --- | --- |
 | `OTEL_TRACES_EXPORTER` | unset (off) | `otlp`, `console`, or `none` |
@@ -88,9 +99,9 @@ standalone spans; readiness pings do not.
 | `OTEL_TRACES_SAMPLER` / `_ARG` | `parentbased_always_on` | Sampling |
 
 See the [OpenTelemetry environment variable specification](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/)
-for the full list. Compose passes `OTEL_TRACES_EXPORTER`, `OTEL_EXPORTER_OTLP_ENDPOINT`,
-and `OTEL_TRACES_SAMPLER` through only when they are set, because the SDK rejects
-empty values.
+for the full list. In Compose, `OTEL_TRACES_EXPORTER` defaults to `otlp` and
+`OTEL_EXPORTER_OTLP_ENDPOINT` to `http://jaeger:4318` (C63); `OTEL_TRACES_SAMPLER` is
+passed through only when set, because the SDK rejects empty values.
 
 ## Proposed tracing baseline
 

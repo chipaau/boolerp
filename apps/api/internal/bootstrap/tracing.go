@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/exporters/autoexport"
@@ -50,11 +52,10 @@ func newTracing(ctx context.Context, logger *slog.Logger) (*tracing, error) {
 	propagator := propagation.TraceContext{}
 
 	// Report OpenTelemetry's own errors (for example a failed export) through
-	// the application logger instead of plain text on stderr. OpenTelemetry
-	// only offers this process-wide.
-	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		logger.Warn("tracing error", "error", err)
-	}))
+	// the application logger instead of plain text on stderr, throttled so a
+	// collector outage does not log every 5 seconds (C62). OpenTelemetry only
+	// offers this process-wide.
+	otel.SetErrorHandler(newErrorThrottle(logger, time.Minute, time.Now))
 
 	exporter, err := autoexport.NewSpanExporter(ctx,
 		autoexport.WithFallbackSpanExporter(func(context.Context) (sdktrace.SpanExporter, error) {
@@ -154,4 +155,44 @@ func spanRequestID(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// errorThrottle logs OpenTelemetry errors at WARN: the first at once, then at
+// most one per window, carrying how many were suppressed since the last one.
+// During a collector outage the batch exporter fails every 5 seconds; this
+// keeps the outage visible without 720 identical lines an hour. OpenTelemetry
+// has no built-in throttle (a documented gap), and a general log-sampling
+// library would affect every log line, not just this one.
+type errorThrottle struct {
+	logger *slog.Logger
+	window time.Duration
+	now    func() time.Time
+
+	mu         sync.Mutex
+	last       time.Time
+	suppressed int
+}
+
+func newErrorThrottle(logger *slog.Logger, window time.Duration, now func() time.Time) *errorThrottle {
+	return &errorThrottle{logger: logger, window: window, now: now}
+}
+
+// Handle implements otel.ErrorHandler. It may be called concurrently.
+func (t *errorThrottle) Handle(err error) {
+	t.mu.Lock()
+	now := t.now()
+	if !t.last.IsZero() && now.Sub(t.last) < t.window {
+		t.suppressed++
+		t.mu.Unlock()
+		return
+	}
+	suppressed := t.suppressed
+	t.last, t.suppressed = now, 0
+	t.mu.Unlock()
+
+	if suppressed > 0 {
+		t.logger.Warn("tracing error", "error", err, "suppressed", suppressed)
+		return
+	}
+	t.logger.Warn("tracing error", "error", err)
 }
