@@ -1,47 +1,29 @@
 // Package config loads and validates runtime settings from the process environment.
+//
+// Settings are grouped by concern, one file per group: app.go (APP_*), log.go
+// (APP_LOG_*), http.go (APP_HTTP_*), and database.go (APP_DB_*). Each group is a
+// struct whose env tags are joined to its envPrefix, so DB.Host reads APP_DB_HOST.
 package config
 
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/go-playground/validator/v10"
 )
 
-// Config holds the runtime settings. Each field names its environment variable
-// (env), its default when unset or empty (envDefault), and its rules (validate).
+// Config holds every runtime setting. Each field names its environment variable
+// (env, joined to the group's envPrefix), its default when unset or empty
+// (envDefault), and its rules (validate).
 type Config struct {
-	Environment string `env:"APP_ENV" envDefault:"dev" validate:"oneof=dev test staging prod"`
-	Port        int    `env:"APP_PORT" envDefault:"8080" validate:"min=1,max=65535"`
-	LogFormat   string `env:"APP_LOG_FORMAT" envDefault:"json" validate:"oneof=json text"`
-	// slog.Level parses itself (it implements encoding.TextUnmarshaler), and
-	// caarlos0/env uses that: "debug", "INFO", "warn", "error", or offsets like "info+2".
-	LogLevel slog.Level `env:"APP_LOG_LEVEL" envDefault:"info"`
-	// ShutdownTimeout bounds graceful shutdown: how long in-flight requests may
-	// take to finish after SIGINT/SIGTERM before connections are closed. It must
-	// be at least the write timeout, so any request the server allows can finish (C30).
-	ShutdownTimeout time.Duration `env:"APP_SHUTDOWN_TIMEOUT" envDefault:"35s" validate:"gt=0,max=10m,gtefield=HTTPWriteTimeout"`
-
-	// HTTP server limits. Headers must arrive within the full read timeout, and the
-	// write timeout must exceed the read timeout to leave room for an error response.
-	HTTPMaxBodyBytes      int64         `env:"APP_HTTP_MAX_BODY_BYTES" envDefault:"1048576" validate:"min=1,max=104857600"`
-	HTTPReadHeaderTimeout time.Duration `env:"APP_HTTP_READ_HEADER_TIMEOUT" envDefault:"5s" validate:"gt=0,max=1m,ltefield=HTTPReadTimeout"`
-	HTTPReadTimeout       time.Duration `env:"APP_HTTP_READ_TIMEOUT" envDefault:"15s" validate:"gt=0,max=5m"`
-	HTTPWriteTimeout      time.Duration `env:"APP_HTTP_WRITE_TIMEOUT" envDefault:"30s" validate:"gt=0,max=10m,gtfield=HTTPReadTimeout"`
-	HTTPIdleTimeout       time.Duration `env:"APP_HTTP_IDLE_TIMEOUT" envDefault:"60s" validate:"gt=0,max=10m"`
-
-	// HTTPTrustedProxyHops is the number of reverse proxies in front of the API
-	// that append to X-Forwarded-For (C40). 0 trusts no forwarded header.
-	HTTPTrustedProxyHops int `env:"APP_HTTP_TRUSTED_PROXY_HOPS" envDefault:"0" validate:"min=0,max=10"`
-	// HTTPAllowedOrigins are the browser origins ("scheme://host[:port]") allowed
-	// to call the API cross-origin (C41). Empty allows none; "*" is rejected.
-	HTTPAllowedOrigins []string `env:"APP_HTTP_ALLOWED_ORIGINS" validate:"dive,origin"`
+	App  App  `envPrefix:"APP_"`
+	Log  Log  `envPrefix:"APP_LOG_"`
+	HTTP HTTP `envPrefix:"APP_HTTP_"`
+	DB   DB   `envPrefix:"APP_DB_"`
 }
 
 // Load reads settings from environ, which uses the os.Environ "KEY=value" form.
@@ -53,8 +35,6 @@ func Load(environ []string) (Config, error) {
 	}
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
-	// Report the environment variable name instead of the Go field name.
-	validate.RegisterTagNameFunc(envName)
 	// "origin" accepts exactly what net/http's CrossOriginProtection accepts as a
 	// trusted origin, so the router cannot fail on a value that passed here.
 	// Wildcards are rejected: go-chi/cors would treat them as "allow all".
@@ -65,6 +45,9 @@ func Load(environ []string) (Config, error) {
 	}); err != nil {
 		return Config{}, err
 	}
+	// Rules that compare settings in different groups. Validator's cross-struct
+	// tags only reach structs nested inside the tagged one, not sibling groups.
+	validate.RegisterStructValidation(validateAcrossGroups, Config{})
 
 	if err := validate.Struct(cfg); err != nil {
 		var fieldErrs validator.ValidationErrors
@@ -74,12 +57,44 @@ func Load(environ []string) (Config, error) {
 		msgs := make([]string, 0, len(fieldErrs))
 		for _, fe := range fieldErrs {
 			// FieldError.Value() holds the rejected value; it is deliberately not used.
-			msgs = append(msgs, fmt.Sprintf("%s: must satisfy %s", fe.Field(), rule(fe)))
+			msgs = append(msgs, fmt.Sprintf("%s: must satisfy %s", variable(fe), rule(fe)))
 		}
 		return Config{}, fmt.Errorf("invalid configuration: %s", strings.Join(msgs, "; "))
 	}
 
 	return cfg, nil
+}
+
+// validateAcrossGroups checks rules that span groups. Errors are reported with
+// the field's path, so they are named like any other validation error.
+func validateAcrossGroups(sl validator.StructLevel) {
+	cfg := sl.Current().Interface().(Config)
+	// Graceful shutdown must let any request the server allows finish (C30).
+	if cfg.App.ShutdownTimeout < cfg.HTTP.WriteTimeout {
+		sl.ReportError(cfg.App.ShutdownTimeout, "ShutdownTimeout", "App.ShutdownTimeout", "gtefield", "HTTP.WriteTimeout")
+	}
+}
+
+// variablesByPath maps each setting's Go field path ("DB.Port") to its
+// environment variable ("APP_DB_PORT"); variablesByName maps its field name
+// ("Port"). Field names are unique across groups (a test enforces this),
+// because caarlos0/env's ParseError reports only the field name.
+var variablesByPath, variablesByName = variables()
+
+func variables() (byPath, byName map[string]string) {
+	byPath, byName = map[string]string{}, map[string]string{}
+	top := reflect.TypeFor[Config]()
+	for i := range top.NumField() {
+		group := top.Field(i)
+		prefix := group.Tag.Get("envPrefix")
+		for j := range group.Type.NumField() {
+			f := group.Type.Field(j)
+			name, _, _ := strings.Cut(f.Tag.Get("env"), ",")
+			byPath[group.Name+"."+f.Name] = prefix + name
+			byName[f.Name] = prefix + name
+		}
+	}
+	return byPath, byName
 }
 
 // redactParseErrors replaces env.ParseError messages, which embed the rejected
@@ -94,8 +109,7 @@ func redactParseErrors(err error) error {
 	for _, e := range agg.Errors {
 		var pe env.ParseError
 		if errors.As(e, &pe) {
-			field, _ := reflect.TypeFor[Config]().FieldByName(pe.Name)
-			msgs = append(msgs, fmt.Sprintf("%s: invalid %s", envName(field), pe.Type))
+			msgs = append(msgs, fmt.Sprintf("%s: invalid %s", variablesByName[pe.Name], pe.Type))
 			continue
 		}
 		msgs = append(msgs, e.Error())
@@ -103,22 +117,32 @@ func redactParseErrors(err error) error {
 	return fmt.Errorf("invalid configuration: %s", strings.Join(msgs, "; "))
 }
 
-// envName returns the variable name from a field's env tag, such as "APP_PORT".
-func envName(field reflect.StructField) string {
-	name, _, _ := strings.Cut(field.Tag.Get("env"), ",")
-	return name
+// variable returns the environment variable of a failed field, such as
+// "APP_DB_PORT"; slice elements keep their index ("APP_HTTP_ALLOWED_ORIGINS[1]").
+func variable(fe validator.FieldError) string {
+	path := strings.TrimPrefix(fe.StructNamespace(), "Config.")
+	base, index, found := strings.Cut(path, "[")
+	if found {
+		index = "[" + index
+	}
+	return variablesByPath[base] + index
 }
 
 // rule formats a failed validation rule, such as "max=65535". Cross-field rules
-// (gtfield, ltefield, ...) name another Go field; report its variable instead.
+// (gtfield, gtefield, ...) name another Go field, either a sibling in the same
+// group ("ReadTimeout") or a path from Config ("HTTP.WriteTimeout"); report its
+// variable instead.
 func rule(fe validator.FieldError) string {
 	param := fe.Param()
 	if param == "" {
 		return fe.Tag()
 	}
 	if strings.HasSuffix(fe.Tag(), "field") {
-		if field, ok := reflect.TypeFor[Config]().FieldByName(param); ok {
-			param = envName(field)
+		group, _, _ := strings.Cut(strings.TrimPrefix(fe.StructNamespace(), "Config."), ".")
+		if v, ok := variablesByPath[param]; ok {
+			param = v
+		} else if v, ok := variablesByPath[group+"."+param]; ok {
+			param = v
 		}
 	}
 	return fe.Tag() + "=" + param

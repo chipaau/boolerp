@@ -12,6 +12,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
+	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
 )
 
 func main() {
@@ -30,8 +31,8 @@ func run() int {
 		return 1
 	}
 
-	logger := observability.NewLogger(os.Stdout, cfg.LogFormat, cfg.LogLevel).
-		With("service", "api", "environment", cfg.Environment)
+	logger := observability.NewLogger(os.Stdout, cfg.Log.Format, cfg.Log.Level).
+		With("service", "api", "environment", cfg.App.Environment)
 
 	// ctx is cancelled by the first SIGINT (Ctrl+C) or SIGTERM (docker stop).
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -40,9 +41,28 @@ func run() int {
 	// returns, so a second signal terminates a process stuck while draining.
 	context.AfterFunc(ctx, stop)
 
+	// The pool connects lazily, so startup does not wait for PostgreSQL.
+	// Deferred Close runs when run returns: after the HTTP server has shut down,
+	// so in-flight requests keep their connections until they finish.
+	pool, err := postgres.NewPool(ctx, postgres.Settings{
+		Host:     cfg.DB.Host,
+		Port:     cfg.DB.Port,
+		Name:     cfg.DB.Name,
+		User:     cfg.DB.User,
+		Password: cfg.DB.Password,
+		SSLMode:  cfg.DB.SSLMode,
+		MaxConns: cfg.DB.MaxConns,
+	})
+	if err != nil {
+		logger.Error("startup failed", "error", err)
+		return 1
+	}
+	defer pool.Close()
+	logger.Info("database pool created", "max_conns", cfg.DB.MaxConns)
+
 	// Listening separately from serving makes a busy port a startup error,
 	// and "api listening" is logged only once the port is actually bound.
-	addr := net.JoinHostPort("", strconv.Itoa(cfg.Port))
+	addr := net.JoinHostPort("", strconv.Itoa(cfg.App.ListenPort))
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		logger.Error("startup failed", "error", err)
@@ -51,21 +71,21 @@ func run() int {
 	logger.Info("api listening", "address", ln.Addr().String())
 
 	router, err := newRouter(logger, routerConfig{
-		MaxBodyBytes:     cfg.HTTPMaxBodyBytes,
-		TrustedProxyHops: cfg.HTTPTrustedProxyHops,
-		AllowedOrigins:   cfg.HTTPAllowedOrigins,
+		MaxBodyBytes:     cfg.HTTP.MaxBodyBytes,
+		TrustedProxyHops: cfg.HTTP.TrustedProxyHops,
+		AllowedOrigins:   cfg.HTTP.AllowedOrigins,
 	})
 	if err != nil {
 		logger.Error("startup failed", "error", err)
 		return 1
 	}
 	srv := httpserver.NewServer(router, logger, httpserver.Limits{
-		ReadHeaderTimeout: cfg.HTTPReadHeaderTimeout,
-		ReadTimeout:       cfg.HTTPReadTimeout,
-		WriteTimeout:      cfg.HTTPWriteTimeout,
-		IdleTimeout:       cfg.HTTPIdleTimeout,
+		ReadHeaderTimeout: cfg.HTTP.ReadHeaderTimeout,
+		ReadTimeout:       cfg.HTTP.ReadTimeout,
+		WriteTimeout:      cfg.HTTP.WriteTimeout,
+		IdleTimeout:       cfg.HTTP.IdleTimeout,
 	})
-	if err := httpserver.Serve(ctx, logger, srv, ln, cfg.ShutdownTimeout); err != nil {
+	if err := httpserver.Serve(ctx, logger, srv, ln, cfg.App.ShutdownTimeout); err != nil {
 		logger.Error("api stopped with error", "error", err)
 		return 1
 	}
