@@ -12,7 +12,9 @@ in `internal/bootstrap/routes.go` and the `httpserver` package accepted any
 Every response the API writes is JSON (C35); Go's own pre-handler protocol errors
 (400, 431, 505) are plain text and are the only exception. `GET /api/healthz` is a
 normal route returning `200` `{"status":"ok"}`; `HEAD` is answered through
-`chi/middleware.GetHead` (C36). Health checks are not request-logged.
+`chi/middleware.GetHead` (C36). `GET /api/readyz` reports dependency readiness:
+`{"status":"ready"}` or a 503 problem response (C45). Successful health and readiness
+checks are not request-logged; failed readiness checks are.
 
 **Rebuild status (step 2d):** errors are RFC 9457 problem details (C37), written by
 `problem.Error(w, r, status, detail)`:

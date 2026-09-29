@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -42,6 +44,12 @@ func logLines(t *testing.T, buf *bytes.Buffer) []map[string]any {
 func withConfig(t *testing.T, rc routerConfig) (chi.Router, *bytes.Buffer) {
 	t.Helper()
 	var buf bytes.Buffer
+	if rc.CheckReady == nil {
+		rc.CheckReady = func(context.Context) error { return nil }
+	}
+	if rc.ReadyTimeout == 0 {
+		rc.ReadyTimeout = time.Second
+	}
 	r, err := newRouter(observability.NewLogger(&buf, "json", slog.LevelInfo), rc)
 	require.NoError(t, err)
 	noContent := func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }
@@ -299,4 +307,54 @@ func TestCrossOriginWrites(t *testing.T) {
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/test", nil))
 	assert.Equal(t, http.StatusNoContent, rec.Code, "non-browser requests without Origin pass")
+}
+
+func TestReadinessWhenReady(t *testing.T) {
+	router, buf := withTestRoute(t)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, readinessPath, nil))
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	assert.JSONEq(t, `{"status":"ready"}`, rec.Body.String())
+	assert.Empty(t, buf.String(), "successful checks are not logged")
+}
+
+func TestReadinessWhenNotReady(t *testing.T) {
+	router, buf := withConfig(t, routerConfig{
+		MaxBodyBytes: 1024,
+		CheckReady: func(context.Context) error {
+			return errors.New("dial tcp 10.0.0.5:5432: connect: connection refused")
+		},
+	})
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, readinessPath, nil))
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	d := decodeProblem(t, rec)
+	assert.Equal(t, "Service Unavailable", d.Title)
+	assert.NotContains(t, rec.Body.String(), "10.0.0.5", "the cause is not returned to the client")
+
+	lines := logLines(t, buf)
+	require.Len(t, lines, 2, "the cause, then the failed request")
+	assert.Equal(t, "not ready", lines[0]["msg"])
+	assert.Contains(t, lines[0]["error"], "connection refused", "the cause is logged")
+	assert.EqualValues(t, http.StatusServiceUnavailable, lines[1]["http.response.status_code"])
+}
+
+func TestReadinessIsBoundedByTimeout(t *testing.T) {
+	router, _ := withConfig(t, routerConfig{
+		MaxBodyBytes: 1024,
+		ReadyTimeout: 50 * time.Millisecond,
+		CheckReady: func(ctx context.Context) error {
+			<-ctx.Done() // a dependency that never answers
+			return ctx.Err()
+		},
+	})
+	start := time.Now()
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, readinessPath, nil))
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Less(t, time.Since(start), time.Second)
 }

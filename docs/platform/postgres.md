@@ -13,7 +13,13 @@ is down. `main` closes the pool with a deferred `Close`, which runs after the HT
 server has shut down. Settings pgx cannot use fail startup with a fixed message;
 pgx's parse error is not wrapped because its password redaction is best effort.
 Other pool settings keep pgx defaults. TLS defaults to `verify-full`; Compose uses
-`disable` because the local server has no certificate. Readiness is step 3b.
+`disable` because the local server has no certificate.
+
+**Rebuild status (step 3b):** `GET /api/readyz` pings PostgreSQL through the pool
+within `APP_DB_PING_TIMEOUT` and answers `{"status":"ready"}` or a 503 problem
+response (C45). The router receives only a check function, so other dependencies
+can join the check without changing the handler. The failure cause is logged, not
+returned. The Compose health check stays on `/api/healthz`.
 
 Target contract from the removed implementation:
 

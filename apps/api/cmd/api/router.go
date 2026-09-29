@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -16,14 +18,22 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
 )
 
-// livenessPath answers process liveness checks (C36).
-const livenessPath = "/api/healthz"
+const (
+	// livenessPath answers whether the process is serving HTTP (C36).
+	livenessPath = "/api/healthz"
+	// readinessPath answers whether the API can serve requests that need its
+	// dependencies, currently PostgreSQL (C45).
+	readinessPath = "/api/readyz"
+)
 
 // routerConfig holds the settings the router needs from runtime configuration.
 type routerConfig struct {
 	MaxBodyBytes     int64    // request body limit
 	TrustedProxyHops int      // reverse proxies appending to X-Forwarded-For (C40)
 	AllowedOrigins   []string // browser origins allowed cross-origin (C41)
+
+	CheckReady   func(context.Context) error // dependency check for readiness, e.g. pool.Ping
+	ReadyTimeout time.Duration               // bound on CheckReady
 }
 
 // newRouter builds the chi router and its middleware. It returns chi.Router,
@@ -65,8 +75,11 @@ func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
 		RecoverPanics:      true,
 		LogRequestHeaders:  []string{"Content-Type", "Origin"},
 		LogResponseHeaders: []string{"Content-Type"},
-		// Container health checks run every few seconds; logging them adds only noise.
-		Skip: func(r *http.Request, _ int) bool { return r.URL.Path == livenessPath },
+		// Health checks run every few seconds; logging them adds only noise.
+		// A failed readiness check is still logged, since it signals an outage.
+		Skip: func(r *http.Request, status int) bool {
+			return r.URL.Path == livenessPath || (r.URL.Path == readinessPath && status < 400)
+		},
 	}))
 	// Turn handler panics into a logged 500 problem response (C38). It sits
 	// directly inside the request logger, which then records status 500.
@@ -101,6 +114,7 @@ func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
 	r.MethodNotAllowed(methodNotAllowed)
 
 	r.Get(livenessPath, liveness)
+	r.Get(readinessPath, readiness(logger, rc.CheckReady, rc.ReadyTimeout))
 
 	return r, nil
 }
@@ -116,6 +130,23 @@ func liveness(w http.ResponseWriter, _ *http.Request) {
 // not allowed.
 func crossOriginDenied(w http.ResponseWriter, r *http.Request) {
 	problem.Error(w, r, http.StatusForbidden, "Cross-origin requests from this origin are not allowed.")
+}
+
+// readiness reports whether the API's dependencies can be reached, within
+// timeout. It answers {"status":"ready"}, or 503 problem details while a
+// dependency is down. The cause is logged, never returned to the client.
+func readiness(logger *slog.Logger, check func(context.Context) error, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+		if err := check(ctx); err != nil {
+			logger.WarnContext(r.Context(), "not ready", "error", err)
+			problem.Error(w, r, http.StatusServiceUnavailable, "A required dependency is unavailable.")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"status":"ready"}`)
+	}
 }
 
 func notFound(w http.ResponseWriter, r *http.Request) {

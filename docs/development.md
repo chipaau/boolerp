@@ -63,7 +63,7 @@ A standalone migration service is not part of this Compose baseline.
 **Layout (C44):** settings are grouped by concern in `internal/platform/config`: `app.go` (`APP_ENV`, `APP_PORT`, `APP_SHUTDOWN_TIMEOUT`), `log.go` (`APP_LOG_*`), `http.go` (`APP_HTTP_*`), and `database.go` (`APP_DB_*`). Add a setting to its group's file; a new concern gets its own file and `envPrefix`.
 
 **Rebuild status (steps 1a–2b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
-`APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, `APP_HTTP_ALLOWED_ORIGINS`, the six `APP_DB_*` connection settings, and `APP_DB_MAX_CONNS` are implemented in `internal/platform/config` with `caarlos0/env`
+`APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, `APP_HTTP_ALLOWED_ORIGINS`, the six `APP_DB_*` connection settings, `APP_DB_MAX_CONNS`, and `APP_DB_PING_TIMEOUT` are implemented in `internal/platform/config` with `caarlos0/env`
 (C26) and `go-playground/validator` (C27). Each remaining variable below is added
 with the step that uses it. `APP_LOG_LEVEL` is parsed by `slog.Level` itself, so it
 also accepts slog offsets such as `info+2`.
@@ -100,7 +100,7 @@ silently removed.
 | `APP_DB_PASSWORD` | none (required) | The runtime role's password. A secret: never logged or echoed in errors; no URL escaping needed |
 | `APP_DB_SSLMODE` | `verify-full` (Compose: `disable`) | `disable`, `require`, `verify-ca`, or `verify-full`; `allow`/`prefer` are rejected |
 | `APP_DB_MAX_CONNS` | `20` | Pool maximum from 1 to 1000 |
-| `APP_DB_PING_TIMEOUT` | `2s` | Positive readiness ping timeout, up to one minute |
+| `APP_DB_PING_TIMEOUT` | `2s` | Positive readiness ping timeout, up to one minute (C45) |
 
 Invalid settings stop startup before opening the listener. The JSON error goes to
 stdout and identifies the variable without echoing its value. This fallback format
