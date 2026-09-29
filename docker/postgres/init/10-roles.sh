@@ -31,6 +31,10 @@ SELECT format(
 WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'migration_role')
 \gexec
 
+-- PostgreSQL 15+ already denies CREATE on public to PUBLIC; stating it keeps the
+-- runtime role unable to create objects on any server version.
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+
 SELECT format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), :'app_role')
 \gexec
 SELECT format('GRANT USAGE ON SCHEMA public TO %I', :'app_role')

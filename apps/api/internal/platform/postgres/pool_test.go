@@ -1,10 +1,7 @@
 package postgres
 
 import (
-	"cmp"
 	"context"
-	"os"
-	"strconv"
 	"testing"
 	"time"
 
@@ -75,23 +72,9 @@ func TestNewPoolDoesNotConnect(t *testing.T) {
 	assert.Error(t, pool.Ping(ctx), "using it fails while the database is unreachable")
 }
 
-// TestPoolConnects needs a real PostgreSQL. Set POSTGRES_TEST_HOST (and
-// optionally _PORT, _DB, _USER, _PASSWORD) to run it.
+// TestPoolConnects needs a real PostgreSQL; see roleSettings in migrate_test.go.
 func TestPoolConnects(t *testing.T) {
-	host := os.Getenv("POSTGRES_TEST_HOST")
-	if host == "" {
-		t.Skip("POSTGRES_TEST_HOST not set")
-	}
-	port, _ := strconv.Atoi(cmp.Or(os.Getenv("POSTGRES_TEST_PORT"), "5432"))
-	pool, err := NewPool(t.Context(), Settings{
-		Host:     host,
-		Port:     port,
-		Name:     cmp.Or(os.Getenv("POSTGRES_TEST_DB"), "postgres"),
-		User:     cmp.Or(os.Getenv("POSTGRES_TEST_USER"), "postgres"),
-		Password: os.Getenv("POSTGRES_TEST_PASSWORD"),
-		SSLMode:  "disable",
-		MaxConns: 2,
-	})
+	pool, err := NewPool(t.Context(), roleSettings(t, "APP"))
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)

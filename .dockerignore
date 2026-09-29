@@ -1,0 +1,7 @@
+# Keep secrets, dependencies, and history out of every image build context.
+**/.env
+**/.env.*
+!**/.env.example
+.git
+**/node_modules
+apps/api.bak
