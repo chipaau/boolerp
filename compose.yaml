@@ -109,6 +109,12 @@ services:
       # Local Redis has no password or TLS; the application default is TLS on (C53).
       APP_REDIS_HOST: ${APP_REDIS_HOST:-redis}
       APP_REDIS_TLS: ${APP_REDIS_TLS:-false}
+      # Tracing uses the standard OpenTelemetry variables (C55). Listed without a
+      # value, each is passed only when set, since the SDK rejects empty values.
+      # Unset OTEL_TRACES_EXPORTER means export off.
+      OTEL_TRACES_EXPORTER:
+      OTEL_EXPORTER_OTLP_ENDPOINT:
+      OTEL_TRACES_SAMPLER:
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:${APP_PORT:-8080}/api/healthz"]
       interval: 5s
