@@ -10,12 +10,15 @@ import (
 	"go.opentelemetry.io/contrib/exporters/autoexport"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
 )
 
 // serviceName identifies the API in traces unless OTEL_SERVICE_NAME overrides it.
@@ -136,5 +139,17 @@ func spanNameFromRoute(next http.Handler) http.Handler {
 			span.SetName(r.Method + " " + pattern)
 			span.SetAttributes(semconv.HTTPRoute(pattern))
 		}
+	})
+}
+
+// spanRequestID adds the request ID to the request's span as request.id, so a
+// support ticket's request ID leads to its trace (C59). It must run after
+// requestid.Middleware.
+func spanRequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if id := requestid.FromContext(r.Context()); id != "" {
+			trace.SpanFromContext(r.Context()).SetAttributes(attribute.String("request.id", id))
+		}
+		next.ServeHTTP(w, r)
 	})
 }
