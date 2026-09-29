@@ -39,3 +39,14 @@ production provider and SDK remain open. See [storage](storage.md).
 - Background-worker packaging and optional operational backends.
 
 See [development](../development.md), [tenancy](tenancy.md), and [identity](identity.md).
+
+## Reverse proxy requirements (C40)
+
+- Set `APP_HTTP_TRUSTED_PROXY_HOPS` to the number of proxies in front of the API that
+  append to `X-Forwarded-For` (for example 1 for a single load balancer, 2 for CDN →
+  load balancer). Too low lets clients spoof their IP; too high records no client IP.
+- Verify once after deploying: send a request from a known IP and check the request
+  log's `client.address`.
+- Make the API reachable only through the proxy (no published port, firewall or
+  network policy), because anyone connecting directly can write their own
+  `X-Forwarded-For`.

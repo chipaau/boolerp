@@ -90,6 +90,10 @@ services:
       APP_HTTP_READ_TIMEOUT: ${APP_HTTP_READ_TIMEOUT:-15s}
       APP_HTTP_WRITE_TIMEOUT: ${APP_HTTP_WRITE_TIMEOUT:-30s}
       APP_HTTP_IDLE_TIMEOUT: ${APP_HTTP_IDLE_TIMEOUT:-60s}
+      # One proxy (Traefik) appends to X-Forwarded-For; production sets its real hop count (C40).
+      APP_HTTP_TRUSTED_PROXY_HOPS: ${APP_HTTP_TRUSTED_PROXY_HOPS:-1}
+      # The frontend is same-origin through Traefik, so no cross-origin access by default (C41).
+      APP_HTTP_ALLOWED_ORIGINS: ${APP_HTTP_ALLOWED_ORIGINS:-}
       APP_DSN: ${APP_DSN:-postgres://erp_app:erp_app@postgres:5432/erp?sslmode=disable}
       APP_DB_MAX_CONNS: ${APP_DB_MAX_CONNS:-20}
       APP_DB_PING_TIMEOUT: ${APP_DB_PING_TIMEOUT:-2s}

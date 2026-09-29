@@ -167,6 +167,22 @@ handling. See [Go's HTTP server documentation](https://pkg.go.dev/net/http#Serve
 
 ## Browser and proxy policy
 
+**Rebuild status (step 2f):**
+
+- Paths match exactly (C39): no cleaning, no redirects; non-canonical paths are 404.
+- Client IP (C40): `APP_HTTP_TRUSTED_PROXY_HOPS` selects chi's
+  `ClientIPFromXFFTrustedProxies(n)`, or `ClientIPFromRemoteAddr` when `0`. The request
+  log's `client.address` uses it. Traefik discards client-supplied `X-Forwarded-For`
+  and appends the peer address, so Compose uses one hop.
+- Cross-origin (C41): with `APP_HTTP_ALLOWED_ORIGINS` set, `go-chi/cors` answers
+  preflights and lets those origins read responses (`X-Request-Id` exposed, no
+  credentials yet). `http.CrossOriginProtection` rejects cross-origin POST, PUT,
+  PATCH, and DELETE from any other origin with 403 problem details. CORS only controls
+  what browsers let pages read; it does not stop non-browser clients, which are the
+  job of authentication (D04).
+
+Target contract from the removed implementation:
+
 The API enables no cross-origin CORS access: it emits no allow-origin or
 allow-credentials headers, and preflight requests receive ordinary routing errors.
 Go's `CrossOriginProtection` rejects unsafe browser requests identified as

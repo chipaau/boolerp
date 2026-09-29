@@ -32,6 +32,7 @@ func TestLoadDefaults(t *testing.T) {
 			"APP_ENV=", "APP_PORT=", "APP_LOG_FORMAT=", "APP_LOG_LEVEL=", "APP_SHUTDOWN_TIMEOUT=",
 			"APP_HTTP_MAX_BODY_BYTES=", "APP_HTTP_READ_HEADER_TIMEOUT=", "APP_HTTP_READ_TIMEOUT=",
 			"APP_HTTP_WRITE_TIMEOUT=", "APP_HTTP_IDLE_TIMEOUT=",
+			"APP_HTTP_TRUSTED_PROXY_HOPS=", "APP_HTTP_ALLOWED_ORIGINS=",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -91,6 +92,13 @@ func TestLoadInvalid(t *testing.T) {
 		{"body limit too large", []string{"APP_HTTP_MAX_BODY_BYTES=104857601"}, "APP_HTTP_MAX_BODY_BYTES", "104857601"},
 		{"idle timeout not a duration", []string{"APP_HTTP_IDLE_TIMEOUT=s3cret"}, "APP_HTTP_IDLE_TIMEOUT", "s3cret"},
 		{"read timeout zero", []string{"APP_HTTP_READ_TIMEOUT=0s"}, "APP_HTTP_READ_TIMEOUT", ""},
+		{"proxy hops not a number", []string{"APP_HTTP_TRUSTED_PROXY_HOPS=s3cret"}, "APP_HTTP_TRUSTED_PROXY_HOPS", "s3cret"},
+		{"proxy hops negative", []string{"APP_HTTP_TRUSTED_PROXY_HOPS=-1"}, "APP_HTTP_TRUSTED_PROXY_HOPS", ""},
+		{"proxy hops too many", []string{"APP_HTTP_TRUSTED_PROXY_HOPS=11"}, "APP_HTTP_TRUSTED_PROXY_HOPS", ""},
+		{"origin wildcard", []string{"APP_HTTP_ALLOWED_ORIGINS=*"}, "APP_HTTP_ALLOWED_ORIGINS", ""},
+		{"origin with wildcard host", []string{"APP_HTTP_ALLOWED_ORIGINS=https://*.bool.mv"}, "APP_HTTP_ALLOWED_ORIGINS", ""},
+		{"origin with path", []string{"APP_HTTP_ALLOWED_ORIGINS=https://app.bool.mv/s3cret"}, "APP_HTTP_ALLOWED_ORIGINS", "s3cret"},
+		{"origin without scheme", []string{"APP_HTTP_ALLOWED_ORIGINS=app.bool.mv"}, "APP_HTTP_ALLOWED_ORIGINS", ""},
 		{
 			"header timeout above read timeout",
 			[]string{"APP_HTTP_READ_HEADER_TIMEOUT=20s", "APP_HTTP_READ_TIMEOUT=15s"},
@@ -112,4 +120,14 @@ func TestLoadInvalid(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLoadProxiesAndOrigins(t *testing.T) {
+	cfg, err := Load([]string{
+		"APP_HTTP_TRUSTED_PROXY_HOPS=2",
+		"APP_HTTP_ALLOWED_ORIGINS=https://app.bool.mv,http://localhost:3000",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 2, cfg.HTTPTrustedProxyHops)
+	assert.Equal(t, []string{"https://app.bool.mv", "http://localhost:3000"}, cfg.HTTPAllowedOrigins)
 }

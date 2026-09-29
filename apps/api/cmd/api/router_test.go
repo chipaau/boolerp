@@ -37,14 +37,23 @@ func logLines(t *testing.T, buf *bytes.Buffer) []map[string]any {
 	return lines
 }
 
-// withTestRoute returns the real router plus a test-only GET /api/test route
-// answering 204, and the buffer its logger writes to.
-func withTestRoute(t *testing.T) (chi.Router, *bytes.Buffer) {
+// withConfig returns the real router built from rc plus test-only GET and POST
+// /api/test routes answering 204, and the buffer its logger writes to.
+func withConfig(t *testing.T, rc routerConfig) (chi.Router, *bytes.Buffer) {
 	t.Helper()
 	var buf bytes.Buffer
-	r := newRouter(observability.NewLogger(&buf, "json", slog.LevelInfo), 1024)
-	r.Get("/api/test", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	r, err := newRouter(observability.NewLogger(&buf, "json", slog.LevelInfo), rc)
+	require.NoError(t, err)
+	noContent := func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }
+	r.Get("/api/test", noContent)
+	r.Post("/api/test", noContent)
 	return r, &buf
+}
+
+// withTestRoute is withConfig with no trusted proxies and no allowed origins.
+func withTestRoute(t *testing.T) (chi.Router, *bytes.Buffer) {
+	t.Helper()
+	return withConfig(t, routerConfig{MaxBodyBytes: 1024})
 }
 
 func TestLiveness(t *testing.T) {
@@ -106,7 +115,8 @@ func TestRequestLogIgnoresClientRequestID(t *testing.T) {
 func TestRequestBodyLimit(t *testing.T) {
 	// Add a test-only route to the real router, behind the real middleware.
 	var readErr error
-	router := newRouter(discard, 8)
+	router, err := newRouter(discard, routerConfig{MaxBodyBytes: 8})
+	require.NoError(t, err)
 	router.Post("/api/echo", func(w http.ResponseWriter, r *http.Request) {
 		_, readErr = io.ReadAll(r.Body)
 	})
@@ -184,4 +194,109 @@ func TestPanicIsProblemDetailsAndLogged(t *testing.T) {
 		assert.Equal(t, id, line[requestid.LogKey])
 	}
 	assert.NotContains(t, buf.String(), "s3cret")
+}
+
+func TestPathsMatchExactly(t *testing.T) {
+	router, _ := withTestRoute(t)
+	for _, path := range []string{"/api//healthz", "/api/healthz/", "/api/./healthz", "/API/healthz"} {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		assert.Equal(t, http.StatusNotFound, rec.Code, path)
+	}
+}
+
+func TestClientIPFromTrustedProxyHops(t *testing.T) {
+	for _, tt := range []struct {
+		hops int
+		want string
+	}{
+		{1, "203.0.113.9"},  // one proxy: the right-most entry, which it appended
+		{2, "198.51.100.7"}, // two proxies: the second from the right
+	} {
+		router, buf := withConfig(t, routerConfig{MaxBodyBytes: 1024, TrustedProxyHops: tt.hops})
+		req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+		req.RemoteAddr = "10.1.2.3:4567" // the nearest proxy
+		// "6.6.6.6" is client-supplied and left of every trusted entry.
+		req.Header.Set("X-Forwarded-For", "6.6.6.6, 198.51.100.7, 203.0.113.9")
+		router.ServeHTTP(httptest.NewRecorder(), req)
+
+		assert.Equal(t, tt.want, logLines(t, buf)[0]["client.address"], "hops=%d", tt.hops)
+	}
+}
+
+func TestClientIPIgnoresForwardedHeadersByDefault(t *testing.T) {
+	router, buf := withTestRoute(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req.RemoteAddr = "192.0.2.10:4567"
+	req.Header.Set("X-Forwarded-For", "203.0.113.9") // spoofed
+	router.ServeHTTP(httptest.NewRecorder(), req)
+
+	assert.Equal(t, "192.0.2.10", logLines(t, buf)[0]["client.address"])
+}
+
+// crossOrigin builds a browser-style request from origin.
+func crossOrigin(method, origin string) *http.Request {
+	req := httptest.NewRequest(method, "http://api.bool.test/api/test", nil)
+	req.Header.Set("Origin", origin)
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	return req
+}
+
+func TestCORSAllowsListedOrigins(t *testing.T) {
+	router, _ := withConfig(t, routerConfig{MaxBodyBytes: 1024, AllowedOrigins: []string{"https://app.bool.mv"}})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, crossOrigin(http.MethodGet, "https://app.bool.mv"))
+	assert.Equal(t, "https://app.bool.mv", rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, requestid.Header, rec.Header().Get("Access-Control-Expose-Headers"))
+
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, crossOrigin(http.MethodGet, "https://evil.example"))
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"), "other origins cannot read responses")
+}
+
+func TestCORSPreflight(t *testing.T) {
+	router, _ := withConfig(t, routerConfig{MaxBodyBytes: 1024, AllowedOrigins: []string{"https://app.bool.mv"}})
+	req := crossOrigin(http.MethodOptions, "https://app.bool.mv")
+	req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	req.Header.Set("Access-Control-Request-Headers", "Content-Type")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, "https://app.bool.mv", rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.Contains(t, rec.Header().Get("Access-Control-Allow-Methods"), http.MethodPost)
+}
+
+func TestNoOriginsMeansNoCrossOriginReads(t *testing.T) {
+	// go-chi/cors would allow every origin if given an empty list; the router
+	// must not install it at all.
+	router, _ := withTestRoute(t)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, crossOrigin(http.MethodGet, "https://evil.example"))
+
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"))
+}
+
+func TestCrossOriginWrites(t *testing.T) {
+	router, _ := withConfig(t, routerConfig{MaxBodyBytes: 1024, AllowedOrigins: []string{"https://app.bool.mv"}})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, crossOrigin(http.MethodPost, "https://evil.example"))
+	assert.Equal(t, http.StatusForbidden, rec.Code, "writes from other origins are rejected")
+	assert.Equal(t, "Forbidden", decodeProblem(t, rec).Title)
+
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, crossOrigin(http.MethodPost, "https://app.bool.mv"))
+	assert.Equal(t, http.StatusNoContent, rec.Code, "writes from allowed origins pass")
+
+	sameOrigin := httptest.NewRequest(http.MethodPost, "http://api.bool.test/api/test", nil)
+	sameOrigin.Header.Set("Origin", "http://api.bool.test")
+	sameOrigin.Header.Set("Sec-Fetch-Site", "same-origin")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, sameOrigin)
+	assert.Equal(t, http.StatusNoContent, rec.Code, "same-origin writes pass")
+
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/test", nil))
+	assert.Equal(t, http.StatusNoContent, rec.Code, "non-browser requests without Origin pass")
 }
