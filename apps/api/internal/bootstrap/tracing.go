@@ -28,6 +28,8 @@ const serviceName = "bool-erp-api"
 // to the HTTP server, database, and cache instrumentation instead of being set
 // as OpenTelemetry's global provider.
 type tracing struct {
+	// enabled is false when export is off; instrumentation is then not attached.
+	enabled    bool
 	provider   trace.TracerProvider
 	propagator propagation.TextMapPropagator
 	// shutdown flushes spans that have not been exported yet.
@@ -81,7 +83,7 @@ func newTracing(ctx context.Context, logger *slog.Logger) (*tracing, error) {
 		// No sampler option: the SDK reads OTEL_TRACES_SAMPLER itself.
 	)
 	logger.Info("tracing on", "exporter", os.Getenv("OTEL_TRACES_EXPORTER"))
-	return &tracing{provider: provider, propagator: propagator, shutdown: provider.Shutdown}, nil
+	return &tracing{enabled: true, provider: provider, propagator: propagator, shutdown: provider.Shutdown}, nil
 }
 
 // newResource describes this service in every span. OTEL_SERVICE_NAME and

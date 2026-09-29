@@ -55,8 +55,8 @@ background, and the last ones are flushed on shutdown (within 5 seconds, after t
 HTTP server and dependencies close); `console` prints spans for local debugging.
 Every span carries `service.name` (`bool-erp-api` unless `OTEL_SERVICE_NAME` is set).
 Sampling is the SDK default, every request (C56). OpenTelemetry's own errors,
-such as a failed export, are logged at WARN. PostgreSQL and Redis instrumentation follow
-in step 5d.
+such as a failed export, are logged at WARN. Database and cache spans are described
+below (step 5d).
 
 **HTTP spans (step 5b):** `otelhttp` wraps the router, so each request has one server
 span covering all middleware (C57). Spans are named by route pattern
@@ -70,6 +70,13 @@ context carry `trace_id` and `span_id`, next to `request_id`; the request's span
 carries `request.id` (C59). Without tracing, or for unsampled requests, logs carry
 only `request_id`. The handler only reads the span: log records are never copied
 into traces, so redaction cannot be bypassed (C60).
+
+**PostgreSQL and Redis spans (step 5d):** a traced request's database queries and
+cache commands appear as its child spans (C61). PostgreSQL spans record the SQL text
+with placeholders, never parameter values; Redis spans record the command name only,
+never arguments (cached values or keys). Instrumentation is attached only when
+tracing is on. The background Redis reachability check at startup produces a few
+standalone spans; readiness pings do not.
 
 | Variable | Default here | Purpose |
 | --- | --- | --- |

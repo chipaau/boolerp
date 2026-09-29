@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -21,6 +22,9 @@ type Settings struct {
 	Password string // a secret: never logged or included in errors
 	SSLMode  string // disable, require, verify-ca, or verify-full
 	MaxConns int32
+	// Tracer, when set, observes queries and connection acquisition (for
+	// example tracing, C61). Nil means none, at no cost.
+	Tracer pgx.QueryTracer
 }
 
 // ErrInvalidSettings reports settings pgx cannot use. pgx's own parse error is
@@ -42,6 +46,7 @@ func NewPool(ctx context.Context, s Settings) (*pgxpool.Pool, error) {
 		return nil, ErrInvalidSettings
 	}
 	cfg.MaxConns = s.MaxConns
+	cfg.ConnConfig.Tracer = s.Tracer
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
