@@ -1,4 +1,4 @@
-package main
+package bootstrap
 
 import (
 	"context"
@@ -14,6 +14,8 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/httplog/v3"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
 	"github.com/boolmv/erp/apps/api/internal/platform/problem"
 	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
 )
@@ -25,6 +27,16 @@ const (
 	// dependencies, currently PostgreSQL (C45).
 	readinessPath = "/api/readyz"
 )
+
+// newServer wraps router in an http.Server with the configured network limits.
+func newServer(router http.Handler, cfg config.HTTP, logger *slog.Logger) *http.Server {
+	return httpserver.NewServer(router, logger, httpserver.Limits{
+		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+		ReadTimeout:       cfg.ReadTimeout,
+		WriteTimeout:      cfg.WriteTimeout,
+		IdleTimeout:       cfg.IdleTimeout,
+	})
+}
 
 // routerConfig holds the settings the router needs from runtime configuration.
 type routerConfig struct {
