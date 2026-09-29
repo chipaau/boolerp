@@ -36,6 +36,19 @@ or unredacted driver errors in logs.
 
 ## Migration command
 
+**Rebuild status (step 3c):** `cmd/migrate` (C46, C47) loads only `MIGRATE_DB_*`,
+pings PostgreSQL (so wrong credentials fail even with nothing to apply), takes a
+PostgreSQL advisory lock so concurrent runs apply each migration once, and applies
+pending migrations from `internal/platform/postgres/migrations/sql`, embedded in the
+binary. History is `migrations.goose_db_version`. Migrations are forward-only (no
+down command). A failure reports the migration file, PostgreSQL's message, and
+SQLSTATE code, never the statement text or PostgreSQL's detail, which can contain
+row values. SIGINT/SIGTERM cancel the run; the overall deadline is five minutes.
+Logs are JSON through the application logger. There are no application migrations
+yet.
+
+Target contract from the removed implementation:
+
 `cmd/migrate` applies ordered Goose SQL migrations embedded in the same API
 release. Migrations run explicitly; the API never runs them during startup.
 The command reads `MIGRATE_DSN`, observes SIGINT/SIGTERM, and has a five-minute
@@ -58,7 +71,7 @@ On a new, empty Compose PostgreSQL volume, the initialization script creates:
   initialization and administration.
 - The `POSTGRES_MIGRATE_USER` role, which can connect and create objects in the
   `public` schema and owns the private `migrations` schema. Goose migrations use
-  `MIGRATE_DSN`; application objects go in `public`, and migration history stays
+  `MIGRATE_DB_*`; application objects go in `public`, and migration history stays
   in `migrations`.
 - The `POSTGRES_APP_USER` runtime role, which can connect and use `public` but
   cannot create schema objects or manage roles. Default grants give it
@@ -67,7 +80,7 @@ On a new, empty Compose PostgreSQL volume, the initialization script creates:
   cannot access the migration-history schema or table.
 
 Compose passes the API only its explicit `APP_*` settings, including the runtime role's `APP_DB_*`; it does
-not pass the cluster-owner password or migration DSN. Supply `MIGRATE_DSN` only
+not pass the cluster-owner password or migration settings. Supply `MIGRATE_DB_*` only
 to the explicit migration command. Replace example passwords outside local
 development, and keep each DSN in sync with its role credentials.
 
@@ -80,12 +93,22 @@ not reset existing role passwords.
 
 ## Running migrations
 
-For the local development container, pass the migration DSN only to this one-off
-command:
+For local development, pass the migration role's settings only to this one-off
+command (values from `.env.example`); PostgreSQL must be running:
 
 ```sh
-docker compose --env-file .env run --rm --no-deps \
-  -e MIGRATE_DSN --entrypoint go api run ./cmd/migrate
+docker compose run --rm --no-deps \
+  -e MIGRATE_DB_HOST=postgres -e MIGRATE_DB_NAME=erp \
+  -e MIGRATE_DB_USER=erp_migrate -e MIGRATE_DB_PASSWORD=erp_migrate \
+  -e MIGRATE_DB_SSLMODE=disable \
+  api go run ./cmd/migrate
+```
+
+In a deployment, run the release image's migrate command before starting the new
+API version (see [deployment](deployment.md)):
+
+```sh
+docker run --rm --entrypoint /usr/local/bin/migrate -e MIGRATE_DB_HOST=... <api image>
 ```
 
 The API container starts with the runtime role. Database readiness proves

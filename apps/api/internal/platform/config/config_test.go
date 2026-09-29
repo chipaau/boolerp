@@ -186,25 +186,62 @@ func TestSliceErrorsNameVariableAndIndex(t *testing.T) {
 }
 
 // TestFieldNamesAreUnique protects parse-error redaction: caarlos0/env reports
-// only a field's name, so two groups must never share one.
+// only a field's name, so two groups of one settings struct must never share one.
 func TestFieldNamesAreUnique(t *testing.T) {
-	seen := map[string]string{}
-	top := reflect.TypeFor[Config]()
-	for i := range top.NumField() {
-		group := top.Field(i)
-		for j := range group.Type.NumField() {
-			name := group.Type.Field(j).Name
-			if other, ok := seen[name]; ok {
-				t.Errorf("field %s is in both %s and %s", name, other, group.Name)
+	for _, top := range []reflect.Type{reflect.TypeFor[Config](), reflect.TypeFor[Migrate]()} {
+		seen := map[string]string{}
+		for i := range top.NumField() {
+			group := top.Field(i)
+			for j := range group.Type.NumField() {
+				name := group.Type.Field(j).Name
+				if other, ok := seen[name]; ok {
+					t.Errorf("%s: field %s is in both %s and %s", top.Name(), name, other, group.Name)
+				}
+				seen[name] = group.Name
 			}
-			seen[name] = group.Name
 		}
 	}
 }
 
 func TestEveryFieldHasAVariable(t *testing.T) {
-	for path, variable := range variablesByPath {
+	api := variables(reflect.TypeFor[Config]())
+	for path, variable := range api.byPath {
 		assert.Regexp(t, `^APP_[A-Z_]+$`, variable, path)
 	}
-	assert.Len(t, variablesByPath, 20, "update this count when adding a setting")
+	assert.Len(t, api.byPath, 20, "update this count when adding a setting")
+
+	migrate := variables(reflect.TypeFor[Migrate]())
+	for path, variable := range migrate.byPath {
+		assert.Regexp(t, `^MIGRATE_[A-Z_]+$`, variable, path, "cmd/migrate reads only MIGRATE_*")
+	}
+}
+
+func TestLoadMigrate(t *testing.T) {
+	cfg, err := LoadMigrate([]string{
+		"MIGRATE_DB_HOST=postgres", "MIGRATE_DB_NAME=erp", "MIGRATE_DB_USER=erp_migrate",
+		"MIGRATE_DB_PASSWORD=s3cret",
+		// The API's settings are ignored.
+		"APP_DB_HOST=elsewhere", "APP_DB_USER=erp_app",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, Migrate{DB: MigrateDB{
+		Host: "postgres", Port: 5432, Name: "erp", User: "erp_migrate", Password: "s3cret",
+		SSLMode: "verify-full",
+	}}, cfg)
+}
+
+func TestLoadMigrateErrors(t *testing.T) {
+	_, err := LoadMigrate(nil)
+	require.Error(t, err)
+	for _, name := range []string{"MIGRATE_DB_HOST", "MIGRATE_DB_NAME", "MIGRATE_DB_USER", "MIGRATE_DB_PASSWORD"} {
+		assert.ErrorContains(t, err, name)
+	}
+
+	_, err = LoadMigrate([]string{
+		"MIGRATE_DB_HOST=postgres", "MIGRATE_DB_NAME=erp", "MIGRATE_DB_USER=erp_migrate",
+		"MIGRATE_DB_PASSWORD=s3cret", "MIGRATE_DB_PORT=s3cret-port", "MIGRATE_DB_SSLMODE=prefer",
+	})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "MIGRATE_DB_PORT: invalid int")
+	assert.NotContains(t, err.Error(), "s3cret")
 }

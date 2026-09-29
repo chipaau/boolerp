@@ -14,15 +14,48 @@ jobs:
   api-tests:
     name: API tests
     runs-on: ubuntu-latest
+    env:
+      # Test-only credentials for a throwaway database.
+      PGPASS_OWNER: ci_owner
+      PGPASS_APP: ci_app
+      PGPASS_MIGRATE: ci_migrate
     steps:
       - uses: actions/checkout@v4
+      # A fresh PostgreSQL initialized by the same roles script as Compose, so the
+      # tests prove the real privilege model.
+      - name: Start PostgreSQL with the application roles
+        run: |
+          docker network create ci
+          docker run -d --name postgres --network ci \
+            -e POSTGRES_USER=erp -e POSTGRES_PASSWORD="$PGPASS_OWNER" -e POSTGRES_DB=erp \
+            -e POSTGRES_APP_USER=erp_app -e POSTGRES_APP_PASSWORD="$PGPASS_APP" \
+            -e POSTGRES_MIGRATE_USER=erp_migrate -e POSTGRES_MIGRATE_PASSWORD="$PGPASS_MIGRATE" \
+            -v "${{ github.workspace }}/docker/postgres/init/10-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro" \
+            postgres:18
+          for i in $(seq 1 60); do
+            docker logs postgres 2>&1 | grep -q "PostgreSQL init process complete" \
+              && docker exec postgres pg_isready -h 127.0.0.1 -U erp && exit 0
+            sleep 1
+          done
+          docker logs postgres
+          exit 1
       - name: Build the Go dev image
         run: docker build -f docker/go.Dockerfile -t erp-go .
       - name: Check formatting, vet, test and build
         run: |
-          docker run --rm \
+          docker run --rm --network ci \
+            -e POSTGRES_TEST_HOST=postgres -e POSTGRES_TEST_DB=erp \
+            -e POSTGRES_TEST_APP_USER=erp_app -e POSTGRES_TEST_APP_PASSWORD="$PGPASS_APP" \
+            -e POSTGRES_TEST_MIGRATE_USER=erp_migrate -e POSTGRES_TEST_MIGRATE_PASSWORD="$PGPASS_MIGRATE" \
             -v "${{ github.workspace }}/apps/api:/src:ro" -w /src erp-go \
-            sh -ec 'test -z "$(gofmt -l .)"; go vet ./...; go test -race ./...; go build -buildvcs=false -o /tmp/bool-api ./cmd/api'
+            sh -ec 'test -z "$(gofmt -l .)"; go vet ./...; go test -race ./...; go build -buildvcs=false -o /tmp/bool-api ./cmd/api; go build -buildvcs=false -o /tmp/bool-migrate ./cmd/migrate'
+      # The production image must stay buildable, and its migrate command must run.
+      - name: Build the production image and run its migrations
+        run: |
+          docker build -f docker/api.Dockerfile -t erp-api .
+          docker run --rm --network ci --entrypoint /usr/local/bin/migrate \
+            -e MIGRATE_DB_HOST=postgres -e MIGRATE_DB_NAME=erp -e MIGRATE_DB_USER=erp_migrate \
+            -e MIGRATE_DB_PASSWORD="$PGPASS_MIGRATE" -e MIGRATE_DB_SSLMODE=disable erp-api
 
   # Typecheck + build each frontend app, in the same Node 24 + pnpm 11 image dev/CI both use
   # (docker/node.Dockerfile) — never the runner's own Node.

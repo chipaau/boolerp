@@ -63,9 +63,19 @@ goroutine, must synchronize it.
 
 ## Current CI boundary
 
-**Reset (C24, 2026-09-28):** the `API tests` CI job runs formatting, vet, tests with `-race`,
-and the `cmd/api` build in Docker. It has no PostgreSQL service; that returns with
-step 3. The checks below describe the rebuild target, not current CI.
+**Current CI (step 3c):** the `API tests` job starts a fresh PostgreSQL 18 initialized
+by `docker/postgres/init/10-roles.sh` (the same script as Compose), then runs
+formatting, vet, and `go test -race` with the `POSTGRES_TEST_*` variables set, so the
+database tests run: pool connection, migrations (once, concurrent runs, failure
+reporting, connection failure), and the runtime role's privileges. It builds both
+binaries, builds the production image, and runs that image's `migrate` command.
+
+To run the database tests locally, start the same kind of container and pass
+`POSTGRES_TEST_HOST`, `POSTGRES_TEST_DB`, `POSTGRES_TEST_APP_USER`/`_PASSWORD`, and
+`POSTGRES_TEST_MIGRATE_USER`/`_PASSWORD`; without them those tests are skipped. Never
+point them at a database with data you want to keep.
+
+The checks below describe the rebuild target from the removed implementation.
 
 The Go job runs formatting checks, vet, tests, and compilation in Docker against
 `apps/api` only. Step 1 adds configuration and logging tests plus subprocess checks

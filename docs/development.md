@@ -108,10 +108,21 @@ also applies when `APP_LOG_FORMAT` or `APP_LOG_LEVEL` is invalid. Valid settings
 configure the injected `slog` logger; lifecycle messages obey its level threshold.
 See [logging and redaction](platform/observability.md) for the field policy.
 
+`cmd/migrate` reads only these settings (C47), never `APP_*`:
+
+| Variable | Default | Accepted values |
+| --- | --- | --- |
+| `MIGRATE_DB_HOST` | none (required) | PostgreSQL host name or IP; connect directly, not through a transaction pooler |
+| `MIGRATE_DB_PORT` | `5432` | TCP port from 1 to 65535 |
+| `MIGRATE_DB_NAME` | none (required) | Database name |
+| `MIGRATE_DB_USER` | none (required) | The migration role |
+| `MIGRATE_DB_PASSWORD` | none (required) | The migration role's password; a secret |
+| `MIGRATE_DB_SSLMODE` | `verify-full` | `disable`, `require`, `verify-ca`, or `verify-full` |
+
 `POSTGRES_USER` and `POSTGRES_PASSWORD` are only for database initialization and
 administration. On a newly initialized volume, Compose creates separate runtime
 and migration roles. The API receives only the runtime role's `APP_DB_*` settings; it never receives
-`MIGRATE_DSN` or the cluster-owner password. The PostgreSQL init script does not
+the migration role's `MIGRATE_DB_*` settings or the cluster-owner password. The PostgreSQL init script does not
 run again for an existing `pgdata` volume; provision and verify the restricted
 roles through the database administration process without resetting that volume.
 See [the role and migration instructions](platform/postgres.md).

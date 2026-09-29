@@ -50,3 +50,14 @@ See [development](../development.md), [tenancy](tenancy.md), and [identity](iden
 - Make the API reachable only through the proxy (no published port, firewall or
   network policy), because anyone connecting directly can write their own
   `X-Forwarded-For`.
+
+## Database migrations (C46, C47)
+
+- The release image contains `/usr/local/bin/migrate`. Run it, with the migration
+  role's `MIGRATE_DB_*` settings, before starting the new API version; the API never
+  migrates at startup and never receives those settings.
+- Connect it directly to PostgreSQL, not through a transaction pooler such as
+  PgBouncer.
+- Migrations are forward-only. Recover from a bad release by fixing forward or
+  restoring a backup (D10), not by running migrations down.
+- Concurrent runs are safe: an advisory lock lets one apply while others wait.
