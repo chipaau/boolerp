@@ -85,7 +85,7 @@ silently removed.
 
 | Variable | Default | Accepted values |
 | --- | --- | --- |
-| `APP_ENV` | `dev` | `dev`, `test`, `staging`, `prod`; an operational log label, not an access-control or deployment-mode switch |
+| `APP_ENV` | `dev` | `dev`, `test`, `staging`, `prod`; an operational log label and the seed guard (C50): seeding requires it set explicitly to a non-production value. It is not an access-control switch |
 | `APP_PORT` | `8080` | Decimal TCP port from 1 to 65535 |
 | `APP_SHUTDOWN_TIMEOUT` | `35s` | Positive Go duration up to `10m`; at least `APP_HTTP_WRITE_TIMEOUT` so any allowed request can finish (C30) |
 | `APP_LOG_FORMAT` | `json` | `json` or `text` |
