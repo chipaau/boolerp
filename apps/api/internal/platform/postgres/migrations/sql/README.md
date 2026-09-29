@@ -13,4 +13,6 @@ Goose SQL migrations for the application schema, applied in version order by
   to new tables and sequences through default privileges; it cannot change the
   schema. Goose's history lives in the private `migrations` schema.
 
-There are no application migrations yet.
+There are no application migrations yet. When the first module table is approved,
+migrations move to per-module folders with per-module history tables (C48) and
+this folder is removed.

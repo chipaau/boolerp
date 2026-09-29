@@ -49,6 +49,8 @@ services:
       POSTGRES_MIGRATE_USER: ${POSTGRES_MIGRATE_USER:-erp_migrate}
       POSTGRES_MIGRATE_PASSWORD: ${POSTGRES_MIGRATE_PASSWORD:-erp_migrate}
     volumes:
+      # On first start with an empty volume, PostgreSQL creates the database and
+      # 10-roles.sh creates the roles and migrations schema (C49).
       - pgdata:/var/lib/postgresql
       - ./docker/postgres/init/10-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
     networks:

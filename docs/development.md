@@ -32,9 +32,13 @@ target and will not work until the corresponding roadmap step is rebuilt.
 ## Compose baseline
 
 [compose.yaml](../compose.yaml) contains only `api`, `app`, `postgres`, and `redis`.
-Existing PostgreSQL storage and Go cache volumes are retained. Redis is currently
-configured without persistence for its cache role. Keep Compose project name `erp`
-to retain the existing `erp_pgdata` identity. Preserve the current `.env`; on a
+PostgreSQL stores data in the `erp_pgdata` volume (C49). When it is empty, first
+start creates the `erp` database and `10-roles.sh` creates the runtime and migration
+roles and the `migrations` schema, as Laravel Sail does. Tables come from
+`cmd/migrate`. To start over locally, remove the volume deliberately
+(`docker compose down` then `docker volume rm erp_pgdata`); nothing removes it
+automatically. Go cache volumes are retained. Redis is currently configured without persistence for its cache role.
+Keep Compose project name `erp` so volume names stay stable. Preserve the current `.env`; on a
 new checkout only, initialize it from `.env.example`. Removed service volumes are
 not deleted.
 
@@ -81,7 +85,7 @@ silently removed.
 
 | Variable | Default | Accepted values |
 | --- | --- | --- |
-| `APP_ENV` | `dev` | `dev`, `test`, `staging`, `prod`; an operational log label, not an access-control or deployment-mode switch |
+| `APP_ENV` | `dev` | `dev`, `test`, `staging`, `prod`; an operational log label and the seed guard (C50): seeding requires it set explicitly to a non-production value. It is not an access-control switch |
 | `APP_PORT` | `8080` | Decimal TCP port from 1 to 65535 |
 | `APP_SHUTDOWN_TIMEOUT` | `35s` | Positive Go duration up to `10m`; at least `APP_HTTP_WRITE_TIMEOUT` so any allowed request can finish (C30) |
 | `APP_LOG_FORMAT` | `json` | `json` or `text` |
