@@ -61,7 +61,7 @@ A standalone migration service is not part of this Compose baseline.
 ## Runtime configuration
 
 **Rebuild status (steps 1a–2b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
-`APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, and the five `APP_HTTP_*` limits are implemented in `internal/platform/config` with `caarlos0/env`
+`APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, and `APP_HTTP_ALLOWED_ORIGINS` are implemented in `internal/platform/config` with `caarlos0/env`
 (C26) and `go-playground/validator` (C27). Each remaining variable below is added
 with the step that uses it. `APP_LOG_LEVEL` is parsed by `slog.Level` itself, so it
 also accepts slog offsets such as `info+2`.
@@ -89,6 +89,8 @@ silently removed.
 | `APP_HTTP_READ_TIMEOUT` | `15s` | Positive Go duration up to `5m`; full request read, including the body |
 | `APP_HTTP_WRITE_TIMEOUT` | `30s` | Positive Go duration up to `10m`; greater than the read timeout to leave room for a failure response |
 | `APP_HTTP_IDLE_TIMEOUT` | `60s` | Positive Go duration up to `10m`; wait between keep-alive requests |
+| `APP_HTTP_TRUSTED_PROXY_HOPS` | `0` (Compose: `1`) | Integer 0–10; reverse proxies appending to `X-Forwarded-For` (C40). `0` ignores forwarded headers |
+| `APP_HTTP_ALLOWED_ORIGINS` | empty | Comma-separated origins (`https://app.example`), no wildcards, allowed cross-origin (C41). Empty allows none |
 | `APP_DSN` | local Compose runtime-role DSN | PostgreSQL connection string for the restricted runtime role |
 | `APP_DB_MAX_CONNS` | `20` | Pool maximum from 1 to 1000 |
 | `APP_DB_PING_TIMEOUT` | `2s` | Positive readiness ping timeout, up to one minute |

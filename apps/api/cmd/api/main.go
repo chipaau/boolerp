@@ -50,7 +50,16 @@ func run() int {
 	}
 	logger.Info("api listening", "address", ln.Addr().String())
 
-	srv := httpserver.NewServer(newRouter(logger, cfg.HTTPMaxBodyBytes), logger, httpserver.Limits{
+	router, err := newRouter(logger, routerConfig{
+		MaxBodyBytes:     cfg.HTTPMaxBodyBytes,
+		TrustedProxyHops: cfg.HTTPTrustedProxyHops,
+		AllowedOrigins:   cfg.HTTPAllowedOrigins,
+	})
+	if err != nil {
+		logger.Error("startup failed", "error", err)
+		return 1
+	}
+	srv := httpserver.NewServer(router, logger, httpserver.Limits{
 		ReadHeaderTimeout: cfg.HTTPReadHeaderTimeout,
 		ReadTimeout:       cfg.HTTPReadTimeout,
 		WriteTimeout:      cfg.HTTPWriteTimeout,

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"reflect"
 	"strings"
 	"time"
@@ -34,6 +35,13 @@ type Config struct {
 	HTTPReadTimeout       time.Duration `env:"APP_HTTP_READ_TIMEOUT" envDefault:"15s" validate:"gt=0,max=5m"`
 	HTTPWriteTimeout      time.Duration `env:"APP_HTTP_WRITE_TIMEOUT" envDefault:"30s" validate:"gt=0,max=10m,gtfield=HTTPReadTimeout"`
 	HTTPIdleTimeout       time.Duration `env:"APP_HTTP_IDLE_TIMEOUT" envDefault:"60s" validate:"gt=0,max=10m"`
+
+	// HTTPTrustedProxyHops is the number of reverse proxies in front of the API
+	// that append to X-Forwarded-For (C40). 0 trusts no forwarded header.
+	HTTPTrustedProxyHops int `env:"APP_HTTP_TRUSTED_PROXY_HOPS" envDefault:"0" validate:"min=0,max=10"`
+	// HTTPAllowedOrigins are the browser origins ("scheme://host[:port]") allowed
+	// to call the API cross-origin (C41). Empty allows none; "*" is rejected.
+	HTTPAllowedOrigins []string `env:"APP_HTTP_ALLOWED_ORIGINS" validate:"dive,origin"`
 }
 
 // Load reads settings from environ, which uses the os.Environ "KEY=value" form.
@@ -47,6 +55,16 @@ func Load(environ []string) (Config, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	// Report the environment variable name instead of the Go field name.
 	validate.RegisterTagNameFunc(envName)
+	// "origin" accepts exactly what net/http's CrossOriginProtection accepts as a
+	// trusted origin, so the router cannot fail on a value that passed here.
+	// Wildcards are rejected: go-chi/cors would treat them as "allow all".
+	if err := validate.RegisterValidation("origin", func(fl validator.FieldLevel) bool {
+		origin := fl.Field().String()
+		return !strings.Contains(origin, "*") &&
+			http.NewCrossOriginProtection().AddTrustedOrigin(origin) == nil
+	}); err != nil {
+		return Config{}, err
+	}
 
 	if err := validate.Struct(cfg); err != nil {
 		var fieldErrs validator.ValidationErrors

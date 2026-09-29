@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/go-chi/httplog/v3"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/problem"
@@ -17,12 +19,41 @@ import (
 // livenessPath answers process liveness checks (C36).
 const livenessPath = "/api/healthz"
 
+// routerConfig holds the settings the router needs from runtime configuration.
+type routerConfig struct {
+	MaxBodyBytes     int64    // request body limit
+	TrustedProxyHops int      // reverse proxies appending to X-Forwarded-For (C40)
+	AllowedOrigins   []string // browser origins allowed cross-origin (C41)
+}
+
 // newRouter builds the chi router and its middleware. It returns chi.Router,
 // not http.Handler, so tests can add routes behind the real middleware.
 // Middleware runs in the order registered, and must be registered before routes.
-func newRouter(logger *slog.Logger, maxBodyBytes int64) chi.Router {
+//
+// Paths are matched exactly: there is no path cleaning or redirect (C39), so
+// "/api//healthz" and "/api/healthz/" are 404.
+func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
+	// Reject cross-origin browser writes (POST, PUT, PATCH, DELETE) unless the
+	// origin is allowed; same-origin and non-browser requests pass (C41).
+	crossOrigin := http.NewCrossOriginProtection()
+	for _, origin := range rc.AllowedOrigins {
+		if err := crossOrigin.AddTrustedOrigin(origin); err != nil {
+			return nil, fmt.Errorf("allowed origin: %w", err)
+		}
+	}
+	crossOrigin.SetDenyHandler(http.HandlerFunc(crossOriginDenied))
+
 	r := chi.NewRouter()
 
+	// Client IP first: the request logger reads it from the context (C40).
+	// With N trusted hops, the client is the Nth X-Forwarded-For entry from the
+	// right; entries further left are client-supplied and ignored. With none,
+	// forwarded headers are ignored and the client is the connection's address.
+	if rc.TrustedProxyHops > 0 {
+		r.Use(middleware.ClientIPFromXFFTrustedProxies(rc.TrustedProxyHops))
+	} else {
+		r.Use(middleware.ClientIPFromRemoteAddr)
+	}
 	// Assign a server-generated request ID (C33) before anything logs.
 	r.Use(requestid.Middleware)
 	// One log line per request, with OpenTelemetry attribute names (C34). The
@@ -42,10 +73,28 @@ func newRouter(logger *slog.Logger, maxBodyBytes int64) chi.Router {
 	r.Use(problem.Recoverer(logger))
 	// Browsers must not guess a different content type from the body.
 	r.Use(middleware.SetHeader("X-Content-Type-Options", "nosniff"))
+	// CORS lets allowed origins read responses and answers preflight requests.
+	// Only installed with a non-empty list: go-chi/cors treats an empty list as
+	// "allow every origin".
+	if len(rc.AllowedOrigins) > 0 {
+		r.Use(cors.Handler(cors.Options{
+			AllowedOrigins: rc.AllowedOrigins,
+			AllowedMethods: []string{
+				http.MethodGet, http.MethodHead, http.MethodPost,
+				http.MethodPut, http.MethodPatch, http.MethodDelete,
+			},
+			AllowedHeaders: []string{"Content-Type"},
+			ExposedHeaders: []string{requestid.Header},
+			// Credentials (cookies) are decided with the session contract (D04).
+			AllowCredentials: false,
+			MaxAge:           600, // seconds browsers may cache a preflight answer
+		}))
+	}
+	r.Use(crossOrigin.Handler)
 	// Answer HEAD with the matching GET route, as net/http's ServeMux does.
 	r.Use(middleware.GetHead)
 	// Handlers reading more than maxBodyBytes get an *http.MaxBytesError.
-	r.Use(middleware.RequestSize(maxBodyBytes))
+	r.Use(middleware.RequestSize(rc.MaxBodyBytes))
 
 	// Routing failures are problem details too (C35, C37).
 	r.NotFound(notFound)
@@ -53,7 +102,7 @@ func newRouter(logger *slog.Logger, maxBodyBytes int64) chi.Router {
 
 	r.Get(livenessPath, liveness)
 
-	return r
+	return r, nil
 }
 
 // liveness reports that the process is running and serving HTTP. It checks no
@@ -61,6 +110,12 @@ func newRouter(logger *slog.Logger, maxBodyBytes int64) chi.Router {
 func liveness(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = io.WriteString(w, `{"status":"ok"}`)
+}
+
+// crossOriginDenied answers a cross-origin browser write from an origin that is
+// not allowed.
+func crossOriginDenied(w http.ResponseWriter, r *http.Request) {
+	problem.Error(w, r, http.StatusForbidden, "Cross-origin requests from this origin are not allowed.")
 }
 
 func notFound(w http.ResponseWriter, r *http.Request) {
