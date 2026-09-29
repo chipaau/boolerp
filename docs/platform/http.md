@@ -27,7 +27,14 @@ normal route returning `200` `{"status":"ok"}`; `HEAD` is answered through
 line. Unknown paths return 404; known paths with an unrouted method return 405 with
 `Allow` (for example `GET, HEAD`). All responses carry `X-Content-Type-Options:
 nosniff`. Mapping `*http.MaxBytesError` to 413 (and other body errors to 400/415)
-is added with the first handler that reads a request body, together with its decoder. Routes are registered with chi's typed
+is added with the first handler that reads a request body, together with its decoder.
+
+**Rebuild status (step 2e):** `problem.Recoverer` (C38) sits directly inside the
+request logger. A panic before the response starts is logged once at ERROR
+(`panic recovered`, `request_id`, `stack`, and the panic described safely) and
+answered with a 500 problem response; the request line is then logged with status
+500. A panic after the response has started aborts the connection. Panics no longer
+reach net/http's `ErrorLog`, so they are always logged through the redacted logger. Routes are registered with chi's typed
 method helpers (`router.Get`, `router.Head`); path parameters use chi's URL
 parameter extraction, and chi populates `request.PathValue` for compatibility.
 `redirectCleanPath` issues a `307 Temporary Redirect` whenever `path.Clean`

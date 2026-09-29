@@ -34,7 +34,9 @@ accountable changes.
   slog does not provide.
 
 Redaction is based on attribute/group names. Diagnostics from `net/http` (through
-`http.Server.ErrorLog`) are a single message string and are not redacted. It does not inspect arbitrary
+`http.Server.ErrorLog`) are a single message string and are not redacted; handler
+panics no longer reach it, because `problem.Recoverer` logs them first (C38) without
+the panic value. It does not inspect arbitrary
 messages, error strings, maps, or structs stored under other keys. Call sites must
 use deliberate safe fields and avoid logging raw configuration, headers, request
 bodies, provider responses, or private employee content. The current runtime does

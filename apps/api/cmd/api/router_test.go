@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -38,7 +39,7 @@ func logLines(t *testing.T, buf *bytes.Buffer) []map[string]any {
 
 // withTestRoute returns the real router plus a test-only GET /api/test route
 // answering 204, and the buffer its logger writes to.
-func withTestRoute(t *testing.T) (http.Handler, *bytes.Buffer) {
+func withTestRoute(t *testing.T) (chi.Router, *bytes.Buffer) {
 	t.Helper()
 	var buf bytes.Buffer
 	r := newRouter(observability.NewLogger(&buf, "json", slog.LevelInfo), 1024)
@@ -160,4 +161,27 @@ func TestNoSniffOnEveryResponse(t *testing.T) {
 		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 		assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"), path)
 	}
+}
+
+func TestPanicIsProblemDetailsAndLogged(t *testing.T) {
+	router, buf := withTestRoute(t)
+	router.Get("/api/panic", func(http.ResponseWriter, *http.Request) { panic("s3cret value") })
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/panic", nil))
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	d := decodeProblem(t, rec)
+	assert.Equal(t, "Internal Server Error", d.Title)
+	assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+
+	lines := logLines(t, buf)
+	require.Len(t, lines, 2, "the panic, then the request line")
+	id := rec.Header().Get(requestid.Header)
+	assert.Equal(t, "panic recovered", lines[0]["msg"])
+	assert.Equal(t, "ERROR", lines[1]["level"])
+	assert.EqualValues(t, http.StatusInternalServerError, lines[1]["http.response.status_code"])
+	for _, line := range lines {
+		assert.Equal(t, id, line[requestid.LogKey])
+	}
+	assert.NotContains(t, buf.String(), "s3cret")
 }

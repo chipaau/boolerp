@@ -30,13 +30,16 @@ func newRouter(logger *slog.Logger, maxBodyBytes int64) chi.Router {
 	r.Use(httplog.RequestLogger(logger, &httplog.Options{
 		Level:  slog.LevelInfo, // every response except OPTIONS
 		Schema: httplog.SchemaOTEL,
-		// Panic recovery is step 2e; until then panics are logged and re-raised.
-		RecoverPanics:      false,
+		// A backstop only: problem.Recoverer below handles panics first (C38).
+		RecoverPanics:      true,
 		LogRequestHeaders:  []string{"Content-Type", "Origin"},
 		LogResponseHeaders: []string{"Content-Type"},
 		// Container health checks run every few seconds; logging them adds only noise.
 		Skip: func(r *http.Request, _ int) bool { return r.URL.Path == livenessPath },
 	}))
+	// Turn handler panics into a logged 500 problem response (C38). It sits
+	// directly inside the request logger, which then records status 500.
+	r.Use(problem.Recoverer(logger))
 	// Browsers must not guess a different content type from the body.
 	r.Use(middleware.SetHeader("X-Content-Type-Options", "nosniff"))
 	// Answer HEAD with the matching GET route, as net/http's ServeMux does.
