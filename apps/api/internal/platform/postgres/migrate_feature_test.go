@@ -1,47 +1,30 @@
-package postgres
+//go:build feature
+
+package postgres_test
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"io/fs"
 	"log/slog"
-	"os"
-	"strconv"
 	"sync"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
 	"github.com/boolmv/erp/apps/api/internal/platform/postgres/migrations"
+	"github.com/boolmv/erp/apps/api/internal/testdb"
 )
 
-// These tests need a PostgreSQL initialized by docker/postgres/init/10-roles.sh,
-// with the migration and runtime roles' credentials in POSTGRES_TEST_MIGRATE_*
-// and POSTGRES_TEST_APP_* (see docs/testing.md). They are skipped otherwise.
-
-// roleSettings returns settings for the role whose credentials are in
-// POSTGRES_TEST_<role>_USER and _PASSWORD.
-func roleSettings(t *testing.T, role string) Settings {
-	t.Helper()
-	user := os.Getenv("POSTGRES_TEST_" + role + "_USER")
-	if user == "" {
-		t.Skip("POSTGRES_TEST_" + role + "_USER not set")
-	}
-	port, _ := strconv.Atoi(cmp.Or(os.Getenv("POSTGRES_TEST_PORT"), "5432"))
-	return Settings{
-		Host:     cmp.Or(os.Getenv("POSTGRES_TEST_HOST"), "localhost"),
-		Port:     port,
-		Name:     cmp.Or(os.Getenv("POSTGRES_TEST_DB"), "erp"),
-		User:     user,
-		Password: os.Getenv("POSTGRES_TEST_" + role + "_PASSWORD"),
-		SSLMode:  "disable",
-		MaxConns: 2,
-	}
-}
+// Feature tests (C77). The migrator, privilege, and concurrency tests run on
+// the un-migrated platform database (testdb.PlatformSettings, C79): they
+// create and drop schema objects, which cannot happen inside the suite
+// database's rolled-back test transactions.
 
 // probe is a test-only migration. It is never part of the embedded migrations.
 var probe = fstest.MapFS{"00001_probe.sql": {Data: []byte(`-- +goose Up
@@ -55,36 +38,36 @@ CREATE TABLE migration_probe (
 // created when the test ends.
 func migrateProbe(t *testing.T, fsys fs.FS) (int, error) {
 	t.Helper()
-	db, err := OpenDB(roleSettings(t, "MIGRATE"))
+	db, err := postgres.OpenDB(testdb.PlatformSettings(t, testdb.MigrationRole))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS migration_probe")
-		_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+HistoryTable)
+		_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+postgres.HistoryTable)
 		_ = db.Close()
 	})
-	return Migrate(t.Context(), db, fsys, slog.New(slog.DiscardHandler))
+	return postgres.Migrate(t.Context(), db, fsys, slog.New(slog.DiscardHandler))
 }
 
-func TestMigrateAppliesOnceAndRecordsHistory(t *testing.T) {
+func TestFeatureMigrateAppliesOnceAndRecordsHistory(t *testing.T) {
 	applied, err := migrateProbe(t, probe)
 	require.NoError(t, err)
 	assert.Equal(t, 1, applied)
 
-	db, err := OpenDB(roleSettings(t, "MIGRATE"))
+	db, err := postgres.OpenDB(testdb.PlatformSettings(t, testdb.MigrationRole))
 	require.NoError(t, err)
 	defer db.Close()
-	again, err := Migrate(t.Context(), db, probe, slog.New(slog.DiscardHandler))
+	again, err := postgres.Migrate(t.Context(), db, probe, slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	assert.Zero(t, again, "a second run applies nothing")
 
 	var version int64
 	require.NoError(t, db.QueryRowContext(t.Context(),
-		"SELECT max(version_id) FROM "+HistoryTable).Scan(&version))
+		"SELECT max(version_id) FROM "+postgres.HistoryTable).Scan(&version))
 	assert.EqualValues(t, 1, version)
 }
 
-func TestMigrateConcurrentRunsApplyOnce(t *testing.T) {
+func TestFeatureMigrateConcurrentRunsApplyOnce(t *testing.T) {
 	_, err := migrateProbe(t, fstest.MapFS{}) // creates the history table and cleanup
 	require.NoError(t, err)
 
@@ -93,13 +76,13 @@ func TestMigrateConcurrentRunsApplyOnce(t *testing.T) {
 	errs := make([]error, 3)
 	for i := range results {
 		wg.Go(func() {
-			db, err := OpenDB(roleSettings(t, "MIGRATE"))
+			db, err := postgres.OpenDB(testdb.PlatformSettings(t, testdb.MigrationRole))
 			if err != nil {
 				errs[i] = err
 				return
 			}
 			defer db.Close()
-			results[i], errs[i] = Migrate(t.Context(), db, probe, slog.New(slog.DiscardHandler))
+			results[i], errs[i] = postgres.Migrate(t.Context(), db, probe, slog.New(slog.DiscardHandler))
 		})
 	}
 	wg.Wait()
@@ -110,7 +93,7 @@ func TestMigrateConcurrentRunsApplyOnce(t *testing.T) {
 	assert.Equal(t, 1, results[0]+results[1]+results[2], "the lock lets exactly one run apply it")
 }
 
-func TestMigrateFailureOmitsStatementAndValues(t *testing.T) {
+func TestFeatureMigrateFailureOmitsStatementAndValues(t *testing.T) {
 	bad := fstest.MapFS{
 		"00001_probe.sql": probe["00001_probe.sql"],
 		"00002_bad.sql": {Data: []byte(`-- +goose Up
@@ -126,11 +109,11 @@ INSERT INTO no_such_table (secret) VALUES ('s3cret-value');
 	assert.NotContains(t, err.Error(), "INSERT")
 }
 
-func TestRuntimeRolePrivileges(t *testing.T) {
+func TestFeatureRuntimeRolePrivileges(t *testing.T) {
 	_, err := migrateProbe(t, probe)
 	require.NoError(t, err)
 
-	pool, err := NewPool(t.Context(), roleSettings(t, "APP"))
+	pool, err := postgres.NewPool(t.Context(), testdb.PlatformSettings(t, testdb.RuntimeRole))
 	require.NoError(t, err)
 	defer pool.Close()
 	ctx := t.Context()
@@ -152,7 +135,7 @@ func TestRuntimeRolePrivileges(t *testing.T) {
 		"cannot create tables":          "CREATE TABLE runtime_table (id int)",
 		"cannot alter tables":           "ALTER TABLE migration_probe ADD COLUMN extra int",
 		"cannot drop tables":            "DROP TABLE migration_probe",
-		"cannot read migration history": "SELECT count(*) FROM " + HistoryTable,
+		"cannot read migration history": "SELECT count(*) FROM " + postgres.HistoryTable,
 		"cannot reset sequences":        "SELECT setval(pg_get_serial_sequence('migration_probe', 'id'), 1000)",
 		"cannot create schemas":         "CREATE SCHEMA runtime_schema",
 	} {
@@ -165,21 +148,34 @@ func TestRuntimeRolePrivileges(t *testing.T) {
 	}
 }
 
-func TestEmbeddedMigrationsApply(t *testing.T) {
+func TestFeatureEmbeddedMigrationsApply(t *testing.T) {
 	applied, err := migrateProbe(t, migrations.FS())
 	require.NoError(t, err)
 	assert.Zero(t, applied, "there are no application migrations yet")
 }
 
-func TestMigrateFailsWhenItCannotConnect(t *testing.T) {
-	s := roleSettings(t, "MIGRATE")
+func TestFeatureMigrateFailsWhenItCannotConnect(t *testing.T) {
+	s := testdb.PlatformSettings(t, testdb.MigrationRole)
 	s.Password = "s3cret-wrong"
-	db, err := OpenDB(s)
+	db, err := postgres.OpenDB(s)
 	require.NoError(t, err)
 	defer db.Close()
 
 	// No migrations to apply, but the run must still fail.
-	_, err = Migrate(t.Context(), db, migrations.FS(), slog.New(slog.DiscardHandler))
+	_, err = postgres.Migrate(t.Context(), db, migrations.FS(), slog.New(slog.DiscardHandler))
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), "s3cret-wrong")
+}
+
+func TestFeaturePoolConnects(t *testing.T) {
+	pool, err := postgres.NewPool(t.Context(), testdb.Settings(t, testdb.RuntimeRole))
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	require.NoError(t, pool.Ping(ctx))
+	assert.EqualValues(t, 1, pool.Stat().TotalConns())
+
+	pool.Close()
+	assert.Zero(t, pool.Stat().TotalConns(), "Close releases every connection")
 }

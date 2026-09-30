@@ -71,17 +71,3 @@ func TestNewPoolDoesNotConnect(t *testing.T) {
 	defer cancel()
 	assert.Error(t, pool.Ping(ctx), "using it fails while the database is unreachable")
 }
-
-// TestPoolConnects needs a real PostgreSQL; see roleSettings in migrate_test.go.
-func TestPoolConnects(t *testing.T) {
-	pool, err := NewPool(t.Context(), roleSettings(t, "APP"))
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
-	require.NoError(t, pool.Ping(ctx))
-	assert.EqualValues(t, 1, pool.Stat().TotalConns())
-
-	pool.Close()
-	assert.Zero(t, pool.Stat().TotalConns(), "Close releases every connection")
-}

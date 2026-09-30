@@ -2,12 +2,9 @@ package redis
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"encoding/json"
 	"log/slog"
-	"os"
-	"strconv"
 	"testing"
 	"time"
 
@@ -73,27 +70,6 @@ func TestRequestDeadlineStopsWaiting(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Less(t, time.Since(start), time.Second, "the request's deadline wins over a longer timeout")
-}
-
-// TestClientAgainstRedis needs a real Redis; set REDIS_TEST_HOST to run it.
-func TestClientAgainstRedis(t *testing.T) {
-	host := os.Getenv("REDIS_TEST_HOST")
-	if host == "" {
-		t.Skip("REDIS_TEST_HOST not set")
-	}
-	port, _ := strconv.Atoi(cmp.Or(os.Getenv("REDIS_TEST_PORT"), "6379"))
-	client := NewClient(Settings{Host: host, Port: port, Timeout: time.Second})
-	ctx := t.Context()
-
-	key := "test:" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	require.NoError(t, client.Set(ctx, key, "value", time.Minute).Err())
-	got, err := client.Get(ctx, key).Result()
-	require.NoError(t, err)
-	assert.Equal(t, "value", got)
-	require.NoError(t, client.Del(ctx, key).Err())
-
-	require.NoError(t, client.Close())
-	assert.Error(t, client.Ping(context.Background()).Err(), "a closed client refuses commands")
 }
 
 func TestRouteLogsSendsLibraryLogsToTheLogger(t *testing.T) {

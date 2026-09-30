@@ -90,7 +90,11 @@ first created. Existing volumes are preserved and are not modified or reset by
 this implementation. An existing installation must have an administrator
 provision and verify the two restricted roles and grants before configuring `APP_DB_USER`.
 The initialization script is idempotent for missing roles but deliberately does
-not reset existing role passwords.
+not reset existing role passwords. Per-database setup (revoking `CREATE` on `public`,
+the connect and usage grants, the `migrations` schema, and default privileges) lives in
+`docker/postgres/init/database-setup.psql`, so another database (such as the feature
+tests' `erp_platform`, C79) gets identical grants with
+`psql -d <database> -f database-setup.psql`.
 
 ## Running migrations
 

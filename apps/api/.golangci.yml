@@ -2,6 +2,16 @@
 # golangci/golangci-lint:v2.14.0 image; the build fails on any finding.
 version: "2"
 
+run:
+  # Lint feature tests too (C77).
+  build-tags:
+    - feature
+
+# Formatting is checked here, replacing a separate gofmt step in CI.
+formatters:
+  enable:
+    - gofmt
+
 linters:
   # errcheck, govet, ineffassign, staticcheck, unused
   default: standard
