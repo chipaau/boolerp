@@ -31,5 +31,6 @@ Dhivehi-content, and binary/container licensing requirements.
   licensing details remain open. Confirmed frameworks and providers are recorded
   in [ADR 0002](0002-tool-and-provider-selection.md).
 - Discuss the [open decisions](../decisions/README.md) one at a time.
-- Preserve earlier documents as explicitly superseded [historical material](../archive/README.md).
+- Keep previous documents out of the repository (git history holds them); only
+  `apps/api.bak/` remains, excluded from new-API builds.
 - Do not claim existing code or example structures are an implemented rebuild.

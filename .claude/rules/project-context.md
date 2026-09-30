@@ -16,5 +16,4 @@ and [ADR 0001](../../docs/adr/0001-api-rebuild.md).
 
 The canonical checkout is `/Users/chipaau/code/bool/erp`, with the GitHub remote
 `git@github.com:boolmv/erp.git`. The sibling `go-erp` checkout is not the active
-workspace. See [repository transfer](../../docs/repository-transfer.md) before
-recovering saved security-review work or changing branches.
+workspace.
