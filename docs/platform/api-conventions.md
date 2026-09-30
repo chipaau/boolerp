@@ -83,16 +83,58 @@ instead use cursor pagination as a documented exception:
   parameters or sort fields are a 400 problem response, never silently ignored, so
   nothing reaches SQL that was not declared.
 
-## Contract: OpenAPI (C70)
+## Request input and validation errors (C71–C74)
 
-The API contract is written first, in OpenAPI 3.1 (`openapi.yaml`), and reviewed like
-code. `oapi-codegen` (v2.8) generates the Go request/response types and a typed chi
-server interface from it; handlers implement that interface, so code that does not match
-the contract does not compile. The frontend generates its TypeScript client from the same
-file when frontend integration starts (C07).
+Request bodies are Go structs with `json` and `validate` tags, decoded by
+`httpinput.Decode`, which writes the error response itself:
 
-Known `oapi-codegen` limitation: OpenAPI 3.1 multi-type unions
-(`type: [string, number]`) generate `any` in Go; avoid them in the contract.
+```go
+type CreateEmployeeRequest struct { // illustration only; the employee model is D11
+	FirstName string `json:"firstName" validate:"required,max=100"`
+	Email     string `json:"email"     validate:"required,email"`
+}
 
-The contract file and code generation are set up with the first endpoint that needs them
-(H2's test endpoint or the first business endpoint).
+func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
+	var req CreateEmployeeRequest
+	if !httpinput.Decode(w, r, &req) {
+		return // 400, 413, 415, or 422 already written
+	}
+	// req is valid ...
+}
+```
+
+| Failure | Status | `type` |
+| --- | --- | --- |
+| Body empty, malformed, or more than one JSON value | 400 | `about:blank` |
+| Body over `APP_HTTP_MAX_BODY_BYTES` | 413 | `about:blank` |
+| `Content-Type` not `application/json` | 415 | `about:blank` |
+| Wrong JSON type, unknown field, failed rule, invalid query parameter | 422 | `https://bool.mv/problems/validation-error` |
+
+A validation problem lists every failing field (RFC 9457's `errors` pattern), never the
+submitted values:
+
+```json
+{"type": "https://bool.mv/problems/validation-error", "title": "Unprocessable Content",
+ "status": 422, "detail": "The request has 2 invalid fields.", "instance": "urn:uuid:...",
+ "errors": [
+   {"pointer": "#/email", "code": "email", "detail": "must be a valid email address"},
+   {"parameter": "pageSize", "code": "max", "detail": "must be at most 100"}]}
+```
+
+- `pointer` is a JSON Pointer to a body field using JSON names (`#/items/0/name`);
+  `parameter` names a query parameter; `code` is the rule (`required`, `email`, `max`,
+  `oneof`, `type`, `unknown`, `format`, ...).
+- Go's `encoding/json` stops at the first wrong-type or unknown field, so those are
+  reported alone; unknown fields and invalid dates have no path and point at the whole
+  body (`#`), naming the unknown field in `detail`.
+- Rules that need data (unique email, existing department) are checked by the
+  application layer and database constraints, which return `problem.ValidationError`;
+  the response has the same format.
+
+## Contract and frontend types (C74)
+
+No OpenAPI contract is maintained yet (C70 was replaced): the Go request and response
+structs are the source of truth. When frontend integration starts, frontend TypeScript
+types and Zod schemas are generated from them; options include `hypersequent/zen` (Zod
+directly from validator tags) and OpenAPI with `orval` (typed client and TanStack Query
+hooks). The frontend's validation is for user feedback only; the API always validates.

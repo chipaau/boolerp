@@ -33,6 +33,9 @@ type Details struct {
 	// Instance identifies this occurrence: the request ID as a URN, the same
 	// value as the X-Request-Id header and the request_id log attribute.
 	Instance string `json:"instance,omitempty"`
+	// Errors lists field errors for validation problems (C71); an extension
+	// member, as in RFC 9457's own example.
+	Errors []FieldError `json:"errors,omitempty"`
 }
 
 // New returns problem details for status with the "about:blank" type, the
