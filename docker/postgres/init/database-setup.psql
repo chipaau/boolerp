@@ -11,6 +11,10 @@
 -- runtime role unable to create objects on any server version.
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
+-- New databases let PUBLIC connect; only the roles granted below (and the owner)
+-- may, so other roles on the server, such as Kratos's (C85), cannot.
+SELECT format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', current_database())
+\gexec
 SELECT format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), :'app_role')
 \gexec
 SELECT format('GRANT USAGE ON SCHEMA public TO %I', :'app_role')

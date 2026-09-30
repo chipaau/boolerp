@@ -11,6 +11,9 @@ Its contents are preserved unchanged. Older Accepted, Confirmed, Implemented,
 or mandatory-instruction labels have no authority over the rebuild. Original
 relative links may refer to their pre-archive locations.
 
+`pre-api-rebuild/repository/docker/kratos/` holds the previous implementation's Kratos
+development config, archived unchanged on 2026-09-30 when step 7a-1 replaced it (C85).
+
 Historical agent rules live separately in `.claude/archive/pre-api-rebuild/`
 and are not imported by the current agent entry points.
 

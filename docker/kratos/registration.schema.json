@@ -1,0 +1,61 @@
+{
+  "$id": "https://bool.mv/schemas/identity/registration/v1.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Account (registration)",
+  "type": "object",
+  "properties": {
+    "traits": {
+      "type": "object",
+      "properties": {
+        "emails": {
+          "title": "Email addresses",
+          "description": "Exactly one email at registration (C85): further addresses are added only through the admin API, already verified, which switches the account to account.schema.json. Keep in step with it.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 320,
+            "ory.sh/kratos": {
+              "credentials": {
+                "password": {
+                  "identifier": true
+                }
+              },
+              "verification": {
+                "via": "email"
+              },
+              "recovery": {
+                "via": "email"
+              }
+            }
+          }
+        },
+        "phone": {
+          "title": "Phone number",
+          "description": "Required and verified by SMS, never used to log in (C85).",
+          "type": "string",
+          "format": "tel",
+          "maxLength": 20,
+          "ory.sh/kratos": {
+            "verification": {
+              "via": "sms"
+            }
+          }
+        },
+        "name": {
+          "title": "Display name",
+          "type": "string",
+          "maxLength": 100
+        }
+      },
+      "required": [
+        "emails",
+        "phone"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

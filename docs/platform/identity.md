@@ -31,6 +31,32 @@ defines, keeps its CSRF token, and posts to Kratos. The pages stay on the login
 service's domain; a form on a client's own domain would need a separate Kratos and
 Hydra.
 
+## Accounts and development services (7a-1, C85)
+
+Kratos v26.2.0 runs in Compose with its own `kratos` database and `erp_kratos` role
+(`docker/postgres/init/20-kratos.sh`), migrated by the `kratos-migrate` service. Its
+config is `docker/kratos/kratos.yml`, merged with `docker/secrets/dev/kratos.yml`
+(database address, cookie and cipher secrets, provider client secrets) mounted as a
+Compose secret. Browsers reach its public API at `http://identity.bool.test/kratos`;
+the admin API (`http://kratos:4434`) is only on the internal network.
+
+- **Accounts:** a new account has one email, a phone, and an optional name
+  (`registration.schema.json`). Extra emails are added through the admin API as
+  verified, switching the account to `account.schema.json`; self-service settings can
+  change the password and link Google, not account fields.
+- **Login:** email and password, or Google. An account logs in once it has a verified
+  email; codes for verification and recovery are sent by email.
+- **Development mail and SMS:** Mailpit at `http://mail.bool.test` catches all email;
+  SMS is configured to arrive there too through Mailpit's send API.
+- **Google in development:** `mock-oauth2-server` at `http://oidc.bool.test/default`,
+  configured in Kratos as the `google` provider; its login page lets you choose any
+  user and claims (for example `{"email": "a@b.test", "email_verified": true}`).
+
+Known gaps in open-source Kratos v26.2.0 (C85): SMS phone verification is not
+available, so phones are unverified until a release supports it (required before
+go-live); and a Google sign-up that must ask for the phone loses Google's "verified"
+mark, so the login UI verifies the email by code.
+
 ## Open decisions
 
 - Identity/session authority and required authentication methods.
