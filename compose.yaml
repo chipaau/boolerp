@@ -153,6 +153,14 @@ services:
       - traefik.http.routers.erp-api.entrypoints=web
       - traefik.http.routers.erp-api.priority=20
       - traefik.http.routers.erp-api.service=erp-api
+      # Per-IP rate limiting is the proxy's job, not the API's (C81): a backstop of
+      # 1000 requests a minute per client IP, with bursts of 100 (a screen's parallel
+      # calls). Traefik is the edge here, so it counts the connecting address; behind
+      # another proxy or CDN, set sourcecriterion.ipstrategy.depth to reach the client.
+      - traefik.http.routers.erp-api.middlewares=erp-api-ratelimit
+      - traefik.http.middlewares.erp-api-ratelimit.ratelimit.average=1000
+      - traefik.http.middlewares.erp-api-ratelimit.ratelimit.period=1m
+      - traefik.http.middlewares.erp-api-ratelimit.ratelimit.burst=100
       - "traefik.http.services.erp-api.loadbalancer.server.port=${APP_PORT:-8080}"
 
   # One-off migrations as the migration role (C47): `docker compose run --rm migrate`.

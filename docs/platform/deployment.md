@@ -51,6 +51,29 @@ See [development](../development.md), [tenancy](tenancy.md), and [identity](iden
   network policy), because anyone connecting directly can write their own
   `X-Forwarded-For`.
 
+## Rate limiting (C81)
+
+The API does not limit request rates; the proxy in front of it must. Every deployment,
+SaaS or self-hosted, needs a per-client-IP limit at its edge proxy or CDN. Without one
+there is no limit at all.
+
+- Count the real client IP, not a CDN's or load balancer's address. In Traefik, set
+  `ratelimit.sourcecriterion.ipstrategy.depth` to the number of proxies in front of it
+  (like `APP_HTTP_TRUSTED_PROXY_HOPS`); when Traefik is the edge, the default (the
+  connecting address) is right.
+- Keep the limit generous: an office usually reaches the API from one public IP, and
+  the frontend makes several calls per screen. The development Compose file uses
+  1000 requests a minute per IP with bursts of 100 (Traefik's `average`, `period`,
+  `burst`; a `burst` of 1 would reject parallel requests). Copy its labels as a
+  starting point.
+- With several proxy instances, each counts separately unless the proxy shares its
+  counters (Traefik's `ratelimit.redis` option, or a CDN's rate limiting).
+- Rejected requests get the proxy's `429`: Traefik sends `Retry-After` and a plain-text
+  body, not the API's problem details (see [HTTP](http.md)).
+
+Limits that need to know the user, such as login attempts, cannot be enforced by the
+proxy; they are decided with identity (step 7).
+
 ## Database migrations (C46, C47)
 
 - The release image contains `/usr/local/bin/migrate`. Run it, with the migration
