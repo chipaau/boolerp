@@ -7,7 +7,9 @@
 set -Eeuo pipefail
 
 if [[ -z "${POSTGRES_KRATOS_USER:-}" ]]; then
-	exit 0
+	# return, not exit: the entrypoint sources this script, so exit would end the
+	# entrypoint itself and PostgreSQL would never finish initialising.
+	return 0
 fi
 # The entrypoint sources this script, so the image's file_env helper is available
 # (as in 10-roles.sh, C80).
