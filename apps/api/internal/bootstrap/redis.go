@@ -15,8 +15,9 @@ import (
 // (C52): the client connects lazily, and an unreachable Redis is reported in
 // the background without delaying or failing startup. When tracing is on,
 // commands become spans named by command only; arguments, which carry cached
-// values and keys, are never recorded (C61).
-func newCache(ctx context.Context, cfg config.Redis, tr *tracing, logger *slog.Logger) (*goredis.Client, error) {
+// values and keys, are never recorded (C61). When metrics are on, command
+// durations and connection-pool usage are reported (C82).
+func newCache(ctx context.Context, cfg config.Redis, tr *tracing, mt *metrics, logger *slog.Logger) (*goredis.Client, error) {
 	redis.RouteLogs(logger)
 	cache := redis.NewClient(redis.Settings{
 		Host:     cfg.Host,
@@ -32,6 +33,12 @@ func newCache(ctx context.Context, cfg config.Redis, tr *tracing, logger *slog.L
 			redisotel.WithTracerProvider(tr.provider),
 			redisotel.WithDBStatement(false), // no command arguments in spans
 		); err != nil {
+			return nil, err
+		}
+	}
+	if mt.enabled {
+		if err := redisotel.InstrumentMetrics(cache, redisotel.WithMeterProvider(mt.provider)); err != nil {
+			_ = cache.Close()
 			return nil, err
 		}
 	}

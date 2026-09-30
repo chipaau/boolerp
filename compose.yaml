@@ -113,12 +113,13 @@ services:
       # Local Redis has no password or TLS; the application default is TLS on (C53).
       APP_REDIS_HOST: ${APP_REDIS_HOST:-redis}
       APP_REDIS_TLS: ${APP_REDIS_TLS:-false}
-      # Tracing uses the standard OpenTelemetry variables (C55). In development it
-      # exports to the jaeger service by default (C63); set OTEL_TRACES_EXPORTER=none
-      # in .env to turn it off. The sampler is passed only when set, since the SDK
-      # rejects empty values.
+      # Traces and metrics use the standard OpenTelemetry variables (C55, C82). In
+      # development both are on by default and export to the lgtm service (C82); set
+      # OTEL_TRACES_EXPORTER or OTEL_METRICS_EXPORTER to none in .env to turn one
+      # off. The sampler is passed only when set, since the SDK rejects empty values.
       OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://lgtm:4318}
       OTEL_TRACES_SAMPLER:
     # Only the runtime role's password; never the owner's or the migration role's (C47).
     secrets: [db_app_password]
@@ -202,10 +203,12 @@ services:
       timeout: 3s
       retries: 10
 
-  # Trace viewer for development (C63): receives OTLP on 4317/4318 from the API and
-  # serves its UI at http://jaeger.bool.test. Traces are kept in memory only.
-  jaeger:
-    image: jaegertracing/jaeger:2.21.0
+  # Telemetry viewer for development (C82, replacing Jaeger from C63): one
+  # container with an OpenTelemetry Collector (OTLP on 4317/4318 from the API),
+  # Prometheus for metrics, Tempo for traces, Loki for logs, and Grafana at
+  # http://grafana.bool.test. Data is not persisted; a restart starts empty.
+  lgtm:
+    image: grafana/otel-lgtm:0.34.0
     networks:
       - proxy
       - internal
@@ -213,11 +216,11 @@ services:
       - traefik.enable=true
       - traefik.docker.network=proxy
       # Higher priority than the app's wildcard *.bool.test router.
-      - "traefik.http.routers.erp-jaeger.rule=Host(`jaeger.bool.test`)"
-      - traefik.http.routers.erp-jaeger.entrypoints=web
-      - traefik.http.routers.erp-jaeger.priority=30
-      - traefik.http.routers.erp-jaeger.service=erp-jaeger
-      - traefik.http.services.erp-jaeger.loadbalancer.server.port=16686
+      - "traefik.http.routers.erp-grafana.rule=Host(`grafana.bool.test`)"
+      - traefik.http.routers.erp-grafana.entrypoints=web
+      - traefik.http.routers.erp-grafana.priority=30
+      - traefik.http.routers.erp-grafana.service=erp-grafana
+      - traefik.http.services.erp-grafana.loadbalancer.server.port=3000
 
 secrets:
   # Passwords are files mounted under /run/secrets, as Docker and Kubernetes

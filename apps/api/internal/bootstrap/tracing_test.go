@@ -108,7 +108,7 @@ func recordSpans(t *testing.T) (http.Handler, *tracetest.SpanRecorder) {
 	router, _ := withTestRoute(t)
 	router.Get("/api/items/{id}", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	router.Get("/api/panic", func(http.ResponseWriter, *http.Request) { panic("boom") })
-	return traceHTTP(router, tr), recorder
+	return instrumentHTTP(router, tr, noMetrics()), recorder
 }
 
 // attr returns a span attribute's value as a string.
@@ -182,7 +182,7 @@ func TestRequestLogCarriesTraceIDAndSpanCarriesRequestID(t *testing.T) {
 	}
 	router, logs := withTestRoute(t)
 	rec := httptest.NewRecorder()
-	traceHTTP(router, tr).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/test", nil))
+	instrumentHTTP(router, tr, noMetrics()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/test", nil))
 
 	require.Len(t, recorder.Ended(), 1)
 	span := recorder.Ended()[0]

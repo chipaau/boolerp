@@ -28,7 +28,7 @@ func TestFeatureDatabaseSpansRecordSQLButNotParameters(t *testing.T) {
 	pool, err := newPool(t.Context(), config.DB{
 		Host: s.Host, Port: s.Port, Name: s.Name, User: s.User,
 		Password: s.Password, SSLMode: s.SSLMode, MaxConns: 2,
-	}, tr, slog.New(slog.DiscardHandler))
+	}, tr, noMetrics(), slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	defer pool.Close()
 
@@ -55,7 +55,7 @@ func TestFeatureCacheSpansRecordCommandNamesOnly(t *testing.T) {
 		t.Fatal("REDIS_TEST_HOST is not set; feature tests need Redis (see docs/testing.md)")
 	}
 	tr, recorder := recordingTracing()
-	cache, err := newCache(t.Context(), config.Redis{Host: host, Port: 6379, Timeout: time.Second}, tr, slog.New(slog.DiscardHandler))
+	cache, err := newCache(t.Context(), config.Redis{Host: host, Port: 6379, Timeout: time.Second}, tr, noMetrics(), slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	defer cache.Close()
 
