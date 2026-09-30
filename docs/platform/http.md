@@ -10,7 +10,9 @@ in `internal/bootstrap/routes.go` and the `httpserver` package accepted any
 ## Routing and responses
 
 Every response the API writes is JSON (C35); Go's own pre-handler protocol errors
-(400, 431, 505) are plain text and are the only exception. `GET /api/healthz` is a
+(400, 431, 505) are plain text and are the only exception. Responses written by the
+proxy in front of the API are not the API's: in particular, rate limiting is the
+proxy's job (C81), and Traefik's `429` has a plain-text body with `Retry-After`. `GET /api/healthz` is a
 normal route returning `200` `{"status":"ok"}`; `HEAD` is answered through
 `chi/middleware.GetHead` (C36). `GET /api/readyz` reports dependency readiness:
 `{"status":"ready"}` or a 503 problem response (C45). Successful health and readiness
