@@ -1,0 +1,28 @@
+# golangci-lint v2 configuration (H3, C75). Run in CI with the pinned
+# golangci/golangci-lint:v2.14.0 image; the build fails on any finding.
+version: "2"
+
+linters:
+  # errcheck, govet, ineffassign, staticcheck, unused
+  default: standard
+  enable:
+    - gosec         # security: timeouts, SQL construction, credentials, file permissions
+    - errorlint     # errors.Is/As instead of == on errors that may be wrapped
+    - bodyclose     # HTTP response bodies are closed
+    - noctx         # network and HTTP calls take a context
+    - misspell      # spelling in comments and strings
+    - sqlclosecheck # sql.Rows and statements are closed
+    - rowserrcheck  # rows.Err() is checked after iterating
+  # contextcheck is not enabled: it flags the deliberate context.Background()
+  # used for flushing and shutdown after the request context is cancelled.
+  exclusions:
+    presets:
+      # Unchecked errors from Close, Flush, fmt printing, and similar are
+      # idiomatic, especially in defer.
+      - std-error-handling
+    rules:
+      # Test servers, fake credentials, and plain net.Dial are intended in tests.
+      - path: _test\.go
+        linters:
+          - gosec
+          - noctx

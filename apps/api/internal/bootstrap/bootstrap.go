@@ -68,7 +68,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 
 	// Listening separately from serving makes a busy port a startup error,
 	// and "api listening" is logged only once the port is actually bound.
-	ln, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(cfg.App.ListenPort)))
+	ln, err := new(net.ListenConfig).Listen(ctx, "tcp", net.JoinHostPort("", strconv.Itoa(cfg.App.ListenPort)))
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
