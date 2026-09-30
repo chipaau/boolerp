@@ -85,7 +85,7 @@ not pass the cluster-owner password or migration settings. Passwords are Compose
 secrets filled from `.env` and mounted as files under `/run/secrets` (C80): PostgreSQL
 reads `POSTGRES_PASSWORD_FILE` itself, and `10-roles.sh` reads
 `POSTGRES_APP_PASSWORD_FILE` and `POSTGRES_MIGRATE_PASSWORD_FILE` with the image's
-`file_env` helper (plain variables still work, as in CI). Supply `MIGRATE_DB_*` only
+`file_env` helper. CI passes its throwaway passwords as files the same way. Supply `MIGRATE_DB_*` only
 to the explicit migration command. Replace example passwords outside local
 development, and keep each DSN in sync with its role credentials.
 

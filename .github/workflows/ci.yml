@@ -131,7 +131,8 @@ jobs:
         run: |
           docker run --rm --network ci --entrypoint /usr/local/bin/migrate \
             -e MIGRATE_DB_HOST=postgres -e MIGRATE_DB_NAME=erp -e MIGRATE_DB_USER=erp_migrate \
-            -e MIGRATE_DB_PASSWORD="$PGPASS_MIGRATE" -e MIGRATE_DB_SSLMODE=disable erp-api-release
+            -e MIGRATE_DB_PASSWORD_FILE=/run/secrets/db_migrate_password -e MIGRATE_DB_SSLMODE=disable \
+            -v "$RUNNER_TEMP/erp-secrets:/run/secrets:ro" erp-api-release
 
   # Typecheck + build each frontend app, in the same Node 24 + pnpm 11 image dev/CI both use
   # (docker/node.Dockerfile) — never the runner's own Node.

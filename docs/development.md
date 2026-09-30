@@ -45,7 +45,7 @@ Passwords reach containers as files, not environment variables (C80): Compose
 `secrets` take `POSTGRES_PASSWORD`, `POSTGRES_APP_PASSWORD`, and
 `POSTGRES_MIGRATE_PASSWORD` from `.env` and mount them under `/run/secrets`, the way
 Docker and Kubernetes secrets are mounted in production, so development exercises the
-same `_FILE` settings. Each container gets only the passwords it needs, and all three
+same `_FILE` settings; there is no plain password variable. Each container gets only the passwords it needs, and all three
 must be set in `.env`. The `migrate` service (profile `tools`) runs migrations on
 demand: `docker compose run --rm migrate`.
 Keep Compose project name `erp` so volume names stay stable. Preserve the current `.env`; on a
@@ -111,25 +111,24 @@ silently removed.
 | `APP_DB_PORT` | `5432` | TCP port from 1 to 65535 |
 | `APP_DB_NAME` | none (required) | Database name |
 | `APP_DB_USER` | none (required) | The restricted runtime role |
-| `APP_DB_PASSWORD` | none (required) | The runtime role's password. A secret: never logged or echoed in errors; no URL escaping needed |
-| `APP_DB_PASSWORD_FILE` | empty | Path of a file holding the password instead (C80), such as a Docker or Kubernetes secret; exactly one of the two is required |
+| `APP_DB_PASSWORD_FILE` | none (required) | Path of the file holding the runtime role's password (C80), such as a Docker or Kubernetes secret. A secret: never logged or echoed in errors; no URL escaping needed |
 | `APP_DB_SSLMODE` | `verify-full` (Compose: `disable`) | `disable`, `require`, `verify-ca`, or `verify-full`; `allow`/`prefer` are rejected |
 | `APP_DB_MAX_CONNS` | `20` | Pool maximum from 1 to 1000 |
 | `APP_DB_PING_TIMEOUT` | `2s` | Positive readiness ping timeout, up to one minute (C45) |
 | `APP_REDIS_HOST` | none (required) | Redis host name or IP (C53) |
 | `APP_REDIS_PORT` | `6379` | TCP port from 1 to 65535 |
 | `APP_REDIS_USERNAME` | empty | Redis ACL user; optional, but production should use authentication |
-| `APP_REDIS_PASSWORD` | empty | A secret; optional locally, set in production |
-| `APP_REDIS_PASSWORD_FILE` | empty | Path of a file holding the password instead (C80); not together with `APP_REDIS_PASSWORD` |
+| `APP_REDIS_PASSWORD_FILE` | empty | Path of the file holding the Redis password (C80); optional locally, set in production |
 | `APP_REDIS_DB` | `0` | Redis database number, 0–15 |
 | `APP_REDIS_TLS` | `true` (Compose: `false`) | Encrypt and verify the server certificate |
 | `APP_REDIS_TIMEOUT` | `500ms` | Bound on each connect, read, and write, up to `10s`; an unavailable cache fails fast (C52) |
 
-A `_FILE` variable (C80) names a file whose contents become the setting, as Docker
-and Kubernetes mount secrets (`/run/secrets/...`); trailing newlines are dropped.
-Setting both a variable and its `_FILE`, a missing file, or an empty file stops
-startup; the error names the variable and path but never the contents. Secrets in
-files stay out of `docker inspect` and process environment listings.
+Passwords are read only from files (C80), as Docker and Kubernetes mount secrets
+(`/run/secrets/...`): the `_FILE` variable names the file, and its contents are the
+password exactly, so write it without a trailing newline (`printf '%s' "$pw" > file`,
+not `echo`). A missing or empty file stops startup; the error names the variable and
+path but never the contents. Secrets in files stay out of `docker inspect` and
+process environment listings.
 
 Invalid settings stop startup before opening the listener. The JSON error goes to
 stdout and identifies the variable without echoing its value. This fallback format
@@ -145,8 +144,7 @@ See [logging and redaction](platform/observability.md) for the field policy.
 | `MIGRATE_DB_PORT` | `5432` | TCP port from 1 to 65535 |
 | `MIGRATE_DB_NAME` | none (required) | Database name |
 | `MIGRATE_DB_USER` | none (required) | The migration role |
-| `MIGRATE_DB_PASSWORD` | none (required) | The migration role's password; a secret |
-| `MIGRATE_DB_PASSWORD_FILE` | empty | Path of a file holding the password instead (C80); exactly one of the two is required |
+| `MIGRATE_DB_PASSWORD_FILE` | none (required) | Path of the file holding the migration role's password (C80) |
 | `MIGRATE_DB_SSLMODE` | `verify-full` | `disable`, `require`, `verify-ca`, or `verify-full` |
 
 `POSTGRES_USER` and `POSTGRES_PASSWORD` are only for database initialization and

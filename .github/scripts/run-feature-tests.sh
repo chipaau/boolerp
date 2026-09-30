@@ -7,6 +7,7 @@
 set -euo pipefail
 
 image="${GO_IMAGE:-golang:1.27}"
+secrets="${SECRETS_DIR:-${RUNNER_TEMP:-/tmp}/erp-secrets}" # written by start-postgres.sh
 cache=()
 if [[ -n "${GO_MOD_CACHE:-}" ]]; then
   cache=(-v "$GO_MOD_CACHE:/go/pkg/mod")
@@ -14,7 +15,8 @@ fi
 
 docker run --rm --network ci -v "$PWD/apps/api:/src" ${cache[@]+"${cache[@]}"} -w /src \
   -e MIGRATE_DB_HOST=postgres -e MIGRATE_DB_NAME=erp -e MIGRATE_DB_USER=erp_migrate \
-  -e MIGRATE_DB_PASSWORD="$PGPASS_MIGRATE" -e MIGRATE_DB_SSLMODE=disable \
+  -e MIGRATE_DB_PASSWORD_FILE=/run/secrets/db_migrate_password -e MIGRATE_DB_SSLMODE=disable \
+  -v "$secrets:/run/secrets:ro" \
   "$image" go run ./cmd/migrate
 
 docker run --rm --network ci -v "$PWD/apps/api:/src" ${cache[@]+"${cache[@]}"} -w /src \
