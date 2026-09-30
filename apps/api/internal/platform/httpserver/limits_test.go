@@ -3,6 +3,7 @@ package httpserver
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"log/slog"
 	"net"
@@ -57,7 +58,7 @@ func closedWithin(t *testing.T, conn net.Conn, d time.Duration) bool {
 	t.Helper()
 	start := time.Now()
 	n, err := conn.Read(make([]byte, 1))
-	return n == 0 && err == io.EOF && time.Since(start) < d
+	return n == 0 && errors.Is(err, io.EOF) && time.Since(start) < d
 }
 
 // syncBuffer is a bytes.Buffer safe for the server goroutine to write while the
@@ -168,7 +169,9 @@ func TestServerDiagnosticsUseTheLogger(t *testing.T) {
 	handler := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		panic("boom") // net/http reports handler panics through ErrorLog
 	})
-	_, _ = http.Get("http://" + serveLimited(t, handler, logger, relaxed))
+	if resp, err := http.Get("http://" + serveLimited(t, handler, logger, relaxed)); err == nil {
+		resp.Body.Close()
+	}
 
 	require.Eventually(t, func() bool { return strings.Contains(buf.String(), "boom") }, 2*time.Second, 10*time.Millisecond)
 	assert.Contains(t, buf.String(), `"level":"WARN"`)

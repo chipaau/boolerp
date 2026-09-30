@@ -39,8 +39,8 @@ func Recoverer(logger *slog.Logger) func(http.Handler) http.Handler {
 				if rec == nil {
 					return
 				}
-				if rec == http.ErrAbortHandler { // net/http compares by identity too
-					panic(rec)
+				if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
+					panic(rec) // a deliberate abort: net/http closes the connection quietly
 				}
 
 				started := ww.Status() != 0

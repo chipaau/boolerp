@@ -21,6 +21,11 @@ jobs:
       PGPASS_MIGRATE: ci_migrate
     steps:
       - uses: actions/checkout@v7
+      # Lint first (C75): configuration in apps/api/.golangci.yml; fails on any finding.
+      - name: Lint
+        run: |
+          docker run --rm -v "${{ github.workspace }}/apps/api:/src" -w /src \
+            golangci/golangci-lint:v2.14.0 golangci-lint run ./...
       # A fresh PostgreSQL initialized by the same roles script as Compose, so the
       # tests prove the real privilege model.
       - name: Start PostgreSQL with the application roles

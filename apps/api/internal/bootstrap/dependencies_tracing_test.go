@@ -37,13 +37,13 @@ func leaks(spans []sdktrace.ReadOnlySpan, secret string) []string {
 	var found []string
 	for _, s := range spans {
 		for _, kv := range s.Attributes() {
-			if strings.Contains(kv.Value.Emit(), secret) {
+			if strings.Contains(kv.Value.String(), secret) {
 				found = append(found, s.Name()+": "+string(kv.Key))
 			}
 		}
 		for _, e := range s.Events() {
 			for _, kv := range e.Attributes {
-				if strings.Contains(kv.Value.Emit(), secret) {
+				if strings.Contains(kv.Value.String(), secret) {
 					found = append(found, s.Name()+" event: "+string(kv.Key))
 				}
 			}

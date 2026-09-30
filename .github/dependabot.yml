@@ -1,0 +1,52 @@
+# Automatic dependency updates (H3, C76). Weekly, one grouped pull request per
+# ecosystem for minor and patch updates; major versions get their own pull
+# requests because they may need code changes. CI checks every update.
+# Security updates come from GitHub's Dependabot security updates setting,
+# outside this schedule.
+version: 2
+
+updates:
+  # Go modules of the API.
+  - package-ecosystem: gomod
+    directory: /apps/api
+    schedule:
+      interval: weekly
+    groups:
+      go:
+        update-types: [minor, patch]
+
+  # Actions used by the CI workflow.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        update-types: [minor, patch]
+
+  # Base images in docker/*.Dockerfile (Go toolchain, Alpine, Node).
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+    groups:
+      dockerfiles:
+        update-types: [minor, patch]
+
+  # Service images in compose.yaml (PostgreSQL, Redis, Jaeger).
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      compose:
+        update-types: [minor, patch]
+
+  # Frontend workspace packages (pnpm).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      frontend:
+        update-types: [minor, patch]

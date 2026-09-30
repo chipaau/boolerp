@@ -52,7 +52,10 @@ func TestServeStopsCleanly(t *testing.T) {
 	assert.NoError(t, wait(t, done))
 
 	// The listener is closed, so new connections fail.
-	_, err = http.Get(url)
+	resp, err = http.Get(url)
+	if err == nil {
+		resp.Body.Close()
+	}
 	assert.Error(t, err)
 }
 

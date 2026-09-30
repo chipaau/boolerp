@@ -63,6 +63,15 @@ goroutine, must synchronize it.
 
 ## Current CI boundary
 
+**Lint (C75):** the `API tests` job first runs `golangci-lint` v2.14.0 with
+`apps/api/.golangci.yml`, and fails on any finding. Run it locally with:
+
+```sh
+docker run --rm -v "$PWD/apps/api:/src" -w /src golangci/golangci-lint:v2.14.0 golangci-lint run ./...
+```
+
+Dependabot (C76) opens weekly grouped update pull requests, which go through the same CI.
+
 **Current CI (step 3c):** the `API tests` job starts a fresh PostgreSQL 18 initialized
 by `docker/postgres/init/10-roles.sh` (the same script as Compose), then runs
 formatting, vet, and `go test -race` with the `POSTGRES_TEST_*` variables set, so the
