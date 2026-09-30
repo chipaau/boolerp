@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/httpinput"
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
 	"github.com/boolmv/erp/apps/api/internal/platform/problem"
 	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
@@ -357,4 +358,33 @@ func TestReadinessIsBoundedByTimeout(t *testing.T) {
 
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.Less(t, time.Since(start), time.Second)
+}
+
+func TestRequestInputThroughTheRouter(t *testing.T) {
+	type body struct {
+		Name string `json:"name" validate:"required"`
+	}
+	router, err := newRouter(discard, routerConfig{MaxBodyBytes: 64, CheckReady: func(context.Context) error { return nil }, ReadyTimeout: time.Second})
+	require.NoError(t, err)
+	router.Post("/api/v1/test-input", func(w http.ResponseWriter, r *http.Request) {
+		var b body
+		if !httpinput.Decode(w, r, &b) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	send := func(contentType, payload string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/test-input", strings.NewReader(payload))
+		req.Header.Set("Content-Type", contentType)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		return rec
+	}
+
+	assert.Equal(t, http.StatusNoContent, send("application/json", `{"name":"a"}`).Code)
+	assert.Equal(t, http.StatusUnprocessableEntity, send("application/json", `{}`).Code)
+	assert.Equal(t, http.StatusUnsupportedMediaType, send("text/plain", `{"name":"a"}`).Code)
+	tooLarge := send("application/json", `{"name":"`+strings.Repeat("a", 100)+`"}`)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, tooLarge.Code, "the router's RequestSize limit")
+	assert.Equal(t, problem.ContentType, tooLarge.Header().Get("Content-Type"))
 }
