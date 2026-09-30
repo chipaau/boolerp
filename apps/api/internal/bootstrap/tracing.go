@@ -104,17 +104,19 @@ type exportOff struct{}
 func (exportOff) ExportSpans(context.Context, []sdktrace.ReadOnlySpan) error { return nil }
 func (exportOff) Shutdown(context.Context) error                             { return nil }
 
-// traceHTTP wraps the whole router so each request gets one server span that
-// covers every middleware (C57). The span is named and tagged by chi's route
-// pattern by spanNameFromRoute, which runs inside the router.
+// instrumentHTTP wraps the whole router so each request gets one server span
+// that covers every middleware (C57) and is counted in the request metrics
+// (http.server.request.duration and body sizes, C82). Both are named and tagged
+// by chi's route pattern by recordRoute, which runs inside the router.
 //
 // Every request is treated as public (C58): a client's traceparent becomes a
 // link, never the parent, so clients cannot choose trace IDs or switch
-// sampling off for their own requests. Health and readiness checks are not
-// traced.
-func traceHTTP(handler http.Handler, tr *tracing) http.Handler {
+// sampling off for their own requests. Health and readiness checks are
+// neither traced nor counted.
+func instrumentHTTP(handler http.Handler, tr *tracing, mt *metrics) http.Handler {
 	return otelhttp.NewHandler(handler, "http.server",
 		otelhttp.WithTracerProvider(tr.provider),
+		otelhttp.WithMeterProvider(mt.provider),
 		otelhttp.WithPropagators(tr.propagator),
 		otelhttp.WithPublicEndpointFn(func(*http.Request) bool { return true }),
 		otelhttp.WithFilter(func(r *http.Request) bool {
@@ -123,13 +125,13 @@ func traceHTTP(handler http.Handler, tr *tracing) http.Handler {
 	)
 }
 
-// spanNameFromRoute names the request's span after routing, for example
-// "GET /api/employees/{id}" instead of "GET". It is the documented gap in
-// otelhttp with chi: otelhttp renames spans from r.Pattern, but chi sets
-// Pattern on its own copy of the request, which otelhttp never sees.
-// Unmatched requests (404, 405) keep otelhttp's name, the method alone, so raw
-// paths never become span names.
-func spanNameFromRoute(next http.Handler) http.Handler {
+// recordRoute names the request's span after routing, for example
+// "GET /api/employees/{id}" instead of "GET", and adds http.route to its
+// metrics through otelhttp's Labeler. It is the documented gap in otelhttp with
+// chi: otelhttp reads the route from r.Pattern, but chi sets Pattern on its own
+// copy of the request, which otelhttp never sees. Unmatched requests (404, 405)
+// get no route, so raw paths never become span names or metric labels.
+func recordRoute(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		next.ServeHTTP(w, r)
 		// The route context is shared, so the pattern is known once next returns.
@@ -141,6 +143,9 @@ func spanNameFromRoute(next http.Handler) http.Handler {
 			span := trace.SpanFromContext(r.Context())
 			span.SetName(r.Method + " " + pattern)
 			span.SetAttributes(semconv.HTTPRoute(pattern))
+			if labeler, ok := otelhttp.LabelerFromContext(r.Context()); ok {
+				labeler.Add(semconv.HTTPRoute(pattern))
+			}
 		}
 	})
 }
@@ -191,8 +196,8 @@ func (t *errorThrottle) Handle(err error) {
 	t.mu.Unlock()
 
 	if suppressed > 0 {
-		t.logger.Warn("tracing error", "error", err, "suppressed", suppressed)
+		t.logger.Warn("telemetry error", "error", err, "suppressed", suppressed)
 		return
 	}
-	t.logger.Warn("tracing error", "error", err)
+	t.logger.Warn("telemetry error", "error", err)
 }

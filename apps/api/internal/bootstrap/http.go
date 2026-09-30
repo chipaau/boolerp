@@ -67,8 +67,9 @@ func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
 
 	r := chi.NewRouter()
 
-	// Name the request's trace span by route pattern once routing is done (C57).
-	r.Use(spanNameFromRoute)
+	// Name the request's span and label its metrics by route pattern once
+	// routing is done (C57, C82).
+	r.Use(recordRoute)
 
 	// Client IP first: the request logger reads it from the context (C40).
 	// With N trusted hops, the client is the Nth X-Forwarded-For entry from the

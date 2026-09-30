@@ -48,11 +48,11 @@ func leaks(spans []sdktrace.ReadOnlySpan, secret string) []string {
 	return found
 }
 
-func TestNoInstrumentationWhenTracingIsOff(t *testing.T) {
+func TestNoInstrumentationWhenTelemetryIsOff(t *testing.T) {
 	off := &tracing{provider: noop.NewTracerProvider(), propagator: propagation.TraceContext{}}
 	pool, err := newPool(t.Context(), config.DB{
 		Host: "127.0.0.1", Port: 1, Name: "erp", User: "app", Password: "x", SSLMode: "disable", MaxConns: 1,
-	}, off, slog.New(slog.DiscardHandler))
+	}, off, noMetrics(), slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	defer pool.Close()
 	assert.Nil(t, pool.Config().ConnConfig.Tracer, "no query tracer attached")
@@ -64,7 +64,7 @@ func TestCacheSpansNeverContainCredentials(t *testing.T) {
 	tr, recorder := recordingTracing()
 	cache, err := newCache(t.Context(), config.Redis{
 		Host: "127.0.0.1", Port: 1, Username: "cache", Password: "s3cret-pass", Timeout: 200 * time.Millisecond,
-	}, tr, slog.New(slog.DiscardHandler))
+	}, tr, noMetrics(), slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	defer cache.Close()
 
