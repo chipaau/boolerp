@@ -34,7 +34,10 @@ target and will not work until the corresponding roadmap step is rebuilt.
 [compose.yaml](../compose.yaml) started with `api`, `app`, `postgres`, and `redis` (C08) and adds services when a step needs them: `jaeger` for viewing traces (C63).
 PostgreSQL stores data in the `erp_pgdata` volume (C49). When it is empty, first
 start creates the `erp` database and `10-roles.sh` creates the runtime and migration
-roles and the `migrations` schema, as Laravel Sail does. Tables come from
+roles, then applies `database-setup.psql` (grants and the `migrations` schema, C79), as
+Laravel Sail does. Compose mounts the whole `docker/postgres/init` directory; the
+entrypoint runs only `*.sh` and `*.sql` files there, so the `.psql` file runs once,
+through the script. Tables come from
 `cmd/migrate`. To start over locally, remove the volume deliberately
 (`docker compose down` then `docker volume rm erp_pgdata`); nothing removes it
 automatically. Go cache volumes are retained. Redis is currently configured without persistence for its cache role.

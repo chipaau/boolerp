@@ -63,28 +63,75 @@ goroutine, must synchronize it.
 
 ## Current CI boundary
 
-**Lint (C75):** the `API tests` job first runs `golangci-lint` v2.14.0 with
-`apps/api/.golangci.yml`, and fails on any finding. Run it locally with:
+CI runs **only on pull requests** (and manually), not on merges (C78). A first job
+detects which parts changed; API jobs run only when the API changed, frontend jobs only
+when the frontend changed, and a change to the workflow runs everything. Skipped jobs
+count as successful.
 
-```sh
-docker run --rm -v "$PWD/apps/api:/src" -w /src golangci/golangci-lint:v2.14.0 golangci-lint run ./...
+| Job | Runs | Needs |
+| --- | --- | --- |
+| API lint | `golangci-lint fmt --diff` (formatting) and `golangci-lint run` (C75) | nothing |
+| API unit tests | `go test -race ./...` | nothing |
+| API feature tests | `run-feature-tests.sh`: `cmd/migrate` once, then `go test -race -tags feature -run '^TestFeature' ./...` (C77, C79) | PostgreSQL (roles script) and Redis |
+| API image | builds the production image and runs its `migrate` | PostgreSQL |
+| app / admin | frontend typecheck and build | nothing |
+
+Merging a failing pull request is not blocked: required status checks need a paid GitHub
+plan for private repositories. Check that CI passed before merging. Dependabot (C76)
+update pull requests go through the same jobs.
+
+### Unit and feature tests (C77)
+
+- **Unit tests** need no external services: configuration, handlers, validation, logging,
+  problem responses, and anything using fakes or `httptest`.
+- **Feature tests** run against real PostgreSQL and Redis: the pool, migrations, role
+  privileges, database and cache tracing, and later full HTTP requests through the app
+  with a database (like Laravel's feature tests). They live in `*_feature_test.go` files
+  that start with `//go:build feature`, and their names start with `TestFeature`. They
+  fail, never skip, when their services are not configured.
+
+### Feature test databases (C79)
+
+The migrations run **once per test run**, not per test: `run-feature-tests.sh` applies
+them to the suite database (`erp`) with the real `cmd/migrate`, then starts `go test`.
+Each test then works inside a transaction that is rolled back when it ends, so nothing
+it writes survives and tests cannot see each other's data:
+
+```go
+func TestFeatureSomething(t *testing.T) {
+	tx := testdb.Tx(t) // runtime role (erp_app); rolled back at the end of the test
+	// pass tx to the code under test
+}
 ```
 
-Dependabot (C76) opens weekly grouped update pull requests, which go through the same CI.
+`testdb.Tx` connects as the restricted runtime role, so a test gets the API's privileges,
+not the owner's. Application code therefore accepts either the pool or a transaction
+(step 6). `testdb.Settings(t, role)` gives connection settings for the suite database.
 
-**Current CI (step 3c):** the `API tests` job starts a fresh PostgreSQL 18 initialized
-by `docker/postgres/init/10-roles.sh` (the same script as Compose), then runs
-formatting, vet, and `go test -race` with the `POSTGRES_TEST_*` variables set, so the
-database tests run: pool connection, migrations (once, concurrent runs, failure
-reporting, connection failure), and the runtime role's privileges. It builds both
-binaries, builds the production image, and runs that image's `migrate` command. A
-Redis container (`REDIS_TEST_HOST`) lets the Redis client test run against a real
-server; without it that test is skipped.
+Tests that cannot run inside a rolled-back transaction, such as the migrator itself,
+role privileges, and concurrent migrations, use the second database `erp_platform`
+through `testdb.PlatformSettings(t, role)`. It has the same roles and grants
+(`database-setup.psql`) but is never migrated, and those tests drop what they create.
 
-To run the database tests locally, start the same kind of container and pass
-`POSTGRES_TEST_HOST`, `POSTGRES_TEST_DB`, `POSTGRES_TEST_APP_USER`/`_PASSWORD`, and
-`POSTGRES_TEST_MIGRATE_USER`/`_PASSWORD`; without them those tests are skipped. Never
-point them at a database with data you want to keep.
+Run them locally:
+
+```sh
+# Lint and formatting
+docker run --rm -v "$PWD/apps/api:/src" -w /src golangci/golangci-lint:v2.14.0 \
+  sh -c 'golangci-lint fmt --diff ./... && golangci-lint run ./...'
+
+# Unit tests (no services)
+docker run --rm -v "$PWD/apps/api:/src" -w /src golang:1.27 go test -race ./...
+
+# Feature tests: a throwaway PostgreSQL (with erp_platform) and Redis on the "ci" network
+export PGPASS_OWNER=local PGPASS_APP=local PGPASS_MIGRATE=local
+.github/scripts/start-postgres.sh
+docker run -d --name redis --network ci redis:8-alpine
+.github/scripts/run-feature-tests.sh
+docker rm -f postgres redis && docker network rm ci
+```
+
+Never point feature tests at a database with data you want to keep.
 
 The checks below describe the rebuild target from the removed implementation.
 

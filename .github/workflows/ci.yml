@@ -1,66 +1,126 @@
 name: CI
 
+# Pull requests only (C78): merges into dev/develop are not re-checked, because
+# the pull request already was. workflow_dispatch allows a manual run.
 on:
   pull_request:
-  push:
-    branches: [dev, develop]
   workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GO_IMAGE: golang:1.27
+  LINT_IMAGE: golangci/golangci-lint:v2.14.0
+  # Test-only credentials for throwaway databases.
+  PGPASS_OWNER: ci_owner
+  PGPASS_APP: ci_app
+  PGPASS_MIGRATE: ci_migrate
+
 jobs:
-  api-tests:
-    name: API tests
+  # Decides which jobs a pull request needs (C78). Skipped jobs report success,
+  # so required checks (if enabled later) are not left waiting.
+  changes:
+    name: Detect changes
     runs-on: ubuntu-latest
-    env:
-      # Test-only credentials for a throwaway database.
-      PGPASS_OWNER: ci_owner
-      PGPASS_APP: ci_app
-      PGPASS_MIGRATE: ci_migrate
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v7
-      # Lint first (C75): configuration in apps/api/.golangci.yml; fails on any finding.
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'docker/api.Dockerfile'
+              - 'docker/go.Dockerfile'
+              - 'docker/postgres/**'
+              - 'compose.yaml'
+              - '.github/workflows/ci.yml'
+              - '.github/scripts/**'
+            frontend:
+              - 'apps/app/**'
+              - 'apps/admin/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'docker/node.Dockerfile'
+              - '.github/workflows/ci.yml'
+
+  api-lint:
+    name: API lint
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: ~/go-mod
+          key: go-mod-${{ hashFiles('apps/api/go.sum') }}
+      # Formatting (fmt --diff fails on unformatted code), then the linters (C75).
       - name: Lint
         run: |
-          docker run --rm -v "${{ github.workspace }}/apps/api:/src" -w /src \
-            golangci/golangci-lint:v2.14.0 golangci-lint run ./...
-      # A fresh PostgreSQL initialized by the same roles script as Compose, so the
-      # tests prove the real privilege model.
-      - name: Start PostgreSQL with the application roles
+          docker run --rm -v "$PWD/apps/api:/src" -v "$HOME/go-mod:/go/pkg/mod" -w /src "$LINT_IMAGE" \
+            sh -ec 'golangci-lint fmt --diff ./... && golangci-lint run ./...'
+
+  api-unit:
+    name: API unit tests
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: ~/go-mod
+          key: go-mod-${{ hashFiles('apps/api/go.sum') }}
+      # No external services: feature tests are excluded by their build tag (C77).
+      - name: Unit tests
         run: |
-          docker network create ci
-          docker run -d --name postgres --network ci \
-            -e POSTGRES_USER=erp -e POSTGRES_PASSWORD="$PGPASS_OWNER" -e POSTGRES_DB=erp \
-            -e POSTGRES_APP_USER=erp_app -e POSTGRES_APP_PASSWORD="$PGPASS_APP" \
-            -e POSTGRES_MIGRATE_USER=erp_migrate -e POSTGRES_MIGRATE_PASSWORD="$PGPASS_MIGRATE" \
-            -v "${{ github.workspace }}/docker/postgres/init/10-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro" \
-            postgres:18
-          for i in $(seq 1 60); do
-            docker logs postgres 2>&1 | grep -q "PostgreSQL init process complete" \
-              && docker exec postgres pg_isready -h 127.0.0.1 -U erp && exit 0
-            sleep 1
-          done
-          docker logs postgres
-          exit 1
+          docker run --rm -v "$PWD/apps/api:/src" -v "$HOME/go-mod:/go/pkg/mod" -w /src "$GO_IMAGE" \
+            go test -race ./...
+
+  api-feature:
+    name: API feature tests
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: ~/go-mod
+          key: go-mod-${{ hashFiles('apps/api/go.sum') }}
+      - name: Start PostgreSQL with the application roles
+        run: .github/scripts/start-postgres.sh
       - name: Start Redis
         run: docker run -d --name redis --network ci redis:8-alpine
-      - name: Build the Go dev image
-        run: docker build -f docker/go.Dockerfile -t erp-go .
-      - name: Check formatting, vet, test and build
+      # Migrate the suite database once, then run only the TestFeature* tests
+      # against real PostgreSQL and Redis (C77, C79).
+      - name: Feature tests
+        run: GO_MOD_CACHE="$HOME/go-mod" .github/scripts/run-feature-tests.sh
+
+  # The only place the binaries are compiled: the production image, whose
+  # migrate command then runs against PostgreSQL.
+  api-image:
+    name: API image
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Start PostgreSQL with the application roles
+        run: .github/scripts/start-postgres.sh
+      - name: Build the production image
+        run: docker build -f docker/api.Dockerfile -t erp-api-release .
+      - name: Run its migrations
         run: |
-          docker run --rm --network ci \
-            -e POSTGRES_TEST_HOST=postgres -e POSTGRES_TEST_DB=erp \
-            -e POSTGRES_TEST_APP_USER=erp_app -e POSTGRES_TEST_APP_PASSWORD="$PGPASS_APP" \
-            -e POSTGRES_TEST_MIGRATE_USER=erp_migrate -e POSTGRES_TEST_MIGRATE_PASSWORD="$PGPASS_MIGRATE" \
-            -e REDIS_TEST_HOST=redis \
-            -v "${{ github.workspace }}/apps/api:/src:ro" -w /src erp-go \
-            sh -ec 'test -z "$(gofmt -l .)"; go vet ./...; go test -race ./...; go build -buildvcs=false -o /tmp/bool-api ./cmd/api; go build -buildvcs=false -o /tmp/bool-migrate ./cmd/migrate'
-      # The production image must stay buildable, and its migrate command must run.
-      - name: Build the production image and run its migrations
-        run: |
-          docker build -f docker/api.Dockerfile -t erp-api-release .
           docker run --rm --network ci --entrypoint /usr/local/bin/migrate \
             -e MIGRATE_DB_HOST=postgres -e MIGRATE_DB_NAME=erp -e MIGRATE_DB_USER=erp_migrate \
             -e MIGRATE_DB_PASSWORD="$PGPASS_MIGRATE" -e MIGRATE_DB_SSLMODE=disable erp-api-release
@@ -69,6 +129,8 @@ jobs:
   # (docker/node.Dockerfile) — never the runner's own Node.
   frontend:
     name: ${{ matrix.app }} — typecheck & build
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -93,7 +155,7 @@ jobs:
     name: Legacy E2E (deferred during API rebuild)
     if: ${{ false }}
     runs-on: ubuntu-latest
-    needs: [api-tests, frontend]
+    needs: [api-unit, frontend]
     steps:
       - uses: actions/checkout@v7
 
