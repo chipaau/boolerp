@@ -99,7 +99,7 @@ currently implemented.
 The initial `api-rebuild` branch was created from `develop` at `70eb43a` and merged
 into `dev` at `639101d`. Step 2 used `feat/api-http-foundation`; step 3 uses
 `feat/api-postgres-foundation` from updated `dev`.
-See [repository transfer](../repository-transfer.md) for preserved work. The initial
+The initial
 scaffold used Go's standard library for startup, graceful shutdown, and
 `GET /api/healthz`. Step 3 adds pgx/v5 and Goose for its approved PostgreSQL foundation.
 The Go 1.27 module baseline matches the existing development container.

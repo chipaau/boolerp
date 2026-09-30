@@ -4,8 +4,7 @@ Updated: 2026-09-27.
 
 The active checkout is `/Users/chipaau/code/bool/erp`, remote
 `git@github.com:boolmv/erp.git`. Do not run the rebuild from the sibling `go-erp`
-checkout. See [repository transfer](repository-transfer.md) for branch ancestry
-and the preserved security-review stash.
+checkout.
 
 The fresh API lives in `apps/api/` in this monorepo. The previous source is preserved
 in `apps/api.bak/`; its migrations, providers, and frontend consumers are not the
@@ -23,7 +22,6 @@ target and will not work until the corresponding roadmap step is rebuilt.
 | apps/api.bak/ | Previous API preserved without changes; excluded from new-API builds |
 | apps/app/ | Existing frontend; integration deferred |
 | docs/ | All product and engineering documentation |
-| docs/archive/ | Explicitly superseded historical material |
 | .claude/ | Substantive agent instructions |
 | AGENTS.md and CLAUDE.md | Agent navigation entry points |
 | docker/ | Container definitions/configuration |
@@ -258,8 +256,7 @@ Use Docker for Go/Node/pnpm builds and application tests. Do not require matchin
 language runtimes on the host. Documentation checks can run without application
 services. Do not start/stop deployed services as part of document validation.
 
-Frontend builds, generated clients, and embedded assets are deferred. The old
-frontend and development READMEs are retained in `docs/archive/pre-api-rebuild/repository/`.
+Frontend builds, generated clients, and embedded assets are deferred.
 The existing frontend source is unchanged, but its login and API integration do not
 work against the health-only rebuild. The legacy E2E CI job is explicitly disabled;
 frontend typecheck/build jobs remain. The production API Dockerfile builds only

@@ -3,8 +3,7 @@
 Updated: 2026-09-28.
 
 This is the current documentation for a fresh Go API in the GitHub `boolmv/erp`
-monorepo at `/Users/chipaau/code/bool/erp`. See [repository transfer](repository-transfer.md)
-for the corrected workspace and preserved security-review work.
+monorepo at `/Users/chipaau/code/bool/erp`.
 The implementation scope is the platform backbone and HRMS employee records.
 Frontend integration is deferred.
 
@@ -57,7 +56,6 @@ The [decision register](decisions/README.md) records what is confirmed. Individu
 component documents develop proposals without silently approving them. Decisions
 are discussed one at a time; no rebuild schema is approved yet.
 
-Previous specifications, ADRs, and earlier frontend/development documentation are preserved in
-[the archive](archive/README.md). Their old approval and implementation labels do not
-apply to this rebuild. Agent rules are maintained separately under `.claude/`,
+Previous specifications, ADRs, and documentation are not kept in the repository;
+git history holds them. Agent rules are maintained separately under `.claude/`,
 with [AGENTS.md](../AGENTS.md) linking to [CLAUDE.md](../CLAUDE.md).

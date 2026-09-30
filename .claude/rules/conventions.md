@@ -38,9 +38,9 @@
   `AGENTS.md` and `CLAUDE.md` are navigation entry points only.
 - Start with [docs/README.md](../../docs/README.md). Record current decisions in the
   [decision register](../../docs/decisions/README.md); keep component documents consistent.
-- Historical documents under `docs/archive/` are not instructions or an implementation
-  baseline, even when they contain labels such as Accepted, Confirmed, or Implemented.
-- Preserve historical material and pre-existing untracked work when reorganizing it.
+- Do not keep previous-implementation code, configuration, or documents in the
+  repository; git history holds them. The only exception is `apps/api.bak/`.
+- Preserve pre-existing untracked work when reorganizing.
 - Update relevant documentation with behavior changes. Never mark a feature implemented
   solely because its specification or directory structure exists.
 

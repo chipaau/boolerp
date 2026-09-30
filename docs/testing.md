@@ -148,8 +148,7 @@ and denied DDL, verifies runtime access to Goose history is denied, then removes
 its test tables. Domain/application tests will follow
 those implementations. Archived API tests are not run.
 Frontend typecheck/build jobs remain, but the legacy E2E job is explicitly disabled
-until the new API and identity contract are integrated. See
-[repository transfer](repository-transfer.md).
+until the new API and identity contract are integrated.
 
 Step 2 adds routing/HEAD/method tests, safe problem responses, request correlation,
 private-data omission, malformed JSON, body limits, origin checks, and forwarded
