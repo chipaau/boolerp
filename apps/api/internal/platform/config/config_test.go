@@ -2,6 +2,8 @@ package config
 
 import (
 	"log/slog"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -175,8 +177,65 @@ func TestLoadInvalid(t *testing.T) {
 func TestLoadRequiresDBSettings(t *testing.T) {
 	_, err := Load(nil)
 	require.Error(t, err)
-	for _, name := range []string{"APP_DB_HOST", "APP_DB_NAME", "APP_DB_USER", "APP_DB_PASSWORD"} {
+	for _, name := range []string{"APP_DB_HOST", "APP_DB_NAME", "APP_DB_USER"} {
 		assert.ErrorContains(t, err, name)
+	}
+
+	// The password is checked once the other settings parse, because either of
+	// two variables may provide it.
+	_, err = Load([]string{"APP_DB_HOST=postgres", "APP_DB_NAME=erp", "APP_DB_USER=erp_app", "APP_REDIS_HOST=redis"})
+	assert.ErrorContains(t, err, "APP_DB_PASSWORD: must satisfy required_without=APP_DB_PASSWORD_FILE")
+}
+
+// secretFile writes content to a file in a test directory and returns its path.
+func secretFile(t *testing.T, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "secret")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+	return path
+}
+
+func TestLoadReadsSecretsFromFiles(t *testing.T) {
+	cfg, err := Load([]string{
+		"APP_DB_HOST=postgres", "APP_DB_NAME=erp", "APP_DB_USER=erp_app",
+		"APP_DB_PASSWORD_FILE=" + secretFile(t, "db-s3cret\n"), // trailing newline dropped
+		"APP_REDIS_HOST=redis", "APP_REDIS_PASSWORD_FILE=" + secretFile(t, "redis-s3cret\r\n"),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "db-s3cret", cfg.DB.Password)
+	assert.Equal(t, "redis-s3cret", cfg.Redis.Password)
+	assert.Empty(t, cfg.DB.PasswordFile, "the contents live only in Password")
+	assert.Empty(t, cfg.Redis.PasswordFile)
+}
+
+func TestLoadSecretFileErrors(t *testing.T) {
+	for name, tt := range map[string]struct {
+		environ []string
+		want    string
+	}{
+		"both set": {
+			[]string{"APP_DB_PASSWORD_FILE=" + secretFile(t, "file-s3cret")},
+			"APP_DB_PASSWORD: must satisfy excluded_with=APP_DB_PASSWORD_FILE",
+		},
+		"empty file": {
+			[]string{"APP_DB_PASSWORD=", "APP_DB_PASSWORD_FILE=" + secretFile(t, "\n")},
+			"APP_DB_PASSWORD: must satisfy required_without=APP_DB_PASSWORD_FILE",
+		},
+		"missing file": {
+			[]string{"APP_DB_PASSWORD=", "APP_DB_PASSWORD_FILE=/run/secrets/missing"},
+			`could not load content of file "/run/secrets/missing" from variable APP_DB_PASSWORD_FILE`,
+		},
+		"both set for redis": {
+			[]string{"APP_REDIS_PASSWORD=s3cret", "APP_REDIS_PASSWORD_FILE=" + secretFile(t, "file-s3cret")},
+			"APP_REDIS_PASSWORD: must satisfy excluded_with=APP_REDIS_PASSWORD_FILE",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := Load(withDB(tt.environ))
+			require.Error(t, err)
+			assert.ErrorContains(t, err, tt.want)
+			assert.NotContains(t, err.Error(), "s3cret", "no secret, from a variable or a file")
+		})
 	}
 }
 
@@ -213,7 +272,7 @@ func TestEveryFieldHasAVariable(t *testing.T) {
 	for path, variable := range api.byPath {
 		assert.Regexp(t, `^APP_[A-Z_]+$`, variable, path)
 	}
-	assert.Len(t, api.byPath, 27, "update this count when adding a setting")
+	assert.Len(t, api.byPath, 29, "update this count when adding a setting")
 
 	migrate := variables(reflect.TypeFor[Migrate]())
 	for path, variable := range migrate.byPath {
@@ -235,10 +294,20 @@ func TestLoadMigrate(t *testing.T) {
 	}}, cfg)
 }
 
+func TestLoadMigrateReadsPasswordFile(t *testing.T) {
+	cfg, err := LoadMigrate([]string{
+		"MIGRATE_DB_HOST=postgres", "MIGRATE_DB_NAME=erp", "MIGRATE_DB_USER=erp_migrate",
+		"MIGRATE_DB_PASSWORD_FILE=" + secretFile(t, "s3cret\n"),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "s3cret", cfg.DB.Password)
+	assert.Empty(t, cfg.DB.PasswordFile)
+}
+
 func TestLoadMigrateErrors(t *testing.T) {
 	_, err := LoadMigrate(nil)
 	require.Error(t, err)
-	for _, name := range []string{"MIGRATE_DB_HOST", "MIGRATE_DB_NAME", "MIGRATE_DB_USER", "MIGRATE_DB_PASSWORD"} {
+	for _, name := range []string{"MIGRATE_DB_HOST", "MIGRATE_DB_NAME", "MIGRATE_DB_USER"} {
 		assert.ErrorContains(t, err, name)
 	}
 

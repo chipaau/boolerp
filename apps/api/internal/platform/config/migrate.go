@@ -16,8 +16,11 @@ type MigrateDB struct {
 	Port     int    `env:"PORT" envDefault:"5432" validate:"min=1,max=65535"`
 	Name     string `env:"NAME,required,notEmpty"`
 	User     string `env:"USER,required,notEmpty"`
-	Password string `env:"PASSWORD,required,notEmpty"`
-	SSLMode  string `env:"SSLMODE" envDefault:"verify-full" validate:"oneof=disable require verify-ca verify-full"`
+	Password string `env:"PASSWORD" validate:"required_without=PasswordFile,excluded_with=PasswordFile"`
+	// PasswordFile holds the contents of the file MIGRATE_DB_PASSWORD_FILE names
+	// (C80); load moves it into Password.
+	PasswordFile string `env:"PASSWORD_FILE,file"`
+	SSLMode      string `env:"SSLMODE" envDefault:"verify-full" validate:"oneof=disable require verify-ca verify-full"`
 }
 
 // LoadMigrate reads cmd/migrate's settings from environ. Errors name the

@@ -5,6 +5,12 @@
 // (APP_REDIS_*). Each group is a
 // struct whose env tags are joined to its envPrefix, so DB.Host reads APP_DB_HOST.
 // cmd/migrate has its own settings (migrate.go, MIGRATE_*), loaded by LoadMigrate.
+//
+// Secrets can be read from files (C80), as Docker and Kubernetes secrets are
+// mounted: X_FILE names a file whose contents become X. A setting with a file
+// variable has a sibling field named with a File suffix whose env tag has
+// caarlos0/env's "file" option (DB.PasswordFile for DB.Password); setting both
+// variables is an error.
 package config
 
 import (
@@ -12,6 +18,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/caarlos0/env/v11"
@@ -72,6 +79,11 @@ func load[T any](environ []string, acrossGroups validator.StructLevelFunc) (T, e
 	if len(msgs) > 0 {
 		return zero, fmt.Errorf("invalid configuration: %s", strings.Join(msgs, "; "))
 	}
+	forEachFileField(top, func(_, file reflect.Value) {
+		// Files usually end with a newline (echo, editors); like the shell's
+		// $(< file), which the official database images use, drop trailing ones.
+		file.SetString(strings.TrimRight(file.String(), "\r\n"))
+	})
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	// "origin" accepts exactly what net/http's CrossOriginProtection accepts as a
@@ -101,7 +113,37 @@ func load[T any](environ []string, acrossGroups validator.StructLevelFunc) (T, e
 		return zero, fmt.Errorf("invalid configuration: %s", strings.Join(msgs, "; "))
 	}
 
+	// Validation has ensured at most one of each pair is set; code using the
+	// configuration reads only the setting itself.
+	forEachFileField(top, func(value, file reflect.Value) {
+		if file.String() != "" {
+			value.SetString(file.String())
+			file.SetString("")
+		}
+	})
 	return cfg, nil
+}
+
+// forEachFileField calls fn for each setting read from a file: value is the
+// setting (DB.Password) and file its sibling holding the file's contents
+// (DB.PasswordFile).
+func forEachFileField(top reflect.Value, fn func(value, file reflect.Value)) {
+	for i := range top.NumField() {
+		group := top.Field(i)
+		for j := range group.NumField() {
+			f := group.Type().Field(j)
+			_, opts, _ := strings.Cut(f.Tag.Get("env"), ",")
+			if !slices.Contains(strings.Split(opts, ","), "file") {
+				continue
+			}
+			name, ok := strings.CutSuffix(f.Name, "File")
+			value := group.FieldByName(name)
+			if !ok || !value.IsValid() {
+				panic("config: " + f.Name + " has the file option but no sibling setting")
+			}
+			fn(value, group.Field(j))
+		}
+	}
 }
 
 // variableNames maps each setting of one settings struct to its environment
@@ -168,15 +210,15 @@ func (n variableNames) variable(fe validator.FieldError) string {
 }
 
 // rule formats a failed validation rule, such as "max=65535". Cross-field rules
-// (gtfield, gtefield, ...) name another Go field, either a sibling in the same
-// group ("ReadTimeout") or a path from the top struct ("HTTP.WriteTimeout");
-// report its variable instead.
+// (gtfield, gtefield, ..., required_without, excluded_with) name another Go
+// field, either a sibling in the same group ("ReadTimeout") or a path from the
+// top struct ("HTTP.WriteTimeout"); report its variable instead.
 func (n variableNames) rule(fe validator.FieldError) string {
 	param := fe.Param()
 	if param == "" {
 		return fe.Tag()
 	}
-	if strings.HasSuffix(fe.Tag(), "field") {
+	if strings.HasSuffix(fe.Tag(), "field") || strings.HasSuffix(fe.Tag(), "_with") || strings.HasSuffix(fe.Tag(), "_without") {
 		group, _, _ := strings.Cut(path(fe), ".")
 		if v, ok := n.byPath[param]; ok {
 			param = v

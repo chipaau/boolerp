@@ -42,12 +42,15 @@ services:
     image: postgres:18
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-erp}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-erp}
       POSTGRES_DB: ${POSTGRES_DB:-erp}
       POSTGRES_APP_USER: ${POSTGRES_APP_USER:-erp_app}
-      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-erp_app}
       POSTGRES_MIGRATE_USER: ${POSTGRES_MIGRATE_USER:-erp_migrate}
-      POSTGRES_MIGRATE_PASSWORD: ${POSTGRES_MIGRATE_PASSWORD:-erp_migrate}
+      # Passwords arrive as files (C80): the image reads POSTGRES_PASSWORD_FILE,
+      # and 10-roles.sh the other two.
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_APP_PASSWORD_FILE: /run/secrets/db_app_password
+      POSTGRES_MIGRATE_PASSWORD_FILE: /run/secrets/db_migrate_password
+    secrets: [postgres_password, db_app_password, db_migrate_password]
     volumes:
       # On first start with an empty volume, PostgreSQL creates the database and
       # 10-roles.sh creates the roles, then applies database-setup.psql (grants
@@ -102,7 +105,7 @@ services:
       APP_DB_PORT: ${APP_DB_PORT:-5432}
       APP_DB_NAME: ${POSTGRES_DB:-erp}
       APP_DB_USER: ${POSTGRES_APP_USER:-erp_app}
-      APP_DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-erp_app}
+      APP_DB_PASSWORD_FILE: /run/secrets/db_app_password
       # Local PostgreSQL has no certificate; the application default is verify-full.
       APP_DB_SSLMODE: ${APP_DB_SSLMODE:-disable}
       APP_DB_MAX_CONNS: ${APP_DB_MAX_CONNS:-20}
@@ -117,6 +120,8 @@ services:
       OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
       OTEL_TRACES_SAMPLER:
+    # Only the runtime role's password; never the owner's or the migration role's (C47).
+    secrets: [db_app_password]
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:${APP_PORT:-8080}/api/healthz"]
       interval: 5s
@@ -150,6 +155,34 @@ services:
       - traefik.http.routers.erp-api.service=erp-api
       - "traefik.http.services.erp-api.loadbalancer.server.port=${APP_PORT:-8080}"
 
+  # One-off migrations as the migration role (C47): `docker compose run --rm migrate`.
+  # The "tools" profile keeps it out of `docker compose up`. It is the only service
+  # given the migration role's password (C80).
+  migrate:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: docker/go.Dockerfile
+    working_dir: /w/apps/api
+    command: ["go", "run", "./cmd/migrate"]
+    environment:
+      MIGRATE_DB_HOST: postgres
+      MIGRATE_DB_NAME: ${POSTGRES_DB:-erp}
+      MIGRATE_DB_USER: ${POSTGRES_MIGRATE_USER:-erp_migrate}
+      MIGRATE_DB_PASSWORD_FILE: /run/secrets/db_migrate_password
+      # Local PostgreSQL has no certificate; the application default is verify-full.
+      MIGRATE_DB_SSLMODE: disable
+    secrets: [db_migrate_password]
+    volumes:
+      - .:/w
+      - gocache:/root/.cache/go-build
+      - gomod:/go/pkg/mod
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
   redis:
     image: redis:8-alpine
     command: redis-server --save "" --appendonly no
@@ -177,6 +210,17 @@ services:
       - traefik.http.routers.erp-jaeger.priority=30
       - traefik.http.routers.erp-jaeger.service=erp-jaeger
       - traefik.http.services.erp-jaeger.loadbalancer.server.port=16686
+
+secrets:
+  # Development passwords come from .env (POSTGRES_PASSWORD, POSTGRES_APP_PASSWORD,
+  # POSTGRES_MIGRATE_PASSWORD) and are mounted as files under /run/secrets, as
+  # Docker and Kubernetes secrets are in production (C80). Compose stops if one is unset.
+  postgres_password:
+    environment: POSTGRES_PASSWORD
+  db_app_password:
+    environment: POSTGRES_APP_PASSWORD
+  db_migrate_password:
+    environment: POSTGRES_MIGRATE_PASSWORD
 
 networks:
   proxy:
