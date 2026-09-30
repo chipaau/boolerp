@@ -4,7 +4,8 @@ Read [identity](../../docs/platform/identity.md) and
 [authorization](../../docs/platform/authorization.md).
 
 - Separate identity, tenant membership, and employee records.
-- Ory Kratos is selected for identity/authentication and Cerbos for authorization.
+- Ory Kratos is selected for identity/authentication, Ory Hydra (OAuth2/OpenID
+  Connect) for logging in on every domain (C83), and Cerbos for authorization.
   Their integration contracts and policy semantics remain open; follow the
   decision register and component docs instead of inferring those details.
 - Design authentication together with verified custom domains and self-hosted operation.

@@ -21,6 +21,12 @@ decide every policy or operational contract around it.
   generated queries.
 - Use Ory Kratos for identity and authentication. Session, provisioning, account,
   tenant, and domain-login contracts remain to be agreed.
+- Use Ory Hydra as the OAuth2/OpenID Connect server in front of Kratos (C83): every
+  web login goes through one login service (`identity.bool.test` in development),
+  and each domain the API serves is a client of it. Open-source Kratos cannot set
+  session cookies on unrelated domains (customers' own domains, `findcare.mv`); Hydra
+  is the open-source way to log in on them. Session lifetimes, logout propagation,
+  and client registration remain to be agreed.
 - Use Cerbos as the authorization policy engine. Role, resource, policy-input,
   administration, and revocation semantics remain to be agreed.
 - Use the S3 API for file/object storage. Use `chipaau/minio`, the project's exact
