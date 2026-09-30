@@ -10,6 +10,10 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: jobs only read the repository unless they say otherwise.
+permissions:
+  contents: read
+
 env:
   GO_IMAGE: golang:1.27
   LINT_IMAGE: golangci/golangci-lint:v2.14.0
@@ -24,6 +28,10 @@ jobs:
   changes:
     name: Detect changes
     runs-on: ubuntu-latest
+    # paths-filter lists a pull request's files through the GitHub API.
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       api: ${{ steps.filter.outputs.api }}
       frontend: ${{ steps.filter.outputs.frontend }}
