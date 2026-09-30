@@ -14,6 +14,23 @@ Authentication covers login, session validation/revocation, account status,
 recovery, and initial account provisioning. Authentication does not by itself
 authorize employee operations.
 
+## Selected direction (C83)
+
+Every web login goes through Ory Hydra (OAuth2/OpenID Connect) with Ory Kratos as its
+login provider: one login service (`identity.bool.test` in development) for every
+domain the API serves, because open-source Kratos cannot set session cookies on
+unrelated domains such as customers' own domains or `findcare.mv`. The API is a Hydra
+client: it completes the login on the request's own domain and keeps its own session
+there. The roadmap delivers this in steps 7a–7f; custom-domain login (7f) follows the
+tenancy domain registry. Whether ERP and FindCare share accounts is still open.
+
+Each client can have a fully custom login page design (C84): our own login UI reads
+the OAuth2 client from the Kratos login flow and renders that client's design, so
+FindCare's login looks like FindCare. Every design renders the fields the Kratos flow
+defines, keeps its CSRF token, and posts to Kratos. The pages stay on the login
+service's domain; a form on a client's own domain would need a separate Kratos and
+Hydra.
+
 ## Open decisions
 
 - Identity/session authority and required authentication methods.
