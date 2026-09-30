@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# The entrypoint sources this script (it is not executable), so the image's
+# file_env helper is available: it sets X from the file X_FILE names, and fails
+# if both are set, as for POSTGRES_PASSWORD (C80).
+file_env POSTGRES_APP_PASSWORD
+file_env POSTGRES_MIGRATE_PASSWORD
+
 : "${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}"
 : "${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is required}"
 : "${POSTGRES_MIGRATE_USER:?POSTGRES_MIGRATE_USER is required}"

@@ -124,7 +124,6 @@ docker run --rm -v "$PWD/apps/api:/src" -w /src golangci/golangci-lint:v2.14.0 \
 docker run --rm -v "$PWD/apps/api:/src" -w /src golang:1.27 go test -race ./...
 
 # Feature tests: a throwaway PostgreSQL (with erp_platform) and Redis on the "ci" network
-export PGPASS_OWNER=local PGPASS_APP=local PGPASS_MIGRATE=local
 .github/scripts/start-postgres.sh
 docker run -d --name redis --network ci redis:8-alpine
 .github/scripts/run-feature-tests.sh

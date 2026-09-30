@@ -8,9 +8,10 @@ type Redis struct {
 	Host string `env:"HOST,required,notEmpty" validate:"hostname_rfc1123|ip"`
 	Port int    `env:"PORT" envDefault:"6379" validate:"min=1,max=65535"`
 	// Username and Password are optional because a local Redis has neither;
-	// production should require authentication. Password is a secret.
+	// production should require authentication. Password is a secret: the
+	// contents of the file APP_REDIS_PASSWORD_FILE names (C80).
 	Username string `env:"USERNAME"`
-	Password string `env:"PASSWORD"`
+	Password string `env:"PASSWORD_FILE,file"`
 	DB       int    `env:"DB" envDefault:"0" validate:"min=0,max=15"`
 	// TLS defaults to on, with the server certificate verified; Compose turns it off.
 	TLS bool `env:"TLS" envDefault:"true"`

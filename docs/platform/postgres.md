@@ -68,7 +68,7 @@ queries.
 
 On a new, empty Compose PostgreSQL volume, the initialization script creates:
 
-- The cluster owner from `POSTGRES_USER`/`POSTGRES_PASSWORD`, used only for
+- The cluster owner from `POSTGRES_USER` and the `postgres_password` file, used only for
   initialization and administration.
 - The `POSTGRES_MIGRATE_USER` role, which can connect and create objects in the
   `public` schema and owns the private `migrations` schema. Goose migrations use
@@ -81,7 +81,12 @@ On a new, empty Compose PostgreSQL volume, the initialization script creates:
   cannot access the migration-history schema or table.
 
 Compose passes the API only its explicit `APP_*` settings, including the runtime role's `APP_DB_*`; it does
-not pass the cluster-owner password or migration settings. Supply `MIGRATE_DB_*` only
+not pass the cluster-owner password or migration settings. Passwords are Compose
+secrets read from `docker/secrets/dev` and mounted as files under
+`/run/secrets` (C80): PostgreSQL
+reads `POSTGRES_PASSWORD_FILE` itself, and `10-roles.sh` reads
+`POSTGRES_APP_PASSWORD_FILE` and `POSTGRES_MIGRATE_PASSWORD_FILE` with the image's
+`file_env` helper. CI mounts the same committed files. Supply `MIGRATE_DB_*` only
 to the explicit migration command. Replace example passwords outside local
 development, and keep each DSN in sync with its role credentials.
 
@@ -98,15 +103,13 @@ tests' `erp_platform`, C79) gets identical grants with
 
 ## Running migrations
 
-For local development, pass the migration role's settings only to this one-off
-command (values from `.env.example`); PostgreSQL must be running:
+For local development, the `migrate` Compose service (profile `tools`, so
+`docker compose up` does not start it) runs `cmd/migrate` as the migration role. It
+is the only service given that role's password, as the file
+`/run/secrets/db_migrate_password` (C80):
 
 ```sh
-docker compose run --rm --no-deps \
-  -e MIGRATE_DB_HOST=postgres -e MIGRATE_DB_NAME=erp \
-  -e MIGRATE_DB_USER=erp_migrate -e MIGRATE_DB_PASSWORD=erp_migrate \
-  -e MIGRATE_DB_SSLMODE=disable \
-  api go run ./cmd/migrate
+docker compose run --rm migrate
 ```
 
 In a deployment, run the release image's migrate command before starting the new

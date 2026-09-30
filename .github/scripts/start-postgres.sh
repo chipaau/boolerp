@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Starts a throwaway PostgreSQL 18 on the Docker network "ci", initialized by the
 # same roles script as Compose, so tests prove the real privilege model (C77).
-# Passwords come from PGPASS_OWNER, PGPASS_APP, and PGPASS_MIGRATE.
+# Passwords are the committed development files in docker/secrets/dev, mounted
+# as in Compose (C80).
 #
 # Two databases (C79):
 #   erp           the suite database; run-feature-tests.sh migrates it once, and
@@ -12,9 +13,12 @@ set -euo pipefail
 
 docker network create ci >/dev/null 2>&1 || true
 docker run -d --name postgres --network ci \
-  -e POSTGRES_USER=erp -e POSTGRES_PASSWORD="$PGPASS_OWNER" -e POSTGRES_DB=erp \
-  -e POSTGRES_APP_USER=erp_app -e POSTGRES_APP_PASSWORD="$PGPASS_APP" \
-  -e POSTGRES_MIGRATE_USER=erp_migrate -e POSTGRES_MIGRATE_PASSWORD="$PGPASS_MIGRATE" \
+  -e POSTGRES_USER=erp -e POSTGRES_DB=erp \
+  -e POSTGRES_APP_USER=erp_app -e POSTGRES_MIGRATE_USER=erp_migrate \
+  -e POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password \
+  -e POSTGRES_APP_PASSWORD_FILE=/run/secrets/db_app_password \
+  -e POSTGRES_MIGRATE_PASSWORD_FILE=/run/secrets/db_migrate_password \
+  -v "$PWD/docker/secrets/dev:/run/secrets:ro" \
   -v "$PWD/docker/postgres/init:/docker-entrypoint-initdb.d:ro" \
   postgres:18 >/dev/null
 

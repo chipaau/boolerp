@@ -5,6 +5,10 @@
 // (APP_REDIS_*). Each group is a
 // struct whose env tags are joined to its envPrefix, so DB.Host reads APP_DB_HOST.
 // cmd/migrate has its own settings (migrate.go, MIGRATE_*), loaded by LoadMigrate.
+//
+// Passwords are read only from files (C80), as Docker and Kubernetes mount
+// secrets: the variable (APP_DB_PASSWORD_FILE) names the file, and
+// caarlos0/env's "file" option reads it into the field.
 package config
 
 import (

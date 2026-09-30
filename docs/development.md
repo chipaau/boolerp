@@ -41,6 +41,14 @@ through the script. Tables come from
 `cmd/migrate`. To start over locally, remove the volume deliberately
 (`docker compose down` then `docker volume rm erp_pgdata`); nothing removes it
 automatically. Go cache volumes are retained. Redis is currently configured without persistence for its cache role.
+Passwords reach containers as files, not environment variables (C80): Compose
+`secrets` mount `postgres_password`, `db_app_password`, and `db_migrate_password` from
+`docker/secrets/dev` (committed throwaway local passwords, the same values the
+examples always used) under `/run/secrets`, the way Docker and Kubernetes secrets are
+mounted in production, so development exercises the same `_FILE` settings; there is
+no password in `.env` or any variable. Each container gets only the passwords it
+needs. The `migrate` service (profile `tools`) runs migrations on
+demand: `docker compose run --rm migrate`.
 Keep Compose project name `erp` so volume names stay stable. Preserve the current `.env`; on a
 new checkout only, initialize it from `.env.example`. Removed service volumes are
 not deleted.
@@ -104,17 +112,24 @@ silently removed.
 | `APP_DB_PORT` | `5432` | TCP port from 1 to 65535 |
 | `APP_DB_NAME` | none (required) | Database name |
 | `APP_DB_USER` | none (required) | The restricted runtime role |
-| `APP_DB_PASSWORD` | none (required) | The runtime role's password. A secret: never logged or echoed in errors; no URL escaping needed |
+| `APP_DB_PASSWORD_FILE` | none (required) | Path of the file holding the runtime role's password (C80), such as a Docker or Kubernetes secret. A secret: never logged or echoed in errors; no URL escaping needed |
 | `APP_DB_SSLMODE` | `verify-full` (Compose: `disable`) | `disable`, `require`, `verify-ca`, or `verify-full`; `allow`/`prefer` are rejected |
 | `APP_DB_MAX_CONNS` | `20` | Pool maximum from 1 to 1000 |
 | `APP_DB_PING_TIMEOUT` | `2s` | Positive readiness ping timeout, up to one minute (C45) |
 | `APP_REDIS_HOST` | none (required) | Redis host name or IP (C53) |
 | `APP_REDIS_PORT` | `6379` | TCP port from 1 to 65535 |
 | `APP_REDIS_USERNAME` | empty | Redis ACL user; optional, but production should use authentication |
-| `APP_REDIS_PASSWORD` | empty | A secret; optional locally, set in production |
+| `APP_REDIS_PASSWORD_FILE` | empty | Path of the file holding the Redis password (C80); optional locally, set in production |
 | `APP_REDIS_DB` | `0` | Redis database number, 0–15 |
 | `APP_REDIS_TLS` | `true` (Compose: `false`) | Encrypt and verify the server certificate |
 | `APP_REDIS_TIMEOUT` | `500ms` | Bound on each connect, read, and write, up to `10s`; an unavailable cache fails fast (C52) |
+
+Passwords are read only from files (C80), as Docker and Kubernetes mount secrets
+(`/run/secrets/...`): the `_FILE` variable names the file, and its contents are the
+password exactly, so write it without a trailing newline (`printf '%s' "$pw" > file`,
+not `echo`). A missing or empty file stops startup; the error names the variable and
+path but never the contents. Secrets in files stay out of `docker inspect` and
+process environment listings.
 
 Invalid settings stop startup before opening the listener. The JSON error goes to
 stdout and identifies the variable without echoing its value. This fallback format
@@ -130,10 +145,10 @@ See [logging and redaction](platform/observability.md) for the field policy.
 | `MIGRATE_DB_PORT` | `5432` | TCP port from 1 to 65535 |
 | `MIGRATE_DB_NAME` | none (required) | Database name |
 | `MIGRATE_DB_USER` | none (required) | The migration role |
-| `MIGRATE_DB_PASSWORD` | none (required) | The migration role's password; a secret |
+| `MIGRATE_DB_PASSWORD_FILE` | none (required) | Path of the file holding the migration role's password (C80) |
 | `MIGRATE_DB_SSLMODE` | `verify-full` | `disable`, `require`, `verify-ca`, or `verify-full` |
 
-`POSTGRES_USER` and `POSTGRES_PASSWORD` are only for database initialization and
+`POSTGRES_USER` and the owner password (`postgres_password`) are only for database initialization and
 administration. On a newly initialized volume, Compose creates separate runtime
 and migration roles. The API receives only the runtime role's `APP_DB_*` settings; it never receives
 the migration role's `MIGRATE_DB_*` settings or the cluster-owner password. The PostgreSQL init script does not
