@@ -212,15 +212,16 @@ services:
       - traefik.http.services.erp-jaeger.loadbalancer.server.port=16686
 
 secrets:
-  # Development passwords come from .env (POSTGRES_PASSWORD, POSTGRES_APP_PASSWORD,
-  # POSTGRES_MIGRATE_PASSWORD) and are mounted as files under /run/secrets, as
-  # Docker and Kubernetes secrets are in production (C80). Compose stops if one is unset.
+  # Passwords are files mounted under /run/secrets, as Docker and Kubernetes
+  # secrets are in production (C80). These committed files hold throwaway local
+  # passwords. A trailing newline would become part of the password: write them
+  # with printf '%s', not echo.
   postgres_password:
-    environment: POSTGRES_PASSWORD
+    file: ./docker/secrets/dev/postgres_password
   db_app_password:
-    environment: POSTGRES_APP_PASSWORD
+    file: ./docker/secrets/dev/db_app_password
   db_migrate_password:
-    environment: POSTGRES_MIGRATE_PASSWORD
+    file: ./docker/secrets/dev/db_migrate_password
 
 networks:
   proxy:

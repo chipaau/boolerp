@@ -68,7 +68,7 @@ queries.
 
 On a new, empty Compose PostgreSQL volume, the initialization script creates:
 
-- The cluster owner from `POSTGRES_USER`/`POSTGRES_PASSWORD`, used only for
+- The cluster owner from `POSTGRES_USER` and the `postgres_password` file, used only for
   initialization and administration.
 - The `POSTGRES_MIGRATE_USER` role, which can connect and create objects in the
   `public` schema and owns the private `migrations` schema. Goose migrations use
@@ -82,10 +82,11 @@ On a new, empty Compose PostgreSQL volume, the initialization script creates:
 
 Compose passes the API only its explicit `APP_*` settings, including the runtime role's `APP_DB_*`; it does
 not pass the cluster-owner password or migration settings. Passwords are Compose
-secrets filled from `.env` and mounted as files under `/run/secrets` (C80): PostgreSQL
+secrets read from `docker/secrets/dev` and mounted as files under
+`/run/secrets` (C80): PostgreSQL
 reads `POSTGRES_PASSWORD_FILE` itself, and `10-roles.sh` reads
 `POSTGRES_APP_PASSWORD_FILE` and `POSTGRES_MIGRATE_PASSWORD_FILE` with the image's
-`file_env` helper. CI passes its throwaway passwords as files the same way. Supply `MIGRATE_DB_*` only
+`file_env` helper. CI mounts the same committed files. Supply `MIGRATE_DB_*` only
 to the explicit migration command. Replace example passwords outside local
 development, and keep each DSN in sync with its role credentials.
 

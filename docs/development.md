@@ -42,11 +42,12 @@ through the script. Tables come from
 (`docker compose down` then `docker volume rm erp_pgdata`); nothing removes it
 automatically. Go cache volumes are retained. Redis is currently configured without persistence for its cache role.
 Passwords reach containers as files, not environment variables (C80): Compose
-`secrets` take `POSTGRES_PASSWORD`, `POSTGRES_APP_PASSWORD`, and
-`POSTGRES_MIGRATE_PASSWORD` from `.env` and mount them under `/run/secrets`, the way
-Docker and Kubernetes secrets are mounted in production, so development exercises the
-same `_FILE` settings; there is no plain password variable. Each container gets only the passwords it needs, and all three
-must be set in `.env`. The `migrate` service (profile `tools`) runs migrations on
+`secrets` mount `postgres_password`, `db_app_password`, and `db_migrate_password` from
+`docker/secrets/dev` (committed throwaway local passwords, the same values the
+examples always used) under `/run/secrets`, the way Docker and Kubernetes secrets are
+mounted in production, so development exercises the same `_FILE` settings; there is
+no password in `.env` or any variable. Each container gets only the passwords it
+needs. The `migrate` service (profile `tools`) runs migrations on
 demand: `docker compose run --rm migrate`.
 Keep Compose project name `erp` so volume names stay stable. Preserve the current `.env`; on a
 new checkout only, initialize it from `.env.example`. Removed service volumes are
@@ -147,7 +148,7 @@ See [logging and redaction](platform/observability.md) for the field policy.
 | `MIGRATE_DB_PASSWORD_FILE` | none (required) | Path of the file holding the migration role's password (C80) |
 | `MIGRATE_DB_SSLMODE` | `verify-full` | `disable`, `require`, `verify-ca`, or `verify-full` |
 
-`POSTGRES_USER` and `POSTGRES_PASSWORD` are only for database initialization and
+`POSTGRES_USER` and the owner password (`postgres_password`) are only for database initialization and
 administration. On a newly initialized volume, Compose creates separate runtime
 and migration roles. The API receives only the runtime role's `APP_DB_*` settings; it never receives
 the migration role's `MIGRATE_DB_*` settings or the cluster-owner password. The PostgreSQL init script does not
