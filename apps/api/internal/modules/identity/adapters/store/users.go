@@ -1,5 +1,5 @@
-// Package postgres stores the identity module's users in PostgreSQL.
-package postgres
+// Package store stores the identity module's users in PostgreSQL.
+package store
 
 import (
 	"context"

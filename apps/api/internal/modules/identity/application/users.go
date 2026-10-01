@@ -9,7 +9,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/modules/identity/domain"
 )
 
-// Users stores users (adapters/postgres implements it).
+// Users stores users (adapters/store implements it).
 type Users interface {
 	// ByKratosID returns the user mapped to a Kratos account, or ErrNotFound.
 	ByKratosID(ctx context.Context, kratosIdentityID string) (domain.User, error)

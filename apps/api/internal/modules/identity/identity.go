@@ -13,7 +13,7 @@ import (
 	"net/http"
 
 	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/kratos"
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/postgres"
+	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/store"
 	"github.com/boolmv/erp/apps/api/internal/modules/identity/application"
 	"github.com/boolmv/erp/apps/api/internal/modules/identity/domain"
 )
@@ -41,8 +41,8 @@ type Module struct {
 }
 
 // New returns the module over the database (a pool or a transaction).
-func New(db postgres.DB, s Settings, client *http.Client) *Module {
-	return &Module{service: application.NewService(postgres.NewUsers(db), kratos.NewAccounts(s.KratosAdminURL, client))}
+func New(db store.DB, s Settings, client *http.Client) *Module {
+	return &Module{service: application.NewService(store.NewUsers(db), kratos.NewAccounts(s.KratosAdminURL, client))}
 }
 
 // Resolve returns the user for a Kratos account (a token's sub), creating it on

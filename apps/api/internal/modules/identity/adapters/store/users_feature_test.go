@@ -1,6 +1,6 @@
 //go:build feature
 
-package postgres_test
+package store_test
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/postgres"
+	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/store"
 	"github.com/boolmv/erp/apps/api/internal/modules/identity/application"
 	"github.com/boolmv/erp/apps/api/internal/modules/identity/domain"
 	"github.com/boolmv/erp/apps/api/internal/testdb"
@@ -20,7 +20,7 @@ import (
 const kratosID = "38a62480-7b62-4d66-98ee-47fb6e5d8697"
 
 func TestFeatureSaveCreatesThenUpdatesTheSameUser(t *testing.T) {
-	users := postgres.NewUsers(testdb.Tx(t))
+	users := store.NewUsers(testdb.Tx(t))
 	ctx := t.Context()
 
 	created, err := users.Save(ctx, domain.Account{KratosIdentityID: kratosID, Email: "a@b.test", Phone: "+9607770000"})
@@ -39,6 +39,6 @@ func TestFeatureSaveCreatesThenUpdatesTheSameUser(t *testing.T) {
 }
 
 func TestFeatureUnknownAccountIsNotFound(t *testing.T) {
-	_, err := postgres.NewUsers(testdb.Tx(t)).ByKratosID(t.Context(), "00000000-0000-0000-0000-000000000000")
+	_, err := store.NewUsers(testdb.Tx(t)).ByKratosID(t.Context(), "00000000-0000-0000-0000-000000000000")
 	assert.ErrorIs(t, err, application.ErrNotFound)
 }

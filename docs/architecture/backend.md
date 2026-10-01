@@ -34,7 +34,7 @@ apps/api/
         application/     Service (Resolve, Sync) and its ports
         adapters/
           kratos/        Kratos admin API through ory/client-go
-          postgres/      users store
+          store/         users in PostgreSQL
         migrations/      embedded Goose SQL, history migrations.identity_version
     platform/
       auth/              access tokens, Authenticate, the caller, GET /api/auth/me (C91, C92)
@@ -124,7 +124,7 @@ apps/api/
             routes.go
             requests.go
             responses.go
-          postgres/
+          store/
             employees.go
             transaction.go
             mapping.go
@@ -172,6 +172,9 @@ PostgreSQL implementation. HTTP and job adapters must not access tables directly
 Each capability owns its writes. Collaboration uses explicit application contracts,
 and operations requiring atomic writes need an agreed transaction contract.
 Generated SQL types remain inside persistence adapters under the proposed port design.
+A module's database adapter is `adapters/store` (package `store`), named by its role
+rather than the database, so it never clashes with `internal/platform/postgres`;
+adapters for external providers are named after the provider (`adapters/kratos`).
 
 ## Modules and routes (C92, C93, C95)
 
