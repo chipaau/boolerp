@@ -29,15 +29,10 @@
         },
         "phone": {
           "title": "Phone number",
-          "description": "Required and verified by SMS, never used to log in (C85).",
+          "description": "A required contact number, not an identifier: never used to log in, not verified by Kratos, and may be shared between accounts (C85). Kratos keeps verification addresses unique, so it has no verification block.",
           "type": "string",
           "format": "tel",
-          "maxLength": 20,
-          "ory.sh/kratos": {
-            "verification": {
-              "via": "sms"
-            }
-          }
+          "maxLength": 20
         },
         "name": {
           "title": "Display name",

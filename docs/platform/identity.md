@@ -103,7 +103,7 @@ config is `docker/kratos/kratos.yml`, merged with `docker/secrets/dev/kratos.yml
 Compose secret. Browsers reach its public API at `http://identity.bool.test/kratos`;
 the admin API (`http://kratos:4434`) is only on the internal network.
 
-- **Accounts:** a new account has one email (`traits.email`), a phone, and an optional
+- **Accounts:** a new account has one email (`traits.email`), a contact phone, and an optional
   name (`registration.schema.json`). Extra emails are added through the admin API as
   verified, into `traits.additional_emails`, switching the account to
   `account.schema.json`; self-service settings can change the password and link
@@ -116,9 +116,11 @@ the admin API (`http://kratos:4434`) is only on the internal network.
   configured in Kratos as the `google` provider; its login page lets you choose any
   user and claims (for example `{"email": "a@b.test", "email_verified": true}`).
 
-Known gap in open-source Kratos v26.2.0 (C85): SMS phone verification is not
-available, so phones are unverified until a release supports it (required before
-go-live).
+The phone is a contact number, not an identifier (C85): it is required, never used to
+log in, and may be shared between accounts (a family or a front desk). Kratos does not
+verify it, because Kratos keeps every verification address unique across accounts. If
+a verified contact number is needed, the API will verify it with its own code. The SMS
+channel to Mailpit stays configured for later SMS use.
 
 ## Login UI (7a-2, C86)
 
