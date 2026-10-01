@@ -10,11 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as ErrorRouteImport } from './routes/error'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as RecoveryRouteImport } from './routes/recovery'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAppRouteImport } from './routes/_app/$app'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
@@ -26,29 +22,9 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ErrorRoute = ErrorRouteImport.update({
-  id: '/error',
-  path: '/error',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RecoveryRoute = RecoveryRouteImport.update({
-  id: '/recovery',
-  path: '/recovery',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const VerifyRoute = VerifyRouteImport.update({
-  id: '/verify',
-  path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -85,11 +61,7 @@ const AppNotificationsPreferencesRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
-  '/error': typeof ErrorRoute
   '/login': typeof LoginRoute
-  '/recovery': typeof RecoveryRoute
-  '/settings': typeof SettingsRoute
-  '/verify': typeof VerifyRoute
   '/$app': typeof AppAppRouteWithChildren
   '/notifications': typeof AppNotificationsRoute
   '/$app/$section': typeof AppAppSectionRoute
@@ -97,11 +69,7 @@ export interface FileRoutesByFullPath {
   '/$app/': typeof AppAppIndexRoute
 }
 export interface FileRoutesByTo {
-  '/error': typeof ErrorRoute
   '/login': typeof LoginRoute
-  '/recovery': typeof RecoveryRoute
-  '/settings': typeof SettingsRoute
-  '/verify': typeof VerifyRoute
   '/notifications': typeof AppNotificationsRoute
   '/': typeof AppIndexRoute
   '/$app/$section': typeof AppAppSectionRoute
@@ -111,11 +79,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
-  '/error': typeof ErrorRoute
   '/login': typeof LoginRoute
-  '/recovery': typeof RecoveryRoute
-  '/settings': typeof SettingsRoute
-  '/verify': typeof VerifyRoute
   '/_app/$app': typeof AppAppRouteWithChildren
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/': typeof AppIndexRoute
@@ -127,11 +91,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/error'
     | '/login'
-    | '/recovery'
-    | '/settings'
-    | '/verify'
     | '/$app'
     | '/notifications'
     | '/$app/$section'
@@ -139,11 +99,7 @@ export interface FileRouteTypes {
     | '/$app/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/error'
     | '/login'
-    | '/recovery'
-    | '/settings'
-    | '/verify'
     | '/notifications'
     | '/'
     | '/$app/$section'
@@ -152,11 +108,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
-    | '/error'
     | '/login'
-    | '/recovery'
-    | '/settings'
-    | '/verify'
     | '/_app/$app'
     | '/_app/notifications'
     | '/_app/'
@@ -167,11 +119,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
-  ErrorRoute: typeof ErrorRoute
   LoginRoute: typeof LoginRoute
-  RecoveryRoute: typeof RecoveryRoute
-  SettingsRoute: typeof SettingsRoute
-  VerifyRoute: typeof VerifyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -183,39 +131,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/error': {
-      id: '/error'
-      path: '/error'
-      fullPath: '/error'
-      preLoaderRoute: typeof ErrorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/recovery': {
-      id: '/recovery'
-      path: '/recovery'
-      fullPath: '/recovery'
-      preLoaderRoute: typeof RecoveryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/verify': {
-      id: '/verify'
-      path: '/verify'
-      fullPath: '/verify'
-      preLoaderRoute: typeof VerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/': {
@@ -294,11 +214,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
-  ErrorRoute: ErrorRoute,
   LoginRoute: LoginRoute,
-  RecoveryRoute: RecoveryRoute,
-  SettingsRoute: SettingsRoute,
-  VerifyRoute: VerifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

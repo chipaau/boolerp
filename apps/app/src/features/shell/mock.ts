@@ -45,7 +45,7 @@ export const SAVED_VIEWS: Record<string, SavedView[]> = {
   ],
 }
 
-/** The photo is not here: it belongs to the identity (see `identityPhoto` in @workspace/auth). */
+/** The photo is not here: it belongs to the user (avatars, roadmap step 7g); initials until then. */
 export const MEMBERSHIP: Membership = { role: 'Admin' }
 
 /** Stand-in portraits until the workspace supplies its own Bool set. */

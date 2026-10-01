@@ -1,24 +1,17 @@
-import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
-import { getSession } from '@workspace/auth'
+import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { SidebarProvider } from '@workspace/ui/components/sidebar'
 import { ToastProvider } from '@workspace/ui/components/toast'
 import { SiteHeader } from '@/components/layout/site-header'
 import { UserProvider } from '@/components/layout/user-context'
+import { currentUser, signIn } from '@/lib/session'
 
 // Authenticated workspace layout: session guard + the shell chrome (header over a sidebar area).
 export const Route = createFileRoute('/_app')({
   loader: async () => {
-    const state = await getSession()
-    if (state.status !== 'active') {
-      // no session → sign in; first factor done but MFA enrolled → complete the second factor (UC-AUTH-04)
-      const returnTo = window.location.pathname + window.location.search
-      throw redirect({
-        to: '/login',
-        search: { flow: undefined, return_to: returnTo, aal: state.status === 'aal2_required' ? 'aal2' : undefined, refresh: undefined },
-      })
-    }
-    const traits = state.session.identity.traits
-    return { user: { name: String(traits.name ?? 'User'), email: String(traits.email ?? '') } }
+    // No session → the BFF's sign-in, returning here afterwards.
+    const me = await currentUser()
+    if (!me) return signIn()
+    return { user: { name: me.displayName || me.email, email: me.email } }
   },
   component: AppLayout,
 })

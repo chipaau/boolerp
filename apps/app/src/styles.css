@@ -3,4 +3,3 @@
 /* scan this app's own source for Tailwind classes (the shared UI package is scanned by its own globals.css) */
 @source "../";
 /* also scan the shared auth package (KratosForm / AuthShell live there) */
-@source "../../../packages/auth/src";
