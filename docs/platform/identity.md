@@ -31,6 +31,15 @@ defines, keeps its CSRF token, and posts to Kratos. The pages stay on the login
 service's domain; a form on a client's own domain would need a separate Kratos and
 Hydra.
 
+## Authentication model (C88)
+
+Browsers never hold Hydra tokens. For the internal apps the Go API is a
+backend-for-frontend: it is Hydra's confidential client, completes the login on the
+request's own domain, keeps tokens on the server, and gives the browser an HttpOnly
+session cookie. Non-browser clients (mobile, integrations, services) will send Hydra
+access tokens as `Authorization: Bearer`, which the API validates. Both become the
+same caller context (7d).
+
 ## Accounts and development services (7a-1, C85)
 
 Kratos v26.2.0 runs in Compose with its own `kratos` database and `erp_kratos` role
