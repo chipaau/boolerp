@@ -151,8 +151,13 @@ services:
       OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://lgtm:4318}
       OTEL_TRACES_SAMPLER:
+      # Callers present Hydra access tokens, verified against Hydra's keys (C91).
+      APP_AUTH_ISSUER: http://identity.bool.test/
     # Only the runtime role's password; never the owner's or the migration role's (C47).
     secrets: [db_app_password]
+    # The API fetches Hydra's keys from the issuer's address, through Traefik on the host.
+    extra_hosts:
+      - "identity.bool.test:host-gateway"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:${APP_PORT:-8080}/api/healthz"]
       interval: 5s

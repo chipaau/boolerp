@@ -1,6 +1,10 @@
 package observability
 
-import "strings"
+import (
+	"regexp"
+	"slices"
+	"strings"
+)
 
 // This file holds the redaction policy: which attribute and group names are
 // sensitive. Adding a word is a reviewed code change, not a runtime setting,
@@ -31,4 +35,29 @@ func sensitive(name string) bool {
 		}
 	}
 	return false
+}
+
+// sensitiveQueryParams are query parameters whose values are credentials even
+// though their names are not sensitive words: OAuth2's authorization code and
+// state (C91).
+var sensitiveQueryParams = []string{"code", "state"}
+
+// queryParam matches one query parameter in a URL or a log message.
+var queryParam = regexp.MustCompile(`([?&])([^=&#\s"]+)=([^&#\s"]*)`)
+
+// scrubQuery redacts the values of sensitive query parameters in s, keeping
+// their names: "/api/auth/callback?code=x&state=y" becomes
+// "/api/auth/callback?code=[REDACTED]&state=[REDACTED]".
+func scrubQuery(s string) string {
+	if !strings.ContainsAny(s, "?&") {
+		return s
+	}
+	return queryParam.ReplaceAllStringFunc(s, func(m string) string {
+		parts := queryParam.FindStringSubmatch(m)
+		name := strings.ToLower(parts[2])
+		if sensitive(name) || slices.Contains(sensitiveQueryParams, name) {
+			return parts[1] + parts[2] + "=" + Redacted
+		}
+		return m
+	})
 }

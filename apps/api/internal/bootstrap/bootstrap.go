@@ -12,8 +12,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	goredis "github.com/redis/go-redis/v9"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
@@ -23,11 +28,29 @@ import (
 // shutdown. It sits within Compose's stop grace period (C30) with room to spare.
 const telemetryFlushTimeout = 5 * time.Second
 
+// Deps are the shared dependencies Run builds for modules (C92, C93).
+type Deps struct {
+	Pool   *pgxpool.Pool
+	Cache  *goredis.Client
+	Logger *slog.Logger
+	// HTTPClient makes outbound requests, such as fetching Hydra's keys; it has a
+	// timeout, so a slow dependency cannot hold a request open.
+	HTTPClient *http.Client
+}
+
+// RegisterModules constructs the modules of this build and registers their
+// routes at their prefixes (r.Route("/api/auth", authModule.Routes)). main
+// supplies it, so each edition's main lists exactly the modules compiled into its
+// binary (C93). The router already carries the default middleware, which the
+// modules inherit. A Module interface comes with the second thing modules
+// register, their migrations (C48).
+type RegisterModules func(r chi.Router, d Deps)
+
 // Run builds the API from cfg and serves until ctx is cancelled, then shuts
 // the HTTP server down gracefully. Dependencies are closed by deferred calls
 // in reverse order of construction, after the server has stopped, so in-flight
 // requests keep their connections until they finish.
-func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
+func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, registerModules RegisterModules) error {
 	// Telemetry first, so every later dependency can be instrumented; its flush
 	// is deferred first, so it runs last and exports the final requests' data.
 	tr, err := newTracing(ctx, logger)
@@ -76,6 +99,12 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}
+	registerModules(router, Deps{
+		Pool:       pool,
+		Cache:      cache,
+		Logger:     logger,
+		HTTPClient: &http.Client{Timeout: 10 * time.Second},
+	})
 
 	// Listening separately from serving makes a busy port a startup error,
 	// and "api listening" is logged only once the port is actually bound.

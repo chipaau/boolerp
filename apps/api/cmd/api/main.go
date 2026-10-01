@@ -1,5 +1,8 @@
-// Command api runs the HTTP API. It owns process concerns: configuration, the
-// logger, signals, and the exit code. internal/bootstrap assembles the rest.
+// Command api runs the HTTP API. It owns process concerns (configuration, the
+// logger, signals, and the exit code) and lists the modules of this build and
+// their prefixes; internal/bootstrap assembles the rest. A product edition with
+// fewer modules is another main that lists fewer: modules it does not import are
+// not compiled into its binary (C93).
 package main
 
 import (
@@ -9,7 +12,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
+	"github.com/boolmv/erp/apps/api/internal/platform/auth"
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
 )
@@ -40,9 +46,18 @@ func run() int {
 	// returns, so a second signal terminates a process stuck while draining.
 	context.AfterFunc(ctx, stop)
 
-	if err := bootstrap.Run(ctx, cfg, logger); err != nil {
+	if err := bootstrap.Run(ctx, cfg, logger, registerModules(ctx, cfg)); err != nil {
 		logger.Error("api failed", "error", err)
 		return 1
 	}
 	return 0
+}
+
+// registerModules lists this build's modules: it constructs each one and
+// registers its routes at its prefix (C92, C93).
+func registerModules(ctx context.Context, cfg config.Config) bootstrap.RegisterModules {
+	return func(r chi.Router, d bootstrap.Deps) {
+		authModule := auth.New(ctx, auth.Settings{Issuer: cfg.Auth.Issuer, Audience: cfg.Auth.Audience}, d.HTTPClient)
+		r.Route("/api/auth", authModule.Routes)
+	}
 }

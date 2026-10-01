@@ -159,6 +159,37 @@ Each capability owns its writes. Collaboration uses explicit application contrac
 and operations requiring atomic writes need an agreed transaction contract.
 Generated SQL types remain inside persistence adapters under the proposed port design.
 
+## Modules and routes (C92)
+
+Every module keeps all of its code in its own folder (`internal/platform/<name>` for
+infrastructure such as `auth`, `internal/modules/<name>` for business capabilities):
+routes, handlers, middleware, and types. A module exposes `Routes(r chi.Router)`,
+registering paths relative to its prefix (`/me`, not `/api/auth/me`). The build's
+`main` constructs its modules and mounts them through the `RegisterModules`
+callback that `bootstrap.Run` calls with the router and `bootstrap.Deps` (C93):
+
+```go
+// cmd/api/main.go
+func registerModules(ctx context.Context, cfg config.Config) bootstrap.RegisterModules {
+	return func(r chi.Router, d bootstrap.Deps) {
+		authModule := auth.New(ctx, auth.Settings{...}, d.HTTPClient)
+		r.Route("/api/auth", authModule.Routes) // GET /api/auth/me
+	}
+}
+```
+
+When modules also register their migrations (C48), a small `Module` interface (routes
+and migrations) is added in `bootstrap`, and `main` lists `{prefix, module}` pairs.
+
+A product edition with fewer modules is another `main` (such as `cmd/api-hrms`) that
+mounts fewer; modules it does not import are not compiled into its binary.
+
+Modules inherit the router's default middleware (request ID, request logging, panic
+recovery, origin checks, body limit, tracing). Authentication is not a default: a
+module applies it to its own routes (`r.Use(authModule.Authenticate)`), receiving the
+auth module's middleware from `main` when it is not the auth module itself. There is
+no generic module interface; `main` calls each module's `Routes` explicitly.
+
 ## PostgreSQL-only and persistence
 
 PostgreSQL is selected. Database portability is not a goal. The proposed thin

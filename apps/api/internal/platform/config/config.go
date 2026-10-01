@@ -1,8 +1,8 @@
 // Package config loads and validates runtime settings from the process environment.
 //
 // Settings are grouped by concern, one file per group: app.go (APP_*), log.go
-// (APP_LOG_*), http.go (APP_HTTP_*), database.go (APP_DB_*), and redis.go
-// (APP_REDIS_*). Each group is a
+// (APP_LOG_*), http.go (APP_HTTP_*), database.go (APP_DB_*), redis.go
+// (APP_REDIS_*), and auth.go (APP_AUTH_*). Each group is a
 // struct whose env tags are joined to its envPrefix, so DB.Host reads APP_DB_HOST.
 // cmd/migrate has its own settings (migrate.go, MIGRATE_*), loaded by LoadMigrate.
 //
@@ -31,6 +31,7 @@ type Config struct {
 	HTTP  HTTP  `envPrefix:"APP_HTTP_"`
 	DB    DB    `envPrefix:"APP_DB_"`
 	Redis Redis `envPrefix:"APP_REDIS_"`
+	Auth  Auth  `envPrefix:"APP_AUTH_"`
 }
 
 // Load reads the API's settings from environ, which uses the os.Environ
