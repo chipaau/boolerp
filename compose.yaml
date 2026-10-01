@@ -240,6 +240,92 @@ services:
       timeout: 3s
       retries: 10
 
+  # The BFF's session store (C90, ADR 0003), separate from the API's cache Redis:
+  # eviction is off (noeviction), so sessions are never dropped for memory, and
+  # writes are persisted (AOF), so a restart keeps people signed in. Internal
+  # network only; production adds a password and TLS.
+  redis-sessions:
+    image: redis:8-alpine
+    command: redis-server --save "" --appendonly yes --appendfsync everysec --maxmemory-policy noeviction
+    volumes:
+      - redis-sessions:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Backend-for-frontend for the app on tenant domains (C90, C96): signs browsers
+  # in through Hydra at /auth/* and keeps their sessions in redis-sessions.
+  # /api/* still goes straight to the API until the BFF forwards it (7c-3).
+  bff-app:
+    build:
+      context: .
+      dockerfile: docker/go.Dockerfile
+    working_dir: /w/apps/api
+    command: ["sh", "-c", "go build -buildvcs=false -o /tmp/bool-bff ./cmd/bff && exec /tmp/bool-bff"]
+    stop_grace_period: 40s
+    develop:
+      watch:
+        - action: restart
+          path: ./apps/api
+          include:
+            - "**/*.go"
+            - go.mod
+            - go.sum
+          ignore:
+            - "**/*_test.go"
+    environment:
+      BFF_ENV: ${APP_ENV:-dev}
+      BFF_PORT: "8080"
+      BFF_LOG_FORMAT: ${APP_LOG_FORMAT:-json}
+      BFF_LOG_LEVEL: ${APP_LOG_LEVEL:-info}
+      # One proxy (Traefik) appends to X-Forwarded-For (C40).
+      BFF_HTTP_TRUSTED_PROXY_HOPS: "1"
+      BFF_REDIS_HOST: redis-sessions
+      BFF_REDIS_TLS: "false"
+      # Plain HTTP in development: the cookie is "session", not Secure (C96).
+      BFF_SESSION_COOKIE_SECURE: "false"
+      BFF_SESSION_ENCRYPTION_KEY_FILE: /run/secrets/bff_app_session_key
+      BFF_OIDC_ISSUER: http://identity.bool.test/
+      BFF_OIDC_CLIENT_ID: erp-app
+      BFF_OIDC_CLIENT_SECRET_FILE: /run/secrets/hydra_client_erp-app
+      OTEL_SERVICE_NAME: bool-erp-bff-app
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://lgtm:4318}
+    secrets: [bff_app_session_key, hydra_client_erp-app]
+    # Hydra's discovery, keys, and token endpoint are reached at the issuer's address.
+    extra_hosts:
+      - "identity.bool.test:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - .:/w
+      - gocache:/root/.cache/go-build
+      - gomod:/go/pkg/mod
+    depends_on:
+      redis-sessions:
+        condition: service_healthy
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      # /auth/* on every tenant subdomain -> the BFF (above the app's catch-all).
+      - "traefik.http.routers.erp-bff-app.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && PathPrefix(`/auth`)"
+      - traefik.http.routers.erp-bff-app.entrypoints=web
+      - traefik.http.routers.erp-bff-app.priority=20
+      - traefik.http.routers.erp-bff-app.service=erp-bff-app
+      - traefik.http.services.erp-bff-app.loadbalancer.server.port=8080
+
   # Identity (C83, C85): Ory Kratos holds accounts and runs the login, registration,
   # verification, and recovery flows. Browsers reach its public API at
   # http://identity.bool.test/kratos; its admin API stays on the internal network.
@@ -328,7 +414,7 @@ services:
       HYDRA_ADMIN_URL: http://hydra:4445
     volumes:
       - ./docker/hydra:/etc/hydra:ro
-    secrets: [hydra_client_dev-test-client]
+    secrets: [hydra_client_dev-test-client, hydra_client_erp-app]
     depends_on:
       hydra:
         condition: service_healthy
@@ -437,6 +523,11 @@ secrets:
   # One secret per first-party client, named hydra_client_<client-id> (C89).
   hydra_client_dev-test-client:
     file: ./docker/secrets/dev/hydra_client_dev-test-client
+  hydra_client_erp-app:
+    file: ./docker/secrets/dev/hydra_client_erp-app
+  # bff-app's AES-256 key for the tokens in its sessions, 64 hex digits (C96).
+  bff_app_session_key:
+    file: ./docker/secrets/dev/bff_app_session_key
 
 networks:
   proxy:
@@ -446,6 +537,7 @@ networks:
 
 volumes:
   pgdata:
+  redis-sessions:
   gocache:
   gomod:
   pnpm-store:

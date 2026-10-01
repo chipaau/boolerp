@@ -113,14 +113,14 @@ func (exportOff) Shutdown(context.Context) error                             { r
 // link, never the parent, so clients cannot choose trace IDs or switch
 // sampling off for their own requests. Health and readiness checks are
 // neither traced nor counted.
-func instrumentHTTP(handler http.Handler, tr *tracing, mt *metrics) http.Handler {
+func instrumentHTTP(handler http.Handler, tr *tracing, mt *metrics, health healthPaths) http.Handler {
 	return otelhttp.NewHandler(handler, "http.server",
 		otelhttp.WithTracerProvider(tr.provider),
 		otelhttp.WithMeterProvider(mt.provider),
 		otelhttp.WithPropagators(tr.propagator),
 		otelhttp.WithPublicEndpointFn(func(*http.Request) bool { return true }),
 		otelhttp.WithFilter(func(r *http.Request) bool {
-			return r.URL.Path != livenessPath && r.URL.Path != readinessPath
+			return r.URL.Path != health.Liveness && r.URL.Path != health.Readiness
 		}),
 	)
 }

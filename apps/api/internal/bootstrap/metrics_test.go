@@ -69,7 +69,7 @@ func TestRequestMetricsUseRoutePatternNotPath(t *testing.T) {
 	mt, reader := recordingMetrics()
 	router, _ := withTestRoute(t)
 	router.Get("/api/items/{id}", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
-	handler := instrumentHTTP(router, noTracing(), mt)
+	handler := instrumentHTTP(router, noTracing(), mt, apiHealth)
 
 	for _, path := range []string{"/api/items/s3cret-42", "/api/no-such-s3cret", livenessPath} {
 		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, path, nil))

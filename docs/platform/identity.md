@@ -66,6 +66,31 @@ API with the session's access token as `Authorization: Bearer`. The API accepts 
 Bearer tokens, from the BFF and from non-browser clients (mobile, integrations,
 services), and keeps no sessions. Every request becomes the same caller context (7d).
 
+## BFF login and sessions (7c-2, C96)
+
+`bff-app` (`apps/api/cmd/bff`, Hydra client `erp-app`) serves its login on tenant
+domains at `/auth/*`; `/api/*` belongs to the API. `GET /auth/login?return_to=/path`
+sends the browser to Hydra (PKCE, state, nonce, scopes `openid offline_access`,
+audience `erp-api`); Hydra returns it to `https://<domain>/auth/callback`, where the BFF
+exchanges the code, verifies the ID token, starts a new session, and redirects to the
+local `return_to` path. The callback must be registered on the client
+(`docker/hydra/clients/erp-app.json`); development registers `demo.bool.test` and
+`cyryx.bool.test`.
+
+- **Session:** in `redis-sessions` (no eviction, AOF), keyed by the SHA-256 hash of the
+  cookie's token; ends 30 minutes after the last request or 12 hours after login.
+  Kratos's own session lasts 12 hours, so a BFF session that ends sooner signs back in
+  without the password form, and a password is asked for at least every 12 hours.
+- **Cookie:** `__Host-session` (Secure) over HTTPS, `session` in plain-HTTP
+  development; HttpOnly, `SameSite=Lax`, `Path=/`, host-only, ending with the browser.
+- **Tokens:** Hydra's access, refresh, and ID tokens are sealed with AES-256-GCM under
+  the instance's key (`BFF_SESSION_ENCRYPTION_KEY_FILE`) and bound to the session's
+  account. Replacing the key signs everyone out of the BFF, which costs a silent
+  re-login.
+
+To try it: open `http://demo.bool.test/auth/login?return_to=/` and sign in. The app
+itself does not use the BFF yet (7c-3, 7c-4).
+
 ## Access tokens (7c-1, C91)
 
 Hydra issues JWT access tokens valid for 10 minutes. The API accepts a caller only with

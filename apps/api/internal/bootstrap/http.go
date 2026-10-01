@@ -28,6 +28,17 @@ const (
 	readinessPath = "/api/readyz"
 )
 
+// healthPaths are a program's liveness and readiness paths. The API's are under
+// /api; the BFF's are at the root, because it forwards /api/* to the API (C96).
+type healthPaths struct {
+	Liveness, Readiness string
+}
+
+var (
+	apiHealth = healthPaths{Liveness: livenessPath, Readiness: readinessPath}
+	bffHealth = healthPaths{Liveness: "/healthz", Readiness: "/readyz"}
+)
+
 // newServer wraps handler in an http.Server with the configured network limits.
 func newServer(handler http.Handler, cfg config.HTTP, logger *slog.Logger) *http.Server {
 	return httpserver.NewServer(handler, logger, httpserver.Limits{
@@ -46,6 +57,7 @@ type routerConfig struct {
 
 	CheckReady   func(context.Context) error // dependency check for readiness, e.g. pool.Ping
 	ReadyTimeout time.Duration               // bound on CheckReady
+	Health       healthPaths                 // zero means the API's (apiHealth)
 }
 
 // newRouter builds the chi router and its middleware. It returns chi.Router,
@@ -55,6 +67,9 @@ type routerConfig struct {
 // Paths are matched exactly: there is no path cleaning or redirect (C39), so
 // "/api//healthz" and "/api/healthz/" are 404.
 func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
+	if rc.Health == (healthPaths{}) {
+		rc.Health = apiHealth
+	}
 	// Reject cross-origin browser writes (POST, PUT, PATCH, DELETE) unless the
 	// origin is allowed; same-origin and non-browser requests pass (C41).
 	crossOrigin := http.NewCrossOriginProtection()
@@ -96,7 +111,7 @@ func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
 		// Health checks run every few seconds; logging them adds only noise.
 		// A failed readiness check is still logged, since it signals an outage.
 		Skip: func(r *http.Request, status int) bool {
-			return r.URL.Path == livenessPath || (r.URL.Path == readinessPath && status < 400)
+			return r.URL.Path == rc.Health.Liveness || (r.URL.Path == rc.Health.Readiness && status < 400)
 		},
 	}))
 	// Turn handler panics into a logged 500 problem response (C38). It sits
@@ -131,8 +146,8 @@ func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
 	r.NotFound(notFound)
 	r.MethodNotAllowed(methodNotAllowed)
 
-	r.Get(livenessPath, liveness)
-	r.Get(readinessPath, readiness(logger, rc.CheckReady, rc.ReadyTimeout))
+	r.Get(rc.Health.Liveness, liveness)
+	r.Get(rc.Health.Readiness, readiness(logger, rc.CheckReady, rc.ReadyTimeout))
 
 	return r, nil
 }
@@ -150,7 +165,7 @@ func crossOriginDenied(w http.ResponseWriter, r *http.Request) {
 	problem.Error(w, r, http.StatusForbidden, "Cross-origin requests from this origin are not allowed.")
 }
 
-// readiness reports whether the API's dependencies can be reached, within
+// readiness reports whether the program's dependencies can be reached, within
 // timeout. It answers {"status":"ready"}, or 503 problem details while a
 // dependency is down. The cause is logged, never returned to the client.
 func readiness(logger *slog.Logger, check func(context.Context) error, timeout time.Duration) http.HandlerFunc {

@@ -11,18 +11,23 @@ The new API lives in `apps/api/`; the previous implementation is preserved in
 the target tree below illustrate future responsibilities unless listed as current;
 they are not approved tables or contracts.
 
-**Current layout (rebuild, step 7d):**
+**Current layout (rebuild, step 7c-2):**
 
 ```text
 apps/api/
   cmd/
     api/main.go          process concerns; mounts the edition's modules (C93)
     migrate/main.go      applies the edition's module migrations with MIGRATE_DB_* (C46, C47, C95)
+    bff/main.go          one backend-for-frontend instance, such as bff-app (C90, C96)
   internal/
+    bff/                 the BFF's own packages; no database
+      login/             /auth/login and /auth/callback with Hydra (PKCE, state, nonce)
+      session/           scs sessions in the session Redis; AES-256-GCM sealed tokens
     bootstrap/           application assembly, one file per dependency
       bootstrap.go       Run: build dependencies, call RegisterModules, serve
+      bff.go             RunBFF: the BFF with the same router middleware and telemetry
       database.go        PostgreSQL pool from config.DB
-      redis.go           Redis client from config.Redis
+      redis.go           Redis clients: the API's cache, the BFF's session store
       http.go            router, middleware, liveness/readiness, http.Server
       tracing.go, metrics.go
     edition/
