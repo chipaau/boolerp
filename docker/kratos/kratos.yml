@@ -15,9 +15,9 @@ serve:
     base_url: http://kratos:4434/
 
 identity:
-  # New accounts get "registration": exactly one email. Extra addresses are added
-  # only through the admin API, already verified, which switches the account to
-  # "account" (up to 10 emails), so no account ever holds an unverified address
+  # New accounts get "registration": one email (traits.email). Extra addresses are
+  # added only through the admin API, already verified, into traits.additional_emails,
+  # switching the account to "account" (up to 9 more), so no account holds an unverified address
   # that could block its real owner (C85).
   default_schema_id: registration
   schemas:

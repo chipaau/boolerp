@@ -48,6 +48,7 @@ jobs:
             frontend:
               - 'apps/app/**'
               - 'apps/admin/**'
+              - 'apps/identity/**'
               - 'packages/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
@@ -140,7 +141,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [app, admin]
+        app: [app, admin, identity]
     steps:
       - uses: actions/checkout@v7
       - name: Build the shared Node dev image

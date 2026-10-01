@@ -40,10 +40,11 @@ config is `docker/kratos/kratos.yml`, merged with `docker/secrets/dev/kratos.yml
 Compose secret. Browsers reach its public API at `http://identity.bool.test/kratos`;
 the admin API (`http://kratos:4434`) is only on the internal network.
 
-- **Accounts:** a new account has one email, a phone, and an optional name
-  (`registration.schema.json`). Extra emails are added through the admin API as
-  verified, switching the account to `account.schema.json`; self-service settings can
-  change the password and link Google, not account fields.
+- **Accounts:** a new account has one email (`traits.email`), a phone, and an optional
+  name (`registration.schema.json`). Extra emails are added through the admin API as
+  verified, into `traits.additional_emails`, switching the account to
+  `account.schema.json`; self-service settings can change the password and link
+  Google, not account fields.
 - **Login:** email and password, or Google. An account logs in once it has a verified
   email; codes for verification and recovery are sent by email.
 - **Development mail and SMS:** Mailpit at `http://mail.bool.test` catches all email;
@@ -52,10 +53,17 @@ the admin API (`http://kratos:4434`) is only on the internal network.
   configured in Kratos as the `google` provider; its login page lets you choose any
   user and claims (for example `{"email": "a@b.test", "email_verified": true}`).
 
-Known gaps in open-source Kratos v26.2.0 (C85): SMS phone verification is not
+Known gap in open-source Kratos v26.2.0 (C85): SMS phone verification is not
 available, so phones are unverified until a release supports it (required before
-go-live); and a Google sign-up that must ask for the phone loses Google's "verified"
-mark, so the login UI verifies the email by code.
+go-live).
+
+## Login UI (7a-2, C86)
+
+`apps/identity` serves the login pages at `http://identity.bool.test` (login,
+registration, verification, recovery, settings, error). Ory Elements runs the Kratos
+flows; `src/theme/bool.tsx` replaces its visual components with the Bool sign-in
+design from `@workspace/ui`. A page without `?flow=` sends the browser to Kratos to
+start one; expired or unknown flows start again. It does not use `packages/auth`.
 
 ## Open decisions
 

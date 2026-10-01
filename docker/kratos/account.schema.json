@@ -7,31 +7,25 @@
     "traits": {
       "type": "object",
       "properties": {
-        "emails": {
-          "title": "Email addresses",
-          "description": "The registration email plus addresses added through the admin API, already verified (C85). Keep in step with registration.schema.json, which differs only in allowing one email.",
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 10,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "email",
-            "maxLength": 320,
-            "ory.sh/kratos": {
-              "credentials": {
-                "password": {
-                  "identifier": true
-                }
-              },
-              "verification": {
-                "via": "email"
-              },
-              "recovery": {
-                "via": "email"
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "format": "email",
+          "maxLength": 320,
+          "ory.sh/kratos": {
+            "credentials": {
+              "password": {
+                "identifier": true
               }
+            },
+            "verification": {
+              "via": "email"
+            },
+            "recovery": {
+              "via": "email"
             }
-          }
+          },
+          "description": "The address the account registered with (C85). Same as registration.schema.json plus additional_emails; keep the two in step."
         },
         "phone": {
           "title": "Phone number",
@@ -49,10 +43,36 @@
           "title": "Display name",
           "type": "string",
           "maxLength": 100
+        },
+        "additional_emails": {
+          "title": "Additional emails",
+          "description": "Further addresses, added only through the admin API and already verified (C85).",
+          "type": "array",
+          "maxItems": 9,
+          "uniqueItems": true,
+          "items": {
+            "title": "Email",
+            "type": "string",
+            "format": "email",
+            "maxLength": 320,
+            "ory.sh/kratos": {
+              "credentials": {
+                "password": {
+                  "identifier": true
+                }
+              },
+              "verification": {
+                "via": "email"
+              },
+              "recovery": {
+                "via": "email"
+              }
+            }
+          }
         }
       },
       "required": [
-        "emails",
+        "email",
         "phone"
       ],
       "additionalProperties": false
