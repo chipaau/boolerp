@@ -31,6 +31,15 @@ defines, keeps its CSRF token, and posts to Kratos. The pages stay on the login
 service's domain; a form on a client's own domain would need a separate Kratos and
 Hydra.
 
+## Authentication model (C88)
+
+Browsers never hold Hydra tokens. For the internal apps the Go API is a
+backend-for-frontend: it is Hydra's confidential client, completes the login on the
+request's own domain, keeps tokens on the server, and gives the browser an HttpOnly
+session cookie. Non-browser clients (mobile, integrations, services) will send Hydra
+access tokens as `Authorization: Bearer`, which the API validates. Both become the
+same caller context (7d).
+
 ## Accounts and development services (7a-1, C85)
 
 Kratos v26.2.0 runs in Compose with its own `kratos` database and `erp_kratos` role
@@ -60,10 +69,13 @@ go-live).
 ## Login UI (7a-2, C86)
 
 `apps/identity` serves the login pages at `http://identity.bool.test` (login,
-registration, verification, recovery, settings, error). Ory Elements runs the Kratos
-flows; `src/theme/bool.tsx` replaces its visual components with the Bool sign-in
-design from `@workspace/ui`. A page without `?flow=` sends the browser to Kratos to
-start one; expired or unknown flows start again. It does not use `packages/auth`.
+registration, verification, recovery, settings, error). It is a Next.js app (C87):
+each page's server loads its Kratos flow over the internal network
+(`KRATOS_INTERNAL_URL`), passing on the browser's cookies, and Ory Elements renders
+it; `theme/bool.tsx` replaces Elements' visual components with the Bool sign-in design
+from `@workspace/ui`. A page without `?flow=` sends the browser to Kratos to start one;
+expired or unknown flows start again. It does not use `packages/auth`. Hydra's consent
+route will be part of the same app (7b).
 
 ## Open decisions
 

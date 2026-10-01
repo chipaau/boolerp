@@ -24,13 +24,18 @@ x-node: &node
     - pnpm-store:/w/.pnpm-store
 
 services:
-  # The login UI (7a-2, C84): Ory Elements drawn in the Bool design, at
-  # http://identity.bool.test. Its /kratos path goes to Kratos (higher priority).
+  # The login service (C86, C87): a Next.js app with Ory Elements drawn in the Bool
+  # design, at http://identity.bool.test. Its /kratos path goes to Kratos (higher
+  # priority); its server reads flows from Kratos over the internal network.
   identity:
     <<: *node
     command: pnpm --filter identity dev
+    environment:
+      IDENTITY_PUBLIC_URL: http://identity.bool.test
+      KRATOS_INTERNAL_URL: http://kratos:4433
     networks:
       - proxy
+      - internal
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy

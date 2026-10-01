@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useState, type PropsWithChildren } from 'react'
+'use client'
+
+import { createContext, useContext, useState, type PropsWithChildren } from 'react'
 import { FlowType } from '@ory/client-fetch'
 import {
   useOryFlow,
@@ -22,7 +24,6 @@ import { Hexagon } from '@workspace/ui/components/hexagon'
 import { Input } from '@workspace/ui/components/input'
 import { MadeBy } from '@workspace/ui/components/made-by'
 import { cn } from '@workspace/ui/lib/utils'
-import { frontend } from '@/lib/kratos'
 
 // The Bool login design (C84), rebuilt from @workspace/ui for Ory Elements: the same
 // canvas, fields, buttons, and messages as the existing sign-in screens, so the look
@@ -86,24 +87,19 @@ function Shell({ children }: PropsWithChildren) {
  * The account page. Elements' settings screen does not use the card, so the page
  * puts it in the same canvas and heading itself.
  */
-export function AccountShell({ children }: PropsWithChildren) {
+export function AccountShell({ children, logoutUrl }: PropsWithChildren<{ logoutUrl?: string }>) {
   return (
     <Shell>
       <Brand />
       <h1 className="mt-[38px] text-display-sm font-normal text-foreground">Your account</h1>
       {children}
-      <SignOut />
+      {logoutUrl && <SignOut href={logoutUrl} />}
     </Shell>
   )
 }
 
-/** Kratos's logout link carries a one-time token, so it is fetched, not built. */
-function SignOut() {
-  const [href, setHref] = useState<string>()
-  useEffect(() => {
-    frontend.createBrowserLogoutFlow().then((f) => setHref(f.logout_url), () => setHref(undefined))
-  }, [])
-  if (!href) return null
+/** Kratos's logout link (with its one-time token, fetched by the page). */
+function SignOut({ href }: { href: string }) {
   return (
     <div className="mt-[18px] flex text-ui-sm">
       <a href={href} className="ms-auto text-link hover:underline hover:underline-offset-[3px]">
@@ -116,7 +112,7 @@ function SignOut() {
 function Brand() {
   return (
     <div className="flex items-center gap-3">
-      <img src={logo} alt="" aria-hidden="true" width={34} height={39} className="h-[39px] w-[34px] object-contain" />
+      <img src={logo.src} alt="" aria-hidden="true" width={34} height={39} className="h-[39px] w-[34px] object-contain" />
       <span className="text-2xl tracking-[-0.015em] text-foreground">{BRAND}</span>
     </div>
   )

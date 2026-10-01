@@ -7,6 +7,7 @@ dist/
 .output/
 .vinxi/
 .next/
+*.tsbuildinfo
 .turbo/
 .tanstack/
 tmp/

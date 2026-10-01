@@ -13,5 +13,8 @@ and [development](../../docs/development.md).
   members' work: do not modify or delete it, including `packages/auth` and `e2e/`.
 - New identity work (`apps/identity`, C84) does not use `packages/auth`, which targets
   the previous Kratos design (`/auth` on each tenant domain).
-- Future frontend work should retain the existing React/TanStack Router and shared
-  `@workspace/ui` conventions unless a change is explicitly agreed.
+- Internal applications (`apps/app`, `apps/admin`) use React with Vite and TanStack
+  Router; the Go API is their backend-for-frontend (C88). Public-facing applications,
+  reached by people outside a customer's staff (`apps/website`, `apps/identity`, later
+  FindCare's public side), use Next.js (C87). All apps share `@workspace/ui` and
+  `@workspace/assets`; other changes to these conventions need explicit agreement.

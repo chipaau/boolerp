@@ -3,31 +3,27 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --host --port 3000",
-    "generate-routes": "tsr generate",
-    "typecheck": "tsc",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "next dev --port 3000 --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start --port 3000 --hostname 0.0.0.0",
+    "typecheck": "next typegen && tsc"
   },
   "dependencies": {
     "@ory/client-fetch": "1.22.22",
     "@ory/elements-react": "1.2.1",
-    "@tailwindcss/vite": "^4.3.3",
-    "@tanstack/react-router": "latest",
     "@workspace/assets": "workspace:*",
     "@workspace/ui": "workspace:*",
+    "next": "^16.3.5",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "tailwindcss": "^4.3.3"
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
-    "@tanstack/router-cli": "^1.167.35",
-    "@tanstack/router-plugin": "latest",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.20.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.1",
-    "typescript": "^6.0.3",
-    "vite": "^8.3.0"
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3"
   }
 }
