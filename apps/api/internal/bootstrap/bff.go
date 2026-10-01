@@ -16,15 +16,17 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/bff/login"
 	"github.com/boolmv/erp/apps/api/internal/bff/proxy"
 	"github.com/boolmv/erp/apps/api/internal/bff/session"
+	"github.com/boolmv/erp/apps/api/internal/bff/web"
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
 	"github.com/boolmv/erp/apps/api/internal/platform/problem"
 )
 
-// RunBFF builds one backend-for-frontend instance (C90, C96) from cfg and serves
+// RunBFF builds one backend-for-frontend instance (C90, C96, C98, C99) from cfg and serves
 // until ctx is cancelled, then shuts down gracefully, like Run. It has the API's
 // default middleware, its own health checks at /healthz and /readyz, and the
-// login routes under /auth; it has no database.
+// login routes under /auth, the proxy under /api, and the embedded app for
+// every other path; it has no database.
 func RunBFF(ctx context.Context, cfg config.BFF, logger *slog.Logger) error {
 	tr, mt, flush, err := newTelemetry(ctx, logger)
 	if err != nil {
@@ -82,6 +84,12 @@ func RunBFF(ctx context.Context, cfg config.BFF, logger *slog.Logger) error {
 		r.Use(sessions.LoadAndSave)
 		r.Handle("/*", forward)
 	})
+	// Everything else is the embedded app (C99); it needs no session.
+	app, err := web.New(web.App())
+	if err != nil {
+		return err
+	}
+	router.Get("/*", app.ServeHTTP)
 
 	ln, err := new(net.ListenConfig).Listen(ctx, "tcp", net.JoinHostPort("", strconv.Itoa(cfg.App.ListenPort)))
 	if err != nil {

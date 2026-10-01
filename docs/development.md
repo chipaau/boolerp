@@ -156,6 +156,13 @@ settings:
 | `BFF_OIDC_AUDIENCE` | `erp-api` | The audience requested for access tokens, which the API requires (C91) |
 | `BFF_API_URL` | none (required) | The API's address on the internal network, where `/api/*` is forwarded (Compose: `http://api:8080`, C98) |
 
+Release images: `docker/api.Dockerfile` (the API and `migrate`) and
+`docker/bff.Dockerfile`, built once per BFF instance with its app embedded (C99):
+
+```sh
+docker build -f docker/bff.Dockerfile --build-arg APP=app -t bool-bff-app .
+```
+
 `cmd/migrate` applies the migrations of the modules in the edition it is built with (C95), each with its own history table `migrations.<module>_version`. It reads only these settings (C47), never `APP_*`:
 
 | Variable | Default | Accepted values |

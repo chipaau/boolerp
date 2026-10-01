@@ -11,7 +11,7 @@ The new API lives in `apps/api/`; the previous implementation is preserved in
 the target tree below illustrate future responsibilities unless listed as current;
 they are not approved tables or contracts.
 
-**Current layout (rebuild, step 7c-2):**
+**Current layout (rebuild, step 7c-4):**
 
 ```text
 apps/api/
@@ -23,6 +23,8 @@ apps/api/
     bff/                 the BFF's own packages; no database
       login/             /auth/login and /auth/callback with Hydra (PKCE, state, nonce)
       session/           scs sessions in the session Redis; AES-256-GCM sealed tokens
+      proxy/             /api/* to the API with the session's token, refreshing it (C98)
+      web/               the embedded app (app/ holds a placeholder until a release build, C99)
     bootstrap/           application assembly, one file per dependency
       bootstrap.go       Run: build dependencies, call RegisterModules, serve
       bff.go             RunBFF: the BFF with the same router middleware and telemetry
