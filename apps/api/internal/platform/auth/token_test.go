@@ -1,4 +1,4 @@
-package bearer
+package auth
 
 import (
 	"crypto/rand"
@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/stretchr/testify/assert"
@@ -76,8 +77,8 @@ func sign(t *testing.T, c claims) string {
 // a handler that echoes the verified token.
 func call(t *testing.T, iss *issuer, authorization string) *httptest.ResponseRecorder {
 	t.Helper()
-	v := New(t.Context(), iss.url(), "erp-api", iss.Client())
-	handler := v.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client())
+	handler := m.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, ok := FromContext(r.Context())
 		require.True(t, ok)
 		_, _ = io.WriteString(w, token.Subject+" via "+token.ClientID)
@@ -145,4 +146,22 @@ func TestRecentlyExpiredTokenIsWithinTheAllowance(t *testing.T) {
 	c := iss.valid()
 	c.expires = time.Now().Add(-ClockSkew / 2) // a slow clock on the API's side
 	assert.Equal(t, http.StatusOK, call(t, iss, "Bearer "+sign(t, c)).Code)
+}
+
+func TestRoutesProtectMe(t *testing.T) {
+	iss := newIssuer(t)
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client())
+	r := chi.NewRouter()
+	r.Route("/api/auth", m.Routes) // as bootstrap mounts it
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "the module applies authentication itself")
+
+	req.Header.Set("Authorization", "Bearer "+sign(t, iss.valid()))
+	rec = httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"subject":"account-1","clientId":"bff-app"}`, rec.Body.String())
 }

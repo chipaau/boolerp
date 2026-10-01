@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/bearer"
+	"github.com/boolmv/erp/apps/api/internal/platform/auth"
 	"github.com/boolmv/erp/apps/api/internal/platform/httpinput"
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
 	"github.com/boolmv/erp/apps/api/internal/platform/problem"
@@ -390,16 +390,22 @@ func TestRequestInputThroughTheRouter(t *testing.T) {
 	assert.Equal(t, problem.ContentType, tooLarge.Header().Get("Content-Type"))
 }
 
-func TestProtectedRoutesNeedAToken(t *testing.T) {
+func TestModulesInheritDefaultsAndApplyTheirOwnAuth(t *testing.T) {
 	// No issuer is reachable: a request without a token is refused before any
 	// key is needed, and health checks never ask for one.
-	verifier := bearer.New(t.Context(), "http://127.0.0.1:1/", "erp-api", &http.Client{Timeout: time.Second})
-	router, _ := withConfig(t, routerConfig{MaxBodyBytes: 1024, Authenticate: verifier.Middleware})
+	router, buf := withConfig(t, routerConfig{MaxBodyBytes: 1024})
+	mount(router, modules{
+		auth: auth.New(t.Context(), auth.Settings{Issuer: "http://127.0.0.1:1/", Audience: "erp-api"},
+			&http.Client{Timeout: time.Second}),
+	})
 
 	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/me", nil))
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	assert.Equal(t, "Bearer", rec.Header().Get("WWW-Authenticate"))
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/auth/me", nil))
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "mounted at /api/auth, protected by the module")
+	// The default middleware applies to module routes: request ID and nosniff.
+	assert.NotEmpty(t, rec.Header().Get("X-Request-Id"))
+	assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+	assert.Contains(t, buf.String(), "/api/auth/me", "the request is logged")
 
 	for _, path := range []string{livenessPath, readinessPath} {
 		rec := httptest.NewRecorder()

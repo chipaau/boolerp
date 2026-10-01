@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/bearer"
+	"github.com/boolmv/erp/apps/api/internal/platform/auth"
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
 )
@@ -74,13 +74,14 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		AllowedOrigins:   cfg.HTTP.AllowedOrigins,
 		CheckReady:       pool.Ping,
 		ReadyTimeout:     cfg.DB.PingTimeout,
-		// Hydra's keys are fetched on first use and cached, so the API starts and
-		// is ready while Hydra is down.
-		Authenticate: bearer.New(ctx, cfg.Auth.Issuer, cfg.Auth.Audience, &http.Client{Timeout: 10 * time.Second}).Middleware,
 	})
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}
+	mount(router, modules{
+		auth: auth.New(ctx, auth.Settings{Issuer: cfg.Auth.Issuer, Audience: cfg.Auth.Audience},
+			&http.Client{Timeout: 10 * time.Second}),
+	})
 
 	// Listening separately from serving makes a busy port a startup error,
 	// and "api listening" is logged only once the port is actually bound.

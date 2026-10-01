@@ -159,6 +159,24 @@ Each capability owns its writes. Collaboration uses explicit application contrac
 and operations requiring atomic writes need an agreed transaction contract.
 Generated SQL types remain inside persistence adapters under the proposed port design.
 
+## Modules and routes (C92)
+
+Every module keeps all of its code in its own folder (`internal/platform/<name>` for
+infrastructure such as `auth`, `internal/modules/<name>` for business capabilities):
+routes, handlers, middleware, and types. A module exposes `Routes(r chi.Router)`,
+registering paths relative to its prefix (`/me`, not `/api/auth/me`). Bootstrap only
+constructs modules and mounts them, in `internal/bootstrap/modules.go`:
+
+```go
+r.Route("/api/auth", m.auth.Routes) // GET /api/auth/me
+```
+
+Modules inherit the router's default middleware (request ID, request logging, panic
+recovery, origin checks, body limit, tracing). Authentication is not a default: a
+module applies it to its own routes (`r.Use(authModule.Authenticate)`), receiving the
+auth module's middleware from bootstrap when it is not the auth module itself. There is
+no generic module interface; bootstrap calls each module's `Routes` explicitly.
+
 ## PostgreSQL-only and persistence
 
 PostgreSQL is selected. Database portability is not a goal. The proposed thin

@@ -72,10 +72,10 @@ Hydra issues JWT access tokens valid for 10 minutes. The API accepts a caller on
 `Authorization: Bearer <access token>`: it checks the signature against Hydra's keys
 (fetched once and cached), the issuer, the `erp-api` audience, and expiry (30 seconds
 of allowance), and refuses ID tokens. A client must be allowed the `erp-api` audience
-and request it (`audience=erp-api`). Health checks are public; `GET /api/me` returns the
-token's subject and client. To try it, get a token with Hydra's test client (above,
+and request it (`audience=erp-api`). Health checks are public; `GET /api/auth/me` (the
+`auth` module, C92) returns the token's subject and client. To try it, get a token with Hydra's test client (above,
 adding `--audience erp-api`) and call
-`curl -H "Authorization: Bearer <token>" http://demo.bool.test/api/me`.
+`curl -H "Authorization: Bearer <token>" http://demo.bool.test/api/auth/me`.
 
 ## Accounts and development services (7a-1, C85)
 
