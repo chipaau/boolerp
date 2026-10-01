@@ -26,6 +26,11 @@ identity:
     - id: account
       url: file:///etc/kratos/account.schema.json
 
+# Kratos runs Hydra's login step (C83, C89): it reads and accepts Hydra's login
+# request through Hydra's admin API, on the internal network.
+oauth2_provider:
+  url: http://hydra:4445
+
 selfservice:
   default_browser_return_url: http://identity.bool.test/
   allowed_return_urls:

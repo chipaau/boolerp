@@ -33,6 +33,8 @@ services:
     environment:
       IDENTITY_PUBLIC_URL: http://identity.bool.test
       KRATOS_INTERNAL_URL: http://kratos:4433
+      # Hydra's admin API, for the consent route only (C87, C89).
+      HYDRA_ADMIN_URL: http://hydra:4445
     networks:
       - proxy
       - internal
@@ -75,7 +77,10 @@ services:
       # Kratos's own database and role (20-kratos.sh, C85).
       POSTGRES_KRATOS_USER: erp_kratos
       POSTGRES_KRATOS_PASSWORD_FILE: /run/secrets/db_kratos_password
-    secrets: [postgres_password, db_app_password, db_migrate_password, db_kratos_password]
+      # Hydra's own database and role (30-hydra.sh, C89).
+      POSTGRES_HYDRA_USER: erp_hydra
+      POSTGRES_HYDRA_PASSWORD_FILE: /run/secrets/db_hydra_password
+    secrets: [postgres_password, db_app_password, db_migrate_password, db_kratos_password, db_hydra_password]
     volumes:
       # On first start with an empty volume, PostgreSQL creates the database and
       # 10-roles.sh creates the roles, then applies database-setup.psql (grants
@@ -260,6 +265,69 @@ services:
       - traefik.http.middlewares.erp-kratos-strip.stripprefix.prefixes=/kratos
       - traefik.http.services.erp-kratos.loadbalancer.server.port=4433
 
+  # OAuth2 and OpenID Connect (C83, C89): Ory Hydra with Kratos as its login. Its
+  # issuer is http://identity.bool.test/; Traefik routes its standard public paths
+  # there. Its admin API stays on the internal network.
+  hydra:
+    image: oryd/hydra:v26.2.0
+    command: ["serve", "all", "--dev", "-c", "/etc/hydra/hydra.yml", "-c", "/run/secrets/hydra.yml"]
+    volumes:
+      - ./docker/hydra:/etc/hydra:ro
+    secrets:
+      # Mounted with a .yml name: Hydra picks the format from the extension.
+      - source: hydra_config
+        target: hydra.yml
+    depends_on:
+      hydra-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4445/health/ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - "traefik.http.routers.erp-hydra.rule=Host(`identity.bool.test`) && (PathPrefix(`/oauth2/`) || Path(`/.well-known/openid-configuration`) || Path(`/.well-known/jwks.json`) || Path(`/userinfo`))"
+      - traefik.http.routers.erp-hydra.entrypoints=web
+      - traefik.http.routers.erp-hydra.priority=40
+      - traefik.http.routers.erp-hydra.service=erp-hydra
+      - traefik.http.services.erp-hydra.loadbalancer.server.port=4444
+
+  # Applies Hydra's own migrations to its database before it starts.
+  hydra-migrate:
+    image: oryd/hydra:v26.2.0
+    command: ["migrate", "sql", "up", "--yes", "--read-from-env", "-c", "/etc/hydra/hydra.yml", "-c", "/run/secrets/hydra.yml"]
+    volumes:
+      - ./docker/hydra:/etc/hydra:ro
+    secrets:
+      - source: hydra_config
+        target: hydra.yml
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # Registers the first-party OAuth2 clients in docker/hydra/clients (C89): creates
+  # missing ones and updates the rest; safe to re-run.
+  hydra-clients:
+    image: oryd/hydra:v26.2.0
+    entrypoint: ["/etc/hydra/register-clients.sh"]
+    environment:
+      HYDRA_ADMIN_URL: http://hydra:4445
+    volumes:
+      - ./docker/hydra:/etc/hydra:ro
+    secrets: [hydra_client_dev-test-client]
+    depends_on:
+      hydra:
+        condition: service_healthy
+    networks:
+      - internal
+
   # Applies Kratos's own migrations to its database before it starts.
   kratos-migrate:
     image: oryd/kratos:v26.2.0
@@ -354,6 +422,14 @@ secrets:
   # docker/kratos/kratos.yml.
   kratos_config:
     file: ./docker/secrets/dev/kratos.yml
+  db_hydra_password:
+    file: ./docker/secrets/dev/db_hydra_password
+  # Hydra's database address and system secret, merged over docker/hydra/hydra.yml.
+  hydra_config:
+    file: ./docker/secrets/dev/hydra.yml
+  # One secret per first-party client, named hydra_client_<client-id> (C89).
+  hydra_client_dev-test-client:
+    file: ./docker/secrets/dev/hydra_client_dev-test-client
 
 networks:
   proxy:
