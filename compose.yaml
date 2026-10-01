@@ -153,6 +153,8 @@ services:
       OTEL_TRACES_SAMPLER:
       # Callers present Hydra access tokens, verified against Hydra's keys (C91).
       APP_AUTH_ISSUER: http://identity.bool.test/
+      # Users are read from Kratos's admin API on first use (C94).
+      APP_IDENTITY_KRATOS_ADMIN_URL: http://kratos:4434
     # Only the runtime role's password; never the owner's or the migration role's (C47).
     secrets: [db_app_password]
     # The API fetches Hydra's keys from the issuer's address, through Traefik on the host.

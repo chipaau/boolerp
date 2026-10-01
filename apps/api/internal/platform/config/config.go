@@ -2,7 +2,7 @@
 //
 // Settings are grouped by concern, one file per group: app.go (APP_*), log.go
 // (APP_LOG_*), http.go (APP_HTTP_*), database.go (APP_DB_*), redis.go
-// (APP_REDIS_*), and auth.go (APP_AUTH_*). Each group is a
+// (APP_REDIS_*), auth.go (APP_AUTH_*), and identity.go (APP_IDENTITY_*). Each group is a
 // struct whose env tags are joined to its envPrefix, so DB.Host reads APP_DB_HOST.
 // cmd/migrate has its own settings (migrate.go, MIGRATE_*), loaded by LoadMigrate.
 //
@@ -26,12 +26,13 @@ import (
 // variable (env, joined to the group's envPrefix), its default when unset or
 // empty (envDefault), and its rules (validate).
 type Config struct {
-	App   App   `envPrefix:"APP_"`
-	Log   Log   `envPrefix:"APP_LOG_"`
-	HTTP  HTTP  `envPrefix:"APP_HTTP_"`
-	DB    DB    `envPrefix:"APP_DB_"`
-	Redis Redis `envPrefix:"APP_REDIS_"`
-	Auth  Auth  `envPrefix:"APP_AUTH_"`
+	App      App      `envPrefix:"APP_"`
+	Log      Log      `envPrefix:"APP_LOG_"`
+	HTTP     HTTP     `envPrefix:"APP_HTTP_"`
+	DB       DB       `envPrefix:"APP_DB_"`
+	Redis    Redis    `envPrefix:"APP_REDIS_"`
+	Auth     Auth     `envPrefix:"APP_AUTH_"`
+	Identity Identity `envPrefix:"APP_IDENTITY_"`
 }
 
 // Load reads the API's settings from environ, which uses the os.Environ

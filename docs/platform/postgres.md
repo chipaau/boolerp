@@ -39,14 +39,14 @@ or unredacted driver errors in logs.
 **Rebuild status (step 3c):** `cmd/migrate` (C46, C47) loads only `MIGRATE_DB_*`,
 pings PostgreSQL (so wrong credentials fail even with nothing to apply), takes a
 PostgreSQL advisory lock so concurrent runs apply each migration once, and applies
-pending migrations from `internal/platform/postgres/migrations/sql`, embedded in the
-binary. History is `migrations.goose_db_version`. Migrations are forward-only (no
+pending migrations of each module in the build's edition (C95), in the edition's
+order: each module embeds its own `internal/modules/<module>/migrations` folder and has
+its own history table, `migrations.<module>_version` (C48). Migrations are forward-only (no
 down command). A failure reports the migration file, PostgreSQL's message, and
 SQLSTATE code, never the statement text or PostgreSQL's detail, which can contain
 row values. SIGINT/SIGTERM cancel the run; the overall deadline is five minutes.
-Logs are JSON through the application logger. There are no application migrations
-yet; with the first approved module table they move to per-module folders, each
-with its own history table, run in a fixed module order (C48).
+Logs are JSON through the application logger, with the module's name. The first
+application migration is the identity module's `users` table (C94).
 
 Target contract from the removed implementation:
 

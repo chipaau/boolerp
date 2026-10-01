@@ -28,8 +28,9 @@ import (
 // shutdown. It sits within Compose's stop grace period (C30) with room to spare.
 const telemetryFlushTimeout = 5 * time.Second
 
-// Deps are the shared dependencies Run builds for modules (C92, C93).
+// Deps are the shared dependencies Run builds for modules (C92, C93, C95).
 type Deps struct {
+	Config config.Config
 	Pool   *pgxpool.Pool
 	Cache  *goredis.Client
 	Logger *slog.Logger
@@ -38,13 +39,12 @@ type Deps struct {
 	HTTPClient *http.Client
 }
 
-// RegisterModules constructs the modules of this build and registers their
-// routes at their prefixes (r.Route("/api/auth", authModule.Routes)). main
-// supplies it, so each edition's main lists exactly the modules compiled into its
-// binary (C93). The router already carries the default middleware, which the
-// modules inherit. A Module interface comes with the second thing modules
-// register, their migrations (C48).
-type RegisterModules func(r chi.Router, d Deps)
+// RegisterModules constructs the modules of this build, connects them, and
+// registers their routes at their prefixes (r.Route("/api/auth",
+// authModule.Routes)). Each edition package supplies it (C95). The router
+// already carries the default middleware, which the modules inherit. ctx lives
+// as long as the API.
+type RegisterModules func(ctx context.Context, r chi.Router, d Deps)
 
 // Run builds the API from cfg and serves until ctx is cancelled, then shuts
 // the HTTP server down gracefully. Dependencies are closed by deferred calls
@@ -99,7 +99,8 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, registerMo
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}
-	registerModules(router, Deps{
+	registerModules(ctx, router, Deps{
+		Config:     cfg,
 		Pool:       pool,
 		Cache:      cache,
 		Logger:     logger,

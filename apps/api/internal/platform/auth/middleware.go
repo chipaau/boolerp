@@ -8,10 +8,12 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/problem"
 )
 
-// Authenticate lets a request through only with a valid access token, which it
-// puts in the request context (FromContext). Otherwise it answers 401 with
-// WWW-Authenticate: Bearer (RFC 6750) and problem details; the token and the
-// reason it failed are not echoed. Modules apply it to their own routes.
+// Authenticate lets a request through only with a valid access token, and puts
+// the caller (the token and, for a person, their user) in the request context
+// (FromContext). Otherwise it answers 401 with WWW-Authenticate: Bearer (RFC
+// 6750) and problem details; the token and the reason it failed are not echoed.
+// If the user cannot be loaded (Kratos or the database unavailable on a first
+// request), it answers 503. Modules apply it to their own routes.
 func (m *Module) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, ok := fromHeader(r.Header.Get("Authorization"))
@@ -26,7 +28,17 @@ func (m *Module) Authenticate(next http.Handler) http.Handler {
 			problem.Error(w, r, http.StatusUnauthorized, "The access token is invalid or has expired.")
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextKey{}, token)))
+		caller := Caller{Token: token}
+		if token.Subject != "" {
+			user, err := m.resolve(r.Context(), token.Subject)
+			if err != nil {
+				m.logger.ErrorContext(r.Context(), "loading the caller's user failed", "error", err)
+				problem.Error(w, r, http.StatusServiceUnavailable, "Your account could not be loaded. Try again shortly.")
+				return
+			}
+			caller.User = &user
+		}
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextKey{}, caller)))
 	})
 }
 

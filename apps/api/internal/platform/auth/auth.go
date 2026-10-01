@@ -9,6 +9,7 @@ package auth
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -17,6 +18,28 @@ import (
 // Module is the auth module.
 type Module struct {
 	verifier *Verifier
+	resolve  ResolveUser
+	logger   *slog.Logger
+}
+
+// User is the signed-in person, as the identity module records them (C94). auth
+// does not import modules; the edition passes it a ResolveUser.
+type User struct {
+	ID          string // our user ID
+	Email       string
+	Phone       string
+	DisplayName string
+}
+
+// ResolveUser returns the user for a token's subject (a Kratos account),
+// creating it on first use.
+type ResolveUser func(ctx context.Context, subject string) (User, error)
+
+// Caller is who a request is from: the verified token and, when the token is
+// for a person (it has a subject), their user.
+type Caller struct {
+	Token Token
+	User  *User // nil for a client acting for itself
 }
 
 // Settings configure the module (from config.Auth).
@@ -27,9 +50,10 @@ type Settings struct {
 
 // New returns the module. client fetches Hydra's keys; ctx bounds those
 // fetches, so pass the application's lifetime context. Keys are fetched on first
-// use, so the API starts and is ready while Hydra is down.
-func New(ctx context.Context, s Settings, client *http.Client) *Module {
-	return &Module{verifier: NewVerifier(ctx, s.Issuer, s.Audience, client)}
+// use, so the API starts and is ready while Hydra is down. resolve turns a
+// token's subject into the user.
+func New(ctx context.Context, s Settings, client *http.Client, resolve ResolveUser, logger *slog.Logger) *Module {
+	return &Module{verifier: NewVerifier(ctx, s.Issuer, s.Audience, client), resolve: resolve, logger: logger}
 }
 
 // Routes registers the module's routes, relative to where it is mounted.

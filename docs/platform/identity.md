@@ -21,7 +21,7 @@ login provider: one login service (`identity.bool.test` in development) for ever
 domain the API serves, because open-source Kratos cannot set session cookies on
 unrelated domains such as customers' own domains or `findcare.mv`. The API is a Hydra
 client: it completes the login on the request's own domain and keeps its own session
-there. The roadmap delivers this in steps 7a–7f; custom-domain login (7f) follows the
+there. The roadmap delivers this in steps 7a–7g; custom-domain login (7f) follows the
 tenancy domain registry. Whether ERP and FindCare share accounts is still open.
 
 Each client can have a fully custom login page design (C84): our own login UI reads
@@ -73,9 +73,26 @@ Hydra issues JWT access tokens valid for 10 minutes. The API accepts a caller on
 (fetched once and cached), the issuer, the `erp-api` audience, and expiry (30 seconds
 of allowance), and refuses ID tokens. A client must be allowed the `erp-api` audience
 and request it (`audience=erp-api`). Health checks are public; `GET /api/auth/me` (the
-`auth` module, C92) returns the token's subject and client. To try it, get a token with Hydra's test client (above,
+`auth` module, C92) returns the caller's user (7d) and client. To try it, get a token with Hydra's test client (above,
 adding `--audience erp-api`) and call
 `curl -H "Authorization: Bearer <token>" http://demo.bool.test/api/auth/me`.
+
+## Users and caller context (7d, C94)
+
+The `identity` module (`apps/api/internal/modules/identity`) owns the `users` table:
+the API's own ID for a person and copies of the Kratos identity's email, phone, and
+name ([data model](../data-model/README.md)). Other tables reference `users.id`, never
+the Kratos identity ID. A user is created **on first use**: when a request carries a
+person's token and no row exists for its subject, the module reads the identity from
+Kratos's admin API (`ory/client-go`, `APP_IDENTITY_KRATOS_ADMIN_URL`) and inserts the
+row. A person who registers but never uses an app has no row until their first login.
+
+The `auth` module's `Authenticate` middleware resolves the token's subject to the user
+through a `ResolveUser` function the edition supplies, and keeps the caller (token and
+user) in the request context (`auth.FromContext`). If the user cannot be loaded, the
+request gets 503 without the cause. The copy is not refreshed after creation yet:
+self-service settings cannot change account fields (C85), so traits change only through
+the admin API, and the code that does that will refresh the user.
 
 ## Accounts and development services (7a-1, C85)
 
@@ -132,5 +149,5 @@ Application ports separate use cases from the selected identity provider or sess
 implementation. Removing previous identity services from Compose neither selects
 an alternative nor authorizes implementing credential handling without a design.
 
-No provider ID is assumed to be the application's user primary key. No credentials,
+No provider ID is the application's user primary key (`users.id` is, C94). No credentials,
 tokens, or full identity payloads belong in traces, cache keys, or ordinary logs.

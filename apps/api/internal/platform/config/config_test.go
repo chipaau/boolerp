@@ -20,6 +20,7 @@ func withDB(t *testing.T, environ []string) []string {
 		"APP_DB_HOST=postgres", "APP_DB_NAME=erp", "APP_DB_USER=erp_app",
 		"APP_DB_PASSWORD_FILE=" + secretFile(t, "s3cret"), "APP_REDIS_HOST=redis",
 		"APP_AUTH_ISSUER=http://identity.bool.test/",
+		"APP_IDENTITY_KRATOS_ADMIN_URL=http://kratos:4434",
 	}
 	return append(required, environ...)
 }
@@ -50,6 +51,9 @@ func defaults() Config {
 		},
 		Redis: Redis{Host: "redis", Port: 6379, TLS: true, Timeout: 500 * time.Millisecond},
 		Auth:  Auth{Issuer: "http://identity.bool.test/", Audience: "erp-api"},
+		Identity: Identity{
+			KratosAdminURL: "http://kratos:4434",
+		},
 	}
 }
 
@@ -107,7 +111,16 @@ func TestLoadValues(t *testing.T) {
 			TLS: false, Timeout: 250 * time.Millisecond,
 		},
 		Auth: Auth{Issuer: "http://identity.bool.test/", Audience: "erp-api"},
+		Identity: Identity{
+			KratosAdminURL: "http://kratos:4434",
+		},
 	}, cfg)
+}
+
+func TestLoadIdentity(t *testing.T) {
+	// Kratos's admin API must be an HTTP URL.
+	_, err := Load(withDB(t, []string{"APP_IDENTITY_KRATOS_ADMIN_URL=kratos:4434"}))
+	assert.ErrorContains(t, err, "APP_IDENTITY_KRATOS_ADMIN_URL")
 }
 
 func TestLoadAuth(t *testing.T) {
@@ -256,7 +269,7 @@ func TestEveryFieldHasAVariable(t *testing.T) {
 	for path, variable := range api.byPath {
 		assert.Regexp(t, `^APP_[A-Z_]+$`, variable, path)
 	}
-	assert.Len(t, api.byPath, 29, "update this count when adding a setting")
+	assert.Len(t, api.byPath, 30, "update this count when adding a setting")
 
 	migrate := variables(reflect.TypeFor[Migrate]())
 	for path, variable := range migrate.byPath {

@@ -1,10 +1,13 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,6 +19,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// knownUser resolves every subject to the same user.
+func knownUser(_ context.Context, subject string) (User, error) {
+	if subject != "account-1" {
+		return User{}, errors.New("unexpected subject " + subject)
+	}
+	return User{ID: "user-1", Email: "a@b.test", Phone: "+9607770000", DisplayName: "Aisha"}, nil
+}
 
 // issuer publishes a signing key at /.well-known/jwks.json, as Hydra does.
 type issuer struct {
@@ -77,11 +88,11 @@ func sign(t *testing.T, c claims) string {
 // a handler that echoes the verified token.
 func call(t *testing.T, iss *issuer, authorization string) *httptest.ResponseRecorder {
 	t.Helper()
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client())
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), knownUser, slog.New(slog.DiscardHandler))
 	handler := m.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, ok := FromContext(r.Context())
+		caller, ok := FromContext(r.Context())
 		require.True(t, ok)
-		_, _ = io.WriteString(w, token.Subject+" via "+token.ClientID)
+		_, _ = io.WriteString(w, caller.Token.Subject+" via "+caller.Token.ClientID)
 	}))
 	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
 	if authorization != "" {
@@ -150,7 +161,7 @@ func TestRecentlyExpiredTokenIsWithinTheAllowance(t *testing.T) {
 
 func TestRoutesProtectMe(t *testing.T) {
 	iss := newIssuer(t)
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client())
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), knownUser, slog.New(slog.DiscardHandler))
 	r := chi.NewRouter()
 	r.Route("/api/auth", m.Routes) // as bootstrap mounts it
 
@@ -163,5 +174,41 @@ func TestRoutesProtectMe(t *testing.T) {
 	rec = httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"subject":"account-1","clientId":"bff-app"}`, rec.Body.String())
+	assert.JSONEq(t, `{"user":{"id":"user-1","email":"a@b.test","phone":"+9607770000","displayName":"Aisha"},"clientId":"bff-app"}`, rec.Body.String())
+}
+
+func TestCallerIsTheResolvedUser(t *testing.T) {
+	iss := newIssuer(t)
+	var resolved []string
+	resolve := func(ctx context.Context, subject string) (User, error) {
+		resolved = append(resolved, subject)
+		return knownUser(ctx, subject)
+	}
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), resolve, slog.New(slog.DiscardHandler))
+	var caller Caller
+	handler := m.Authenticate(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		caller, _ = FromContext(r.Context())
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+sign(t, iss.valid()))
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	assert.Equal(t, []string{"account-1"}, resolved)
+	require.NotNil(t, caller.User)
+	assert.Equal(t, "user-1", caller.User.ID)
+	assert.Equal(t, "bff-app", caller.Token.ClientID)
+}
+
+func TestUnavailableUserIsA503WithoutTheCause(t *testing.T) {
+	iss := newIssuer(t)
+	failing := func(context.Context, string) (User, error) { return User{}, errors.New("s3cret-cause") }
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), failing, slog.New(slog.DiscardHandler))
+	handler := m.Authenticate(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("must not be reached") }))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+sign(t, iss.valid()))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "s3cret-cause")
 }

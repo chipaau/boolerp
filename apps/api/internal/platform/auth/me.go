@@ -5,13 +5,23 @@ import (
 	"net/http"
 )
 
-// me answers who the access token says is calling: the account and the client
-// (GET /api/auth/me). The caller context of step 7d builds on it.
+// me answers who is calling (GET /api/auth/me): the signed-in user and the
+// client the token was issued to. A client acting for itself has no user.
 func (m *Module) me(w http.ResponseWriter, r *http.Request) {
-	token, _ := FromContext(r.Context())
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(struct {
-		Subject  string `json:"subject"`
+	caller, _ := FromContext(r.Context())
+	type user struct {
+		ID          string `json:"id"`
+		Email       string `json:"email"`
+		Phone       string `json:"phone"`
+		DisplayName string `json:"displayName,omitempty"`
+	}
+	body := struct {
+		User     *user  `json:"user"`
 		ClientID string `json:"clientId"`
-	}{token.Subject, token.ClientID})
+	}{ClientID: caller.Token.ClientID}
+	if u := caller.User; u != nil {
+		body.User = &user{ID: u.ID, Email: u.Email, Phone: u.Phone, DisplayName: u.DisplayName}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(body)
 }

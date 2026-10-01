@@ -74,9 +74,9 @@ const errNotAccessToken = tokenError("auth: not an access token (no client_id)")
 
 type contextKey struct{}
 
-// FromContext returns the verified token of the request, if any (set by
+// FromContext returns the request's caller, if authenticated (set by
 // Module.Authenticate).
-func FromContext(ctx context.Context) (Token, bool) {
-	t, ok := ctx.Value(contextKey{}).(Token)
-	return t, ok
+func FromContext(ctx context.Context) (Caller, bool) {
+	c, ok := ctx.Value(contextKey{}).(Caller)
+	return c, ok
 }

@@ -11,34 +11,48 @@ The new API lives in `apps/api/`; the previous implementation is preserved in
 the target tree below illustrate future responsibilities unless listed as current;
 they are not approved tables or contracts.
 
-**Current layout (rebuild, step 4):**
+**Current layout (rebuild, step 7d):**
 
 ```text
 apps/api/
   cmd/
-    api/main.go          process concerns: config, logger, signals, exit code
-    migrate/main.go      explicit migrations with MIGRATE_DB_* (C46, C47)
+    api/main.go          process concerns; mounts the edition's modules (C93)
+    migrate/main.go      applies the edition's module migrations with MIGRATE_DB_* (C46, C47, C95)
   internal/
     bootstrap/           application assembly, one file per dependency
-      bootstrap.go       Run: build dependencies, serve, close in reverse order
+      bootstrap.go       Run: build dependencies, call RegisterModules, serve
       database.go        PostgreSQL pool from config.DB
       redis.go           Redis client from config.Redis
       http.go            router, middleware, liveness/readiness, http.Server
+      tracing.go, metrics.go
+    edition/
+      full/              every module: RegisterModules and Migrations (C95)
+    modules/
+      identity/          users (C94)
+        identity.go      New, Resolve, Migrations
+        domain/          User, Account
+        application/     Service (Resolve, Sync) and its ports
+        adapters/
+          kratos/        Kratos admin API through ory/client-go
+          store/         users in PostgreSQL
+        migrations/      embedded Goose SQL, history migrations.identity_version
     platform/
+      auth/              access tokens, Authenticate, the caller, GET /api/auth/me (C91, C92)
       config/            settings grouped by concern (C44)
+      httpinput/         JSON request decoding and validation
       httpserver/        server limits and graceful shutdown (framework-agnostic)
-      observability/     slog logger and redaction
-      postgres/          pool, database/sql for Goose, migrations
+      observability/     slog logger and redaction, tracing, metrics
+      postgres/          pool, database/sql for Goose, module migrations
       problem/           RFC 9457 errors and panic recovery
       redis/             fail-fast Redis client
       requestid/         request IDs
+    testdb/              feature-test transactions as the runtime role
 ```
 
-`main` loads configuration, builds the logger, and hands both to `bootstrap.Run`,
-which constructs every dependency explicitly (no global container), serves HTTP,
-and closes dependencies after the server has shut down. A new dependency gets its
-own `bootstrap/<name>.go`. There are no application modules, generated query
-packages, or application migrations yet.
+`main` loads configuration, builds the logger, and hands both to `bootstrap.Run` with
+its edition's `RegisterModules`. `bootstrap.Run` constructs every dependency explicitly
+(no global container), lets the edition mount its modules, serves HTTP, and closes
+dependencies after the server has shut down. A new dependency gets its own `bootstrap/<name>.go`.
 
 ## Target layout
 
@@ -110,7 +124,7 @@ apps/api/
             routes.go
             requests.go
             responses.go
-          postgres/
+          store/
             employees.go
             transaction.go
             mapping.go
@@ -131,9 +145,9 @@ apps/api/
   go.sum
 ```
 
-The worker directory is a placeholder. The migration command is implemented,
-but there are no application SQL migrations, generated query files, employee
-types, or OpenAPI contract yet. The sqlc paths illustrate the deferred query
+The worker directory is a placeholder. The target tree predates C95: migrations
+live in each module's `migrations` folder, not a global `migrations/`. There are no
+generated query files, employee types, or OpenAPI contract yet. The sqlc paths illustrate the deferred query
 generation option. Kratos and Cerbos adapters are planned against the confirmed
 provider choices; their detailed integration contracts remain open in the
 [decision register](../decisions/README.md).
@@ -158,37 +172,52 @@ PostgreSQL implementation. HTTP and job adapters must not access tables directly
 Each capability owns its writes. Collaboration uses explicit application contracts,
 and operations requiring atomic writes need an agreed transaction contract.
 Generated SQL types remain inside persistence adapters under the proposed port design.
+A module's database adapter is `adapters/store` (package `store`), named by its role
+rather than the database, so it never clashes with `internal/platform/postgres`;
+adapters for external providers are named after the provider (`adapters/kratos`).
 
-## Modules and routes (C92)
+## Modules and routes (C92, C93, C95)
 
 Every module keeps all of its code in its own folder (`internal/platform/<name>` for
 infrastructure such as `auth`, `internal/modules/<name>` for business capabilities):
-routes, handlers, middleware, and types. A module exposes `Routes(r chi.Router)`,
-registering paths relative to its prefix (`/me`, not `/api/auth/me`). The build's
-`main` constructs its modules and mounts them through the `RegisterModules`
-callback that `bootstrap.Run` calls with the router and `bootstrap.Deps` (C93):
+routes, handlers, middleware, types, and migrations. A module exposes
+`Routes(r chi.Router)` when it has routes, registering
+paths relative to its prefix (`/me`, not `/api/auth/me`).
+
+An **edition package** (`internal/edition/<name>`) lists a product edition's modules
+once. Its `RegisterModules` is the callback `bootstrap.Run` calls with the public
+router and `bootstrap.Deps`; it constructs the modules, wires
+them to each other explicitly, and mounts them. Its `Migrations` lists the modules'
+embedded migrations in dependency order for `cmd/migrate`:
 
 ```go
-// cmd/api/main.go
-func registerModules(ctx context.Context, cfg config.Config) bootstrap.RegisterModules {
-	return func(r chi.Router, d bootstrap.Deps) {
-		authModule := auth.New(ctx, auth.Settings{...}, d.HTTPClient)
-		r.Route("/api/auth", authModule.Routes) // GET /api/auth/me
-	}
+// internal/edition/full/full.go
+var Migrations = []postgres.ModuleMigrations{{Name: "identity", FS: identity.Migrations()}}
+
+func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
+	users := identity.New(d.Pool, identity.Settings{...}, d.HTTPClient)
+	resolve := func(ctx context.Context, subject string) (auth.User, error) { ... users.Resolve ... }
+	authModule := auth.New(ctx, auth.Settings{...}, d.HTTPClient, resolve, d.Logger)
+	r.Route("/api/auth", authModule.Routes) // GET /api/auth/me
 }
 ```
 
-When modules also register their migrations (C48), a small `Module` interface (routes
-and migrations) is added in `bootstrap`, and `main` lists `{prefix, module}` pairs.
+Each edition has its own `main` packages (`cmd/api`, `cmd/migrate`, later for example
+`cmd/api-hrms`) that import its edition package; modules an edition does not list are
+not compiled into its binaries, and a binary and its migrator always agree. There is
+no generic `Module` interface or container.
 
-A product edition with fewer modules is another `main` (such as `cmd/api-hrms`) that
-mounts fewer; modules it does not import are not compiled into its binary.
+**Dependencies between modules:** business modules may depend on platform modules. A
+module that needs another business module defines the interface it needs in its own
+`application` package, and the edition passes the other module in. Platform modules
+never import business modules: `auth` receives a `ResolveUser` function, which the
+edition builds from the identity module. No module reads another module's tables.
 
 Modules inherit the router's default middleware (request ID, request logging, panic
 recovery, origin checks, body limit, tracing). Authentication is not a default: a
 module applies it to its own routes (`r.Use(authModule.Authenticate)`), receiving the
-auth module's middleware from `main` when it is not the auth module itself. There is
-no generic module interface; `main` calls each module's `Routes` explicitly.
+auth module's middleware from the edition when it is not the auth module itself.
+Handlers read the caller (token and user) with `auth.FromContext`.
 
 ## PostgreSQL-only and persistence
 
@@ -214,7 +243,7 @@ query interface alone does not remove dependency on generated persistence types.
 | sqlc | Deferred until an approved table needs generated queries |
 | Structured slog logs | Implemented in platform step 1; JSON/info to stdout by default |
 | OpenTelemetry | Proposed; propagation, exporter, and operational policy open |
-| Identity/authentication | Ory Kratos selected; integration and lifecycle contracts open |
+| Identity/authentication | Ory Kratos and Hydra selected; access tokens (C91) and users (C94) implemented; session lifecycle contracts open |
 | Authorization | Cerbos selected; policy model and enforcement contracts open |
 | File/object storage | S3 API selected; `chipaau/minio` (project's exact MinIO fork) selected for development |
 | Queue implementation and Redis client | Open |
