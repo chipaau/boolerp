@@ -50,8 +50,8 @@ func (s *Service) Resolve(ctx context.Context, kratosIdentityID string) (domain.
 	return s.Sync(ctx, kratosIdentityID)
 }
 
-// Sync copies a Kratos account into its user, creating it if needed. Kratos's
-// web hook calls it after registration; Resolve calls it on first use.
+// Sync copies a Kratos account into its user, creating it if needed. Resolve
+// calls it on first use.
 func (s *Service) Sync(ctx context.Context, kratosIdentityID string) (domain.User, error) {
 	a, err := s.accounts.Get(ctx, kratosIdentityID)
 	if err != nil {

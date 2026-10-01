@@ -21,7 +21,6 @@ func withDB(t *testing.T, environ []string) []string {
 		"APP_DB_PASSWORD_FILE=" + secretFile(t, "s3cret"), "APP_REDIS_HOST=redis",
 		"APP_AUTH_ISSUER=http://identity.bool.test/",
 		"APP_IDENTITY_KRATOS_ADMIN_URL=http://kratos:4434",
-		"APP_IDENTITY_WEBHOOK_KEY_FILE=" + secretFile(t, "webhook-s3cret-key-0123456789abcdef"),
 	}
 	return append(required, environ...)
 }
@@ -37,7 +36,7 @@ func secretFile(t *testing.T, content string) string {
 // defaults is the configuration expected when only the required settings are set.
 func defaults() Config {
 	return Config{
-		App: App{Environment: "dev", ListenPort: 8080, InternalPort: 8081, ShutdownTimeout: 35 * time.Second},
+		App: App{Environment: "dev", ListenPort: 8080, ShutdownTimeout: 35 * time.Second},
 		Log: Log{Format: "json", Level: slog.LevelInfo},
 		HTTP: HTTP{
 			MaxBodyBytes:      1 << 20,
@@ -53,7 +52,7 @@ func defaults() Config {
 		Redis: Redis{Host: "redis", Port: 6379, TLS: true, Timeout: 500 * time.Millisecond},
 		Auth:  Auth{Issuer: "http://identity.bool.test/", Audience: "erp-api"},
 		Identity: Identity{
-			KratosAdminURL: "http://kratos:4434", WebhookKey: "webhook-s3cret-key-0123456789abcdef",
+			KratosAdminURL: "http://kratos:4434",
 		},
 	}
 }
@@ -92,7 +91,7 @@ func TestLoadValues(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	assert.Equal(t, Config{
-		App: App{Environment: "prod", ListenPort: 9000, InternalPort: 8081, ShutdownTimeout: 3 * time.Second},
+		App: App{Environment: "prod", ListenPort: 9000, ShutdownTimeout: 3 * time.Second},
 		Log: Log{Format: "text", Level: slog.LevelDebug},
 		HTTP: HTTP{
 			MaxBodyBytes:      2048,
@@ -113,19 +112,15 @@ func TestLoadValues(t *testing.T) {
 		},
 		Auth: Auth{Issuer: "http://identity.bool.test/", Audience: "erp-api"},
 		Identity: Identity{
-			KratosAdminURL: "http://kratos:4434", WebhookKey: "webhook-s3cret-key-0123456789abcdef",
+			KratosAdminURL: "http://kratos:4434",
 		},
 	}, cfg)
 }
 
 func TestLoadIdentity(t *testing.T) {
-	// The internal port must differ from the public one.
-	_, err := Load(withDB(t, []string{"APP_PORT=8080", "APP_INTERNAL_PORT=8080"}))
-	assert.ErrorContains(t, err, "APP_INTERNAL_PORT: must satisfy nefield=APP_PORT")
-	// A short web hook key is refused, without echoing it.
-	_, err = Load(withDB(t, []string{"APP_IDENTITY_WEBHOOK_KEY_FILE=" + secretFile(t, "short-s3cret")}))
-	assert.ErrorContains(t, err, "APP_IDENTITY_WEBHOOK_KEY_FILE")
-	assert.NotContains(t, err.Error(), "short-s3cret")
+	// Kratos's admin API must be an HTTP URL.
+	_, err := Load(withDB(t, []string{"APP_IDENTITY_KRATOS_ADMIN_URL=kratos:4434"}))
+	assert.ErrorContains(t, err, "APP_IDENTITY_KRATOS_ADMIN_URL")
 }
 
 func TestLoadAuth(t *testing.T) {
@@ -274,7 +269,7 @@ func TestEveryFieldHasAVariable(t *testing.T) {
 	for path, variable := range api.byPath {
 		assert.Regexp(t, `^APP_[A-Z_]+$`, variable, path)
 	}
-	assert.Len(t, api.byPath, 32, "update this count when adding a setting")
+	assert.Len(t, api.byPath, 30, "update this count when adding a setting")
 
 	migrate := variables(reflect.TypeFor[Migrate]())
 	for path, variable := range migrate.byPath {

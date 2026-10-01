@@ -82,23 +82,17 @@ adding `--audience erp-api`) and call
 The `identity` module (`apps/api/internal/modules/identity`) owns the `users` table:
 the API's own ID for a person and copies of the Kratos identity's email, phone, and
 name ([data model](../data-model/README.md)). Other tables reference `users.id`, never
-the Kratos identity ID. A user is created or refreshed, by Kratos identity ID, when:
-
-- **Kratos calls the registration web hook** after a password or Google registration
-  (configured in `docker/secrets/dev/kratos.yml`, body `docker/kratos/user-created.jsonnet`).
-  It sends only the identity ID to `POST /internal/identity/kratos` on the API's
-  internal listener (`APP_INTERNAL_PORT`, 8081), which Traefik does not route; the
-  header `X-Webhook-Key` must match `APP_IDENTITY_WEBHOOK_KEY_FILE`. The module reads
-  the identity from Kratos's admin API (`ory/client-go`) rather than trusting the body.
-  Kratos ignores the response, so registration never fails because of the API.
-- **A person's token is first used** and no row exists yet (an identity created before
-  the hook, or a failed hook).
+the Kratos identity ID. A user is created **on first use**: when a request carries a
+person's token and no row exists for its subject, the module reads the identity from
+Kratos's admin API (`ory/client-go`, `APP_IDENTITY_KRATOS_ADMIN_URL`) and inserts the
+row. A person who registers but never uses an app has no row until their first login.
 
 The `auth` module's `Authenticate` middleware resolves the token's subject to the user
 through a `ResolveUser` function the edition supplies, and keeps the caller (token and
 user) in the request context (`auth.FromContext`). If the user cannot be loaded, the
-request gets 503 without the cause. Changes to an identity's traits reach the copy on
-the next sync.
+request gets 503 without the cause. The copy is not refreshed after creation yet:
+self-service settings cannot change account fields (C85), so traits change only through
+the admin API, and the code that does that will refresh the user.
 
 ## Accounts and development services (7a-1, C85)
 

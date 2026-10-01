@@ -208,24 +208,3 @@ func allowedMethods(r *http.Request) []string {
 	}
 	return allowed
 }
-
-// newInternalRouter builds the router of the internal listener (C94), which the
-// proxy never routes: only services on the internal network reach it, such as
-// Kratos's web hook. It has request IDs, request logging, panic recovery, and the
-// body limit; not the browser-facing CORS and origin checks.
-func newInternalRouter(logger *slog.Logger, maxBodyBytes int64) chi.Router {
-	r := chi.NewRouter()
-	r.Use(requestid.Middleware)
-	r.Use(httplog.RequestLogger(logger, &httplog.Options{
-		Level:              slog.LevelInfo,
-		Schema:             httplog.SchemaOTEL,
-		RecoverPanics:      true,
-		LogRequestHeaders:  []string{"Content-Type"},
-		LogResponseHeaders: []string{"Content-Type"},
-	}))
-	r.Use(problem.Recoverer(logger))
-	r.Use(middleware.RequestSize(maxBodyBytes))
-	r.NotFound(notFound)
-	r.MethodNotAllowed(methodNotAllowed)
-	return r
-}

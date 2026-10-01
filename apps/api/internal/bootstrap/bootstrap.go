@@ -19,7 +19,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
@@ -41,12 +40,11 @@ type Deps struct {
 }
 
 // RegisterModules constructs the modules of this build, connects them, and
-// registers their routes at their prefixes: public routes on r
-// (r.Route("/api/auth", authModule.Routes)), internal-only routes on internal
-// (C94). Each edition package supplies it (C95). Both routers already carry
-// their default middleware, which the modules inherit. ctx lives as long as the
-// API.
-type RegisterModules func(ctx context.Context, r, internal chi.Router, d Deps)
+// registers their routes at their prefixes (r.Route("/api/auth",
+// authModule.Routes)). Each edition package supplies it (C95). The router
+// already carries the default middleware, which the modules inherit. ctx lives
+// as long as the API.
+type RegisterModules func(ctx context.Context, r chi.Router, d Deps)
 
 // Run builds the API from cfg and serves until ctx is cancelled, then shuts
 // the HTTP server down gracefully. Dependencies are closed by deferred calls
@@ -101,8 +99,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, registerMo
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}
-	internal := newInternalRouter(logger, cfg.HTTP.MaxBodyBytes)
-	registerModules(ctx, router, internal, Deps{
+	registerModules(ctx, router, Deps{
 		Config:     cfg,
 		Pool:       pool,
 		Cache:      cache,
@@ -116,20 +113,8 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, registerMo
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	internalLn, err := new(net.ListenConfig).Listen(ctx, "tcp", net.JoinHostPort("", strconv.Itoa(cfg.App.InternalPort)))
-	if err != nil {
-		_ = ln.Close()
-		return fmt.Errorf("listen (internal): %w", err)
-	}
-	logger.Info("api listening", "address", ln.Addr().String(), "internal_address", internalLn.Addr().String())
+	logger.Info("api listening", "address", ln.Addr().String())
 
-	// Both servers stop together: on shutdown, or when either one fails.
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		return httpserver.Serve(gctx, logger, newServer(instrumentHTTP(router, tr, mt), cfg.HTTP, logger), ln, cfg.App.ShutdownTimeout)
-	})
-	g.Go(func() error {
-		return httpserver.Serve(gctx, logger, newServer(instrumentHTTP(internal, tr, mt), cfg.HTTP, logger), internalLn, cfg.App.ShutdownTimeout)
-	})
-	return g.Wait()
+	handler := instrumentHTTP(router, tr, mt)
+	return httpserver.Serve(ctx, logger, newServer(handler, cfg.HTTP, logger), ln, cfg.App.ShutdownTimeout)
 }

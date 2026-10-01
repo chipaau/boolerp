@@ -20,20 +20,19 @@ apps/api/
     migrate/main.go      applies the edition's module migrations with MIGRATE_DB_* (C46, C47, C95)
   internal/
     bootstrap/           application assembly, one file per dependency
-      bootstrap.go       Run: build dependencies, call RegisterModules, serve both listeners
+      bootstrap.go       Run: build dependencies, call RegisterModules, serve
       database.go        PostgreSQL pool from config.DB
       redis.go           Redis client from config.Redis
-      http.go            public and internal routers, liveness/readiness, http.Server
+      http.go            router, middleware, liveness/readiness, http.Server
       tracing.go, metrics.go
     edition/
       full/              every module: RegisterModules and Migrations (C95)
     modules/
       identity/          users (C94)
-        identity.go      New, Resolve, InternalRoutes, Migrations
+        identity.go      New, Resolve, Migrations
         domain/          User, Account
         application/     Service (Resolve, Sync) and its ports
         adapters/
-          http/          Kratos web hook on the internal listener
           kratos/        Kratos admin API through ory/client-go
           postgres/      users store
         migrations/      embedded Goose SQL, history migrations.identity_version
@@ -52,10 +51,8 @@ apps/api/
 
 `main` loads configuration, builds the logger, and hands both to `bootstrap.Run` with
 its edition's `RegisterModules`. `bootstrap.Run` constructs every dependency explicitly
-(no global container), lets the edition mount its modules, serves the public listener
-and the internal listener (`APP_INTERNAL_PORT`, never routed by the proxy, for calls
-from other services such as Kratos's web hook), and closes dependencies after both
-have shut down. A new dependency gets its own `bootstrap/<name>.go`.
+(no global container), lets the edition mount its modules, serves HTTP, and closes
+dependencies after the server has shut down. A new dependency gets its own `bootstrap/<name>.go`.
 
 ## Target layout
 
@@ -181,12 +178,12 @@ Generated SQL types remain inside persistence adapters under the proposed port d
 Every module keeps all of its code in its own folder (`internal/platform/<name>` for
 infrastructure such as `auth`, `internal/modules/<name>` for business capabilities):
 routes, handlers, middleware, types, and migrations. A module exposes
-`Routes(r chi.Router)` (and `InternalRoutes` when other services call it), registering
+`Routes(r chi.Router)` when it has routes, registering
 paths relative to its prefix (`/me`, not `/api/auth/me`).
 
 An **edition package** (`internal/edition/<name>`) lists a product edition's modules
 once. Its `RegisterModules` is the callback `bootstrap.Run` calls with the public
-router, the internal router, and `bootstrap.Deps`; it constructs the modules, wires
+router and `bootstrap.Deps`; it constructs the modules, wires
 them to each other explicitly, and mounts them. Its `Migrations` lists the modules'
 embedded migrations in dependency order for `cmd/migrate`:
 
@@ -194,12 +191,11 @@ embedded migrations in dependency order for `cmd/migrate`:
 // internal/edition/full/full.go
 var Migrations = []postgres.ModuleMigrations{{Name: "identity", FS: identity.Migrations()}}
 
-func RegisterModules(ctx context.Context, r, internal chi.Router, d bootstrap.Deps) {
-	users := identity.New(d.Pool, identity.Settings{...}, d.HTTPClient, d.Logger)
+func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
+	users := identity.New(d.Pool, identity.Settings{...}, d.HTTPClient)
 	resolve := func(ctx context.Context, subject string) (auth.User, error) { ... users.Resolve ... }
 	authModule := auth.New(ctx, auth.Settings{...}, d.HTTPClient, resolve, d.Logger)
-	r.Route("/api/auth", authModule.Routes)                // GET /api/auth/me
-	internal.Route("/internal/identity", users.InternalRoutes) // POST /internal/identity/kratos
+	r.Route("/api/auth", authModule.Routes) // GET /api/auth/me
 }
 ```
 

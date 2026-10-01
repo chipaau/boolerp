@@ -38,8 +38,7 @@ tenant membership and employee records are separate tables (identity rules), and
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set on every sync. |
 
 Kratos stays the authority for the copied traits; the identity module writes the row
-when Kratos's registration web hook calls it and on a person's first authenticated
-request, and refreshes the copy on every sync. `email`, `phone`, and `display_name`
+on a person's first authenticated request (C94). `email`, `phone`, and `display_name`
 are personal data: never logged, cached, or traced. The migration is
 `apps/api/internal/modules/identity/migrations/00001_users.sql`.
 

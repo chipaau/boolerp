@@ -23,13 +23,10 @@ var Migrations = []postgres.ModuleMigrations{
 
 // RegisterModules builds the edition's modules, connects them, and registers
 // their routes (bootstrap.RegisterModules).
-func RegisterModules(ctx context.Context, r, internal chi.Router, d bootstrap.Deps) {
+func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
 	cfg := d.Config
 
-	users := identity.New(d.Pool, identity.Settings{
-		KratosAdminURL: cfg.Identity.KratosAdminURL,
-		WebhookKey:     cfg.Identity.WebhookKey,
-	}, d.HTTPClient, d.Logger)
+	users := identity.New(d.Pool, identity.Settings{KratosAdminURL: cfg.Identity.KratosAdminURL}, d.HTTPClient)
 
 	// auth turns a token's subject into the user through identity.
 	resolve := func(ctx context.Context, subject string) (auth.User, error) {
@@ -40,5 +37,4 @@ func RegisterModules(ctx context.Context, r, internal chi.Router, d bootstrap.De
 		d.HTTPClient, resolve, d.Logger)
 
 	r.Route("/api/auth", authModule.Routes)
-	internal.Route("/internal/identity", users.InternalRoutes)
 }
