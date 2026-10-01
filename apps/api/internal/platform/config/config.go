@@ -4,7 +4,8 @@
 // (APP_LOG_*), http.go (APP_HTTP_*), database.go (APP_DB_*), redis.go
 // (APP_REDIS_*), auth.go (APP_AUTH_*), and identity.go (APP_IDENTITY_*). Each group is a
 // struct whose env tags are joined to its envPrefix, so DB.Host reads APP_DB_HOST.
-// cmd/migrate has its own settings (migrate.go, MIGRATE_*), loaded by LoadMigrate.
+// cmd/migrate has its own settings (migrate.go, MIGRATE_*), loaded by LoadMigrate,
+// and cmd/bff its own (bff.go, BFF_*), loaded by LoadBFF.
 //
 // Passwords are read only from files (C80), as Docker and Kubernetes mount
 // secrets: the variable (APP_DB_PASSWORD_FILE) names the file, and

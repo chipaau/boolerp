@@ -1,0 +1,13 @@
+{
+  "client_name": "Bool ERP app (bff-app)",
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "scope": "openid offline_access",
+  "audience": ["erp-api"],
+  "redirect_uris": [
+    "http://demo.bool.test/auth/callback",
+    "http://cyryx.bool.test/auth/callback"
+  ],
+  "token_endpoint_auth_method": "client_secret_basic",
+  "skip_consent": true
+}

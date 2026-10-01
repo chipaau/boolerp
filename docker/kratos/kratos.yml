@@ -90,6 +90,11 @@ selfservice:
           hooks:
             - hook: session
 
+# A Kratos session lasts 12 hours, so a password is asked for at least every 12
+# hours (C96); a BFF session that ends sooner signs back in through it silently.
+session:
+  lifespan: 12h
+
 courier:
   smtp:
     # Mailpit catches every email in development (C85).

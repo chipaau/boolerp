@@ -15,13 +15,13 @@ services) in any case.
 ## Decision
 
 - A separate **backend-for-frontend (BFF) service** sits between browsers and the API.
-  It completes the login with Hydra, keeps the session (its own Redis), sets the HttpOnly
+  It completes the login with Hydra (at `/auth/*`, C96), keeps the session (its own Redis), sets the HttpOnly
   cookie, refreshes tokens, and forwards `/api/*` to the API with
   `Authorization: Bearer <access token>`, never the cookie.
 - The **API accepts only Hydra Bearer tokens**, from the BFF and from any other client.
   It keeps no sessions and sets no cookies.
 - The BFF **embeds its React app** (`go:embed`): one binary per release serves the app,
-  `/api/auth/*`, and the proxy, on the app's own domains.
+  its login at `/auth/*` (C96), and the proxy, on the app's own domains.
 - **One BFF program, two instances**: `bff-app` (tenant domains, `apps/app`) and
   `bff-admin` (`apps/admin`), each with its own Hydra client, session settings, and
   embedded app.

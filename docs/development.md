@@ -29,7 +29,7 @@ target and will not work until the corresponding roadmap step is rebuilt.
 
 ## Compose baseline
 
-[compose.yaml](../compose.yaml) started with `api`, `app`, `postgres`, and `redis` (C08) and adds services when a step needs them: `lgtm` (`grafana/otel-lgtm`) for viewing traces and metrics in Grafana at `http://grafana.bool.test` (C82, replacing Jaeger from C63); `kratos` and `kratos-migrate` for accounts at `http://identity.bool.test/kratos`, `identity` for the login pages at `http://identity.bool.test` (Next.js, C86, C87), `hydra`, `hydra-migrate`, and `hydra-clients` for OAuth2 and OpenID Connect with the issuer `http://identity.bool.test/` (C89), `mailpit` for development email and SMS at `http://mail.bool.test`, and `oidc` standing in for Google at `http://oidc.bool.test` (C85; see [identity](platform/identity.md)).
+[compose.yaml](../compose.yaml) started with `api`, `app`, `postgres`, and `redis` (C08) and adds services when a step needs them: `lgtm` (`grafana/otel-lgtm`) for viewing traces and metrics in Grafana at `http://grafana.bool.test` (C82, replacing Jaeger from C63); `kratos` and `kratos-migrate` for accounts at `http://identity.bool.test/kratos`, `identity` for the login pages at `http://identity.bool.test` (Next.js, C86, C87), `hydra`, `hydra-migrate`, and `hydra-clients` for OAuth2 and OpenID Connect with the issuer `http://identity.bool.test/` (C89), `mailpit` for development email and SMS at `http://mail.bool.test`, and `oidc` standing in for Google at `http://oidc.bool.test` (C85; see [identity](platform/identity.md)), and `redis-sessions` and `bff-app` for the app's backend-for-frontend, which serves `/auth/*` on tenant domains (C90, C96).
 PostgreSQL stores data in the `erp_pgdata` volume (C49). When it is empty, first
 start creates the `erp` database and `10-roles.sh` creates the runtime and migration
 roles, then applies `database-setup.psql` (grants and the `migrations` schema, C79), as
@@ -73,7 +73,7 @@ A standalone migration service is not part of this Compose baseline.
 
 ## Runtime configuration
 
-**Layout (C44):** settings are grouped by concern in `internal/platform/config`: `app.go` (`APP_ENV`, `APP_PORT`, `APP_SHUTDOWN_TIMEOUT`), `log.go` (`APP_LOG_*`), `http.go` (`APP_HTTP_*`), and `database.go` (`APP_DB_*`), `redis.go` (`APP_REDIS_*`), `auth.go` (`APP_AUTH_*`), and `identity.go` (`APP_IDENTITY_*`). Add a setting to its group's file; a new concern gets its own file and `envPrefix`.
+**Layout (C44):** settings are grouped by concern in `internal/platform/config`: `app.go` (`APP_ENV`, `APP_PORT`, `APP_SHUTDOWN_TIMEOUT`), `log.go` (`APP_LOG_*`), `http.go` (`APP_HTTP_*`), and `database.go` (`APP_DB_*`), `redis.go` (`APP_REDIS_*`), `auth.go` (`APP_AUTH_*`), and `identity.go` (`APP_IDENTITY_*`); the BFF's are in `bff.go` (below). Add a setting to its group's file; a new concern gets its own file and `envPrefix`.
 
 **Rebuild status (steps 1a–2b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
 `APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, `APP_HTTP_ALLOWED_ORIGINS`, the six `APP_DB_*` connection settings, `APP_DB_MAX_CONNS`, `APP_DB_PING_TIMEOUT`, and the seven `APP_REDIS_*` settings are implemented in `internal/platform/config` with `caarlos0/env`
@@ -137,6 +137,23 @@ stdout and identifies the variable without echoing its value. This fallback form
 also applies when `APP_LOG_FORMAT` or `APP_LOG_LEVEL` is invalid. Valid settings
 configure the injected `slog` logger; lifecycle messages obey its level threshold.
 See [logging and redaction](platform/observability.md) for the field policy.
+
+`cmd/bff` (one BFF instance, such as `bff-app`; C90, C96) reads only `BFF_*` settings,
+loaded by `config.LoadBFF`. It reuses the API's groups under new prefixes: `BFF_ENV`,
+`BFF_PORT`, `BFF_SHUTDOWN_TIMEOUT`, `BFF_LOG_*`, `BFF_HTTP_*`, and `BFF_REDIS_*` (the
+session Redis) accept the same values as their `APP_` counterparts above. Its own
+settings:
+
+| Variable | Default | Accepted values |
+| --- | --- | --- |
+| `BFF_SESSION_IDLE_TIMEOUT` | `30m` | Positive Go duration up to `24h`; a session ends after this long without a request |
+| `BFF_SESSION_LIFETIME` | `12h` | Greater than the idle timeout, up to `720h`; a session ends this long after login |
+| `BFF_SESSION_COOKIE_SECURE` | `true` (Compose: `false`) | HTTPS-only cookie named `__Host-session`, and `https://` callbacks; off only for plain-HTTP development, where the cookie is `session` |
+| `BFF_SESSION_ENCRYPTION_KEY_FILE` | none (required) | Path of the file holding the instance's AES-256 key as 64 hex digits (`openssl rand -hex 32`, C80). Replacing it signs sessions out |
+| `BFF_OIDC_ISSUER` | none (required) | Hydra's issuer, exactly as in its discovery document (Compose: `http://identity.bool.test/`) |
+| `BFF_OIDC_CLIENT_ID` | none (required) | The instance's Hydra client (Compose: `erp-app`) |
+| `BFF_OIDC_CLIENT_SECRET_FILE` | none (required) | Path of the file holding the client's secret (C80) |
+| `BFF_OIDC_AUDIENCE` | `erp-api` | The audience requested for access tokens, which the API requires (C91) |
 
 `cmd/migrate` applies the migrations of the modules in the edition it is built with (C95), each with its own history table `migrations.<module>_version`. It reads only these settings (C47), never `APP_*`:
 

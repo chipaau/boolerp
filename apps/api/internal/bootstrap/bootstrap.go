@@ -1,4 +1,5 @@
-// Package bootstrap assembles the API from its configuration: it constructs
+// Package bootstrap assembles the API (Run) and the BFF (RunBFF, bff.go) from
+// their configuration: it constructs
 // every dependency explicitly, serves HTTP, and closes the dependencies in
 // reverse order on shutdown. Each dependency's construction lives in its own
 // file (database.go, redis.go, http.go), like Laravel's service providers.
@@ -53,29 +54,11 @@ type RegisterModules func(ctx context.Context, r chi.Router, d Deps)
 func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, registerModules RegisterModules) error {
 	// Telemetry first, so every later dependency can be instrumented; its flush
 	// is deferred first, so it runs last and exports the final requests' data.
-	tr, err := newTracing(ctx, logger)
+	tr, mt, flush, err := newTelemetry(ctx, logger)
 	if err != nil {
-		return fmt.Errorf("tracing: %w", err)
+		return err
 	}
-	defer func() {
-		// ctx is already cancelled at shutdown, so the flush gets its own deadline.
-		flushCtx, cancel := context.WithTimeout(context.Background(), telemetryFlushTimeout)
-		defer cancel()
-		if err := tr.shutdown(flushCtx); err != nil {
-			logger.Warn("tracing flush failed", "error", err)
-		}
-	}()
-	mt, err := newMetrics(ctx, logger)
-	if err != nil {
-		return fmt.Errorf("metrics: %w", err)
-	}
-	defer func() {
-		flushCtx, cancel := context.WithTimeout(context.Background(), telemetryFlushTimeout)
-		defer cancel()
-		if err := mt.shutdown(flushCtx); err != nil {
-			logger.Warn("metrics flush failed", "error", err)
-		}
-	}()
+	defer flush()
 
 	pool, err := newPool(ctx, cfg.DB, tr, mt, logger)
 	if err != nil {
@@ -115,6 +98,32 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, registerMo
 	}
 	logger.Info("api listening", "address", ln.Addr().String())
 
-	handler := instrumentHTTP(router, tr, mt)
+	handler := instrumentHTTP(router, tr, mt, apiHealth)
 	return httpserver.Serve(ctx, logger, newServer(handler, cfg.HTTP, logger), ln, cfg.App.ShutdownTimeout)
+}
+
+// newTelemetry starts tracing and metrics. flush exports what is left; call it
+// after the server has stopped. ctx is already cancelled at shutdown, so the
+// flush gets its own deadline.
+func newTelemetry(ctx context.Context, logger *slog.Logger) (*tracing, *metrics, func(), error) {
+	tr, err := newTracing(ctx, logger)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("tracing: %w", err)
+	}
+	mt, err := newMetrics(ctx, logger)
+	if err != nil {
+		_ = tr.shutdown(context.Background())
+		return nil, nil, nil, fmt.Errorf("metrics: %w", err)
+	}
+	flush := func() {
+		flushCtx, cancel := context.WithTimeout(context.Background(), telemetryFlushTimeout)
+		defer cancel()
+		if err := mt.shutdown(flushCtx); err != nil {
+			logger.Warn("metrics flush failed", "error", err)
+		}
+		if err := tr.shutdown(flushCtx); err != nil {
+			logger.Warn("tracing flush failed", "error", err)
+		}
+	}
+	return tr, mt, flush, nil
 }
