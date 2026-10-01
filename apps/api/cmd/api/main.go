@@ -46,13 +46,18 @@ func run() int {
 	// returns, so a second signal terminates a process stuck while draining.
 	context.AfterFunc(ctx, stop)
 
-	err = bootstrap.Run(ctx, cfg, logger, func(r chi.Router, d bootstrap.Deps) {
-		authModule := auth.New(ctx, auth.Settings{Issuer: cfg.Auth.Issuer, Audience: cfg.Auth.Audience}, d.HTTPClient)
-		r.Route("/api/auth", authModule.Routes)
-	})
-	if err != nil {
+	if err := bootstrap.Run(ctx, cfg, logger, registerModules(ctx, cfg)); err != nil {
 		logger.Error("api failed", "error", err)
 		return 1
 	}
 	return 0
+}
+
+// registerModules lists this build's modules: it constructs each one and
+// registers its routes at its prefix (C92, C93).
+func registerModules(ctx context.Context, cfg config.Config) bootstrap.RegisterModules {
+	return func(r chi.Router, d bootstrap.Deps) {
+		authModule := auth.New(ctx, auth.Settings{Issuer: cfg.Auth.Issuer, Audience: cfg.Auth.Audience}, d.HTTPClient)
+		r.Route("/api/auth", authModule.Routes)
+	}
 }

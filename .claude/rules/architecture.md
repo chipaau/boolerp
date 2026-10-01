@@ -11,7 +11,7 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
 - A module owns its persistence writes. Do not reach into another module's SQL package.
 - A module keeps all of its code in its own folder and registers its routes relative to
   its prefix (`Routes(r chi.Router)`). Only the build's `main` constructs and mounts
-  modules (the `Mount` callback of `bootstrap.Run`); bootstrap builds infrastructure.
+  modules (the `RegisterModules` callback of `bootstrap.Run`); bootstrap builds infrastructure.
   Modules inherit the default middleware and apply authentication themselves (C92).
 - A build with fewer modules is another `main` listing fewer, not build tags or runtime
   switches (C93). Editions and licensing themselves are not decided.

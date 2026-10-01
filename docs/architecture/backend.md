@@ -165,16 +165,21 @@ Every module keeps all of its code in its own folder (`internal/platform/<name>`
 infrastructure such as `auth`, `internal/modules/<name>` for business capabilities):
 routes, handlers, middleware, and types. A module exposes `Routes(r chi.Router)`,
 registering paths relative to its prefix (`/me`, not `/api/auth/me`). The build's
-`main` constructs its modules and mounts them through the `Mount` callback that
-`bootstrap.Run` calls with the router and `bootstrap.Deps` (C93):
+`main` constructs its modules and mounts them through the `RegisterModules`
+callback that `bootstrap.Run` calls with the router and `bootstrap.Deps` (C93):
 
 ```go
 // cmd/api/main.go
-bootstrap.Run(ctx, cfg, logger, func(r chi.Router, d bootstrap.Deps) {
-	authModule := auth.New(ctx, auth.Settings{...}, d.HTTPClient)
-	r.Route("/api/auth", authModule.Routes) // GET /api/auth/me
-})
+func registerModules(ctx context.Context, cfg config.Config) bootstrap.RegisterModules {
+	return func(r chi.Router, d bootstrap.Deps) {
+		authModule := auth.New(ctx, auth.Settings{...}, d.HTTPClient)
+		r.Route("/api/auth", authModule.Routes) // GET /api/auth/me
+	}
+}
 ```
+
+When modules also register their migrations (C48), a small `Module` interface (routes
+and migrations) is added in `bootstrap`, and `main` lists `{prefix, module}` pairs.
 
 A product edition with fewer modules is another `main` (such as `cmd/api-hrms`) that
 mounts fewer; modules it does not import are not compiled into its binary.

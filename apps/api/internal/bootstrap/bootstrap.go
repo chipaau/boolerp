@@ -38,17 +38,19 @@ type Deps struct {
 	HTTPClient *http.Client
 }
 
-// Mount attaches the modules of this build to the router, each at its prefix
-// (r.Route("/api/auth", authModule.Routes)). main supplies it, so each edition's
-// main lists exactly the modules compiled into its binary (C93). The router
-// already carries the default middleware, which the modules inherit.
-type Mount func(r chi.Router, d Deps)
+// RegisterModules constructs the modules of this build and registers their
+// routes at their prefixes (r.Route("/api/auth", authModule.Routes)). main
+// supplies it, so each edition's main lists exactly the modules compiled into its
+// binary (C93). The router already carries the default middleware, which the
+// modules inherit. A Module interface comes with the second thing modules
+// register, their migrations (C48).
+type RegisterModules func(r chi.Router, d Deps)
 
 // Run builds the API from cfg and serves until ctx is cancelled, then shuts
 // the HTTP server down gracefully. Dependencies are closed by deferred calls
 // in reverse order of construction, after the server has stopped, so in-flight
 // requests keep their connections until they finish.
-func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, mount Mount) error {
+func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, registerModules RegisterModules) error {
 	// Telemetry first, so every later dependency can be instrumented; its flush
 	// is deferred first, so it runs last and exports the final requests' data.
 	tr, err := newTracing(ctx, logger)
@@ -97,7 +99,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, mount Moun
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}
-	mount(router, Deps{
+	registerModules(router, Deps{
 		Pool:       pool,
 		Cache:      cache,
 		Logger:     logger,
