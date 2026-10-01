@@ -14,4 +14,5 @@ and [development](../../docs/development.md).
 - New identity work (`apps/identity`, C84) does not use `packages/auth`, which targets
   the previous Kratos design (`/auth` on each tenant domain).
 - Future frontend work should retain the existing React/TanStack Router and shared
-  `@workspace/ui` conventions unless a change is explicitly agreed.
+  `@workspace/ui` conventions unless a change is explicitly agreed. Agreed exception:
+  `apps/identity` is a Next.js app (C87).
