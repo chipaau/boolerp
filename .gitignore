@@ -26,7 +26,7 @@ apps/api/internal/web/dist/
 .design/
 
 # local reverse-proxy scratch (certs, logs) — never commit
-Proxy/
+/Proxy/
 
 # vitest --coverage output
 coverage/

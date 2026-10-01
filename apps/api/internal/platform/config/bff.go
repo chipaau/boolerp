@@ -17,6 +17,13 @@ type BFF struct {
 	Redis   Redis      `envPrefix:"BFF_REDIS_"` // the session Redis (redis-sessions), not the API's cache
 	Session Session    `envPrefix:"BFF_SESSION_"`
 	OIDC    OIDCClient `envPrefix:"BFF_OIDC_"`
+	API     Upstream   `envPrefix:"BFF_API_"`
+}
+
+// Upstream is where the BFF forwards /api/* (BFF_API_*, C98).
+type Upstream struct {
+	// URL is the API's address on the internal network, such as http://api:8080.
+	URL string `env:"URL,required,notEmpty" validate:"http_url"`
 }
 
 // Session holds the browser session settings (BFF_SESSION_*, C96).

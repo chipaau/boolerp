@@ -6,12 +6,15 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/boolmv/erp/apps/api/internal/bff/login"
+	"github.com/boolmv/erp/apps/api/internal/bff/proxy"
 	"github.com/boolmv/erp/apps/api/internal/bff/session"
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
@@ -41,7 +44,7 @@ func RunBFF(ctx context.Context, cfg config.BFF, logger *slog.Logger) error {
 		return err
 	}
 	sessions := session.New(store, sealer, session.Settings{
-		KeyPrefix:    "bff:" + cfg.OIDC.ClientID + ":session:",
+		KeyPrefix:    "bff:" + cfg.OIDC.ClientID + ":",
 		IdleTimeout:  cfg.Session.IdleTimeout,
 		Lifetime:     cfg.Session.Lifetime,
 		CookieSecure: cfg.Session.CookieSecure,
@@ -70,6 +73,15 @@ func RunBFF(ctx context.Context, cfg config.BFF, logger *slog.Logger) error {
 		r.Use(sessions.LoadAndSave)
 		logins.Routes(r)
 	})
+	api, err := url.Parse(cfg.API.URL)
+	if err != nil {
+		return fmt.Errorf("api url: %w", err)
+	}
+	forward := proxy.New(api, apiTransport(tr, mt), sessions, logins.Refresh, login.ErrRefreshRefused, logger)
+	router.Route("/api", func(r chi.Router) {
+		r.Use(sessions.LoadAndSave)
+		r.Handle("/*", forward)
+	})
 
 	ln, err := new(net.ListenConfig).Listen(ctx, "tcp", net.JoinHostPort("", strconv.Itoa(cfg.App.ListenPort)))
 	if err != nil {
@@ -79,6 +91,21 @@ func RunBFF(ctx context.Context, cfg config.BFF, logger *slog.Logger) error {
 
 	handler := instrumentHTTP(router, tr, mt, bffHealth)
 	return httpserver.Serve(ctx, logger, newServer(handler, cfg.HTTP, logger), ln, cfg.App.ShutdownTimeout)
+}
+
+// apiTransport carries forwarded requests to the API. With tracing on, each
+// becomes a client span and carries traceparent, which the API links to its own
+// trace (C58).
+func apiTransport(tr *tracing, mt *metrics) http.RoundTripper {
+	base := http.DefaultTransport.(*http.Transport).Clone()
+	base.ResponseHeaderTimeout = 60 * time.Second
+	if !tr.enabled && !mt.enabled {
+		return base
+	}
+	return otelhttp.NewTransport(base,
+		otelhttp.WithTracerProvider(tr.provider),
+		otelhttp.WithMeterProvider(mt.provider),
+		otelhttp.WithPropagators(tr.propagator))
 }
 
 // sessionError answers a request whose session could not be loaded or saved,

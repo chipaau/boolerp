@@ -37,6 +37,8 @@ x-bff-env: &bff-env
   # Plain HTTP in development: the cookie is "session", not Secure (C96).
   BFF_SESSION_COOKIE_SECURE: "false"
   BFF_OIDC_ISSUER: http://identity.bool.test/
+  # /api/* is forwarded here with the session's access token (C98).
+  BFF_API_URL: http://api:${APP_PORT:-8080}
   OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
   OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
   OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://lgtm:4318}
@@ -73,6 +75,8 @@ x-bff: &bff
     - gomod:/go/pkg/mod
   depends_on:
     redis-sessions:
+      condition: service_healthy
+    api:
       condition: service_healthy
   networks:
     - proxy
@@ -118,7 +122,7 @@ services:
       - traefik.http.services.erp-app.loadbalancer.server.port=3000
 
   # The admin app's dev server (apps/admin) at admin.bool.test (C97), above the
-  # tenant catch-all; /auth goes to bff-admin and /api to the API.
+  # tenant catch-all; /auth and /api go to bff-admin (C97, C98).
   admin:
     <<: *node
     command: pnpm --filter admin dev
@@ -258,10 +262,11 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      # same-origin /api/* on every subdomain → the Go API (priority beats the SPA routers)
-      - "traefik.http.routers.erp-api.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && PathPrefix(`/api`)"
+      # api.bool.test → the Go API, for clients with their own Bearer tokens (C98);
+      # app domains' /api/* goes through their BFF instead. Above the tenant routes.
+      - "traefik.http.routers.erp-api.rule=Host(`api.bool.test`)"
       - traefik.http.routers.erp-api.entrypoints=web
-      - traefik.http.routers.erp-api.priority=20
+      - traefik.http.routers.erp-api.priority=30
       - traefik.http.routers.erp-api.service=erp-api
       # Per-IP rate limiting is the proxy's job, not the API's (C81): a backstop of
       # 1000 requests a minute per client IP, with bursts of 100 (a screen's parallel
@@ -344,10 +349,12 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      # /auth/* on every tenant subdomain -> the BFF (above the app's catch-all).
-      - "traefik.http.routers.erp-bff-app.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && PathPrefix(`/auth`)"
+      # /auth/* and /api/* on every tenant subdomain -> the BFF (above the app's
+      # catch-all), with the API's per-IP rate limit (C81).
+      - "traefik.http.routers.erp-bff-app.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && (PathPrefix(`/auth`) || PathPrefix(`/api`))"
       - traefik.http.routers.erp-bff-app.entrypoints=web
       - traefik.http.routers.erp-bff-app.priority=20
+      - traefik.http.routers.erp-bff-app.middlewares=erp-api-ratelimit
       - traefik.http.routers.erp-bff-app.service=erp-bff-app
       - traefik.http.services.erp-bff-app.loadbalancer.server.port=8080
 
@@ -365,10 +372,11 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      # admin.bool.test/auth/* -> bff-admin, above the tenant routes (C97).
-      - "traefik.http.routers.erp-bff-admin.rule=Host(`admin.bool.test`) && PathPrefix(`/auth`)"
+      # admin.bool.test/auth/* and /api/* -> bff-admin, above the tenant routes (C97).
+      - "traefik.http.routers.erp-bff-admin.rule=Host(`admin.bool.test`) && (PathPrefix(`/auth`) || PathPrefix(`/api`))"
       - traefik.http.routers.erp-bff-admin.entrypoints=web
       - traefik.http.routers.erp-bff-admin.priority=25
+      - traefik.http.routers.erp-bff-admin.middlewares=erp-api-ratelimit
       - traefik.http.routers.erp-bff-admin.service=erp-bff-admin
       - traefik.http.services.erp-bff-admin.loadbalancer.server.port=8080
 

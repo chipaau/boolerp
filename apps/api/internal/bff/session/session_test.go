@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alexedwards/scs/v2/memstore"
+	"github.com/alicebob/miniredis/v2"
+	goredis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -74,20 +75,31 @@ func inSession(t *testing.T, s *Sessions, cookies []*http.Cookie, fn func(ctx co
 	return resp.Cookies()
 }
 
-func newSessions(t *testing.T, key string, secure bool) *Sessions {
+// redisFor returns a client for an in-memory Redis (miniredis) and the server.
+func redisFor(t *testing.T) (*goredis.Client, *miniredis.Miniredis) {
 	t.Helper()
-	s := New(nil, sealer(t, key), Settings{IdleTimeout: 30 * time.Minute, Lifetime: 12 * time.Hour, CookieSecure: secure}, nil)
-	s.Store = memstore.New()
-	return s
+	mr := miniredis.RunT(t)
+	client := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	return client, mr
 }
 
+func newSessions(t *testing.T, client *goredis.Client, key string, secure bool) *Sessions {
+	t.Helper()
+	return New(client, sealer(t, key), Settings{
+		KeyPrefix: "bff:test:", IdleTimeout: 30 * time.Minute, Lifetime: 12 * time.Hour, CookieSecure: secure,
+	}, nil)
+}
+
+var signedIn = SignedIn{Account: "account-1", HydraSession: "sid-1", Tokens: Tokens{
+	Access: "access-s3cret", Refresh: "refresh-s3cret", IDToken: "id-s3cret",
+	Expiry: time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC),
+}}
+
 func TestSignInAndCurrent(t *testing.T) {
-	s := newSessions(t, keyA, true)
-	want := SignedIn{Account: "account-1", HydraSession: "sid-1", Tokens: Tokens{
-		Access: "access-s3cret", Refresh: "refresh-s3cret", IDToken: "id-s3cret",
-		Expiry: time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC),
-	}}
-	cookies := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, want)) })
+	client, mr := redisFor(t)
+	s := newSessions(t, client, keyA, true)
+	cookies := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, signedIn)) })
 
 	require.Len(t, cookies, 1)
 	c := cookies[0]
@@ -103,42 +115,102 @@ func TestSignInAndCurrent(t *testing.T) {
 		got, ok, err := s.Current(ctx)
 		require.NoError(t, err)
 		require.True(t, ok)
-		assert.Equal(t, want, got)
-		raw, _ := s.Get(ctx, keyTokens).([]byte)
-		assert.False(t, bytes.Contains(raw, []byte("s3cret")), "tokens are stored sealed")
+		assert.NotEmpty(t, got.TokensID)
+		got.TokensID = ""
+		assert.Equal(t, signedIn, got)
+	})
+
+	// Two keys: the session and the tokens; neither holds a readable token.
+	keys := mr.Keys()
+	require.Len(t, keys, 2)
+	for _, k := range keys {
+		assert.True(t, strings.HasPrefix(k, "bff:test:session:") || strings.HasPrefix(k, "bff:test:tokens:"), k)
+		v, _ := mr.Get(k)
+		assert.NotContains(t, v, "s3cret", k)
+		assert.LessOrEqual(t, mr.TTL(k), 12*time.Hour, k)
+	}
+}
+
+func TestAStaleSessionSaveKeepsRefreshedTokens(t *testing.T) {
+	client, _ := redisFor(t)
+	s := newSessions(t, client, keyA, true)
+	cookies := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, signedIn)) })
+
+	// Request B loads the session; request A refreshes and saves new tokens;
+	// then B ends, and scs saves B's copy of the session (C98).
+	inSession(t, s, cookies, func(ctxB context.Context) {
+		inSession(t, s, cookies, func(ctxA context.Context) {
+			in, ok, err := s.Current(ctxA)
+			require.NoError(t, err)
+			require.True(t, ok)
+			in.Tokens.Refresh = "refresh-2"
+			require.NoError(t, s.SaveTokens(ctxA, in))
+		})
+	})
+
+	inSession(t, s, cookies, func(ctx context.Context) {
+		got, ok, err := s.Current(ctx)
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "refresh-2", got.Tokens.Refresh, "the refreshed tokens survive")
 	})
 }
 
 func TestPlainHTTPUsesThePlainCookieName(t *testing.T) {
-	s := newSessions(t, keyA, false)
-	cookies := inSession(t, s, nil, func(ctx context.Context) {
-		require.NoError(t, s.SignIn(ctx, SignedIn{Account: "account-1"}))
-	})
+	client, _ := redisFor(t)
+	s := newSessions(t, client, keyA, false)
+	cookies := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, signedIn)) })
 	require.Len(t, cookies, 1)
 	assert.Equal(t, "session", cookies[0].Name)
 	assert.False(t, cookies[0].Secure)
 }
 
 func TestAReplacedKeySignsOut(t *testing.T) {
-	store := memstore.New()
-	old := newSessions(t, keyA, true)
-	old.Store = store
-	cookies := inSession(t, old, nil, func(ctx context.Context) {
-		require.NoError(t, old.SignIn(ctx, SignedIn{Account: "account-1", Tokens: Tokens{Refresh: "r"}}))
-	})
+	client, mr := redisFor(t)
+	old := newSessions(t, client, keyA, true)
+	cookies := inSession(t, old, nil, func(ctx context.Context) { require.NoError(t, old.SignIn(ctx, signedIn)) })
 
-	replaced := newSessions(t, keyB, true)
-	replaced.Store = store
+	replaced := newSessions(t, client, keyB, true)
 	inSession(t, replaced, cookies, func(ctx context.Context) {
 		_, ok, err := replaced.Current(ctx)
 		require.NoError(t, err)
 		assert.False(t, ok, "signed out, so the browser signs in again")
-		assert.Empty(t, replaced.GetString(ctx, keyAccount), "the session is destroyed")
+	})
+	assert.Empty(t, mr.Keys(), "the session and its tokens are deleted")
+}
+
+func TestMissingTokensSignOut(t *testing.T) {
+	client, mr := redisFor(t)
+	s := newSessions(t, client, keyA, true)
+	cookies := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, signedIn)) })
+	for _, k := range mr.Keys() {
+		if strings.HasPrefix(k, "bff:test:tokens:") {
+			mr.Del(k)
+		}
+	}
+	inSession(t, s, cookies, func(ctx context.Context) {
+		_, ok, err := s.Current(ctx)
+		require.NoError(t, err)
+		assert.False(t, ok)
+	})
+}
+
+func TestUnavailableRedisIsAnError(t *testing.T) {
+	client, mr := redisFor(t)
+	s := newSessions(t, client, keyA, true)
+	cookies := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, signedIn)) })
+	// The session loads, then Redis fails before the tokens are read.
+	inSession(t, s, cookies, func(ctx context.Context) {
+		mr.SetError("LOADING")
+		_, _, err := s.Current(ctx)
+		assert.Error(t, err)
+		mr.SetError("")
 	})
 }
 
 func TestNotSignedIn(t *testing.T) {
-	s := newSessions(t, keyA, true)
+	client, _ := redisFor(t)
+	s := newSessions(t, client, keyA, true)
 	inSession(t, s, nil, func(ctx context.Context) {
 		_, ok, err := s.Current(ctx)
 		require.NoError(t, err)

@@ -12,10 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alexedwards/scs/v2/memstore"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	goredis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -56,6 +57,19 @@ func newProvider(t *testing.T) *provider {
 	mux.HandleFunc("/oauth2/token", func(w http.ResponseWriter, r *http.Request) {
 		// The client authenticates with its secret, and sends the PKCE verifier.
 		id, secret, ok := r.BasicAuth()
+		if ok && id == "erp-app" && secret == "client-s3cret" && r.FormValue("grant_type") == "refresh_token" {
+			w.Header().Set("Content-Type", "application/json")
+			if r.FormValue("refresh_token") != "refresh-s3cret" {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"s3cret detail"}`))
+				return
+			}
+			// Hydra rotates the refresh token; this response has no ID token.
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"access_token": "access-2", "token_type": "bearer", "expires_in": 600, "refresh_token": "refresh-2",
+			})
+			return
+		}
 		if !ok || id != "erp-app" || secret != "client-s3cret" || r.FormValue("code_verifier") == "" {
 			http.Error(w, `{"error":"invalid_client"}`, http.StatusUnauthorized)
 			return
@@ -87,10 +101,17 @@ func (p *provider) idToken(t *testing.T) string {
 // mounts them, plus a route that shows the signed-in state.
 func app(t *testing.T, p *provider) http.Handler {
 	t.Helper()
+	r, _ := appWithHandler(t, p)
+	return r
+}
+
+func appWithHandler(t *testing.T, p *provider) (http.Handler, *Handler) {
+	t.Helper()
 	sealer, err := session.NewSealer("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
 	require.NoError(t, err)
-	sessions := session.New(nil, sealer, session.Settings{IdleTimeout: time.Hour, Lifetime: 2 * time.Hour}, nil)
-	sessions.Store = memstore.New()
+	client := goredis.NewClient(&goredis.Options{Addr: miniredis.RunT(t).Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	sessions := session.New(client, sealer, session.Settings{KeyPrefix: "bff:test:", IdleTimeout: time.Hour, Lifetime: 2 * time.Hour}, nil)
 	h := New(Settings{Issuer: p.URL, ClientID: "erp-app", ClientSecret: "client-s3cret", Audience: "erp-api"},
 		sessions, p.Client(), slog.New(slog.DiscardHandler))
 	r := chi.NewRouter()
@@ -101,11 +122,12 @@ func app(t *testing.T, p *provider) http.Handler {
 			in, ok, err := sessions.Current(r.Context())
 			require.NoError(t, err)
 			if ok {
+				in.TokensID = ""
 				_ = json.NewEncoder(w).Encode(in)
 			}
 		})
 	})
-	return r
+	return r, h
 }
 
 // browser keeps cookies between requests to the app.
@@ -260,4 +282,30 @@ func TestLoginUnavailableWhileTheProviderIsDown(t *testing.T) {
 	rec := (&browser{t: t, handler: app(t, p)}).get("/auth/login")
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.True(t, strings.HasPrefix(rec.Header().Get("Content-Type"), "application/problem+json"))
+}
+
+func TestRefreshRotatesTokens(t *testing.T) {
+	_, h := appWithHandler(t, newProvider(t))
+	got, err := h.Refresh(t.Context(), session.Tokens{Access: "old", Refresh: "refresh-s3cret", IDToken: "id-1"})
+	require.NoError(t, err)
+	assert.Equal(t, "access-2", got.Access)
+	assert.Equal(t, "refresh-2", got.Refresh, "Hydra's rotated refresh token")
+	assert.Equal(t, "id-1", got.IDToken, "kept when the response has none")
+	assert.WithinDuration(t, time.Now().Add(10*time.Minute), got.Expiry, time.Minute)
+}
+
+func TestRefreshRefusedByTheProvider(t *testing.T) {
+	_, h := appWithHandler(t, newProvider(t))
+	_, err := h.Refresh(t.Context(), session.Tokens{Refresh: "revoked"})
+	require.ErrorIs(t, err, ErrRefreshRefused)
+	assert.NotContains(t, err.Error(), "s3cret")
+}
+
+func TestRefreshWhileTheProviderIsDown(t *testing.T) {
+	p := newProvider(t)
+	_, h := appWithHandler(t, p)
+	p.Close()
+	_, err := h.Refresh(t.Context(), session.Tokens{Refresh: "refresh-s3cret"})
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, ErrRefreshRefused, "unavailable is not refused: the session is kept")
 }
