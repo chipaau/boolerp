@@ -56,14 +56,15 @@ docker run --rm -p 5555:5555 --add-host identity.bool.test:host-gateway \
 
 then open `http://127.0.0.1:5555/` and sign in.
 
-## Authentication model (C88)
+## Authentication model (C88, C90, ADR 0003)
 
-Browsers never hold Hydra tokens. For the internal apps the Go API is a
-backend-for-frontend: it is Hydra's confidential client, completes the login on the
-request's own domain, keeps tokens on the server, and gives the browser an HttpOnly
-session cookie. Non-browser clients (mobile, integrations, services) will send Hydra
-access tokens as `Authorization: Bearer`, which the API validates. Both become the
-same caller context (7d).
+Browsers never hold Hydra tokens. Each internal app has a backend-for-frontend (BFF)
+service (`bff-app`, `bff-admin`; `apps/api/cmd/bff`): it embeds and serves the app,
+completes the login with Hydra on the request's own domain, keeps the session in its
+own Redis (`redis-sessions`), gives the browser an HttpOnly session cookie, and forwards `/api/*` to the
+API with the session's access token as `Authorization: Bearer`. The API accepts only
+Bearer tokens, from the BFF and from non-browser clients (mobile, integrations,
+services), and keeps no sessions. Every request becomes the same caller context (7d).
 
 ## Accounts and development services (7a-1, C85)
 

@@ -14,7 +14,8 @@ and [development](../../docs/development.md).
 - New identity work (`apps/identity`, C84) does not use `packages/auth`, which targets
   the previous Kratos design (`/auth` on each tenant domain).
 - Internal applications (`apps/app`, `apps/admin`) use React with Vite and TanStack
-  Router; the Go API is their backend-for-frontend (C88). Public-facing applications,
+  Router; each is embedded in and served by its backend-for-frontend service
+  (`bff-app`, `bff-admin`, C90, ADR 0003). Public-facing applications,
   reached by people outside a customer's staff (`apps/website`, `apps/identity`, later
   FindCare's public side), use Next.js (C87). All apps share `@workspace/ui` and
   `@workspace/assets`; other changes to these conventions need explicit agreement.

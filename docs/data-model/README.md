@@ -1,7 +1,8 @@
 # Data model status
 
-Updated: 2026-09-26.
-Status: open. No tables are approved for the new API.
+Updated: 2026-10-01.
+Status: open. No tables are approved for the new API. (A `sessions` table was approved
+for sessions in PostgreSQL and withdrawn when sessions moved to the BFF's Redis, C90.)
 
 The previous foundation DDL and wider schemas are archived. They are not a starting
 schema, and their old approval labels do not apply to this rebuild.

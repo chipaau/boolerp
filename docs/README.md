@@ -19,9 +19,10 @@ starting with a simple chi server.
 2. [Confirmed decisions and open questions](decisions/README.md)
 3. [API rebuild decision](adr/0001-api-rebuild.md)
 4. [Framework and provider decisions](adr/0002-tool-and-provider-selection.md)
-5. [Backend structure](architecture/backend.md)
-6. [Employee request lifecycle](architecture/request-lifecycle.md)
-7. [Sequential roadmap and platform delivery plan](roadmap.md)
+5. [Backend-for-frontend service](adr/0003-browser-bff-service.md)
+6. [Backend structure](architecture/backend.md)
+7. [Employee request lifecycle](architecture/request-lifecycle.md)
+8. [Sequential roadmap and platform delivery plan](roadmap.md)
 
 ## Component documents
 
