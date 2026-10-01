@@ -63,9 +63,16 @@ export type Flows = {
 }
 export type FlowKind = keyof Flows
 
-/** Sends the browser to Kratos to start a flow; Kratos comes back with ?flow=<id>. */
-function startFlow(kind: FlowKind, returnTo?: string): never {
-  const qs = returnTo ? `?return_to=${encodeURIComponent(returnTo)}` : ''
+/**
+ * Sends the browser to Kratos to start a flow; Kratos comes back with ?flow=<id>.
+ * Hydra's login_challenge (login and registration started by an OAuth2 client) is
+ * passed on, so Kratos completes Hydra's login step afterwards (C89).
+ */
+function startFlow(kind: FlowKind, returnTo?: string, loginChallenge?: string): never {
+  const params = new URLSearchParams()
+  if (returnTo) params.set('return_to', returnTo)
+  if (loginChallenge) params.set('login_challenge', loginChallenge)
+  const qs = params.size ? `?${params}` : ''
   redirect(`${kratosPublicUrl()}/self-service/${kind}/browser${qs}`)
 }
 
@@ -74,8 +81,13 @@ function startFlow(kind: FlowKind, returnTo?: string): never {
  * flow (403, 404, 410) is replaced; settings without a session goes to login (401)
  * and comes back. Other failures propagate to the error boundary.
  */
-export async function loadFlow<K extends FlowKind>(kind: K, flowId?: string, returnTo?: string): Promise<Flows[K]> {
-  if (!flowId) startFlow(kind, returnTo)
+export async function loadFlow<K extends FlowKind>(
+  kind: K,
+  flowId?: string,
+  returnTo?: string,
+  loginChallenge?: string
+): Promise<Flows[K]> {
+  if (!flowId) startFlow(kind, returnTo, loginChallenge)
   const api = await frontend()
   const get: { [P in FlowKind]: (id: string) => Promise<Flows[P]> } = {
     login: (id) => api.getLoginFlow({ id }),
@@ -90,7 +102,7 @@ export async function loadFlow<K extends FlowKind>(kind: K, flowId?: string, ret
     if (err instanceof ResponseError) {
       const status = err.response.status
       if (status === 401) startFlow('login', ui(`/${kind}`))
-      if (status === 403 || status === 404 || status === 410) startFlow(kind, returnTo)
+      if (status === 403 || status === 404 || status === 410) startFlow(kind, returnTo, loginChallenge)
     }
     throw err
   }
@@ -110,4 +122,4 @@ export async function logoutUrl(): Promise<string | undefined> {
   }
 }
 
-export type FlowSearch = Promise<{ flow?: string; return_to?: string }>
+export type FlowSearch = Promise<{ flow?: string; return_to?: string; login_challenge?: string }>

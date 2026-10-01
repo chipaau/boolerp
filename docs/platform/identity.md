@@ -31,6 +31,31 @@ defines, keeps its CSRF token, and posts to Kratos. The pages stay on the login
 service's domain; a form on a client's own domain would need a separate Kratos and
 Hydra.
 
+## Hydra (7b, C89)
+
+Hydra v26.2.0 runs in Compose with its own `hydra` database and role, migrated by
+`hydra-migrate`. Its issuer is `http://identity.bool.test/`: Traefik sends `/oauth2/*`,
+`/.well-known/openid-configuration`, `/.well-known/jwks.json`, and `/userinfo` there.
+When a client starts a login, Hydra sends the browser to `/login?login_challenge=…`;
+the login service passes the challenge to Kratos, which accepts Hydra's login request
+after sign-in. Hydra then calls `/consent`, a route of the login service that approves
+first-party clients (`skip_consent`) and refuses others with `access_denied`.
+
+First-party clients are defined in `docker/hydra/clients/<client-id>.json` and
+registered by the `hydra-clients` service (`docker compose up hydra-clients` re-runs
+it); each client's secret is the Compose secret `hydra_client_<client-id>`. To try a
+login as a client:
+
+```sh
+docker run --rm -p 5555:5555 --add-host identity.bool.test:host-gateway \
+  -e OAUTH2_CLIENT_ID=dev-test-client \
+  -e OAUTH2_CLIENT_SECRET="$(cat docker/secrets/dev/hydra_client_dev-test-client)" \
+  oryd/hydra:v26.2.0 perform authorization-code --endpoint http://identity.bool.test/ \
+  --port 5555 --no-open --scope openid,offline
+```
+
+then open `http://127.0.0.1:5555/` and sign in.
+
 ## Authentication model (C88)
 
 Browsers never hold Hydra tokens. For the internal apps the Go API is a

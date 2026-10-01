@@ -1,0 +1,38 @@
+# Ory Hydra for development (C83, C89). Secrets (the database address and the
+# system secret) are in a second config file mounted as a secret, merged in order
+# (`serve all -c this -c secret`).
+version: v26.2.0
+
+serve:
+  public:
+    # Browsers and clients reach these paths on identity.bool.test through Traefik
+    # (/oauth2/*, /.well-known/openid-configuration, /.well-known/jwks.json, /userinfo).
+    port: 4444
+    cors:
+      enabled: false
+  admin:
+    # Only on the internal network: never routed through the proxy.
+    port: 4445
+
+urls:
+  self:
+    # The issuer is the login domain itself (C89).
+    issuer: http://identity.bool.test/
+  # Kratos runs the login (its oauth2_provider integration); the consent step is a
+  # route of the Next.js login service (C87), which approves first-party clients.
+  login: http://identity.bool.test/login
+  registration: http://identity.bool.test/registration
+  consent: http://identity.bool.test/consent
+  error: http://identity.bool.test/error
+
+oidc:
+  subject_identifiers:
+    supported_types: [public]
+
+# Token lifetimes and the opaque access-token strategy are Hydra's defaults for now
+# (C89); session lifetimes are decided with the API's session in 7c.
+
+log:
+  level: info
+  format: json
+  leak_sensitive_values: false
