@@ -41,6 +41,7 @@ func RunBFF(ctx context.Context, cfg config.BFF, logger *slog.Logger) error {
 		return err
 	}
 	sessions := session.New(store, sealer, session.Settings{
+		KeyPrefix:    "bff:" + cfg.OIDC.ClientID + ":session:",
 		IdleTimeout:  cfg.Session.IdleTimeout,
 		Lifetime:     cfg.Session.Lifetime,
 		CookieSecure: cfg.Session.CookieSecure,

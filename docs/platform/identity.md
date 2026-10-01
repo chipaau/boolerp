@@ -88,8 +88,13 @@ local `return_to` path. The callback must be registered on the client
   account. Replacing the key signs everyone out of the BFF, which costs a silent
   re-login.
 
-To try it: open `http://demo.bool.test/auth/login?return_to=/` and sign in. The app
-itself does not use the BFF yet (7c-3, 7c-4).
+`bff-admin` (client `erp-admin`, C97) does the same at `admin.bool.test`, with its own
+session key. Both BFFs share `redis-sessions` under separate key prefixes
+(`bff:<client-id>:session:`).
+
+To try it: open `http://demo.bool.test/auth/login?return_to=/` or
+`http://admin.bool.test/auth/login?return_to=/` and sign in. The apps themselves do not
+use the BFF yet (7c-3, 7c-4).
 
 ## Access tokens (7c-1, C91)
 

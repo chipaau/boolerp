@@ -23,6 +23,61 @@ x-node: &node
     # packages through the host bind mount (osxfs/virtiofs) corrupts the store silently.
     - pnpm-store:/w/.pnpm-store
 
+# One BFF program, one service per instance (C90, C96, C97): bff-app and bff-admin
+# share everything below and differ in client, session key, and routes.
+x-bff-env: &bff-env
+  BFF_ENV: ${APP_ENV:-dev}
+  BFF_PORT: "8080"
+  BFF_LOG_FORMAT: ${APP_LOG_FORMAT:-json}
+  BFF_LOG_LEVEL: ${APP_LOG_LEVEL:-info}
+  # One proxy (Traefik) appends to X-Forwarded-For (C40).
+  BFF_HTTP_TRUSTED_PROXY_HOPS: "1"
+  BFF_REDIS_HOST: redis-sessions
+  BFF_REDIS_TLS: "false"
+  # Plain HTTP in development: the cookie is "session", not Secure (C96).
+  BFF_SESSION_COOKIE_SECURE: "false"
+  BFF_OIDC_ISSUER: http://identity.bool.test/
+  OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+  OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://lgtm:4318}
+
+x-bff: &bff
+  build:
+    context: .
+    dockerfile: docker/go.Dockerfile
+  working_dir: /w/apps/api
+  command: ["sh", "-c", "go build -buildvcs=false -o /tmp/bool-bff ./cmd/bff && exec /tmp/bool-bff"]
+  stop_grace_period: 40s
+  develop:
+    watch:
+      - action: restart
+        path: ./apps/api
+        include:
+          - "**/*.go"
+          - go.mod
+          - go.sum
+        ignore:
+          - "**/*_test.go"
+  # Hydra's discovery, keys, and token endpoint are reached at the issuer's address.
+  extra_hosts:
+    - "identity.bool.test:host-gateway"
+  healthcheck:
+    test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
+    start_period: 60s
+  volumes:
+    - .:/w
+    - gocache:/root/.cache/go-build
+    - gomod:/go/pkg/mod
+  depends_on:
+    redis-sessions:
+      condition: service_healthy
+  networks:
+    - proxy
+    - internal
+
 services:
   # The login service (C86, C87): a Next.js app with Ory Elements drawn in the Bool
   # design, at http://identity.bool.test. Its /kratos path goes to Kratos (higher
@@ -61,6 +116,23 @@ services:
       - traefik.http.routers.erp-app.priority=1
       - traefik.http.routers.erp-app.service=erp-app
       - traefik.http.services.erp-app.loadbalancer.server.port=3000
+
+  # The admin app's dev server (apps/admin) at admin.bool.test (C97), above the
+  # tenant catch-all; /auth goes to bff-admin and /api to the API.
+  admin:
+    <<: *node
+    command: pnpm --filter admin dev
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - "traefik.http.routers.erp-admin.rule=Host(`admin.bool.test`)"
+      - traefik.http.routers.erp-admin.entrypoints=web
+      - traefik.http.routers.erp-admin.priority=2
+      - traefik.http.routers.erp-admin.service=erp-admin
+      - traefik.http.services.erp-admin.loadbalancer.server.port=3000
 
   postgres:
     image: postgres:18
@@ -261,61 +333,14 @@ services:
   # in through Hydra at /auth/* and keeps their sessions in redis-sessions.
   # /api/* still goes straight to the API until the BFF forwards it (7c-3).
   bff-app:
-    build:
-      context: .
-      dockerfile: docker/go.Dockerfile
-    working_dir: /w/apps/api
-    command: ["sh", "-c", "go build -buildvcs=false -o /tmp/bool-bff ./cmd/bff && exec /tmp/bool-bff"]
-    stop_grace_period: 40s
-    develop:
-      watch:
-        - action: restart
-          path: ./apps/api
-          include:
-            - "**/*.go"
-            - go.mod
-            - go.sum
-          ignore:
-            - "**/*_test.go"
+    <<: *bff
     environment:
-      BFF_ENV: ${APP_ENV:-dev}
-      BFF_PORT: "8080"
-      BFF_LOG_FORMAT: ${APP_LOG_FORMAT:-json}
-      BFF_LOG_LEVEL: ${APP_LOG_LEVEL:-info}
-      # One proxy (Traefik) appends to X-Forwarded-For (C40).
-      BFF_HTTP_TRUSTED_PROXY_HOPS: "1"
-      BFF_REDIS_HOST: redis-sessions
-      BFF_REDIS_TLS: "false"
-      # Plain HTTP in development: the cookie is "session", not Secure (C96).
-      BFF_SESSION_COOKIE_SECURE: "false"
+      <<: *bff-env
       BFF_SESSION_ENCRYPTION_KEY_FILE: /run/secrets/bff_app_session_key
-      BFF_OIDC_ISSUER: http://identity.bool.test/
       BFF_OIDC_CLIENT_ID: erp-app
       BFF_OIDC_CLIENT_SECRET_FILE: /run/secrets/hydra_client_erp-app
       OTEL_SERVICE_NAME: bool-erp-bff-app
-      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
-      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://lgtm:4318}
     secrets: [bff_app_session_key, hydra_client_erp-app]
-    # Hydra's discovery, keys, and token endpoint are reached at the issuer's address.
-    extra_hosts:
-      - "identity.bool.test:host-gateway"
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 60s
-    volumes:
-      - .:/w
-      - gocache:/root/.cache/go-build
-      - gomod:/go/pkg/mod
-    depends_on:
-      redis-sessions:
-        condition: service_healthy
-    networks:
-      - proxy
-      - internal
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
@@ -325,6 +350,27 @@ services:
       - traefik.http.routers.erp-bff-app.priority=20
       - traefik.http.routers.erp-bff-app.service=erp-bff-app
       - traefik.http.services.erp-bff-app.loadbalancer.server.port=8080
+
+  # Backend-for-frontend for the admin app at admin.bool.test (C90, C97): the same
+  # program with its own Hydra client, session key, and session key prefix.
+  bff-admin:
+    <<: *bff
+    environment:
+      <<: *bff-env
+      BFF_SESSION_ENCRYPTION_KEY_FILE: /run/secrets/bff_admin_session_key
+      BFF_OIDC_CLIENT_ID: erp-admin
+      BFF_OIDC_CLIENT_SECRET_FILE: /run/secrets/hydra_client_erp-admin
+      OTEL_SERVICE_NAME: bool-erp-bff-admin
+    secrets: [bff_admin_session_key, hydra_client_erp-admin]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      # admin.bool.test/auth/* -> bff-admin, above the tenant routes (C97).
+      - "traefik.http.routers.erp-bff-admin.rule=Host(`admin.bool.test`) && PathPrefix(`/auth`)"
+      - traefik.http.routers.erp-bff-admin.entrypoints=web
+      - traefik.http.routers.erp-bff-admin.priority=25
+      - traefik.http.routers.erp-bff-admin.service=erp-bff-admin
+      - traefik.http.services.erp-bff-admin.loadbalancer.server.port=8080
 
   # Identity (C83, C85): Ory Kratos holds accounts and runs the login, registration,
   # verification, and recovery flows. Browsers reach its public API at
@@ -414,7 +460,7 @@ services:
       HYDRA_ADMIN_URL: http://hydra:4445
     volumes:
       - ./docker/hydra:/etc/hydra:ro
-    secrets: [hydra_client_dev-test-client, hydra_client_erp-app]
+    secrets: [hydra_client_dev-test-client, hydra_client_erp-app, hydra_client_erp-admin]
     depends_on:
       hydra:
         condition: service_healthy
@@ -528,6 +574,11 @@ secrets:
   # bff-app's AES-256 key for the tokens in its sessions, 64 hex digits (C96).
   bff_app_session_key:
     file: ./docker/secrets/dev/bff_app_session_key
+  hydra_client_erp-admin:
+    file: ./docker/secrets/dev/hydra_client_erp-admin
+  # bff-admin's AES-256 key, separate from bff-app's (C97).
+  bff_admin_session_key:
+    file: ./docker/secrets/dev/bff_admin_session_key
 
 networks:
   proxy:

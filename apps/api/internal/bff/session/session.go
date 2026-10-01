@@ -35,6 +35,9 @@ const (
 
 // Settings configure sessions (from config.Session).
 type Settings struct {
+	// KeyPrefix starts every session's Redis key, so BFF instances sharing one
+	// Redis keep their sessions apart (C97), such as "bff:erp-app:session:".
+	KeyPrefix    string
 	IdleTimeout  time.Duration // ends a session after this long without a request
 	Lifetime     time.Duration // ends a session this long after it started
 	CookieSecure bool          // HTTPS only; off only for plain-HTTP development
@@ -66,7 +69,7 @@ type Sessions struct {
 // whose session could not be loaded or saved (the store is unavailable).
 func New(client *goredis.Client, sealer *Sealer, s Settings, onError func(http.ResponseWriter, *http.Request, error)) *Sessions {
 	m := scs.New()
-	m.Store = goredisstore.New(client)
+	m.Store = goredisstore.NewWithPrefix(client, s.KeyPrefix)
 	// Only a SHA-256 hash of each token is used as the Redis key, so reading Redis
 	// does not give anyone a usable cookie.
 	m.HashTokenInStore = true
