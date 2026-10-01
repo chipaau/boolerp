@@ -1,0 +1,4 @@
+@import "@workspace/ui/globals.css";
+
+/* scan this app's own source for Tailwind classes (the shared UI package is scanned by its own globals.css) */
+@source "../";

@@ -7,7 +7,7 @@ local verified = std.objectHas(claims, 'email') && std.objectHas(claims, 'email_
 {
   identity: {
     traits: {
-      [if verified then 'emails']: [claims.email],
+      [if verified then 'email']: claims.email,
       [if std.objectHas(claims, 'name') then 'name']: claims.name,
     },
     [if verified then 'verified_addresses']: [

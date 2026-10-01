@@ -15,6 +15,7 @@ x-node: &node
     - /w/apps/app/node_modules
     - /w/apps/admin/node_modules
     - /w/apps/website/node_modules
+    - /w/apps/identity/node_modules
     - /w/packages/ui/node_modules
     - /w/packages/api-client/node_modules
     - /w/packages/auth/node_modules
@@ -23,6 +24,22 @@ x-node: &node
     - pnpm-store:/w/.pnpm-store
 
 services:
+  # The login UI (7a-2, C84): Ory Elements drawn in the Bool design, at
+  # http://identity.bool.test. Its /kratos path goes to Kratos (higher priority).
+  identity:
+    <<: *node
+    command: pnpm --filter identity dev
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - "traefik.http.routers.erp-identity.rule=Host(`identity.bool.test`)"
+      - traefik.http.routers.erp-identity.entrypoints=web
+      - traefik.http.routers.erp-identity.priority=30
+      - traefik.http.routers.erp-identity.service=erp-identity
+      - traefik.http.services.erp-identity.loadbalancer.server.port=3000
+
   app:
     <<: *node
     command: pnpm --filter app dev
