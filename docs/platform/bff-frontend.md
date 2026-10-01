@@ -1,8 +1,8 @@
 # App integration with the BFF
 
-Status: contract for `apps/app` and `apps/admin` (C90, C96–C99). The apps still use
-`packages/auth` (the previous design, Kratos at `/auth` on the app's domain); its
-removal and the apps' switch to this contract follow step 7c-4.
+Status: implemented by `apps/app` and `apps/admin` (C90, C96–C100), each in
+`src/lib/session.ts`. `packages/auth`, the previous design (Kratos at `/auth` on the
+app's domain), was removed (C100). Sign out comes with step 7e.
 
 Each internal app is served by its backend-for-frontend (`bff-app` on tenant domains,
 `bff-admin` on `admin.bool.test`), on the same domain as the app. The browser never

@@ -10,9 +10,11 @@ and [development](../../docs/development.md).
   is explicitly requested; it does not authorize application changes.
 - Preserve the newer frontend source and shared packages from `develop`; do not copy
   frontend code from the older `go-erp` checkout. The frontend is other team
-  members' work: do not modify or delete it, including `packages/auth` and `e2e/`.
-- New identity work (`apps/identity`, C84) does not use `packages/auth`, which targets
-  the previous Kratos design (`/auth` on each tenant domain).
+  members' work: do not modify or delete it, including `e2e/`, unless the user asks for
+  a specific change (as for removing `packages/auth`, C100).
+- `apps/app` and `apps/admin` sign in only through their BFF, following
+  [app integration](../../docs/platform/bff-frontend.md): no Kratos or Hydra calls and no
+  tokens in the browser. `packages/auth` (the previous design) was removed (C100).
 - Internal applications (`apps/app`, `apps/admin`) use React with Vite and TanStack
   Router; each is embedded in and served by its backend-for-frontend service
   (`bff-app`, `bff-admin`, C90, ADR 0003). Public-facing applications,

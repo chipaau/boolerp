@@ -1,25 +1,19 @@
-import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
-import { getSession } from '@workspace/auth'
+import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { SidebarInset, SidebarProvider } from '@workspace/ui/components/sidebar'
 import { AdminSidebar } from '@/components/layout/admin-sidebar'
 import { AdminSearchProvider } from '@/components/layout/search-context'
 import { SiteHeader } from '@/components/layout/site-header'
 import { UserProvider } from '@/components/layout/user-context'
+import { currentUser, signIn } from '@/lib/session'
 
 // Authenticated console layout: session guard (once, here — not per-page) + the shell chrome
 // (header over a sidebar area), same shape as apps/app's _app.tsx.
 export const Route = createFileRoute('/_admin')({
   loader: async () => {
-    const state = await getSession()
-    if (state.status !== 'active') {
-      const returnTo = window.location.pathname + window.location.search
-      throw redirect({
-        to: '/login',
-        search: { flow: undefined, return_to: returnTo, aal: state.status === 'aal2_required' ? 'aal2' : undefined, refresh: undefined },
-      })
-    }
-    const traits = state.session.identity.traits
-    return { user: { name: String(traits.name ?? 'Operator'), email: String(traits.email ?? '') } }
+    // No session → the BFF's sign-in (bff-admin), returning here afterwards.
+    const me = await currentUser()
+    if (!me) return signIn()
+    return { user: { name: me.displayName || me.email, email: me.email } }
   },
   component: AdminLayout,
 })

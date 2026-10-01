@@ -178,7 +178,7 @@ each page's server loads its Kratos flow over the internal network
 (`KRATOS_INTERNAL_URL`), passing on the browser's cookies, and Ory Elements renders
 it; `theme/bool.tsx` replaces Elements' visual components with the Bool sign-in design
 from `@workspace/ui`. A page without `?flow=` sends the browser to Kratos to start one;
-expired or unknown flows start again. It does not use `packages/auth`. Hydra's consent
+expired or unknown flows start again. It does not use the removed `packages/auth` (C100). Hydra's consent
 route will be part of the same app (7b).
 
 ## Open decisions

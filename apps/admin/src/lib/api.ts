@@ -1,3 +1,5 @@
+import { signIn } from './session'
+
 // Hand-written fetch client — the OpenAPI-generated one (packages/api-client) doesn't exist yet
 // anywhere in the repo (apps/app is still mock-data only too). Same-origin: Traefik already routes
 // admin.bool.test/api/* to the Go API, so a relative path + the browser's own cookie handling is
@@ -7,6 +9,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   })
+  // No usable session (bff-admin answers 401): sign in again and come back here.
+  if (res.status === 401) return signIn()
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => null)
     const obj = body && typeof body === 'object' ? (body as Record<string, unknown>) : null
