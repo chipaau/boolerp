@@ -15,7 +15,7 @@ services) in any case.
 ## Decision
 
 - A separate **backend-for-frontend (BFF) service** sits between browsers and the API.
-  It completes the login with Hydra, keeps the session (PostgreSQL), sets the HttpOnly
+  It completes the login with Hydra, keeps the session (its own Redis), sets the HttpOnly
   cookie, refreshes tokens, and forwards `/api/*` to the API with
   `Authorization: Bearer <access token>`, never the cookie.
 - The **API accepts only Hydra Bearer tokens**, from the BFF and from any other client.
@@ -28,6 +28,10 @@ services) in any case.
 - The BFF lives in the existing Go module as `apps/api/cmd/bff`, with its packages
   under `internal/bff`; it is a separate binary and container. It can move to its own
   module later.
+- Sessions live in a **dedicated Redis** (`redis-sessions`), not PostgreSQL: the BFF has
+  no database access and no API database credentials. That Redis runs with eviction
+  off (`noeviction`) and persistence (AOF), separate from the API's cache Redis, whose
+  eviction would silently drop sessions.
 
 ## Consequences
 
@@ -37,6 +41,10 @@ services) in any case.
   in every deployment.
 - The BFF now keeps Hydra's access and refresh tokens, encrypted in its sessions, and
   refreshes them.
+- The BFF requires its session Redis: while it is down, no one can sign in or use the
+  app. A lost session only means a login redirect, usually without the password form,
+  because the Kratos session at the login domain is still valid. Production runs that
+  Redis with persistence, a password, TLS, and only on the internal network.
 - The API needs a token-validation decision (JWT verified locally or introspection).
 - Frontend releases are tied to BFF releases (embedded app); in development the app
   still runs on Vite's dev server, with `/api` routed to the BFF.

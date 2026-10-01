@@ -60,8 +60,8 @@ then open `http://127.0.0.1:5555/` and sign in.
 
 Browsers never hold Hydra tokens. Each internal app has a backend-for-frontend (BFF)
 service (`bff-app`, `bff-admin`; `apps/api/cmd/bff`): it embeds and serves the app,
-completes the login with Hydra on the request's own domain, keeps the session in
-PostgreSQL, gives the browser an HttpOnly session cookie, and forwards `/api/*` to the
+completes the login with Hydra on the request's own domain, keeps the session in its
+own Redis (`redis-sessions`), gives the browser an HttpOnly session cookie, and forwards `/api/*` to the
 API with the session's access token as `Authorization: Bearer`. The API accepts only
 Bearer tokens, from the BFF and from non-browser clients (mobile, integrations,
 services), and keeps no sessions. Every request becomes the same caller context (7d).
