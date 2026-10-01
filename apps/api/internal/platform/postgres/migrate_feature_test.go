@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/boolmv/erp/apps/api/internal/edition/full"
 	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
-	"github.com/boolmv/erp/apps/api/internal/platform/postgres/migrations"
 	"github.com/boolmv/erp/apps/api/internal/testdb"
 )
 
@@ -43,10 +43,10 @@ func migrateProbe(t *testing.T, fsys fs.FS) (int, error) {
 	t.Cleanup(func() {
 		ctx := context.Background()
 		_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS migration_probe")
-		_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+postgres.HistoryTable)
+		_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+postgres.HistoryTable("probe"))
 		_ = db.Close()
 	})
-	return postgres.Migrate(t.Context(), db, fsys, slog.New(slog.DiscardHandler))
+	return postgres.Migrate(t.Context(), db, fsys, postgres.HistoryTable("probe"), slog.New(slog.DiscardHandler))
 }
 
 func TestFeatureMigrateAppliesOnceAndRecordsHistory(t *testing.T) {
@@ -57,13 +57,13 @@ func TestFeatureMigrateAppliesOnceAndRecordsHistory(t *testing.T) {
 	db, err := postgres.OpenDB(testdb.PlatformSettings(t, testdb.MigrationRole))
 	require.NoError(t, err)
 	defer db.Close()
-	again, err := postgres.Migrate(t.Context(), db, probe, slog.New(slog.DiscardHandler))
+	again, err := postgres.Migrate(t.Context(), db, probe, postgres.HistoryTable("probe"), slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	assert.Zero(t, again, "a second run applies nothing")
 
 	var version int64
 	require.NoError(t, db.QueryRowContext(t.Context(),
-		"SELECT max(version_id) FROM "+postgres.HistoryTable).Scan(&version))
+		"SELECT max(version_id) FROM "+postgres.HistoryTable("probe")).Scan(&version))
 	assert.EqualValues(t, 1, version)
 }
 
@@ -82,7 +82,7 @@ func TestFeatureMigrateConcurrentRunsApplyOnce(t *testing.T) {
 				return
 			}
 			defer db.Close()
-			results[i], errs[i] = postgres.Migrate(t.Context(), db, probe, slog.New(slog.DiscardHandler))
+			results[i], errs[i] = postgres.Migrate(t.Context(), db, probe, postgres.HistoryTable("probe"), slog.New(slog.DiscardHandler))
 		})
 	}
 	wg.Wait()
@@ -135,7 +135,7 @@ func TestFeatureRuntimeRolePrivileges(t *testing.T) {
 		"cannot create tables":          "CREATE TABLE runtime_table (id int)",
 		"cannot alter tables":           "ALTER TABLE migration_probe ADD COLUMN extra int",
 		"cannot drop tables":            "DROP TABLE migration_probe",
-		"cannot read migration history": "SELECT count(*) FROM " + postgres.HistoryTable,
+		"cannot read migration history": "SELECT count(*) FROM " + postgres.HistoryTable("probe"),
 		"cannot reset sequences":        "SELECT setval(pg_get_serial_sequence('migration_probe', 'id'), 1000)",
 		"cannot create schemas":         "CREATE SCHEMA runtime_schema",
 	} {
@@ -148,10 +148,43 @@ func TestFeatureRuntimeRolePrivileges(t *testing.T) {
 	}
 }
 
-func TestFeatureEmbeddedMigrationsApply(t *testing.T) {
-	applied, err := migrateProbe(t, migrations.FS())
+func TestFeatureEditionMigrationsApply(t *testing.T) {
+	db, err := postgres.OpenDB(testdb.PlatformSettings(t, testdb.MigrationRole))
 	require.NoError(t, err)
-	assert.Zero(t, applied, "there are no application migrations yet")
+	t.Cleanup(func() {
+		// The platform database is never migrated; leave it as it was.
+		ctx := context.Background()
+		_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS users")
+		for _, m := range full.Migrations {
+			_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+postgres.HistoryTable(m.Name))
+		}
+		_ = db.Close()
+	})
+
+	applied, err := postgres.MigrateModules(t.Context(), db, full.Migrations, slog.New(slog.DiscardHandler))
+	require.NoError(t, err)
+	assert.Positive(t, applied, "every module's migrations apply to a fresh database")
+	again, err := postgres.MigrateModules(t.Context(), db, full.Migrations, slog.New(slog.DiscardHandler))
+	require.NoError(t, err)
+	assert.Zero(t, again)
+
+	pool, err := postgres.NewPool(t.Context(), testdb.PlatformSettings(t, testdb.RuntimeRole))
+	require.NoError(t, err)
+	defer pool.Close()
+	var users, history bool
+	require.NoError(t, pool.QueryRow(t.Context(), "SELECT to_regclass('public.users') IS NOT NULL").Scan(&users))
+	assert.True(t, users, "the identity module's users table exists")
+	require.NoError(t, db.QueryRowContext(t.Context(), "SELECT to_regclass('migrations.identity_version') IS NOT NULL").Scan(&history))
+	assert.True(t, history, "the identity module has its own history table")
+}
+
+func TestFeatureInvalidModuleNameIsRefused(t *testing.T) {
+	db, err := postgres.OpenDB(testdb.PlatformSettings(t, testdb.MigrationRole))
+	require.NoError(t, err)
+	defer db.Close()
+	_, err = postgres.MigrateModules(t.Context(), db,
+		[]postgres.ModuleMigrations{{Name: "bad; DROP TABLE x", FS: fstest.MapFS{}}}, slog.New(slog.DiscardHandler))
+	assert.ErrorContains(t, err, "invalid module name")
 }
 
 func TestFeatureMigrateFailsWhenItCannotConnect(t *testing.T) {
@@ -162,7 +195,7 @@ func TestFeatureMigrateFailsWhenItCannotConnect(t *testing.T) {
 	defer db.Close()
 
 	// No migrations to apply, but the run must still fail.
-	_, err = postgres.Migrate(t.Context(), db, migrations.FS(), slog.New(slog.DiscardHandler))
+	_, err = postgres.MigrateModules(t.Context(), db, full.Migrations, slog.New(slog.DiscardHandler))
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), "s3cret-wrong")
 }

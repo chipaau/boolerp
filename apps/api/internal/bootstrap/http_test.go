@@ -396,7 +396,8 @@ func TestModulesInheritDefaultsAndApplyTheirOwnAuth(t *testing.T) {
 	router, buf := withConfig(t, routerConfig{MaxBodyBytes: 1024})
 	// Mounted as main mounts it.
 	router.Route("/api/auth", auth.New(t.Context(),
-		auth.Settings{Issuer: "http://127.0.0.1:1/", Audience: "erp-api"}, &http.Client{Timeout: time.Second}).Routes)
+		auth.Settings{Issuer: "http://127.0.0.1:1/", Audience: "erp-api"}, &http.Client{Timeout: time.Second},
+		func(context.Context, string) (auth.User, error) { return auth.User{}, nil }, slog.New(slog.DiscardHandler)).Routes)
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/auth/me", nil))

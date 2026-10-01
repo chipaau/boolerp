@@ -21,7 +21,7 @@ login provider: one login service (`identity.bool.test` in development) for ever
 domain the API serves, because open-source Kratos cannot set session cookies on
 unrelated domains such as customers' own domains or `findcare.mv`. The API is a Hydra
 client: it completes the login on the request's own domain and keeps its own session
-there. The roadmap delivers this in steps 7a–7f; custom-domain login (7f) follows the
+there. The roadmap delivers this in steps 7a–7g; custom-domain login (7f) follows the
 tenancy domain registry. Whether ERP and FindCare share accounts is still open.
 
 Each client can have a fully custom login page design (C84): our own login UI reads
@@ -73,9 +73,32 @@ Hydra issues JWT access tokens valid for 10 minutes. The API accepts a caller on
 (fetched once and cached), the issuer, the `erp-api` audience, and expiry (30 seconds
 of allowance), and refuses ID tokens. A client must be allowed the `erp-api` audience
 and request it (`audience=erp-api`). Health checks are public; `GET /api/auth/me` (the
-`auth` module, C92) returns the token's subject and client. To try it, get a token with Hydra's test client (above,
+`auth` module, C92) returns the caller's user (7d) and client. To try it, get a token with Hydra's test client (above,
 adding `--audience erp-api`) and call
 `curl -H "Authorization: Bearer <token>" http://demo.bool.test/api/auth/me`.
+
+## Users and caller context (7d, C94)
+
+The `identity` module (`apps/api/internal/modules/identity`) owns the `users` table:
+the API's own ID for a person and copies of the Kratos identity's email, phone, and
+name ([data model](../data-model/README.md)). Other tables reference `users.id`, never
+the Kratos identity ID. A user is created or refreshed, by Kratos identity ID, when:
+
+- **Kratos calls the registration web hook** after a password or Google registration
+  (configured in `docker/secrets/dev/kratos.yml`, body `docker/kratos/user-created.jsonnet`).
+  It sends only the identity ID to `POST /internal/identity/kratos` on the API's
+  internal listener (`APP_INTERNAL_PORT`, 8081), which Traefik does not route; the
+  header `X-Webhook-Key` must match `APP_IDENTITY_WEBHOOK_KEY_FILE`. The module reads
+  the identity from Kratos's admin API (`ory/client-go`) rather than trusting the body.
+  Kratos ignores the response, so registration never fails because of the API.
+- **A person's token is first used** and no row exists yet (an identity created before
+  the hook, or a failed hook).
+
+The `auth` module's `Authenticate` middleware resolves the token's subject to the user
+through a `ResolveUser` function the edition supplies, and keeps the caller (token and
+user) in the request context (`auth.FromContext`). If the user cannot be loaded, the
+request gets 503 without the cause. Changes to an identity's traits reach the copy on
+the next sync.
 
 ## Accounts and development services (7a-1, C85)
 
@@ -132,5 +155,5 @@ Application ports separate use cases from the selected identity provider or sess
 implementation. Removing previous identity services from Compose neither selects
 an alternative nor authorizes implementing credential handling without a design.
 
-No provider ID is assumed to be the application's user primary key. No credentials,
+No provider ID is the application's user primary key (`users.id` is, C94). No credentials,
 tokens, or full identity payloads belong in traces, cache keys, or ordinary logs.

@@ -10,11 +10,17 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   under `internal/modules/`.
 - A module owns its persistence writes. Do not reach into another module's SQL package.
 - A module keeps all of its code in its own folder and registers its routes relative to
-  its prefix (`Routes(r chi.Router)`). Only the build's `main` constructs and mounts
-  modules (the `RegisterModules` callback of `bootstrap.Run`); bootstrap builds infrastructure.
+  its prefix (`Routes(r chi.Router)`). Only the edition package
+  (`internal/edition/<name>`, C95) constructs, wires, and mounts modules, through the
+  `RegisterModules` callback of `bootstrap.Run`; bootstrap builds infrastructure.
   Modules inherit the default middleware and apply authentication themselves (C92).
-- A build with fewer modules is another `main` listing fewer, not build tags or runtime
-  switches (C93). Editions and licensing themselves are not decided.
+- Module migrations live in `internal/modules/<module>/migrations`, listed in the
+  edition's `Migrations`; `cmd/api` and `cmd/migrate` share the edition (C95).
+- Business modules may depend on platform modules; a module needing another business
+  module defines the interface in its own `application` package. Platform modules never
+  import business modules (C95).
+- A build with fewer modules is another edition with its own mains, not build tags or
+  runtime switches (C93). Editions and licensing themselves are not decided.
 - Treat the documented layout as a target; create files only when an approved use case needs them.
 - PostgreSQL, Redis, chi, pgx/v5 pgxpool, Goose, Ory Kratos, Ory Hydra, and Cerbos are selected;
   S3 is the object-storage API and `chipaau/minio` is the development server. See

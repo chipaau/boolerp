@@ -82,13 +82,10 @@ selfservice:
             - hook: require_verified_address
     registration:
       ui_url: http://identity.bool.test/registration
-      after:
-        password:
-          hooks:
-            - hook: show_verification_ui
-        oidc:
-          hooks:
-            - hook: session
+      # The after-registration hooks (show_verification_ui for password, session
+      # for Google, and the web hook that creates the API's user, C94) are in the
+      # secret config file: the web hook carries a secret, and Kratos replaces
+      # lists from a later file rather than merging them.
 
 courier:
   smtp:

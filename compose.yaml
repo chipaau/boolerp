@@ -153,8 +153,13 @@ services:
       OTEL_TRACES_SAMPLER:
       # Callers present Hydra access tokens, verified against Hydra's keys (C91).
       APP_AUTH_ISSUER: http://identity.bool.test/
-    # Only the runtime role's password; never the owner's or the migration role's (C47).
-    secrets: [db_app_password]
+      # Users are read from Kratos's admin API; Kratos's web hook arrives on the
+      # internal port (8081), which Traefik never routes (C94).
+      APP_IDENTITY_KRATOS_ADMIN_URL: http://kratos:4434
+      APP_IDENTITY_WEBHOOK_KEY_FILE: /run/secrets/identity_webhook_key
+    # Only the runtime role's password and the web hook key; never the owner's or
+    # the migration role's (C47).
+    secrets: [db_app_password, identity_webhook_key]
     # The API fetches Hydra's keys from the issuer's address, through Traefik on the host.
     extra_hosts:
       - "identity.bool.test:host-gateway"
@@ -435,6 +440,9 @@ secrets:
   # One secret per first-party client, named hydra_client_<client-id> (C89).
   hydra_client_dev-test-client:
     file: ./docker/secrets/dev/hydra_client_dev-test-client
+  # Shared by Kratos's web hook and the API's identity module (C94).
+  identity_webhook_key:
+    file: ./docker/secrets/dev/identity_webhook_key
 
 networks:
   proxy:

@@ -1,4 +1,5 @@
-// Command migrate applies the application's database migrations (C46).
+// Command migrate applies the database migrations of the edition's modules, each
+// module with its own history (C46, C48, C95).
 //
 // It is run explicitly before starting a new release, never by the API at
 // startup, and connects as the migration role using only MIGRATE_* settings (C47).
@@ -12,10 +13,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/boolmv/erp/apps/api/internal/edition/full"
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
 	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
-	"github.com/boolmv/erp/apps/api/internal/platform/postgres/migrations"
 )
 
 // timeout bounds a whole run, including waiting for another run's lock.
@@ -54,7 +55,7 @@ func run() int {
 	}
 	defer db.Close()
 
-	applied, err := postgres.Migrate(ctx, db, migrations.FS(), logger)
+	applied, err := postgres.MigrateModules(ctx, db, full.Migrations, logger)
 	if err != nil {
 		logger.Error("migration failed", "error", err)
 		return 1

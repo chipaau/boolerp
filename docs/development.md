@@ -73,7 +73,7 @@ A standalone migration service is not part of this Compose baseline.
 
 ## Runtime configuration
 
-**Layout (C44):** settings are grouped by concern in `internal/platform/config`: `app.go` (`APP_ENV`, `APP_PORT`, `APP_SHUTDOWN_TIMEOUT`), `log.go` (`APP_LOG_*`), `http.go` (`APP_HTTP_*`), and `database.go` (`APP_DB_*`), and `redis.go` (`APP_REDIS_*`). Add a setting to its group's file; a new concern gets its own file and `envPrefix`.
+**Layout (C44):** settings are grouped by concern in `internal/platform/config`: `app.go` (`APP_ENV`, `APP_PORT`, `APP_INTERNAL_PORT`, `APP_SHUTDOWN_TIMEOUT`), `log.go` (`APP_LOG_*`), `http.go` (`APP_HTTP_*`), and `database.go` (`APP_DB_*`), `redis.go` (`APP_REDIS_*`), `auth.go` (`APP_AUTH_*`), and `identity.go` (`APP_IDENTITY_*`). Add a setting to its group's file; a new concern gets its own file and `envPrefix`.
 
 **Rebuild status (steps 1a–2b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
 `APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, `APP_HTTP_ALLOWED_ORIGINS`, the six `APP_DB_*` connection settings, `APP_DB_MAX_CONNS`, `APP_DB_PING_TIMEOUT`, and the seven `APP_REDIS_*` settings are implemented in `internal/platform/config` with `caarlos0/env`
@@ -96,6 +96,7 @@ silently removed.
 | --- | --- | --- |
 | `APP_ENV` | `dev` | `dev`, `test`, `staging`, `prod`; an operational log label and the seed guard (C50): seeding requires it set explicitly to a non-production value. It is not an access-control switch |
 | `APP_PORT` | `8080` | Decimal TCP port from 1 to 65535 |
+| `APP_INTERNAL_PORT` | `8081` | Decimal TCP port from 1 to 65535, different from `APP_PORT`; the internal listener for calls from other services, such as Kratos's web hook (C94). Never route it through the proxy |
 | `APP_SHUTDOWN_TIMEOUT` | `35s` | Positive Go duration up to `10m`; at least `APP_HTTP_WRITE_TIMEOUT` so any allowed request can finish (C30) |
 | `APP_LOG_FORMAT` | `json` | `json` or `text` |
 | `APP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` (case-insensitive) |
@@ -123,6 +124,8 @@ silently removed.
 | `APP_REDIS_TIMEOUT` | `500ms` | Bound on each connect, read, and write, up to `10s`; an unavailable cache fails fast (C52) |
 | `APP_AUTH_ISSUER` | none (required) | Hydra's issuer, exactly as in its tokens (Compose: `http://identity.bool.test/`, C91); keys come from `<issuer>.well-known/jwks.json` |
 | `APP_AUTH_AUDIENCE` | `erp-api` | The audience access tokens must include |
+| `APP_IDENTITY_KRATOS_ADMIN_URL` | none (required) | Kratos's admin API (Compose: `http://kratos:4434`), reachable only on the internal network (C94) |
+| `APP_IDENTITY_WEBHOOK_KEY_FILE` | none (required) | Path of the file holding the key Kratos sends in `X-Webhook-Key` (C80, C94); at least 32 characters, compared in constant time. The same value is in Kratos's config |
 
 Passwords are read only from files (C80), as Docker and Kubernetes mount secrets
 (`/run/secrets/...`): the `_FILE` variable names the file, and its contents are the
@@ -137,7 +140,7 @@ also applies when `APP_LOG_FORMAT` or `APP_LOG_LEVEL` is invalid. Valid settings
 configure the injected `slog` logger; lifecycle messages obey its level threshold.
 See [logging and redaction](platform/observability.md) for the field policy.
 
-`cmd/migrate` reads only these settings (C47), never `APP_*`:
+`cmd/migrate` applies the migrations of the modules in the edition it is built with (C95), each with its own history table `migrations.<module>_version`. It reads only these settings (C47), never `APP_*`:
 
 | Variable | Default | Accepted values |
 | --- | --- | --- |
