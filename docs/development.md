@@ -121,6 +121,8 @@ silently removed.
 | `APP_REDIS_DB` | `0` | Redis database number, 0–15 |
 | `APP_REDIS_TLS` | `true` (Compose: `false`) | Encrypt and verify the server certificate |
 | `APP_REDIS_TIMEOUT` | `500ms` | Bound on each connect, read, and write, up to `10s`; an unavailable cache fails fast (C52) |
+| `APP_AUTH_ISSUER` | none (required) | Hydra's issuer, exactly as in its tokens (Compose: `http://identity.bool.test/`, C91); keys come from `<issuer>.well-known/jwks.json` |
+| `APP_AUTH_AUDIENCE` | `erp-api` | The audience access tokens must include |
 
 Passwords are read only from files (C80), as Docker and Kubernetes mount secrets
 (`/run/secrets/...`): the `_FILE` variable names the file, and its contents are the

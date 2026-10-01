@@ -29,8 +29,13 @@ oidc:
   subject_identifiers:
     supported_types: [public]
 
-# Token lifetimes and the opaque access-token strategy are Hydra's defaults for now
-# (C89); session lifetimes are decided with the API's session in 7c.
+# Access tokens are JWTs that the API verifies locally against Hydra's published
+# keys (C91), valid for 10 minutes; the BFF refreshes them. Other lifetimes are
+# Hydra's defaults (C89).
+strategies:
+  access_token: jwt
+ttl:
+  access_token: 10m
 
 log:
   level: info

@@ -28,6 +28,10 @@ accountable changes.
   `internal/platform/observability/sensitive.go`. `session` intentionally over-redacts
   (for example `session_count`); a bare `key` is not listed because it would hide
   ordinary names such as `cache_key`.
+- In every string value, including the message and `url.full`, the values of query
+  parameters named `code` or `state`, or with a sensitive name (such as
+  `access_token`), are replaced with `[REDACTED]` while the names stay, so a login
+  callback's request log shows `code=[REDACTED]&state=[REDACTED]` (C91).
   Matching ignores case, underscores, and hyphens. It also applies to attributes
   attached with `With` and groups created with `WithGroup`. This is implemented with
   slog's `HandlerOptions.ReplaceAttr` hook; the word list is the documented gap that

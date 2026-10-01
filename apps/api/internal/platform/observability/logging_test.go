@@ -89,3 +89,32 @@ func TestRedactionKeepsSafeAttributes(t *testing.T) {
 	assert.Equal(t, "u-1", line["user_id"])
 	assert.EqualValues(t, 8080, line["port"])
 }
+
+func TestRedactionScrubsCredentialsInURLs(t *testing.T) {
+	const code, state = "s3cret-authorization-code", "s3cret-state-value"
+	callback := "http://demo.bool.test/api/auth/callback?code=" + code + "&scope=openid&state=" + state
+	var buf bytes.Buffer
+	logger := NewLogger(&buf, "json", slog.LevelInfo)
+
+	// As the request logger writes it: the URL in the message and in url.full.
+	logger.Info("GET "+callback+" => HTTP 302 (5ms)", "url.full", callback, "url.path", "/api/auth/callback",
+		"next", "http://x.test/?access_token=s3cret-token&page=2")
+
+	out := buf.String()
+	assert.NotContains(t, out, "s3cret", "no credential from a query string")
+	line := decode(t, &buf)
+	// Parameter names and the rest of the URL survive, so the line stays useful.
+	assert.Equal(t, "http://demo.bool.test/api/auth/callback?code=[REDACTED]&scope=openid&state=[REDACTED]", line["url.full"])
+	assert.Equal(t, "GET http://demo.bool.test/api/auth/callback?code=[REDACTED]&scope=openid&state=[REDACTED] => HTTP 302 (5ms)", line["msg"])
+	assert.Equal(t, "http://x.test/?access_token=[REDACTED]&page=2", line["next"])
+	assert.Equal(t, "/api/auth/callback", line["url.path"])
+}
+
+func TestRedactionLeavesOrdinaryQueriesAlone(t *testing.T) {
+	var buf bytes.Buffer
+	NewLogger(&buf, "json", slog.LevelInfo).Info("GET /api/items?page=2&sort=-name => HTTP 200 (1ms)",
+		"url.full", "http://demo.bool.test/api/items?page=2&sort=-name")
+	line := decode(t, &buf)
+	assert.Equal(t, "http://demo.bool.test/api/items?page=2&sort=-name", line["url.full"])
+	assert.Equal(t, "GET /api/items?page=2&sort=-name => HTTP 200 (1ms)", line["msg"])
+}

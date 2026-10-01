@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -14,6 +15,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/httplog/v3"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/bearer"
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
 	"github.com/boolmv/erp/apps/api/internal/platform/problem"
@@ -46,6 +48,10 @@ type routerConfig struct {
 
 	CheckReady   func(context.Context) error // dependency check for readiness, e.g. pool.Ping
 	ReadyTimeout time.Duration               // bound on CheckReady
+
+	// Authenticate admits only callers with a valid access token (C91) to the
+	// routes behind it; nil leaves those routes out (tests that do not need them).
+	Authenticate func(http.Handler) http.Handler
 }
 
 // newRouter builds the chi router and its middleware. It returns chi.Router,
@@ -134,6 +140,15 @@ func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
 	r.Get(livenessPath, liveness)
 	r.Get(readinessPath, readiness(logger, rc.CheckReady, rc.ReadyTimeout))
 
+	// Everything else needs a valid access token (C88, C91); health checks above
+	// stay public.
+	if rc.Authenticate != nil {
+		r.Group(func(r chi.Router) {
+			r.Use(rc.Authenticate)
+			r.Get("/api/me", me)
+		})
+	}
+
 	return r, nil
 }
 
@@ -207,4 +222,15 @@ func allowedMethods(r *http.Request) []string {
 		}
 	}
 	return allowed
+}
+
+// me answers who the access token says is calling: the account and the client.
+// It is the first protected route; the caller context of step 7d builds on it.
+func me(w http.ResponseWriter, r *http.Request) {
+	token, _ := bearer.FromContext(r.Context())
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(struct {
+		Subject  string `json:"subject"`
+		ClientID string `json:"clientId"`
+	}{token.Subject, token.ClientID})
 }

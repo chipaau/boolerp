@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/bearer"
 	"github.com/boolmv/erp/apps/api/internal/platform/httpinput"
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
 	"github.com/boolmv/erp/apps/api/internal/platform/problem"
@@ -387,4 +388,22 @@ func TestRequestInputThroughTheRouter(t *testing.T) {
 	tooLarge := send("application/json", `{"name":"`+strings.Repeat("a", 100)+`"}`)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, tooLarge.Code, "the router's RequestSize limit")
 	assert.Equal(t, problem.ContentType, tooLarge.Header().Get("Content-Type"))
+}
+
+func TestProtectedRoutesNeedAToken(t *testing.T) {
+	// No issuer is reachable: a request without a token is refused before any
+	// key is needed, and health checks never ask for one.
+	verifier := bearer.New(t.Context(), "http://127.0.0.1:1/", "erp-api", &http.Client{Timeout: time.Second})
+	router, _ := withConfig(t, routerConfig{MaxBodyBytes: 1024, Authenticate: verifier.Middleware})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/me", nil))
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Equal(t, "Bearer", rec.Header().Get("WWW-Authenticate"))
+
+	for _, path := range []string{livenessPath, readinessPath} {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		assert.Equal(t, http.StatusOK, rec.Code, path)
+	}
 }
