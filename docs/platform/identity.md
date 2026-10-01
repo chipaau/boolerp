@@ -92,9 +92,27 @@ local `return_to` path. The callback must be registered on the client
 session key. Both BFFs share `redis-sessions` under separate key prefixes
 (`bff:<client-id>:session:`).
 
+Hydra's tokens are not in the `scs` session but in their own key,
+`bff:<client-id>:tokens:<id>`, written only at login and by a refresh (C98).
+
 To try it: open `http://demo.bool.test/auth/login?return_to=/` or
 `http://admin.bool.test/auth/login?return_to=/` and sign in. The apps themselves do not
-use the BFF yet (7c-3, 7c-4).
+use the BFF yet (7c-4).
+
+## The BFF proxy (7c-3, C98)
+
+Each BFF forwards `/api/*` to the API with `Authorization: Bearer` and the session's
+access token; the browser's cookie and its own `Authorization` header never reach the
+API. A request without a session gets the BFF's 401, which the app answers by sending
+the browser to `/auth/login`. The BFF refreshes the access token when it expires within
+a minute; concurrent requests share one refresh, and Hydra keeps a used refresh token
+valid for a minute (`rotation_grace_period`) for races across processes. A refresh
+Hydra refuses signs the session out (401); Hydra unavailable answers 503 and keeps the
+session.
+
+Clients with their own tokens (mobile, partners, the Hydra test client) call the API at
+`http://api.bool.test`: for example
+`curl -H "Authorization: Bearer <token>" http://api.bool.test/api/auth/me`.
 
 ## Access tokens (7c-1, C91)
 
@@ -105,7 +123,7 @@ of allowance), and refuses ID tokens. A client must be allowed the `erp-api` aud
 and request it (`audience=erp-api`). Health checks are public; `GET /api/auth/me` (the
 `auth` module, C92) returns the caller's user (7d) and client. To try it, get a token with Hydra's test client (above,
 adding `--audience erp-api`) and call
-`curl -H "Authorization: Bearer <token>" http://demo.bool.test/api/auth/me`.
+`curl -H "Authorization: Bearer <token>" http://api.bool.test/api/auth/me` (app domains' `/api` goes through their BFF, C98).
 
 ## Users and caller context (7d, C94)
 

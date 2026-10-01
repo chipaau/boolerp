@@ -22,6 +22,7 @@ func withBFF(t *testing.T, environ []string) []string {
 		"BFF_OIDC_ISSUER=http://identity.bool.test/",
 		"BFF_OIDC_CLIENT_ID=erp-app",
 		"BFF_OIDC_CLIENT_SECRET_FILE=" + secretFile(t, "client-s3cret"),
+		"BFF_API_URL=http://api:8080",
 	}
 	return append(required, environ...)
 }
@@ -48,6 +49,7 @@ func TestLoadBFFDefaults(t *testing.T) {
 			Issuer: "http://identity.bool.test/", ClientID: "erp-app",
 			ClientSecret: "client-s3cret", Audience: "erp-api",
 		},
+		API: Upstream{URL: "http://api:8080"},
 	}, cfg)
 }
 
@@ -66,6 +68,7 @@ func TestLoadBFFRefusesBadSessionSettings(t *testing.T) {
 		"non-hex key":     {[]string{"BFF_SESSION_ENCRYPTION_KEY_FILE=" + secretFile(t, strings.Repeat("z", 64))}, "BFF_SESSION_ENCRYPTION_KEY_FILE: must satisfy hexadecimal"},
 		"lifetime < idle": {[]string{"BFF_SESSION_IDLE_TIMEOUT=2h", "BFF_SESSION_LIFETIME=1h"}, "BFF_SESSION_LIFETIME: must satisfy gtfield=BFF_SESSION_IDLE_TIMEOUT"},
 		"no client":       {[]string{"BFF_OIDC_CLIENT_ID="}, "BFF_OIDC_CLIENT_ID"},
+		"API not a URL":   {[]string{"BFF_API_URL=api:8080"}, "BFF_API_URL: must satisfy http_url"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := LoadBFF(withBFF(t, tc.environ))

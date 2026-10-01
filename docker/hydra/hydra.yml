@@ -37,6 +37,15 @@ strategies:
 ttl:
   access_token: 10m
 
+# Refresh tokens rotate on every use. A used one stays valid for a minute, so two
+# requests refreshing at once (several BFF processes, or a request that read the
+# tokens just before another saved new ones) do not look like token theft, which
+# would revoke the session's tokens; later reuse still does (C98).
+oauth2:
+  grant:
+    refresh_token:
+      rotation_grace_period: 1m
+
 log:
   level: info
   format: json

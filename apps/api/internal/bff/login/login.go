@@ -13,6 +13,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -100,10 +101,15 @@ func (h *Handler) discover(ctx context.Context) (*oidc.Provider, error) {
 // accepts callbacks registered for the client, so a forged Host cannot redirect
 // the login elsewhere.
 func (h *Handler) oauth2Config(p *oidc.Provider, callback string) *oauth2.Config {
+	endpoint := p.Endpoint()
+	// The clients use client_secret_basic. x/oauth2's default auto-detection
+	// retries a refused request with the secret in the body, which Hydra answers
+	// with invalid_client, hiding the real error (such as invalid_grant).
+	endpoint.AuthStyle = oauth2.AuthStyleInHeader
 	return &oauth2.Config{
 		ClientID:     h.settings.ClientID,
 		ClientSecret: h.settings.ClientSecret,
-		Endpoint:     p.Endpoint(),
+		Endpoint:     endpoint,
 		RedirectURL:  callback,
 		// offline: Hydra issues a refresh token, so the session outlives the
 		// 10-minute access token.
@@ -223,6 +229,39 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	h.logger.InfoContext(ctx, "signed in", "account", idToken.Subject)
 	http.Redirect(w, r, returnTo, http.StatusFound)
+}
+
+// ErrRefreshRefused means Hydra refused the refresh token (invalid_grant): it
+// was revoked, has expired, or was reused after the grace period. The session
+// must sign in again (C98).
+var ErrRefreshRefused = errors.New("login: refresh token refused")
+
+// Refresh exchanges the session's refresh token for new tokens. Hydra rotates
+// refresh tokens, so the result carries a new one; the ID token is kept when the
+// response has none.
+func (h *Handler) Refresh(ctx context.Context, old session.Tokens) (session.Tokens, error) {
+	p, err := h.discover(ctx)
+	if err != nil {
+		return session.Tokens{}, fmt.Errorf("login: discovery: %w", err)
+	}
+	// A token without an access token is never valid, so the source refreshes.
+	src := h.oauth2Config(p, "").TokenSource(oidc.ClientContext(ctx, h.client), &oauth2.Token{RefreshToken: old.Refresh})
+	t, err := src.Token()
+	if err != nil {
+		var re *oauth2.RetrieveError
+		if errors.As(err, &re) && re.ErrorCode == "invalid_grant" {
+			return session.Tokens{}, ErrRefreshRefused
+		}
+		return session.Tokens{}, redactOAuth2(err)
+	}
+	tokens := session.Tokens{Access: t.AccessToken, Refresh: t.RefreshToken, IDToken: old.IDToken, Expiry: t.Expiry}
+	if idToken, _ := t.Extra("id_token").(string); idToken != "" {
+		tokens.IDToken = idToken
+	}
+	if tokens.Refresh == "" {
+		tokens.Refresh = old.Refresh
+	}
+	return tokens, nil
 }
 
 // safeReturnTo accepts only a path on this site ("/settings"), so the login

@@ -154,6 +154,7 @@ settings:
 | `BFF_OIDC_CLIENT_ID` | none (required) | The instance's Hydra client (Compose: `erp-app`) |
 | `BFF_OIDC_CLIENT_SECRET_FILE` | none (required) | Path of the file holding the client's secret (C80) |
 | `BFF_OIDC_AUDIENCE` | `erp-api` | The audience requested for access tokens, which the API requires (C91) |
+| `BFF_API_URL` | none (required) | The API's address on the internal network, where `/api/*` is forwarded (Compose: `http://api:8080`, C98) |
 
 `cmd/migrate` applies the migrations of the modules in the edition it is built with (C95), each with its own history table `migrations.<module>_version`. It reads only these settings (C47), never `APP_*`:
 
@@ -193,10 +194,11 @@ available without dependencies, while readiness reports PostgreSQL as unavailabl
 
 The full command above starts the API and its configured PostgreSQL/Redis dependencies, not the frontend.
 The API uses PostgreSQL readiness; Redis is not used yet. Stop the sibling `go-erp` API before
-using this checkout so two wildcard routers do not compete. Through the existing local proxy:
+using this checkout so two wildcard routers do not compete. Through the existing local proxy,
+at the API's own host (app domains' `/api` goes through their BFF and needs a session, C98):
 
 ```sh
-curl --fail http://cyryx.bool.test/api/healthz
+curl --fail http://api.bool.test/api/healthz
 ```
 
 For an isolated run without the proxy, PostgreSQL, Redis, or frontend, process

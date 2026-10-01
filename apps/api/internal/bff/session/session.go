@@ -1,12 +1,20 @@
-// Package session keeps the BFF's browser sessions (C90, C96): the browser holds
-// only an HttpOnly cookie with a random token, and the session lives in the
+// Package session keeps the BFF's browser sessions (C90, C96, C98): the browser
+// holds only an HttpOnly cookie with a random token, and the session lives in the
 // session Redis. It configures scs (github.com/alexedwards/scs/v2) with its
 // go-redis store; idle and absolute timeouts, token renewal at login, and
-// destroying a session are scs's. Hydra's tokens are kept sealed (seal.go).
+// destroying a session are scs's.
+//
+// Hydra's tokens are not in the scs session: scs saves the whole session at the
+// end of every request (to extend the idle timeout), so a request that loaded
+// the session before a refresh would write the old tokens back. They live in
+// their own key instead, sealed (seal.go), written only at login and by a
+// refresh (C98).
 package session
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,18 +33,19 @@ const (
 	CookieNameNoHTTPS = "session"
 )
 
-// Session keys of a signed-in session.
+// Session keys of a signed-in session; none of them changes after login.
 const (
 	keyAccount      = "account"       // the Kratos account ID (the ID token's sub)
 	keyHydraSession = "hydra_session" // Hydra's login-session ID (sid), for logout (7e)
 	keyLoginAt      = "login_at"      // Unix seconds; scs encodes values with gob
-	keyTokens       = "tokens"        // Tokens, sealed
+	keyTokensID     = "tokens_id"     // names the tokens' own key
 )
 
 // Settings configure sessions (from config.Session).
 type Settings struct {
-	// KeyPrefix starts every session's Redis key, so BFF instances sharing one
-	// Redis keep their sessions apart (C97), such as "bff:erp-app:session:".
+	// KeyPrefix starts every Redis key of this BFF instance, so instances sharing
+	// one Redis keep their sessions apart (C97), such as "bff:erp-app:". Sessions
+	// are under <prefix>session:, tokens under <prefix>tokens:.
 	KeyPrefix    string
 	IdleTimeout  time.Duration // ends a session after this long without a request
 	Lifetime     time.Duration // ends a session this long after it started
@@ -52,24 +61,29 @@ type Tokens struct {
 	Expiry  time.Time `json:"expiry"`   // when Access expires
 }
 
-// SignedIn is the state a login stores.
+// SignedIn is the state of a signed-in session.
 type SignedIn struct {
 	Account      string
 	HydraSession string
 	Tokens       Tokens
+	// TokensID names the tokens' key; set by Current, and used by SaveTokens.
+	TokensID string
 }
 
-// Sessions is the session manager plus the sealer for the tokens.
+// Sessions is the session manager plus the tokens' own keys.
 type Sessions struct {
 	*scs.SessionManager
-	sealer *Sealer
+	redis    *goredis.Client
+	sealer   *Sealer
+	prefix   string
+	lifetime time.Duration
 }
 
 // New returns the sessions over the session Redis. onError answers a request
 // whose session could not be loaded or saved (the store is unavailable).
 func New(client *goredis.Client, sealer *Sealer, s Settings, onError func(http.ResponseWriter, *http.Request, error)) *Sessions {
 	m := scs.New()
-	m.Store = goredisstore.NewWithPrefix(client, s.KeyPrefix)
+	m.Store = goredisstore.NewWithPrefix(client, s.KeyPrefix+"session:")
 	// Only a SHA-256 hash of each token is used as the Redis key, so reading Redis
 	// does not give anyone a usable cookie.
 	m.HashTokenInStore = true
@@ -91,15 +105,16 @@ func New(client *goredis.Client, sealer *Sealer, s Settings, onError func(http.R
 	// No Domain: the cookie belongs to the exact host it was set on, so one
 	// tenant's domain never receives another's cookie.
 	m.ErrorFunc = onError
-	return &Sessions{SessionManager: m, sealer: sealer}
+	return &Sessions{SessionManager: m, redis: client, sealer: sealer, prefix: s.KeyPrefix, lifetime: s.Lifetime}
 }
 
 // SignIn stores a completed login under a new session token, so a token planted
-// before the login (session fixation) is worthless.
+// before the login (session fixation) is worthless. The tokens get a new key
+// that expires with the session's lifetime.
 func (s *Sessions) SignIn(ctx context.Context, in SignedIn) error {
-	tokens, err := json.Marshal(in.Tokens)
-	if err != nil {
-		return fmt.Errorf("session: %w", err)
+	id := randomID()
+	if err := s.writeTokens(ctx, in.Account, id, in.Tokens, s.lifetime); err != nil {
+		return err
 	}
 	if err := s.RenewToken(ctx); err != nil {
 		return fmt.Errorf("session: renewing the token: %w", err)
@@ -107,26 +122,80 @@ func (s *Sessions) SignIn(ctx context.Context, in SignedIn) error {
 	s.Put(ctx, keyAccount, in.Account)
 	s.Put(ctx, keyHydraSession, in.HydraSession)
 	s.Put(ctx, keyLoginAt, time.Now().Unix())
-	s.Put(ctx, keyTokens, s.sealer.Seal(tokens, in.Account))
+	s.Put(ctx, keyTokensID, id)
 	return nil
 }
 
-// Current returns the signed-in state, or false when the session is not signed
-// in. A session whose tokens cannot be opened (the key was replaced) is
-// destroyed and counts as signed out, so the browser signs in again (C96).
+// Current returns the signed-in state with the latest tokens, or false when the
+// session is not signed in. A session whose tokens are gone or cannot be opened
+// (the key was replaced) is signed out, so the browser signs in again (C96).
+// An error means the session Redis is unavailable.
 func (s *Sessions) Current(ctx context.Context) (SignedIn, bool, error) {
 	account := s.GetString(ctx, keyAccount)
-	sealed, _ := s.Get(ctx, keyTokens).([]byte)
-	if account == "" || sealed == nil {
+	id := s.GetString(ctx, keyTokensID)
+	if account == "" || id == "" {
 		return SignedIn{}, false, nil
 	}
-	plaintext, err := s.sealer.Open(sealed, account)
-	if errors.Is(err, ErrUnreadable) {
-		return SignedIn{}, false, s.Destroy(ctx)
+	sealed, err := s.redis.Get(ctx, s.tokensKey(id)).Bytes()
+	if errors.Is(err, goredis.Nil) {
+		return SignedIn{}, false, s.SignOut(ctx)
+	}
+	if err != nil {
+		return SignedIn{}, false, fmt.Errorf("session: reading tokens: %w", err)
+	}
+	plaintext, err := s.sealer.Open(sealed, tokensAAD(account, id))
+	if err != nil {
+		return SignedIn{}, false, s.SignOut(ctx)
 	}
 	var tokens Tokens
 	if err := json.Unmarshal(plaintext, &tokens); err != nil {
-		return SignedIn{}, false, s.Destroy(ctx)
+		return SignedIn{}, false, s.SignOut(ctx)
 	}
-	return SignedIn{Account: account, HydraSession: s.GetString(ctx, keyHydraSession), Tokens: tokens}, true, nil
+	return SignedIn{
+		Account:      account,
+		HydraSession: s.GetString(ctx, keyHydraSession),
+		Tokens:       tokens,
+		TokensID:     id,
+	}, true, nil
+}
+
+// SaveTokens replaces a session's tokens after a refresh, keeping the key's
+// expiry (the session's absolute lifetime).
+func (s *Sessions) SaveTokens(ctx context.Context, in SignedIn) error {
+	return s.writeTokens(ctx, in.Account, in.TokensID, in.Tokens, goredis.KeepTTL)
+}
+
+// SignOut deletes the session's tokens and destroys the session.
+func (s *Sessions) SignOut(ctx context.Context) error {
+	if id := s.GetString(ctx, keyTokensID); id != "" {
+		if err := s.redis.Del(ctx, s.tokensKey(id)).Err(); err != nil {
+			return fmt.Errorf("session: deleting tokens: %w", err)
+		}
+	}
+	return s.Destroy(ctx)
+}
+
+func (s *Sessions) writeTokens(ctx context.Context, account, id string, tokens Tokens, ttl time.Duration) error {
+	plaintext, err := json.Marshal(tokens)
+	if err != nil {
+		return fmt.Errorf("session: %w", err)
+	}
+	sealed := s.sealer.Seal(plaintext, tokensAAD(account, id))
+	if err := s.redis.Set(ctx, s.tokensKey(id), sealed, ttl).Err(); err != nil {
+		return fmt.Errorf("session: storing tokens: %w", err)
+	}
+	return nil
+}
+
+func (s *Sessions) tokensKey(id string) string { return s.prefix + "tokens:" + id }
+
+// tokensAAD binds sealed tokens to their account and key, so a record copied to
+// another key or session does not open.
+func tokensAAD(account, id string) string { return account + "\x00" + id }
+
+// randomID returns 32 random bytes, base64url-encoded.
+func randomID() string {
+	b := make([]byte, 32)
+	_, _ = rand.Read(b) // crypto/rand.Read never fails (Go 1.24+)
+	return base64.RawURLEncoding.EncodeToString(b)
 }
