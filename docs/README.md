@@ -33,6 +33,7 @@ starting with a simple chi server.
 | PostgreSQL pool, readiness, and migrations | [PostgreSQL foundation](platform/postgres.md) |
 | File and object storage | [Storage](platform/storage.md) |
 | Identity and authentication | [Identity](platform/identity.md) |
+| Apps and their backend-for-frontend | [App integration](platform/bff-frontend.md) |
 | Tenants, memberships, and domains | [Tenancy](platform/tenancy.md) |
 | Access decisions | [Authorization](platform/authorization.md) |
 | Business audit trail | [Audit](platform/audit.md) |

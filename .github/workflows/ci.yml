@@ -40,6 +40,7 @@ jobs:
             api:
               - 'apps/api/**'
               - 'docker/api.Dockerfile'
+              - 'docker/bff.Dockerfile'
               - 'docker/go.Dockerfile'
               - 'docker/postgres/**'
               - 'compose.yaml'
@@ -130,6 +131,22 @@ jobs:
             -e MIGRATE_DB_HOST=postgres -e MIGRATE_DB_NAME=erp -e MIGRATE_DB_USER=erp_migrate \
             -e MIGRATE_DB_PASSWORD_FILE=/run/secrets/db_migrate_password -e MIGRATE_DB_SSLMODE=disable \
             -v "$PWD/docker/secrets/dev:/run/secrets:ro" erp-api-release
+
+  # The BFF's release images (C99), one per instance, each with its own app
+  # embedded; built when the BFF or the apps change.
+  bff-image:
+    name: BFF image (${{ matrix.app }})
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [app, admin]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the production image
+        run: docker build -f docker/bff.Dockerfile --build-arg APP=${{ matrix.app }} -t erp-bff-${{ matrix.app }} .
 
   # Typecheck + build each frontend app, in the same Node 24 + pnpm 11 image dev/CI both use
   # (docker/node.Dockerfile) — never the runner's own Node.
