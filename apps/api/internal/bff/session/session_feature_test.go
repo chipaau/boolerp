@@ -29,7 +29,8 @@ func TestFeatureSessionsInRedis(t *testing.T) {
 	port, _ := strconv.Atoi(cmp.Or(os.Getenv("REDIS_TEST_PORT"), "6379"))
 	client := redis.NewClient(redis.Settings{Host: host, Port: port, Timeout: time.Second})
 	t.Cleanup(func() { _ = client.Close() })
-	s := New(client, sealer(t, keyA), Settings{IdleTimeout: time.Minute, Lifetime: time.Hour}, nil)
+	const prefix = "bff:test-client:session:"
+	s := New(client, sealer(t, keyA), Settings{KeyPrefix: prefix, IdleTimeout: time.Minute, Lifetime: time.Hour}, nil)
 
 	cookies := inSession(t, s, nil, func(ctx context.Context) {
 		require.NoError(t, s.SignIn(ctx, SignedIn{Account: "account-1", Tokens: Tokens{
@@ -39,14 +40,15 @@ func TestFeatureSessionsInRedis(t *testing.T) {
 	require.Len(t, cookies, 1)
 	token := cookies[0].Value
 
-	// Stored under the token's SHA-256 hash (scs: base64url), never the token itself.
+	// Stored under the instance's prefix and the token's SHA-256 hash (scs:
+	// base64url), never the token itself.
 	hash := sha256.Sum256([]byte(token))
-	key := "scs:session:" + base64.RawURLEncoding.EncodeToString(hash[:])
+	key := prefix + base64.RawURLEncoding.EncodeToString(hash[:])
 	ctx := t.Context()
 	raw, err := client.Get(ctx, key).Result()
 	require.NoError(t, err, "the session is stored under the hashed token")
 	t.Cleanup(func() { client.Del(context.Background(), key) })
-	assert.Zero(t, client.Exists(ctx, "scs:session:"+token).Val(), "nothing is stored under the raw token")
+	assert.Zero(t, client.Exists(ctx, prefix+token).Val(), "nothing is stored under the raw token")
 	assert.False(t, strings.Contains(raw, "s3cret"), "tokens are not readable in Redis")
 	assert.LessOrEqual(t, client.TTL(ctx, key).Val(), time.Minute, "expires with the idle timeout")
 
