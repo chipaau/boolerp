@@ -16,7 +16,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/auth"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	goredis "github.com/redis/go-redis/v9"
+
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
 )
@@ -25,11 +28,27 @@ import (
 // shutdown. It sits within Compose's stop grace period (C30) with room to spare.
 const telemetryFlushTimeout = 5 * time.Second
 
+// Deps are the shared dependencies Run builds for modules (C92, C93).
+type Deps struct {
+	Pool   *pgxpool.Pool
+	Cache  *goredis.Client
+	Logger *slog.Logger
+	// HTTPClient makes outbound requests, such as fetching Hydra's keys; it has a
+	// timeout, so a slow dependency cannot hold a request open.
+	HTTPClient *http.Client
+}
+
+// Mount attaches the modules of this build to the router, each at its prefix
+// (r.Route("/api/auth", authModule.Routes)). main supplies it, so each edition's
+// main lists exactly the modules compiled into its binary (C93). The router
+// already carries the default middleware, which the modules inherit.
+type Mount func(r chi.Router, d Deps)
+
 // Run builds the API from cfg and serves until ctx is cancelled, then shuts
 // the HTTP server down gracefully. Dependencies are closed by deferred calls
 // in reverse order of construction, after the server has stopped, so in-flight
 // requests keep their connections until they finish.
-func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
+func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, mount Mount) error {
 	// Telemetry first, so every later dependency can be instrumented; its flush
 	// is deferred first, so it runs last and exports the final requests' data.
 	tr, err := newTracing(ctx, logger)
@@ -78,9 +97,11 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}
-	mount(router, modules{
-		auth: auth.New(ctx, auth.Settings{Issuer: cfg.Auth.Issuer, Audience: cfg.Auth.Audience},
-			&http.Client{Timeout: 10 * time.Second}),
+	mount(router, Deps{
+		Pool:       pool,
+		Cache:      cache,
+		Logger:     logger,
+		HTTPClient: &http.Client{Timeout: 10 * time.Second},
 	})
 
 	// Listening separately from serving makes a busy port a startup error,

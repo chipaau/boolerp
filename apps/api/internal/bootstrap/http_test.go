@@ -394,10 +394,9 @@ func TestModulesInheritDefaultsAndApplyTheirOwnAuth(t *testing.T) {
 	// No issuer is reachable: a request without a token is refused before any
 	// key is needed, and health checks never ask for one.
 	router, buf := withConfig(t, routerConfig{MaxBodyBytes: 1024})
-	mount(router, modules{
-		auth: auth.New(t.Context(), auth.Settings{Issuer: "http://127.0.0.1:1/", Audience: "erp-api"},
-			&http.Client{Timeout: time.Second}),
-	})
+	// Mounted as main mounts it.
+	router.Route("/api/auth", auth.New(t.Context(),
+		auth.Settings{Issuer: "http://127.0.0.1:1/", Audience: "erp-api"}, &http.Client{Timeout: time.Second}).Routes)
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/auth/me", nil))

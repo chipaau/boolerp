@@ -164,18 +164,26 @@ Generated SQL types remain inside persistence adapters under the proposed port d
 Every module keeps all of its code in its own folder (`internal/platform/<name>` for
 infrastructure such as `auth`, `internal/modules/<name>` for business capabilities):
 routes, handlers, middleware, and types. A module exposes `Routes(r chi.Router)`,
-registering paths relative to its prefix (`/me`, not `/api/auth/me`). Bootstrap only
-constructs modules and mounts them, in `internal/bootstrap/modules.go`:
+registering paths relative to its prefix (`/me`, not `/api/auth/me`). The build's
+`main` constructs its modules and mounts them through the `Mount` callback that
+`bootstrap.Run` calls with the router and `bootstrap.Deps` (C93):
 
 ```go
-r.Route("/api/auth", m.auth.Routes) // GET /api/auth/me
+// cmd/api/main.go
+bootstrap.Run(ctx, cfg, logger, func(r chi.Router, d bootstrap.Deps) {
+	authModule := auth.New(ctx, auth.Settings{...}, d.HTTPClient)
+	r.Route("/api/auth", authModule.Routes) // GET /api/auth/me
+})
 ```
+
+A product edition with fewer modules is another `main` (such as `cmd/api-hrms`) that
+mounts fewer; modules it does not import are not compiled into its binary.
 
 Modules inherit the router's default middleware (request ID, request logging, panic
 recovery, origin checks, body limit, tracing). Authentication is not a default: a
 module applies it to its own routes (`r.Use(authModule.Authenticate)`), receiving the
-auth module's middleware from bootstrap when it is not the auth module itself. There is
-no generic module interface; bootstrap calls each module's `Routes` explicitly.
+auth module's middleware from `main` when it is not the auth module itself. There is
+no generic module interface; `main` calls each module's `Routes` explicitly.
 
 ## PostgreSQL-only and persistence
 
