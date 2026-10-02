@@ -12,7 +12,7 @@ x-node: &node
     # Shadow node_modules with per-container volumes so the Linux-built deps here never collide
     # with the host's (macOS) pnpm install from the bind-mounted source tree above.
     - /w/node_modules
-    - /w/apps/app/node_modules
+    - /w/apps/workspace/node_modules
     - /w/apps/admin/node_modules
     - /w/apps/website/node_modules
     - /w/apps/identity/node_modules
@@ -22,7 +22,7 @@ x-node: &node
     # packages through the host bind mount (osxfs/virtiofs) corrupts the store silently.
     - pnpm-store:/w/.pnpm-store
 
-# One BFF program, one service per instance (C90, C96, C97): bff-app and bff-admin
+# One BFF program, one service per instance (C90, C96, C97): bff-workspace and bff-admin
 # share everything below and differ in client, session key, and routes.
 x-bff-env: &bff-env
   BFF_ENV: ${APP_ENV:-dev}
@@ -105,9 +105,9 @@ services:
       - traefik.http.routers.erp-identity.service=erp-identity
       - traefik.http.services.erp-identity.loadbalancer.server.port=3000
 
-  app:
+  workspace:
     <<: *node
-    command: pnpm --filter app dev
+    command: pnpm --filter workspace dev
     environment:
       # The workspace edition to serve (apps/app/editions/<name>.ts, C107).
       EDITION: ${EDITION:-full}
@@ -117,11 +117,11 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      - "traefik.http.routers.erp-app.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`)"
-      - traefik.http.routers.erp-app.entrypoints=web
-      - traefik.http.routers.erp-app.priority=1
-      - traefik.http.routers.erp-app.service=erp-app
-      - traefik.http.services.erp-app.loadbalancer.server.port=3000
+      - "traefik.http.routers.erp-workspace.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`)"
+      - traefik.http.routers.erp-workspace.entrypoints=web
+      - traefik.http.routers.erp-workspace.priority=1
+      - traefik.http.routers.erp-workspace.service=erp-workspace
+      - traefik.http.services.erp-workspace.loadbalancer.server.port=3000
 
   # The admin app's dev server (apps/admin) at admin.bool.test (C97), above the
   # tenant catch-all; /auth and /api go to bff-admin (C97, C98).
@@ -341,26 +341,26 @@ services:
   # Backend-for-frontend for the app on tenant domains (C90, C96): signs browsers
   # in through Hydra at /auth/* and keeps their sessions in redis-sessions.
   # /api/* still goes straight to the API until the BFF forwards it (7c-3).
-  bff-app:
+  bff-workspace:
     <<: *bff
     environment:
       <<: *bff-env
-      BFF_SESSION_ENCRYPTION_KEY_FILE: /run/secrets/bff_app_session_key
-      BFF_OIDC_CLIENT_ID: erp-app
-      BFF_OIDC_CLIENT_SECRET_FILE: /run/secrets/hydra_client_erp-app
-      OTEL_SERVICE_NAME: bool-erp-bff-app
-    secrets: [bff_app_session_key, hydra_client_erp-app]
+      BFF_SESSION_ENCRYPTION_KEY_FILE: /run/secrets/bff_workspace_session_key
+      BFF_OIDC_CLIENT_ID: erp-workspace
+      BFF_OIDC_CLIENT_SECRET_FILE: /run/secrets/hydra_client_erp-workspace
+      OTEL_SERVICE_NAME: bool-erp-bff-workspace
+    secrets: [bff_workspace_session_key, hydra_client_erp-workspace]
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
       # /auth/* and /api/* on every tenant subdomain -> the BFF (above the app's
       # catch-all), with the API's per-IP rate limit (C81).
-      - "traefik.http.routers.erp-bff-app.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && (PathPrefix(`/auth`) || PathPrefix(`/api`))"
-      - traefik.http.routers.erp-bff-app.entrypoints=web
-      - traefik.http.routers.erp-bff-app.priority=20
-      - traefik.http.routers.erp-bff-app.middlewares=erp-api-ratelimit
-      - traefik.http.routers.erp-bff-app.service=erp-bff-app
-      - traefik.http.services.erp-bff-app.loadbalancer.server.port=8080
+      - "traefik.http.routers.erp-bff-workspace.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && (PathPrefix(`/auth`) || PathPrefix(`/api`))"
+      - traefik.http.routers.erp-bff-workspace.entrypoints=web
+      - traefik.http.routers.erp-bff-workspace.priority=20
+      - traefik.http.routers.erp-bff-workspace.middlewares=erp-api-ratelimit
+      - traefik.http.routers.erp-bff-workspace.service=erp-bff-workspace
+      - traefik.http.services.erp-bff-workspace.loadbalancer.server.port=8080
 
   # Backend-for-frontend for the admin app at admin.bool.test (C90, C97): the same
   # program with its own Hydra client, session key, and session key prefix.
@@ -472,7 +472,7 @@ services:
       HYDRA_ADMIN_URL: http://hydra:4445
     volumes:
       - ./docker/hydra:/etc/hydra:ro
-    secrets: [hydra_client_dev-test-client, hydra_client_erp-app, hydra_client_erp-admin]
+    secrets: [hydra_client_dev-test-client, hydra_client_erp-workspace, hydra_client_erp-admin]
     depends_on:
       hydra:
         condition: service_healthy
@@ -581,14 +581,14 @@ secrets:
   # One secret per first-party client, named hydra_client_<client-id> (C89).
   hydra_client_dev-test-client:
     file: ./docker/secrets/dev/hydra_client_dev-test-client
-  hydra_client_erp-app:
-    file: ./docker/secrets/dev/hydra_client_erp-app
-  # bff-app's AES-256 key for the tokens in its sessions, 64 hex digits (C96).
-  bff_app_session_key:
-    file: ./docker/secrets/dev/bff_app_session_key
+  hydra_client_erp-workspace:
+    file: ./docker/secrets/dev/hydra_client_erp-workspace
+  # bff-workspace's AES-256 key for the tokens in its sessions, 64 hex digits (C96).
+  bff_workspace_session_key:
+    file: ./docker/secrets/dev/bff_workspace_session_key
   hydra_client_erp-admin:
     file: ./docker/secrets/dev/hydra_client_erp-admin
-  # bff-admin's AES-256 key, separate from bff-app's (C97).
+  # bff-admin's AES-256 key, separate from bff-workspace's (C97).
   bff_admin_session_key:
     file: ./docker/secrets/dev/bff_admin_session_key
 

@@ -59,7 +59,7 @@ then open `http://127.0.0.1:5555/` and sign in.
 ## Authentication model (C88, C90, ADR 0003)
 
 Browsers never hold Hydra tokens. Each internal app has a backend-for-frontend (BFF)
-service (`bff-app`, `bff-admin`; `apps/api/cmd/bff`): it embeds and serves the app,
+service (`bff-workspace`, `bff-admin`; `apps/api/cmd/bff`): it embeds and serves the app,
 completes the login with Hydra on the request's own domain, keeps the session in its
 own Redis (`redis-sessions`), gives the browser an HttpOnly session cookie, and forwards `/api/*` to the
 API with the session's access token as `Authorization: Bearer`. The API accepts only
@@ -68,13 +68,13 @@ services), and keeps no sessions. Every request becomes the same caller context 
 
 ## BFF login and sessions (7c-2, C96)
 
-`bff-app` (`apps/api/cmd/bff`, Hydra client `erp-app`) serves its login on tenant
+`bff-workspace` (`apps/api/cmd/bff`, Hydra client `erp-workspace`) serves its login on tenant
 domains at `/auth/*`; `/api/*` belongs to the API. `GET /auth/login?return_to=/path`
 sends the browser to Hydra (PKCE, state, nonce, scopes `openid offline_access`,
 audience `erp-api`); Hydra returns it to `https://<domain>/auth/callback`, where the BFF
 exchanges the code, verifies the ID token, starts a new session, and redirects to the
 local `return_to` path. The callback must be registered on the client
-(`docker/hydra/clients/erp-app.json`); development registers `demo.bool.test` and
+(`docker/hydra/clients/erp-workspace.json`); development registers `demo.bool.test` and
 `cyryx.bool.test`.
 
 - **Session:** in `redis-sessions` (no eviction, AOF), keyed by the SHA-256 hash of the

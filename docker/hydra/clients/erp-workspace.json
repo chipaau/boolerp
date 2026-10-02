@@ -1,5 +1,5 @@
 {
-  "client_name": "Bool ERP app (bff-app)",
+  "client_name": "Bool ERP workspace (bff-workspace)",
   "grant_types": ["authorization_code", "refresh_token"],
   "response_types": ["code"],
   "scope": "openid offline_access",
@@ -14,6 +14,6 @@
     "http://demo.bool.test/",
     "http://cyryx.bool.test/"
   ],
-  "backchannel_logout_uri": "http://bff-app:8080/auth/backchannel-logout",
+  "backchannel_logout_uri": "http://bff-workspace:8080/auth/backchannel-logout",
   "backchannel_logout_session_required": true
 }

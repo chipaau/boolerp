@@ -20,7 +20,7 @@ func withBFF(t *testing.T, environ []string) []string {
 		"BFF_REDIS_HOST=redis-sessions",
 		"BFF_SESSION_ENCRYPTION_KEY_FILE=" + secretFile(t, testSessionKey),
 		"BFF_OIDC_ISSUER=http://identity.bool.test/",
-		"BFF_OIDC_CLIENT_ID=erp-app",
+		"BFF_OIDC_CLIENT_ID=erp-workspace",
 		"BFF_OIDC_CLIENT_SECRET_FILE=" + secretFile(t, "client-s3cret"),
 		"BFF_API_URL=http://api:8080",
 	}
@@ -46,7 +46,7 @@ func TestLoadBFFDefaults(t *testing.T) {
 			CookieSecure: true, EncryptionKey: testSessionKey,
 		},
 		OIDC: OIDCClient{
-			Issuer: "http://identity.bool.test/", ClientID: "erp-app",
+			Issuer: "http://identity.bool.test/", ClientID: "erp-workspace",
 			ClientSecret: "client-s3cret", Audience: "erp-api",
 		},
 		API: Upstream{URL: "http://api:8080"},

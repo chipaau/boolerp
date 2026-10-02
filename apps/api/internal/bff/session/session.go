@@ -44,7 +44,7 @@ const (
 // Settings configure sessions (from config.Session).
 type Settings struct {
 	// KeyPrefix starts every Redis key of this BFF instance, so instances sharing
-	// one Redis keep their sessions apart (C97), such as "bff:erp-app:". Sessions
+	// one Redis keep their sessions apart (C97), such as "bff:erp-workspace:". Sessions
 	// are under <prefix>session:, tokens under <prefix>tokens:.
 	KeyPrefix    string
 	IdleTimeout  time.Duration // ends a session after this long without a request

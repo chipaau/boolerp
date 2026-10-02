@@ -1,8 +1,8 @@
 # Production image of one BFF instance (C90, C99): the BFF with its app embedded.
-#   docker build -f docker/bff.Dockerfile --build-arg APP=app   -t bool-bff-app .
+#   docker build -f docker/bff.Dockerfile --build-arg APP=workspace -t bool-bff-workspace .
 #   docker build -f docker/bff.Dockerfile --build-arg APP=admin -t bool-bff-admin .
 # Each image contains only its own app. EDITION picks the workspace's edition
-# (apps/app/editions/<name>.ts, C107); the admin app has none.
+# (apps/workspace/editions/<name>.ts, C107); the admin app has none.
 ARG APP
 ARG EDITION=full
 
@@ -10,7 +10,7 @@ ARG EDITION=full
 FROM node:26-alpine AS app
 ARG APP
 ARG EDITION
-RUN test -n "$APP" || (echo "build with --build-arg APP=app|admin" >&2 && exit 1)
+RUN test -n "$APP" || (echo "build with --build-arg APP=workspace|admin" >&2 && exit 1)
 RUN npm install -g corepack@latest && corepack enable && corepack prepare pnpm@12.4.1 --activate
 WORKDIR /w
 # Only the workspace, never docker/secrets or other repository files.

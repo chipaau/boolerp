@@ -7,7 +7,7 @@ import (
 )
 
 // BFF holds the settings of one backend-for-frontend instance (cmd/bff, C90,
-// C96), such as bff-app. It reuses the API's groups for the process, logging,
+// C96), such as bff-workspace. It reuses the API's groups for the process, logging,
 // HTTP limits, and Redis connection, under BFF_ prefixes, so one container's
 // variables never configure the other program.
 type BFF struct {
