@@ -42,6 +42,27 @@ Status: tenant model decided (C115); isolation (D02) and the tables open.
 Tables for tenants, memberships, and domains are approved one by one before they are
 created.
 
+## Exchanges between tenants (C117)
+
+Some work passes between related tenants. Central procurement is the first case: an
+optional arrangement between a tenant and an ancestor, limited to agreed item
+categories (a health centre and its atoll health centre, for medical items only);
+everything else the tenant procures itself.
+
+Such work uses **shared rows with one writer each**:
+- Each row has one owner tenant (`tenant_id`), which alone writes it, and names its
+  counterparty: a request owned by the child carries `receiving_tenant_id`, its
+  fulfilment owned by the parent carries `requesting_tenant_id`.
+- Both sides read both (`tenant_id = current OR <counterparty> = current`); writes use the
+  standard `tenant_id = current` policy, so neither side can change the other's rows.
+- An insert names a counterparty only through an active arrangement covering it (and,
+  for procurement, the items' categories), checked by the policy through a narrow
+  function.
+- Only declared exchange tables may have a counterparty read rule; the CI policy test
+  checks the list. Writes are audited in the writer's tenant; counterparty reads are not.
+
+Other cross-tenant cases (a preschool whose payroll its council runs) are open.
+
 ## Approved table designs (C116)
 
 Approved by the user on 2026-10-02 after reviewing the previous implementation (`develop`),
@@ -123,6 +144,8 @@ adopted with improvements. Not yet created; migrations follow these designs.
   published rows).
 - Policies read `current_setting('app.tenant_id', true)`: unset, no rows match and
   inserts fail.
+- No read policy names another tenant, except declared exchange tables (C117), whose
+  rows are read by their counterparty and written only by their owner.
 - The operator exception exists only on the registry (`tenants`, `domains`, owner
   memberships). Support access will switch the transaction into the target tenant through
   a grant, recorded in audit as acting-as.
