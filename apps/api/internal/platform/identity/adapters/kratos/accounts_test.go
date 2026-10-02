@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/application"
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/domain"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/application"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/domain"
 )
 
 // kratosAdmin answers GET /admin/identities/{id} like Kratos's admin API.

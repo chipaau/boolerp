@@ -1,7 +1,7 @@
 # Data model status
 
 Updated: 2026-10-01.
-Status: open. One table is approved and implemented: `users` (below). (A `sessions`
+Status: open. Two tables are confirmed and implemented: `users` and `countries` (below). (A `sessions`
 table was approved for sessions in PostgreSQL and withdrawn when sessions moved to the
 BFF's Redis, C90.)
 
@@ -39,6 +39,28 @@ automatically inherited.
 
 ## Approved tables
 
+### `countries` (platform reference data, C120, C122)
+
+Fields confirmed 2026-10-03 by the user, with alpha-3 added at their question. The
+countries Bool is offered in; legal forms and tenants will reference `code`. Global
+reference data, not tenant-scoped.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `code` | `char(2)` | Primary key; ISO 3166-1 alpha-2 (`MV`); CHECK `^[A-Z]{2}$`. |
+| `alpha3` | `char(3)` | Not null, unique; ISO 3166-1 alpha-3 (`MDV`); CHECK `^[A-Z]{3}$`. |
+| `name` | `text` | Not null, not blank; English (`Maldives`). |
+| `phone_prefix` | `text` | Not null; CHECK `^\+[0-9]{1,4}$` (`+960`). |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable: no longer offered; not before `active_from`. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger on every update. |
+
+Only countries Bool is offered in; the migration inserts the Maldives and operators add
+others with their legal forms. Row-level security is enabled: everyone reads; there is
+no write policy until the operator rule exists, so the runtime role cannot change
+countries and only migrations do. The migration is
+`apps/api/internal/platform/reference/migrations/00001_countries.sql`.
+
 ### `users` (identity module, C94)
 
 Approved 2026-10-01 by the user, with `phone`. One row per person who has a Kratos
@@ -59,7 +81,7 @@ tenant membership and employee records are separate tables (identity rules), and
 Kratos stays the authority for the copied traits; the identity module writes the row
 on a person's first authenticated request (C94). `email`, `phone`, and `display_name`
 are personal data: never logged, cached, or traced. The migration is
-`apps/api/internal/modules/identity/migrations/00001_users.sql`.
+`apps/api/internal/platform/identity/migrations/00001_users.sql`.
 
 See [tenancy](../platform/tenancy.md), [HRMS employees](../hrms/employees.md),
 and [the decision register](../decisions/README.md).

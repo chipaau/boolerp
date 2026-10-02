@@ -40,7 +40,8 @@ or unredacted driver errors in logs.
 pings PostgreSQL (so wrong credentials fail even with nothing to apply), takes a
 PostgreSQL advisory lock so concurrent runs apply each migration once, and applies
 pending migrations of each module in the build's edition (C95), in the edition's
-order: each module embeds its own `internal/modules/<module>/migrations` folder and has
+order: each package embeds its own `migrations` folder (`internal/platform/<name>` or
+`internal/modules/<name>`, C122) and has
 its own history table, `migrations.<module>_version` (C48). Migrations are forward-only (no
 down command). A failure reports the migration file, PostgreSQL's message, and
 SQLSTATE code, never the statement text or PostgreSQL's detail, which can contain

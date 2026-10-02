@@ -267,7 +267,7 @@ docker compose restart api
 ## Seed data (C50, C118)
 
 Seeds work like Laravel's seeders. Each module keeps **one seeder per store** in its
-`seeds` folder (`internal/modules/identity/seeds/users.go`), and the edition lists them
+`seeds` folder (`internal/platform/identity/seeds/users.go`), and the edition lists them
 in dependency order (`full.Seeders`), as it lists migrations: a store is seeded after
 the stores it references. `cmd/seed` runs the list. Seeders implement `seed.Seeder`
 (`internal/platform/seed`) and create data through their module's use cases, as the

@@ -27,9 +27,9 @@ those steps still stand; no step is currently implemented. This breaks
 the platform stage above into small increments, including the backend deployment
 proof, so there is a clear platform milestone before HRMS.
 
-Technical infrastructure belongs in `internal/platform/`. Policy and business
-capabilities belong in `internal/modules/identity`, `tenancy`, `authorization`,
-and `audit`. Each increment should deliver usable behavior and its relevant checks,
+Technical infrastructure and the platform capabilities (`identity`, `reference`,
+`tenancy`, `authorization`, `audit`) belong in `internal/platform/`; business apps
+(HRMS first) belong in `internal/modules/` (C122). Each increment should deliver usable behavior and its relevant checks,
 not just more directories.
 
 | Step | Add | Completion check | Decisions needed before implementation |

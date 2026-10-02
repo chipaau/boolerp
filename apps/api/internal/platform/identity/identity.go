@@ -13,11 +13,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/hydra"
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/kratos"
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/store"
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/application"
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/domain"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/adapters/hydra"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/adapters/kratos"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/adapters/store"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/application"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/domain"
 )
 
 //go:embed migrations/*.sql

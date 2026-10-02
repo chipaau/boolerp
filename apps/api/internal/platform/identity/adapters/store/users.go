@@ -8,8 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/application"
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/domain"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/application"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/domain"
 )
 
 // DB is what the queries need: a pool or a transaction (C79), so tests can run

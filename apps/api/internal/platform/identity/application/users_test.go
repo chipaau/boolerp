@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/domain"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/domain"
 )
 
 type fakeUsers struct{ byKratos map[string]domain.User }

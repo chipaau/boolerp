@@ -163,7 +163,7 @@ get a token with an OAuth2 client that sends PKCE (above) and call
 
 ## Users and caller context (7d, C94)
 
-The `identity` module (`apps/api/internal/modules/identity`) owns the `users` table:
+The `identity` module (`apps/api/internal/platform/identity`, C122) owns the `users` table:
 the API's own ID for a person and copies of the Kratos identity's email, phone, and
 name ([data model](../data-model/README.md)). Other tables reference `users.id`, never
 the Kratos identity ID. A user is created **on first use**: when a request carries a

@@ -9,8 +9,8 @@ import (
 
 	ory "github.com/ory/client-go"
 
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/application"
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/domain"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/application"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/domain"
 )
 
 // Accounts implements application.Accounts.
