@@ -5,25 +5,27 @@ package hydra
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/url"
-	"regexp"
 
 	ory "github.com/ory/client-go"
+	"github.com/peterhellberg/link"
 )
 
 // Logins implements application.Logins.
 type Logins struct {
-	api *ory.APIClient
+	api    *ory.APIClient
+	logger *slog.Logger
 }
 
 // NewLogins returns logins at Hydra's admin API at adminURL (such as
 // http://hydra:4445), with client.
-func NewLogins(adminURL string, client *http.Client) *Logins {
+func NewLogins(adminURL string, client *http.Client, logger *slog.Logger) *Logins {
 	cfg := ory.NewConfiguration()
 	cfg.Servers = ory.ServerConfigurations{{URL: adminURL}}
 	cfg.HTTPClient = client
-	return &Logins{api: ory.NewAPIClient(cfg)}
+	return &Logins{api: ory.NewAPIClient(cfg), logger: logger}
 }
 
 // RevokeAll implements application.Logins (C101). Hydra announces a login
@@ -64,12 +66,15 @@ func (l *Logins) RevokeAll(ctx context.Context, subject string) error {
 	return nil
 }
 
-// nextPageToken reads the page_token of the rel="next" link Hydra sends for
-// another page of results.
-var nextPageToken = regexp.MustCompile(`[?&]page_token=([^&>]+)[^>]*>;\s*rel="next"`)
-
 // loginSessions returns the distinct login session IDs of the subject's consent
-// sessions, following Hydra's pages.
+// sessions. Hydra has no way to list a subject's login sessions, but each
+// consent session records the login it came from (one login usually has a
+// consent per app). Hydra pages the list, naming the next page in a Link
+// header (rel="next", RFC 8288), which github.com/peterhellberg/link parses.
+// If a next page cannot be followed, the logins found so far are returned with
+// a warning: the remaining ones still lose their tokens (RevokeAll's last step),
+// so those browsers are signed out within the access-token lifetime instead of
+// at once.
 func (l *Logins) loginSessions(ctx context.Context, subject string) ([]string, error) {
 	seen := map[string]bool{}
 	var sids []string
@@ -95,14 +100,20 @@ func (l *Logins) loginSessions(ctx context.Context, subject string) ([]string, e
 				sids = append(sids, sid)
 			}
 		}
-		m := nextPageToken.FindStringSubmatch(resp.Header.Get("Link"))
-		if m == nil || len(sessions) == 0 {
+		next, ok := link.ParseResponse(resp)["next"]
+		if !ok || len(sessions) == 0 {
 			return sids, nil
 		}
-		next, err := url.QueryUnescape(m[1])
-		if err != nil || next == token {
+		u, err := url.Parse(next.URI)
+		nextToken := ""
+		if err == nil {
+			nextToken = u.Query().Get("page_token")
+		}
+		if nextToken == "" || nextToken == token {
+			l.logger.WarnContext(ctx, "hydra: the next page of consent sessions could not be followed; "+
+				"the remaining logins end when their access tokens expire")
 			return sids, nil
 		}
-		token = next
+		token = nextToken
 	}
 }

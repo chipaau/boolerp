@@ -112,6 +112,11 @@ password.
 The identity module's `Disable` makes the Kratos identity inactive (its logins are
 refused) and deletes its sessions, then revokes each of its Hydra login sessions by ID
 (which sends back-channel logout) and its consent sessions (revoking refresh tokens).
+Hydra cannot list a subject's login sessions, so they are found through its consent
+sessions, each of which records the login it came from; Hydra pages that list with a
+`Link` header (`rel="next"`), parsed with `github.com/peterhellberg/link`. If a next page
+cannot be followed, a warning is logged and those logins still lose their tokens, so
+their browsers are signed out within the access-token lifetime instead of at once.
 Browsers lose access at once; another client's access token works until it expires, at
 most 10 minutes. `Disable` has no HTTP route until authorization (step 8).
 

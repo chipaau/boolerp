@@ -29,7 +29,7 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
 	users := identity.New(d.Pool, identity.Settings{
 		KratosAdminURL: cfg.Identity.KratosAdminURL,
 		HydraAdminURL:  cfg.Identity.HydraAdminURL,
-	}, d.HTTPClient)
+	}, d.HTTPClient, d.Logger)
 
 	// auth turns a token's subject into the user through identity.
 	resolve := func(ctx context.Context, subject string) (auth.User, error) {

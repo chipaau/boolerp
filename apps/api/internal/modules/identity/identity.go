@@ -10,6 +10,7 @@ import (
 	"context"
 	"embed"
 	"io/fs"
+	"log/slog"
 	"net/http"
 
 	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/hydra"
@@ -43,11 +44,11 @@ type Module struct {
 }
 
 // New returns the module over the database (a pool or a transaction).
-func New(db store.DB, s Settings, client *http.Client) *Module {
+func New(db store.DB, s Settings, client *http.Client, logger *slog.Logger) *Module {
 	return &Module{service: application.NewService(
 		store.NewUsers(db),
 		kratos.NewAccounts(s.KratosAdminURL, client),
-		hydra.NewLogins(s.HydraAdminURL, client),
+		hydra.NewLogins(s.HydraAdminURL, client, logger),
 	)}
 }
 
