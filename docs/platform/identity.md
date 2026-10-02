@@ -99,6 +99,27 @@ To try it: open `http://demo.bool.test/auth/login?return_to=/` or
 `http://admin.bool.test/auth/login?return_to=/` and sign in. The apps themselves do not
 use the BFF yet (7c-4).
 
+## Logout and disabled accounts (7e, C101)
+
+Sign out in an app posts to `/auth/logout`: the BFF ends its session and revokes the
+refresh token, then sends the browser to Hydra's logout. Hydra hands its logout step to
+the login service's `/logout`, which ends the browser's Kratos session and accepts the
+logout; Hydra then notifies every other app of that login through **back-channel
+logout** (`POST /auth/backchannel-logout` on each BFF, a logout token signed by Hydra),
+and each BFF signs out the sessions of that login. The next sign-in asks for the
+password.
+
+The identity module's `Disable` makes the Kratos identity inactive (its logins are
+refused) and deletes its sessions, then revokes each of its Hydra login sessions by ID
+(which sends back-channel logout) and its consent sessions (revoking refresh tokens).
+Hydra cannot list a subject's login sessions, so they are found through its consent
+sessions, each of which records the login it came from; Hydra pages that list with a
+`Link` header (`rel="next"`), parsed with `github.com/peterhellberg/link`. If a next page
+cannot be followed, a warning is logged and those logins still lose their tokens, so
+their browsers are signed out within the access-token lifetime instead of at once.
+Browsers lose access at once; another client's access token works until it expires, at
+most 10 minutes. `Disable` has no HTTP route until authorization (step 8).
+
 ## The BFF proxy (7c-3, C98)
 
 Each BFF forwards `/api/*` to the API with `Authorization: Bearer` and the session's

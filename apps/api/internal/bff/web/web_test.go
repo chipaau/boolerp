@@ -104,6 +104,13 @@ func TestPolicyAllowsOnlyTheInlineScriptsOfIndex(t *testing.T) {
 	assert.Equal(t, "strict-origin-when-cross-origin", rec.Header().Get("Referrer-Policy"))
 }
 
+func TestFormsMayContinueAtTheLoginService(t *testing.T) {
+	h, err := New(built, "http://identity.bool.test")
+	require.NoError(t, err)
+	csp := get(t, h, "/", nil).Header().Get("Content-Security-Policy")
+	assert.Contains(t, csp, "form-action 'self' http://identity.bool.test;")
+}
+
 func TestTheEmbeddedAppLoads(t *testing.T) {
 	h, err := New(App())
 	require.NoError(t, err, "the placeholder (or a real build) has an index.html")

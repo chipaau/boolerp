@@ -4,7 +4,14 @@
   "response_types": ["code"],
   "scope": "openid offline_access",
   "audience": ["erp-api"],
-  "redirect_uris": ["http://admin.bool.test/auth/callback"],
+  "redirect_uris": [
+    "http://admin.bool.test/auth/callback"
+  ],
   "token_endpoint_auth_method": "client_secret_basic",
-  "skip_consent": true
+  "skip_consent": true,
+  "post_logout_redirect_uris": [
+    "http://admin.bool.test/"
+  ],
+  "backchannel_logout_uri": "http://bff-admin:8080/auth/backchannel-logout",
+  "backchannel_logout_session_required": true
 }

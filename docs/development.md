@@ -123,6 +123,7 @@ silently removed.
 | `APP_REDIS_TIMEOUT` | `500ms` | Bound on each connect, read, and write, up to `10s`; an unavailable cache fails fast (C52) |
 | `APP_AUTH_ISSUER` | none (required) | Hydra's issuer, exactly as in its tokens (Compose: `http://identity.bool.test/`, C91); keys come from `<issuer>.well-known/jwks.json` |
 | `APP_AUTH_AUDIENCE` | `erp-api` | The audience access tokens must include |
+| `APP_IDENTITY_HYDRA_ADMIN_URL` | none (required) | Hydra's admin API (Compose: `http://hydra:4445`), reachable only on the internal network; disabling an account ends its logins there (C101) |
 | `APP_IDENTITY_KRATOS_ADMIN_URL` | none (required) | Kratos's admin API (Compose: `http://kratos:4434`), reachable only on the internal network; users are read from it on first use (C94) |
 
 Passwords are read only from files (C80), as Docker and Kubernetes mount secrets

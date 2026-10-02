@@ -18,6 +18,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/ory/client-go v1.22.79
+	github.com/peterhellberg/link v1.2.0
 	github.com/pressly/goose/v3 v3.28.0
 	github.com/redis/go-redis/extra/redisotel/v9 v9.22.0
 	github.com/redis/go-redis/v9 v9.22.0

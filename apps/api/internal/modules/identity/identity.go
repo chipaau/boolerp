@@ -10,8 +10,10 @@ import (
 	"context"
 	"embed"
 	"io/fs"
+	"log/slog"
 	"net/http"
 
+	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/hydra"
 	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/kratos"
 	"github.com/boolmv/erp/apps/api/internal/modules/identity/adapters/store"
 	"github.com/boolmv/erp/apps/api/internal/modules/identity/application"
@@ -33,6 +35,7 @@ func Migrations() fs.FS {
 // Settings configure the module (from config.Identity).
 type Settings struct {
 	KratosAdminURL string // Kratos's admin API, internal network only
+	HydraAdminURL  string // Hydra's admin API, internal network only
 }
 
 // Module is the identity module.
@@ -41,12 +44,22 @@ type Module struct {
 }
 
 // New returns the module over the database (a pool or a transaction).
-func New(db store.DB, s Settings, client *http.Client) *Module {
-	return &Module{service: application.NewService(store.NewUsers(db), kratos.NewAccounts(s.KratosAdminURL, client))}
+func New(db store.DB, s Settings, client *http.Client, logger *slog.Logger) *Module {
+	return &Module{service: application.NewService(
+		store.NewUsers(db),
+		kratos.NewAccounts(s.KratosAdminURL, client),
+		hydra.NewLogins(s.HydraAdminURL, client, logger),
+	)}
 }
 
 // Resolve returns the user for a Kratos account (a token's sub), creating it on
 // first use.
 func (m *Module) Resolve(ctx context.Context, kratosIdentityID string) (domain.User, error) {
 	return m.service.Resolve(ctx, kratosIdentityID)
+}
+
+// Disable stops a person signing in and ends their access (C101). It has no
+// HTTP route until authorization decides who may call it (roadmap step 8).
+func (m *Module) Disable(ctx context.Context, kratosIdentityID string) error {
+	return m.service.Disable(ctx, kratosIdentityID)
 }

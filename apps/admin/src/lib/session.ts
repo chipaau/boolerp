@@ -21,3 +21,15 @@ export async function currentUser(): Promise<Me | null> {
   const body = (await res.json()) as { user: Me | null }
   return body.user
 }
+
+/**
+ * Signs out everywhere (C101): a form POST to the BFF, which ends the session and sends the
+ * browser through Hydra's logout (ending the login service's session too) and back here.
+ */
+export function signOut(): void {
+  const form = document.createElement('form')
+  form.method = 'POST'
+  form.action = '/auth/logout'
+  document.body.appendChild(form)
+  form.submit()
+}

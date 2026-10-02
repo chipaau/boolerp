@@ -230,6 +230,8 @@ services:
       APP_AUTH_ISSUER: http://identity.bool.test/
       # Users are read from Kratos's admin API on first use (C94).
       APP_IDENTITY_KRATOS_ADMIN_URL: http://kratos:4434
+      # Disabling an account ends its Hydra logins and tokens (C101).
+      APP_IDENTITY_HYDRA_ADMIN_URL: http://hydra:4445
     # Only the runtime role's password; never the owner's or the migration role's (C47).
     secrets: [db_app_password]
     # The API fetches Hydra's keys from the issuer's address, through Traefik on the host.

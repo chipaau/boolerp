@@ -85,7 +85,11 @@ func RunBFF(ctx context.Context, cfg config.BFF, logger *slog.Logger) error {
 		r.Handle("/*", forward)
 	})
 	// Everything else is the embedded app (C99); it needs no session.
-	app, err := web.New(web.App())
+	issuer, err := url.Parse(cfg.OIDC.Issuer)
+	if err != nil {
+		return fmt.Errorf("issuer: %w", err)
+	}
+	app, err := web.New(web.App(), issuer.Scheme+"://"+issuer.Host)
 	if err != nil {
 		return err
 	}

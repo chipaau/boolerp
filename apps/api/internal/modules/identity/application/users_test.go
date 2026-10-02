@@ -28,9 +28,35 @@ func (f *fakeUsers) Save(_ context.Context, a domain.Account) (domain.User, erro
 }
 
 type fakeAccounts struct {
-	accounts map[string]domain.Account
-	calls    int
-	err      error
+	accounts    map[string]domain.Account
+	calls       int
+	err         error
+	deactivated []string
+}
+
+func (f *fakeAccounts) Deactivate(_ context.Context, id string) error {
+	if f.err != nil {
+		return f.err
+	}
+	if _, ok := f.accounts[id]; !ok {
+		return ErrNotFound
+	}
+	f.deactivated = append(f.deactivated, id)
+	return nil
+}
+
+// fakeLogins records revoked subjects.
+type fakeLogins struct {
+	revoked []string
+	err     error
+}
+
+func (f *fakeLogins) RevokeAll(_ context.Context, subject string) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.revoked = append(f.revoked, subject)
+	return nil
 }
 
 func (f *fakeAccounts) Get(_ context.Context, id string) (domain.Account, error) {
@@ -50,7 +76,7 @@ func setup() (*Service, *fakeUsers, *fakeAccounts) {
 	accounts := &fakeAccounts{accounts: map[string]domain.Account{
 		"k1": {KratosIdentityID: "k1", Email: "a@b.test", Phone: "+9607770000", DisplayName: "Aisha"},
 	}}
-	return NewService(users, accounts), users, accounts
+	return NewService(users, accounts, &fakeLogins{}), users, accounts
 }
 
 func TestResolveCreatesTheUserOnFirstUse(t *testing.T) {
@@ -94,4 +120,30 @@ func TestKratosFailurePropagates(t *testing.T) {
 	accounts.err = errors.New("unavailable")
 	_, err := s.Resolve(t.Context(), "k1")
 	assert.Error(t, err)
+}
+
+func TestDisableDeactivatesThenRevokesLogins(t *testing.T) {
+	accounts := &fakeAccounts{accounts: map[string]domain.Account{"k1": {KratosIdentityID: "k1"}}}
+	logins := &fakeLogins{}
+	s := NewService(&fakeUsers{byKratos: map[string]domain.User{}}, accounts, logins)
+
+	require.NoError(t, s.Disable(t.Context(), "k1"))
+	assert.Equal(t, []string{"k1"}, accounts.deactivated)
+	assert.Equal(t, []string{"k1"}, logins.revoked)
+}
+
+func TestDisableStopsWhenKratosFails(t *testing.T) {
+	accounts := &fakeAccounts{accounts: map[string]domain.Account{}}
+	logins := &fakeLogins{}
+	s := NewService(&fakeUsers{byKratos: map[string]domain.User{}}, accounts, logins)
+
+	assert.ErrorIs(t, s.Disable(t.Context(), "unknown"), ErrNotFound)
+	assert.Empty(t, logins.revoked, "nothing at Hydra for an account Kratos does not know")
+}
+
+func TestDisableReportsAHydraFailure(t *testing.T) {
+	accounts := &fakeAccounts{accounts: map[string]domain.Account{"k1": {KratosIdentityID: "k1"}}}
+	s := NewService(&fakeUsers{byKratos: map[string]domain.User{}}, accounts, &fakeLogins{err: errors.New("hydra down")})
+	assert.Error(t, s.Disable(t.Context(), "k1"))
+	assert.Equal(t, []string{"k1"}, accounts.deactivated, "no one can sign in again meanwhile; retrying finishes the job")
 }

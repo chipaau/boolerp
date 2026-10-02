@@ -21,6 +21,7 @@ func withDB(t *testing.T, environ []string) []string {
 		"APP_DB_PASSWORD_FILE=" + secretFile(t, "s3cret"), "APP_REDIS_HOST=redis",
 		"APP_AUTH_ISSUER=http://identity.bool.test/",
 		"APP_IDENTITY_KRATOS_ADMIN_URL=http://kratos:4434",
+		"APP_IDENTITY_HYDRA_ADMIN_URL=http://hydra:4445",
 	}
 	return append(required, environ...)
 }
@@ -52,7 +53,7 @@ func defaults() Config {
 		Redis: Redis{Host: "redis", Port: 6379, TLS: true, Timeout: 500 * time.Millisecond},
 		Auth:  Auth{Issuer: "http://identity.bool.test/", Audience: "erp-api"},
 		Identity: Identity{
-			KratosAdminURL: "http://kratos:4434",
+			KratosAdminURL: "http://kratos:4434", HydraAdminURL: "http://hydra:4445",
 		},
 	}
 }
@@ -112,7 +113,7 @@ func TestLoadValues(t *testing.T) {
 		},
 		Auth: Auth{Issuer: "http://identity.bool.test/", Audience: "erp-api"},
 		Identity: Identity{
-			KratosAdminURL: "http://kratos:4434",
+			KratosAdminURL: "http://kratos:4434", HydraAdminURL: "http://hydra:4445",
 		},
 	}, cfg)
 }
@@ -269,7 +270,7 @@ func TestEveryFieldHasAVariable(t *testing.T) {
 	for path, variable := range api.byPath {
 		assert.Regexp(t, `^APP_[A-Z_]+$`, variable, path)
 	}
-	assert.Len(t, api.byPath, 30, "update this count when adding a setting")
+	assert.Len(t, api.byPath, 31, "update this count when adding a setting")
 
 	migrate := variables(reflect.TypeFor[Migrate]())
 	for path, variable := range migrate.byPath {

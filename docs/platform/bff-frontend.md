@@ -2,7 +2,7 @@
 
 Status: implemented by `apps/app` and `apps/admin` (C90, C96–C100), each in
 `src/lib/session.ts`. `packages/auth`, the previous design (Kratos at `/auth` on the
-app's domain), was removed (C100). Sign out comes with step 7e.
+app's domain), was removed (C100). Sign out is `signOut()` there (C101).
 
 Each internal app is served by its backend-for-frontend (`bff-app` on tenant domains,
 `bff-admin` on `admin.bool.test`), on the same domain as the app. The browser never
@@ -14,7 +14,7 @@ holds tokens and never talks to Kratos or Hydra directly.
 | Know who is signed in | `GET /api/auth/me`: the user (`id`, `email`, `phone`, `displayName`) and the client. |
 | Call the API | `fetch('/api/...')` on the same origin; the session cookie is sent automatically, and the BFF adds the access token. |
 | React to being signed out | Any `/api` response `401` means no usable session: navigate to `/auth/login?return_to=<current path>`. |
-| Sign out | Comes with step 7e (`/auth/logout`). |
+| Sign out | Submit a form `POST /auth/logout` (a navigation, not `fetch`); the browser is signed out of the BFF, Hydra, and the login service, every other app of that login is signed out too, and it returns to the home page (C101). |
 | Recovery, verification, account settings | Links to the login service at `identity.bool.test` (`/recovery`, `/verification`, `/settings`). |
 
 Rules for the app:

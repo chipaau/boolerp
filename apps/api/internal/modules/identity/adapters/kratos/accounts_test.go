@@ -1,6 +1,7 @@
 package kratos
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -53,4 +54,39 @@ func TestGetFailureHidesKratosDetail(t *testing.T) {
 	_, err := NewAccounts(srv.URL, srv.Client()).Get(t.Context(), "broken")
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), "s3cret-detail")
+}
+
+func TestDeactivateSetsInactiveAndDeletesSessions(t *testing.T) {
+	var calls []string
+	var patch string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls = append(calls, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPatch && r.URL.Path == "/admin/identities/k1":
+			b, _ := io.ReadAll(r.Body)
+			patch = string(b)
+			_, _ = w.Write([]byte(`{"id":"k1","schema_id":"registration","schema_url":"x","state":"inactive","traits":{}}`))
+		case r.Method == http.MethodDelete && r.URL.Path == "/admin/identities/k1/sessions":
+			w.WriteHeader(http.StatusNoContent)
+		case r.URL.Path == "/admin/identities/nosessions/sessions":
+			w.WriteHeader(http.StatusNotFound)
+		case r.Method == http.MethodPatch && r.URL.Path == "/admin/identities/nosessions":
+			_, _ = w.Write([]byte(`{"id":"nosessions","schema_id":"registration","schema_url":"x","state":"inactive","traits":{}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":{"code":404,"message":"s3cret-detail"}}`))
+		}
+	}))
+	t.Cleanup(srv.Close)
+	accounts := NewAccounts(srv.URL, srv.Client())
+
+	require.NoError(t, accounts.Deactivate(t.Context(), "k1"))
+	assert.Equal(t, []string{"PATCH /admin/identities/k1", "DELETE /admin/identities/k1/sessions"}, calls)
+	assert.JSONEq(t, `[{"op":"replace","path":"/state","value":"inactive"}]`, patch)
+
+	assert.NoError(t, accounts.Deactivate(t.Context(), "nosessions"), "no sessions is nothing to delete")
+	err := accounts.Deactivate(t.Context(), "missing")
+	assert.ErrorIs(t, err, application.ErrNotFound)
+	assert.NotContains(t, err.Error(), "s3cret")
 }

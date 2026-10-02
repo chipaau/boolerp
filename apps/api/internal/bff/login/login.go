@@ -54,7 +54,8 @@ type Settings struct {
 	HTTPS bool
 }
 
-// Handler serves /auth/login and /auth/callback.
+// Handler serves /auth/login, /auth/callback, /auth/logout, and
+// /auth/backchannel-logout.
 type Handler struct {
 	settings Settings
 	sessions *session.Sessions
@@ -78,6 +79,8 @@ func New(s Settings, sessions *session.Sessions, client *http.Client, logger *sl
 func (h *Handler) Routes(r chi.Router) {
 	r.Get("/login", h.login)
 	r.Get("/callback", h.callback)
+	r.Post("/logout", h.logout)
+	r.Post("/backchannel-logout", h.backchannelLogout)
 }
 
 // discover returns Hydra's provider, reading its discovery document once.
@@ -127,11 +130,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		problem.Error(w, r, http.StatusServiceUnavailable, "Sign-in is unavailable right now.")
 		return
 	}
-	scheme := "http"
-	if h.settings.HTTPS {
-		scheme = "https"
-	}
-	callback := scheme + "://" + r.Host + CallbackPath
+	callback := h.scheme() + "://" + r.Host + CallbackPath
 	state, nonce, verifier := random(), random(), oauth2.GenerateVerifier()
 
 	ctx := r.Context()
