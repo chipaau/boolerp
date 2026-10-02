@@ -4,9 +4,9 @@ import { Button } from '@workspace/ui/components/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@workspace/ui/components/dialog'
 import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
-import { awayInfo, directReports, unitPath } from '@/features/org/logic'
-import { usePeople, useUnits } from '@/features/org/queries'
-import { PersonAvatar, copyText, usePeopleMap } from './people-bits'
+import { awayInfo, directReports, unitPath } from '@workspace/org/logic'
+import { usePeople, useUnits } from '@workspace/org/queries'
+import { PersonAvatar, copyText, usePeopleMap } from '@workspace/org/people-bits'
 
 /**
  * One person, in a modal: who they are, where they sit, how to reach them, and their reporting

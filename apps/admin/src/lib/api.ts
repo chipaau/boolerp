@@ -1,4 +1,4 @@
-import { signIn } from './session'
+import { signIn } from '@workspace/session'
 
 // Hand-written fetch client — the OpenAPI-generated one (packages/api-client) doesn't exist yet
 // anywhere in the repo (apps/app is still mock-data only too). Same-origin: Traefik already routes

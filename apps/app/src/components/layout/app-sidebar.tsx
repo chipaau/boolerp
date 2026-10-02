@@ -20,7 +20,7 @@ export function AppSidebar({ app }: { app: AppDef }) {
   const { pathname } = useLocation()
   const search: Record<string, string | undefined> = useSearch({ strict: false })
   const base = `/${app.slug}`
-  const Rail = getRail(app.slug)
+  const Rail = getRail(app)
   const counts = useNavCounts(app.slug)
   const views = useSavedViews(app.slug)
   const [support, setSupport] = useState(false)

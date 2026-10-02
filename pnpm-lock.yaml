@@ -199,6 +199,9 @@ importers:
       '@workspace/assets':
         specifier: workspace:*
         version: link:../../packages/assets
+      '@workspace/session':
+        specifier: workspace:*
+        version: link:../../packages/session
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -272,9 +275,21 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: latest
         version: 1.167.2(@tanstack/react-router@1.170.40(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tanstack/router-core@1.171.33)(csstype@3.2.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@workspace/app-control-centre':
+        specifier: workspace:*
+        version: link:../../packages/app-control-centre
+      '@workspace/app-kit':
+        specifier: workspace:*
+        version: link:../../packages/app-kit
       '@workspace/assets':
         specifier: workspace:*
         version: link:../../packages/assets
+      '@workspace/org':
+        specifier: workspace:*
+        version: link:../../packages/org
+      '@workspace/session':
+        specifier: workspace:*
+        version: link:../../packages/session
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -303,6 +318,9 @@ importers:
       '@tanstack/router-plugin':
         specifier: latest
         version: 1.168.41(@tanstack/react-router@1.170.40(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(rolldown@1.2.8)(vite@8.3.0(@types/node@22.20.2)(jiti@2.7.0))
+      '@tanstack/virtual-file-routes':
+        specifier: ^1.162.0
+        version: 1.162.0
       '@types/node':
         specifier: ^22.20.2
         version: 22.20.2
@@ -423,7 +441,88 @@ importers:
         specifier: 1.63.0
         version: 1.63.0
 
+  packages/app-control-centre:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: '*'
+        version: 5.104.0(react@19.3.0)
+      '@tanstack/react-router':
+        specifier: '*'
+        version: 1.170.40(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@workspace/app-kit':
+        specifier: workspace:*
+        version: link:../app-kit
+      '@workspace/assets':
+        specifier: workspace:*
+        version: link:../assets
+      '@workspace/org':
+        specifier: workspace:*
+        version: link:../org
+      '@workspace/ui':
+        specifier: workspace:*
+        version: link:../ui
+      lucide-react:
+        specifier: ^1.45.0
+        version: 1.45.0(react@19.3.0)
+      react:
+        specifier: ^19
+        version: 19.3.0
+    devDependencies:
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@types/node@22.20.2)(@vitest/coverage-v8@5.0.1)(jsdom@30.0.1)(vite@8.3.0(@types/node@22.20.2)(jiti@2.7.0))
+
+  packages/app-kit:
+    dependencies:
+      lucide-react:
+        specifier: ^1.45.0
+        version: 1.45.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   packages/assets: {}
+
+  packages/org:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: '*'
+        version: 5.104.0(react@19.3.0)
+      '@tanstack/react-router':
+        specifier: '*'
+        version: 1.170.40(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@workspace/assets':
+        specifier: workspace:*
+        version: link:../assets
+      '@workspace/ui':
+        specifier: workspace:*
+        version: link:../ui
+      lucide-react:
+        specifier: ^1.45.0
+        version: 1.45.0(react@19.3.0)
+      react:
+        specifier: ^19
+        version: 19.3.0
+    devDependencies:
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@types/node@22.20.2)(@vitest/coverage-v8@5.0.1)(jsdom@30.0.1)(vite@8.3.0(@types/node@22.20.2)(jiti@2.7.0))
+
+  packages/session:
+    devDependencies:
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
 
   packages/ui:
     dependencies:

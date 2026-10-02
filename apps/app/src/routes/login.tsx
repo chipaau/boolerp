@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { signIn } from '@/lib/session'
+import { signIn } from '@workspace/session'
 
 // Sign-in is the BFF's (/auth/login), which sends the browser through the login service and back.
 // This route only keeps /login links working.

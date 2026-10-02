@@ -1,5 +1,5 @@
 import { AccountMenu } from '@workspace/ui/components/workspace-header'
-import { signOut } from '@/lib/session'
+import { signOut } from '@workspace/session'
 import { useCurrentUser } from './user-context'
 
 /**

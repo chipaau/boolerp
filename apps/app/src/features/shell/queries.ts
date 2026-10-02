@@ -1,12 +1,13 @@
 // The shell data seam. These are non-suspending: chrome renders immediately and the counts / bell
 // fill in when they arrive, which is also how it should behave against the real API.
+import { notificationsKey } from '@workspace/org/notifications'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as mock from './mock'
 import type { AvatarChoice, Feedback, Membership, NavCounts, Notification, SavedView, SupportLink } from './types'
 
 const key = (...parts: string[]) => ['shell', ...parts] as const
 
-export const notificationsQuery = () => queryOptions({ queryKey: key('notifications'), queryFn: async () => mock.NOTIFICATIONS })
+export const notificationsQuery = () => queryOptions({ queryKey: notificationsKey, queryFn: async () => mock.NOTIFICATIONS })
 export const navCountsQuery = (app: string) =>
   queryOptions({ queryKey: key('nav-counts', app), queryFn: async (): Promise<NavCounts> => mock.NAV_COUNTS[app] ?? {} })
 

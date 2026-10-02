@@ -1,0 +1,17 @@
+{
+  "name": "@workspace/app-kit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The manifest contract between the workspace shell and the app packages it hosts (C102).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "lucide-react": "^1.45.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "^6.0.3"
+  }
+}

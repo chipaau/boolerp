@@ -13,7 +13,7 @@ import {
   TooltipTrigger,
 } from '@workspace/ui/components/tooltip'
 import { cn } from '@workspace/ui/lib/utils'
-import { isoDate, monthYear, ordinal, weekdayLong } from '@/lib/dates'
+import { isoDate, monthYear, ordinal, weekdayLong } from '@workspace/ui/lib/dates'
 import { NO_ACTIVITY, activityLevel } from './logic'
 import { useMonthActivity } from './queries'
 import type { DayActivity } from './types'

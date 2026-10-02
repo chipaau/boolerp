@@ -1,0 +1,33 @@
+{
+  "name": "@workspace/org",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The organisation record every workspace app reads (units, people, sites, holidays, rules), raising notifications, and the people UI apps share (C102).",
+  "exports": {
+    "./types": "./src/types.ts",
+    "./logic": "./src/logic.ts",
+    "./queries": "./src/queries.ts",
+    "./notify": "./src/notify.ts",
+    "./notifications": "./src/notifications.ts",
+    "./people-bits": "./src/people-bits.tsx",
+    "./org-chart": "./src/org-chart.tsx"
+  },
+  "dependencies": {
+    "@workspace/assets": "workspace:*",
+    "@workspace/ui": "workspace:*",
+    "lucide-react": "^1.45.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "vitest": "^5.0.1"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "*",
+    "@tanstack/react-router": "*",
+    "react": "^19"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

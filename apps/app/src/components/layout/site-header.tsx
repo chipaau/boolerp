@@ -8,7 +8,7 @@ import {
   ThemeToggle,
   WorkspaceHeader,
 } from '@workspace/ui/components/workspace-header'
-import { BRAND } from '@/lib/brand'
+import { BRAND } from '@workspace/ui/lib/brand'
 import { AppSwitcher } from './app-switcher'
 import { CommandPalette } from './command-palette'
 import { UserMenu } from './nav-user'

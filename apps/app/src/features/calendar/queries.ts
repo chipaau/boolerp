@@ -3,9 +3,9 @@
 // cache in place and return an undo, so the toasts can offer one; later they PATCH then invalidate.
 import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
-import { orgMeQuery, peopleQuery as orgPeopleQuery, useHolidays } from '@/features/org/queries'
-import { holidayForEveryone } from '@/features/org/logic'
-import type { Holiday } from '@/features/org/types'
+import { orgMeQuery, peopleQuery as orgPeopleQuery, useHolidays } from '@workspace/org/queries'
+import { holidayForEveryone } from '@workspace/org/logic'
+import type { Holiday } from '@workspace/org/types'
 import * as mock from './mock'
 import type { CalendarDef, CalendarKey, Meeting, Room, Tone } from './types'
 

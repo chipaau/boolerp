@@ -4,7 +4,7 @@ import { AdminSidebar } from '@/components/layout/admin-sidebar'
 import { AdminSearchProvider } from '@/components/layout/search-context'
 import { SiteHeader } from '@/components/layout/site-header'
 import { UserProvider } from '@/components/layout/user-context'
-import { currentUser, signIn } from '@/lib/session'
+import { currentUser, signIn } from '@workspace/session'
 
 // Authenticated console layout: session guard (once, here — not per-page) + the shell chrome
 // (header over a sidebar area), same shape as apps/app's _app.tsx.

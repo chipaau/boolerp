@@ -3,11 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-const router = createRouter({
-  routeTree,
-  defaultPreload: 'intent',
-  scrollRestoration: true,
-})
 
 declare module '@tanstack/react-router' {
   interface Register {
@@ -19,6 +14,16 @@ declare module '@tanstack/react-router' {
 // the same hooks will call the generated API client.
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+})
+
+// Loaders get the query client from the router's context, to prefetch what a page reads.
+const router = createRouter({
+  routeTree,
+  context: { queryClient },
+  defaultPreload: 'intent',
+  // preloading on hover runs loaders; let Query decide freshness instead of the router's cache
+  defaultPreloadStaleTime: 0,
+  scrollRestoration: true,
 })
 
 const rootElement = document.getElementById('app')!

@@ -2,7 +2,7 @@
 // person's preference for the event's category can only turn channels off, never on. Mandatory
 // rules ignore preferences. Events with no rule (a meeting invite) are personal: in-app only,
 // unless the person muted that category in-app.
-import type { NotificationRule } from '@/features/org/types'
+import type { NotificationRule } from '@workspace/org/types'
 import type { NotificationCategory } from '@/features/shell/types'
 import type { NotificationPreference } from './types'
 
