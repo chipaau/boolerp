@@ -8,7 +8,7 @@ shell and move one at a time.
 
 ```text
 apps/
-  app/                     the workspace shell on tenant domains (bff-app)
+  workspace/               the workspace shell on tenant domains (bff-workspace)
     editions/<name>.ts     app packages each edition ships (EDITION=<name>, default full, C107)
     vite.config.ts         route tree: shell routes + the edition's app routes; virtual:edition
     src/lib/apps.ts        the apps on the home grid and switcher (edition manifests + prototypes)
@@ -54,12 +54,12 @@ Rules:
 
 ## Editions (C107)
 
-An edition is `apps/app/editions/<name>.ts`, a list of app package slugs; `full` lists every
+An edition is `apps/workspace/editions/<name>.ts`, a list of app package slugs; `full` lists every
 app package. `EDITION=<name>` chooses one at build or dev time (default `full`):
 
 ```sh
-EDITION=full pnpm --filter app build
-docker build -f docker/bff.Dockerfile --build-arg APP=app --build-arg EDITION=full .
+EDITION=full pnpm --filter workspace build
+docker build -f docker/bff.Dockerfile --build-arg APP=workspace --build-arg EDITION=full .
 ```
 
 The router config mounts the edition's app routes, and the shell reads the edition's manifests
@@ -69,9 +69,9 @@ apps each sells) are decided with licensing (D10).
 ## Adding an app
 
 1. Create `packages/app-<slug>` with its manifest, routes, and features.
-2. Add `@workspace/app-<slug>` to `apps/app/package.json` and `<slug>` to `editions/full.ts`
+2. Add `@workspace/app-<slug>` to `apps/workspace/package.json` and `<slug>` to `editions/full.ts`
    (and any other edition that ships it).
-3. `pnpm --filter app test` checks every edition lists existing, declared app packages, the
+3. `pnpm --filter workspace test` checks every edition lists existing, declared app packages, the
    full edition lists every app package, and every page declares a permission.
 
 ## Data

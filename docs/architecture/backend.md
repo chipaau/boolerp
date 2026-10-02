@@ -18,7 +18,7 @@ apps/api/
   cmd/
     api/main.go          process concerns; mounts the edition's modules (C93)
     migrate/main.go      applies the edition's module migrations with MIGRATE_DB_* (C46, C47, C95)
-    bff/main.go          one backend-for-frontend instance, such as bff-app (C90, C96)
+    bff/main.go          one backend-for-frontend instance, such as bff-workspace (C90, C96)
   internal/
     bff/                 the BFF's own packages; no database
       login/             /auth/login and /auth/callback with Hydra (PKCE, state, nonce)

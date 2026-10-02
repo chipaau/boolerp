@@ -53,7 +53,7 @@ func newProvider(t *testing.T) *provider {
 		})
 	})
 	mux.HandleFunc("/oauth2/revoke", func(w http.ResponseWriter, r *http.Request) {
-		if id, secret, ok := r.BasicAuth(); ok && id == "erp-app" && secret == "client-s3cret" {
+		if id, secret, ok := r.BasicAuth(); ok && id == "erp-workspace" && secret == "client-s3cret" {
 			p.revoked = append(p.revoked, r.FormValue("token"))
 		}
 	})
@@ -65,7 +65,7 @@ func newProvider(t *testing.T) *provider {
 	mux.HandleFunc("/oauth2/token", func(w http.ResponseWriter, r *http.Request) {
 		// The client authenticates with its secret, and sends the PKCE verifier.
 		id, secret, ok := r.BasicAuth()
-		if ok && id == "erp-app" && secret == "client-s3cret" && r.FormValue("grant_type") == "refresh_token" {
+		if ok && id == "erp-workspace" && secret == "client-s3cret" && r.FormValue("grant_type") == "refresh_token" {
 			w.Header().Set("Content-Type", "application/json")
 			if r.FormValue("refresh_token") != "refresh-s3cret" {
 				w.WriteHeader(http.StatusBadRequest)
@@ -78,7 +78,7 @@ func newProvider(t *testing.T) *provider {
 			})
 			return
 		}
-		if !ok || id != "erp-app" || secret != "client-s3cret" || r.FormValue("code_verifier") == "" {
+		if !ok || id != "erp-workspace" || secret != "client-s3cret" || r.FormValue("code_verifier") == "" {
 			http.Error(w, `{"error":"invalid_client"}`, http.StatusUnauthorized)
 			return
 		}
@@ -98,7 +98,7 @@ func (p *provider) idToken(t *testing.T) string {
 	require.NoError(t, err)
 	now := time.Now()
 	raw, err := jwt.Signed(signer).Claims(jwt.Claims{
-		Issuer: p.URL, Subject: "account-1", Audience: jwt.Audience{"erp-app"},
+		Issuer: p.URL, Subject: "account-1", Audience: jwt.Audience{"erp-workspace"},
 		IssuedAt: jwt.NewNumericDate(now), Expiry: jwt.NewNumericDate(now.Add(time.Hour)),
 	}).Claims(map[string]any{"nonce": p.nonce, "sid": "hydra-session-1"}).Serialize()
 	require.NoError(t, err)
@@ -120,7 +120,7 @@ func appWithHandler(t *testing.T, p *provider) (http.Handler, *Handler) {
 	client := goredis.NewClient(&goredis.Options{Addr: miniredis.RunT(t).Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	sessions := session.New(client, sealer, session.Settings{KeyPrefix: "bff:test:", IdleTimeout: time.Hour, Lifetime: 2 * time.Hour}, nil)
-	h := New(Settings{Issuer: p.URL, ClientID: "erp-app", ClientSecret: "client-s3cret", Audience: "erp-api"},
+	h := New(Settings{Issuer: p.URL, ClientID: "erp-workspace", ClientSecret: "client-s3cret", Audience: "erp-api"},
 		sessions, p.Client(), slog.New(slog.DiscardHandler))
 	r := chi.NewRouter()
 	r.Route(Prefix, func(r chi.Router) {
@@ -196,7 +196,7 @@ func TestLoginRedirectsWithPKCENonceAndAudience(t *testing.T) {
 	p := newProvider(t)
 	q := startLogin(t, &browser{t: t, handler: app(t, p)}, "/settings")
 
-	assert.Equal(t, "erp-app", q.Get("client_id"))
+	assert.Equal(t, "erp-workspace", q.Get("client_id"))
 	assert.Equal(t, "code", q.Get("response_type"))
 	assert.Equal(t, "openid offline_access", q.Get("scope"))
 	assert.Equal(t, "erp-api", q.Get("audience"), "so the API accepts the access token")
@@ -346,7 +346,7 @@ func (p *provider) logoutToken(t *testing.T, change func(map[string]any)) string
 		(&jose.SignerOptions{}).WithType("logout+jwt").WithHeader("kid", "k1"))
 	require.NoError(t, err)
 	claims := map[string]any{
-		"iss": p.URL, "aud": []string{"erp-app"}, "iat": time.Now().Unix(), "jti": "j1",
+		"iss": p.URL, "aud": []string{"erp-workspace"}, "iat": time.Now().Unix(), "jti": "j1",
 		"sub": "account-1", "sid": "hydra-session-1",
 		"events": map[string]any{"http://schemas.openid.net/event/backchannel-logout": map[string]any{}},
 	}

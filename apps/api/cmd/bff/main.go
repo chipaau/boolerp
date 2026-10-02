@@ -1,4 +1,4 @@
-// Command bff runs one backend-for-frontend instance (C90, C96), such as bff-app:
+// Command bff runs one backend-for-frontend instance (C90, C96), such as bff-workspace:
 // it signs browsers in through Hydra and keeps their sessions. It owns process
 // concerns (configuration, the logger, signals, and the exit code);
 // internal/bootstrap assembles the instance.

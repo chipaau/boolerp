@@ -64,7 +64,7 @@ type claims struct {
 }
 
 func (iss *issuer) valid() claims {
-	return claims{issuer: iss.url(), audience: []string{"erp-api"}, expires: time.Now().Add(10 * time.Minute), clientID: "bff-app", key: iss.key}
+	return claims{issuer: iss.url(), audience: []string{"erp-api"}, expires: time.Now().Add(10 * time.Minute), clientID: "bff-workspace", key: iss.key}
 }
 
 func sign(t *testing.T, c claims) string {
@@ -107,7 +107,7 @@ func TestValidTokenPasses(t *testing.T) {
 	iss := newIssuer(t)
 	rec := call(t, iss, "Bearer "+sign(t, iss.valid()))
 	assert.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, "account-1 via bff-app", rec.Body.String())
+	assert.Equal(t, "account-1 via bff-workspace", rec.Body.String())
 }
 
 func TestSchemeIsCaseInsensitive(t *testing.T) {
@@ -174,7 +174,7 @@ func TestRoutesProtectMe(t *testing.T) {
 	rec = httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"user":{"id":"user-1","email":"a@b.test","phone":"+9607770000","displayName":"Aisha"},"clientId":"bff-app"}`, rec.Body.String())
+	assert.JSONEq(t, `{"user":{"id":"user-1","email":"a@b.test","phone":"+9607770000","displayName":"Aisha"},"clientId":"bff-workspace"}`, rec.Body.String())
 }
 
 func TestCallerIsTheResolvedUser(t *testing.T) {
@@ -196,7 +196,7 @@ func TestCallerIsTheResolvedUser(t *testing.T) {
 	assert.Equal(t, []string{"account-1"}, resolved)
 	require.NotNil(t, caller.User)
 	assert.Equal(t, "user-1", caller.User.ID)
-	assert.Equal(t, "bff-app", caller.Token.ClientID)
+	assert.Equal(t, "bff-workspace", caller.Token.ClientID)
 }
 
 func TestUnavailableUserIsA503WithoutTheCause(t *testing.T) {

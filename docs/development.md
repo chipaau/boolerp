@@ -20,7 +20,7 @@ target and will not work until the corresponding roadmap step is rebuilt.
 | --- | --- |
 | apps/api/ | New Go API and directory scaffold |
 | apps/api.bak/ | Previous API preserved without changes; excluded from new-API builds |
-| apps/app/ | Existing frontend; integration deferred |
+| apps/workspace/ | The workspace shell and its apps (C102, C108) |
 | docs/ | All product and engineering documentation |
 | .claude/ | Substantive agent instructions |
 | AGENTS.md and CLAUDE.md | Agent navigation entry points |
@@ -139,7 +139,7 @@ also applies when `APP_LOG_FORMAT` or `APP_LOG_LEVEL` is invalid. Valid settings
 configure the injected `slog` logger; lifecycle messages obey its level threshold.
 See [logging and redaction](platform/observability.md) for the field policy.
 
-`cmd/bff` (one BFF instance, such as `bff-app`; C90, C96) reads only `BFF_*` settings,
+`cmd/bff` (one BFF instance, such as `bff-workspace`; C90, C96) reads only `BFF_*` settings,
 loaded by `config.LoadBFF`. It reuses the API's groups under new prefixes: `BFF_ENV`,
 `BFF_PORT`, `BFF_SHUTDOWN_TIMEOUT`, `BFF_LOG_*`, `BFF_HTTP_*`, and `BFF_REDIS_*` (the
 session Redis) accept the same values as their `APP_` counterparts above. Its own
@@ -152,7 +152,7 @@ settings:
 | `BFF_SESSION_COOKIE_SECURE` | `true` (Compose: `false`) | HTTPS-only cookie named `__Host-session`, and `https://` callbacks; off only for plain-HTTP development, where the cookie is `session` |
 | `BFF_SESSION_ENCRYPTION_KEY_FILE` | none (required) | Path of the file holding the instance's AES-256 key as 64 hex digits (`openssl rand -hex 32`, C80). Replacing it signs sessions out |
 | `BFF_OIDC_ISSUER` | none (required) | Hydra's issuer, exactly as in its discovery document (Compose: `http://identity.bool.test/`) |
-| `BFF_OIDC_CLIENT_ID` | none (required) | The instance's Hydra client (Compose: `erp-app`) |
+| `BFF_OIDC_CLIENT_ID` | none (required) | The instance's Hydra client (Compose: `erp-workspace`) |
 | `BFF_OIDC_CLIENT_SECRET_FILE` | none (required) | Path of the file holding the client's secret (C80) |
 | `BFF_OIDC_AUDIENCE` | `erp-api` | The audience requested for access tokens, which the API requires (C91) |
 | `BFF_API_URL` | none (required) | The API's address on the internal network, where `/api/*` is forwarded (Compose: `http://api:8080`, C98) |
@@ -161,7 +161,7 @@ Release images: `docker/api.Dockerfile` (the API and `migrate`) and
 `docker/bff.Dockerfile`, built once per BFF instance with its app embedded (C99):
 
 ```sh
-docker build -f docker/bff.Dockerfile --build-arg APP=app -t bool-bff-app .
+docker build -f docker/bff.Dockerfile --build-arg APP=workspace -t bool-bff-workspace .
 ```
 
 `cmd/migrate` applies the migrations of the modules in the edition it is built with (C95), each with its own history table `migrations.<module>_version`. It reads only these settings (C47), never `APP_*`:

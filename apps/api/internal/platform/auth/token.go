@@ -20,7 +20,7 @@ const ClockSkew = 30 * time.Second
 // Token is what a verified access token says about the caller.
 type Token struct {
 	Subject  string   // the account ID (sub); empty for a client acting for itself
-	ClientID string   // the OAuth2 client the token was issued to (such as bff-app)
+	ClientID string   // the OAuth2 client the token was issued to (such as bff-workspace)
 	Scopes   []string // granted scopes (scp)
 }
 

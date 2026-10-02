@@ -40,7 +40,7 @@
   [decision register](../../docs/decisions/README.md); keep component documents consistent.
 - Do not keep previous-implementation backend code, configuration, or documents in
   the repository; git history holds them. Exceptions: `apps/api.bak/`, and the
-  frontend (`apps/app`, `apps/admin`, `apps/website`, `packages/*`, `e2e/`), which is
+  frontend (`apps/workspace`, `apps/admin`, `apps/website`, `packages/*`, `e2e/`), which is
   other team members' work: preserve it unchanged.
 - Preserve pre-existing untracked work when reorganizing.
 - Update relevant documentation with behavior changes. Never mark a feature implemented

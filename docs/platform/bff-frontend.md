@@ -1,10 +1,10 @@
 # App integration with the BFF
 
-Status: implemented by `apps/app` and `apps/admin` (C90, C96–C100), each in
+Status: implemented by `apps/workspace` and `apps/admin` (C90, C96–C100), each in
 `src/lib/session.ts`. `packages/auth`, the previous design (Kratos at `/auth` on the
 app's domain), was removed (C100). Sign out is `signOut()` there (C101).
 
-Each internal app is served by its backend-for-frontend (`bff-app` on tenant domains,
+Each internal app is served by its backend-for-frontend (`bff-workspace` on tenant domains,
 `bff-admin` on `admin.bool.test`), on the same domain as the app. The browser never
 holds tokens and never talks to Kratos or Hydra directly.
 

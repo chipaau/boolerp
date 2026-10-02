@@ -22,7 +22,7 @@ services) in any case.
   It keeps no sessions and sets no cookies.
 - The BFF **embeds its React app** (`go:embed`): one binary per release serves the app,
   its login at `/auth/*` (C96), and the proxy, on the app's own domains.
-- **One BFF program, two instances**: `bff-app` (tenant domains, `apps/app`) and
+- **One BFF program, two instances**: `bff-app` (tenant domains, `apps/app`; renamed `bff-workspace` and `apps/workspace`, C108) and
   `bff-admin` (`apps/admin`), each with its own Hydra client, session settings, and
   embedded app.
 - The BFF lives in the existing Go module as `apps/api/cmd/bff`, with its packages
