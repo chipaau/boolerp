@@ -42,3 +42,18 @@ func TestFeatureUnknownAccountIsNotFound(t *testing.T) {
 	_, err := store.NewUsers(testdb.Tx(t)).ByKratosID(t.Context(), "00000000-0000-0000-0000-000000000000")
 	assert.ErrorIs(t, err, application.ErrNotFound)
 }
+
+func TestFeatureTheRuntimeRoleCannotDeleteUsers(t *testing.T) {
+	tx := testdb.Tx(t)
+	users := store.NewUsers(tx)
+	_, err := users.Save(t.Context(), domain.Account{
+		KratosIdentityID: "00000000-0000-0000-0000-0000000000d1", Email: "d@b.test", Phone: "+9607000000",
+	})
+	require.NoError(t, err)
+
+	tag, err := tx.Exec(t.Context(), `DELETE FROM users WHERE kratos_identity_id = '00000000-0000-0000-0000-0000000000d1'`)
+	require.NoError(t, err)
+	assert.Zero(t, tag.RowsAffected(), "no delete policy: the row is not deleted")
+	_, err = users.ByKratosID(t.Context(), "00000000-0000-0000-0000-0000000000d1")
+	assert.NoError(t, err, "the user is still there")
+}

@@ -35,6 +35,14 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !ok {
+		// This app's session already ended (it idles out after 30 minutes), but
+		// the Kratos and Hydra sessions may still be live, and leaving them would
+		// sign the browser straight back in. Without an ID token, Hydra hands the
+		// logout to the login service, which asks before ending them (C112).
+		if end, ok := h.endSessionEndpoint(ctx); ok {
+			http.Redirect(w, r, end, http.StatusSeeOther) //nolint:gosec // G710: Hydra's discovery document
+			return
+		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -48,18 +56,9 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	// cannot be read below.
 	h.revoke(ctx, in.Tokens.Refresh)
 
-	p, err := h.discover(ctx)
-	if err != nil {
+	end, ok := h.endSessionEndpoint(ctx)
+	if !ok {
 		// The BFF session is gone; Hydra's and Kratos's end when they expire.
-		h.logger.WarnContext(ctx, "logout: discovery failed; signed out of this app only", "error", err)
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-	var endpoints struct {
-		EndSession string `json:"end_session_endpoint"`
-	}
-	if err := p.Claims(&endpoints); err != nil || endpoints.EndSession == "" {
-		h.logger.WarnContext(ctx, "logout: no end_session_endpoint; signed out of this app only")
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -70,7 +69,25 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	h.logger.InfoContext(ctx, "signed out", "account", in.Account)
 	// The target is Hydra's end_session_endpoint from its discovery document; the
 	// return address is checked by Hydra against the client's registered ones.
-	http.Redirect(w, r, endpoints.EndSession+"?"+q.Encode(), http.StatusSeeOther) //nolint:gosec // G710: see above
+	http.Redirect(w, r, end+"?"+q.Encode(), http.StatusSeeOther) //nolint:gosec // G710: see above
+}
+
+// endSessionEndpoint returns Hydra's end_session_endpoint from its discovery
+// document, or false when it cannot be read (signing out of this app only).
+func (h *Handler) endSessionEndpoint(ctx context.Context) (string, bool) {
+	p, err := h.discover(ctx)
+	if err != nil {
+		h.logger.WarnContext(ctx, "logout: discovery failed; signed out of this app only", "error", err)
+		return "", false
+	}
+	var endpoints struct {
+		EndSession string `json:"end_session_endpoint"`
+	}
+	if err := p.Claims(&endpoints); err != nil || endpoints.EndSession == "" {
+		h.logger.WarnContext(ctx, "logout: no end_session_endpoint; signed out of this app only")
+		return "", false
+	}
+	return endpoints.EndSession, true
 }
 
 // revoke revokes a refresh token at Hydra (RFC 7009) with ory/client-go.

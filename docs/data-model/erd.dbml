@@ -29,7 +29,8 @@ Table users {
   Note: '''
   Confirmed 2026-10-01 (C94); migration identity/migrations/00001_users.sql.
   One row per person who has used the platform; a projection of their Kratos
-  account, created on first use. Global, not tenant-scoped.
+  account, created on first use. Global, not tenant-scoped. RLS (00002, C126):
+  read, create, and update policies, none for delete, so the API cannot delete users.
   '''
 }
 

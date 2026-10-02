@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -33,6 +35,10 @@ type provider struct {
 	nonce   string // the nonce the next ID token carries
 	refresh string // the refresh token the next exchange returns
 	revoked []string
+
+	discoveries  atomic.Int32 // requests for the discovery document
+	discoveryLag atomic.Int64 // nanoseconds the discovery document takes
+	discoveryOff atomic.Bool  // the discovery document fails (Hydra down)
 }
 
 func newProvider(t *testing.T) *provider {
@@ -44,6 +50,12 @@ func newProvider(t *testing.T) *provider {
 	p.Server = httptest.NewServer(mux)
 	t.Cleanup(p.Close)
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
+		p.discoveries.Add(1)
+		time.Sleep(time.Duration(p.discoveryLag.Load()))
+		if p.discoveryOff.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"issuer":                                p.URL,
 			"authorization_endpoint":                p.URL + "/oauth2/auth",
@@ -382,10 +394,58 @@ func TestLogoutEndsTheSessionAndGoesToHydra(t *testing.T) {
 	assert.False(t, ok, "signed out of the BFF")
 }
 
-func TestLogoutWithoutASessionGoesHome(t *testing.T) {
-	rec := (&browser{t: t, handler: app(t, newProvider(t))}).post("/auth/logout", nil)
+func TestLogoutWithoutASessionStillEndsTheLogin(t *testing.T) {
+	// This app's session idled out, but the Kratos and Hydra sessions may still
+	// be live: the browser goes to Hydra's logout without an ID token, and the
+	// login service asks before ending them.
+	p := newProvider(t)
+	rec := (&browser{t: t, handler: app(t, p)}).post("/auth/logout", nil)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, p.URL+"/oauth2/sessions/logout", rec.Header().Get("Location"), "no id_token_hint, no return address")
+}
+
+func TestLogoutWithoutASessionOrHydraGoesHome(t *testing.T) {
+	p := newProvider(t)
+	p.Close()
+	rec := (&browser{t: t, handler: app(t, p)}).post("/auth/logout", nil)
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "/", rec.Header().Get("Location"))
+}
+
+func TestSigningInAgainRevokesThePreviousLogin(t *testing.T) {
+	p := newProvider(t)
+	b := &browser{t: t, handler: app(t, p)}
+	signIn(t, p, b)
+	p.refresh = "refresh-2"
+	signIn(t, p, b)
+	assert.Equal(t, []string{"refresh-s3cret"}, p.revoked, "the first login's refresh token is revoked")
+}
+
+func TestASlowFailingHydraDoesNotQueueLogins(t *testing.T) {
+	// Hydra answers slowly and with an error: concurrent logins share one wait
+	// instead of queueing one after another behind a lock.
+	p := newProvider(t)
+	p.discoveryLag.Store(int64(300 * time.Millisecond))
+	p.discoveryOff.Store(true)
+	handler := app(t, p)
+	login := func() int {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/auth/login?return_to=/", nil))
+		return rec.Code
+	}
+
+	start := time.Now()
+	var wg sync.WaitGroup
+	for range 5 {
+		wg.Go(func() { assert.Equal(t, http.StatusServiceUnavailable, login()) })
+	}
+	wg.Wait()
+	assert.Less(t, time.Since(start), 900*time.Millisecond, "one shared wait, not five in a row")
+
+	// The failure is not remembered: once Hydra is back, the next login works.
+	p.discoveryLag.Store(0)
+	p.discoveryOff.Store(false)
+	assert.Equal(t, http.StatusFound, login())
 }
 
 func TestLogoutIsNotAGet(t *testing.T) {

@@ -105,6 +105,12 @@ and each BFF signs out the sessions of that login. The next sign-in asks for the
 password. The BFF revokes the refresh token before reading Hydra's discovery, so it is
 revoked even when discovery fails.
 
+Sign-out works the same after the app's own session has ended (it idles out after 30
+minutes): the BFF still sends the browser to Hydra's logout, without an ID token, so the
+login service asks before ending the Kratos and Hydra sessions, instead of the browser
+being signed straight back in (C126). A logout or consent challenge Hydra no longer has
+(used, expired, or unknown) sends the browser on rather than failing.
+
 Only a logout started by an app proceeds at once: the BFF sends Hydra the person's ID
 token (`id_token_hint`), Hydra checks it belongs to the browser's login, and the logout
 request is marked `rp_initiated`. A plain link to Hydra's logout, which any site can
