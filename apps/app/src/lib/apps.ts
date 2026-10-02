@@ -2,16 +2,16 @@ import { Activity, BadgeCheck, Boxes, Briefcase, Building2, CalendarDays, ChartC
 
 export type { AppDef, AppMenuItem, AppMenuSection } from '@workspace/app-kit'
 import type { AppDef } from '@workspace/app-kit'
-import { app as controlCentre } from '@workspace/app-control-centre'
+import { apps as editionApps } from 'virtual:edition'
 
-// The apps hosted by the workspace shell (this edition's apps, C102), in the order they appear on
-// the Home honeycomb (the first eight get a tile; the rest are reachable from the switcher). Apps
-// moved into their own package (packages/app-<slug>) bring their manifest and routes; the others
-// are still prototypes here: sections without a real screen in features/screens.ts render the
-// prototype page (src/proto) until one exists.
+// The apps hosted by the workspace shell, in the order they appear on the Home honeycomb (the
+// first eight get a tile; the rest are reachable from the switcher): first the edition's app
+// packages (editions/<name>.ts, C107), each with its own manifest and routes (C102), then the
+// apps that are still prototypes here: sections without a real screen in features/screens.ts
+// render the prototype page (src/proto) until one exists.
 // Archived apps (Staff Hub, Finance) live in src/_archive.
 export const APPS: AppDef[] = [
-  controlCentre, // an app package (C102)
+  ...editionApps,
 
   {
     slug: 'tasks',

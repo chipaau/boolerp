@@ -1,12 +1,15 @@
 # Production image of one BFF instance (C90, C99): the BFF with its app embedded.
 #   docker build -f docker/bff.Dockerfile --build-arg APP=app   -t bool-bff-app .
 #   docker build -f docker/bff.Dockerfile --build-arg APP=admin -t bool-bff-admin .
-# Each image contains only its own app.
+# Each image contains only its own app. EDITION picks the workspace's edition
+# (apps/app/editions/<name>.ts, C107); the admin app has none.
 ARG APP
+ARG EDITION=full
 
 # The app's `vite build`, with the same Node and pnpm as development (node.Dockerfile).
 FROM node:26-alpine AS app
 ARG APP
+ARG EDITION
 RUN test -n "$APP" || (echo "build with --build-arg APP=app|admin" >&2 && exit 1)
 RUN npm install -g corepack@latest && corepack enable && corepack prepare pnpm@12.4.1 --activate
 WORKDIR /w
@@ -15,7 +18,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY e2e/package.json e2e/
 COPY packages/ packages/
 COPY apps/ apps/
-RUN pnpm install --frozen-lockfile --filter "${APP}..." && pnpm --filter "${APP}" build
+RUN pnpm install --frozen-lockfile --filter "${APP}..." && EDITION="${EDITION}" pnpm --filter "${APP}" build
 
 # The BFF, with the build in place of the placeholder that go:embed reads.
 FROM golang:1.27-alpine AS build

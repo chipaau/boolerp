@@ -2,6 +2,6 @@
 
 /* scan this app's own source for Tailwind classes (the shared UI package is scanned by its own globals.css) */
 @source "../";
-/* and the shared and app packages this edition ships (edition.ts) */
+/* and the shared and app packages (every app package, so any edition's classes are present) */
 @source "../../../packages/org/src";
-@source "../../../packages/app-control-centre/src";
+@source "../../../packages/app-*/src";

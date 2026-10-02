@@ -21,7 +21,7 @@ internals; registration spread over many files and failing open.
   optional rail) and keeps its pages as file routes in `src/routes`. Apps never import each
   other.
 - **The workspace shell** (`apps/app`) owns the chrome (header, app grid, sidebar, sign-in) and
-  lists the app packages of its edition once (`edition.ts`). The router config mounts each
+  lists the app packages of its edition once (`editions/<name>.ts`, C107). The router config mounts each
   app's routes at `/<slug>` with TanStack Router's virtual file routes (`physical()`), producing
   one type-checked route tree; the shell draws each app's sidebar from its manifest.
 - **Inside an app:** `src/features/<feature>/` (data, components, an `index.ts` as the only
@@ -34,7 +34,8 @@ internals; registration spread over many files and failing open.
 
 ## Consequences
 
-- An edition with fewer apps lists fewer packages; their code is not in its bundle.
+- An edition with fewer apps lists fewer packages; their code is not in its bundle. Editions
+  are files chosen at build time (`EDITION`, C107).
 - Adding an app is one package and one line in the edition; the menu and route guards read
   the manifest, so a page without a permission is refused.
 - Cross-app reads go through platform packages or the API, not app code; where the prototype
