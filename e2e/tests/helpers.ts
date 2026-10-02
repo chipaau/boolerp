@@ -17,10 +17,16 @@ export const user = (): { email: string; password: string } =>
 export async function submitLogin(page: Page) {
   const { email, password } = user()
   await expect(page).toHaveURL(new RegExp(`^${IDENTITY}/login`))
+  // Wait for the form before looking for the email field: isVisible() does not wait, so on a
+  // page still rendering (the first test on a fresh stack) it found no email field and the form
+  // went out without one. The field is absent only in flows where Kratos already knows the
+  // account (re-authentication), and the password field is always there.
+  const passwordField = page.locator('input[name="password"]')
+  await expect(passwordField).toBeVisible()
   const identifier = page.locator('input[name="identifier"]')
   if (await identifier.isVisible()) await identifier.fill(email)
-  await page.locator('input[name="password"]').fill(password)
-  await page.locator('input[name="password"]').press('Enter')
+  await passwordField.fill(password)
+  await passwordField.press('Enter')
 }
 
 const onLoginPage = (page: Page) => page.url().startsWith(`${IDENTITY}/login`)
