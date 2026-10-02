@@ -34,7 +34,7 @@ apps/api/
       tracing.go, metrics.go
     edition/
       full/              every module: RegisterModules, Migrations, and Seeders (C95, C118)
-    modules/
+    platform/            infrastructure and platform capabilities (C122)
       identity/          users (C94)
         identity.go      New, Resolve, EnsureAccount, Migrations
         domain/          User, Account, NewAccount
@@ -44,7 +44,8 @@ apps/api/
           store/         users in PostgreSQL
         migrations/      embedded Goose SQL, history migrations.identity_version
         seeds/           one seeder per store: users.go (C50, C118)
-    platform/
+      reference/         shared reference data: countries (C122)
+        migrations/      history migrations.reference_version
       auth/              access tokens, Authenticate, the caller, GET /api/auth/me (C91, C92)
       config/            settings grouped by concern (C44)
       httpinput/         JSON request decoding and validation
@@ -187,8 +188,10 @@ adapters for external providers are named after the provider (`adapters/kratos`)
 
 ## Modules and routes (C92, C93, C95)
 
-Every module keeps all of its code in its own folder (`internal/platform/<name>` for
-infrastructure such as `auth`, `internal/modules/<name>` for business capabilities):
+Every module keeps all of its code in its own folder (C122): `internal/platform/<name>`
+for technical infrastructure (`postgres`, `redis`, `auth`) and for the platform
+capabilities that own tables (`identity`, `reference`, later `tenancy`, `authorization`,
+`audit`); `internal/modules/<name>` for business apps only (HRMS first). Each folder holds its
 routes, handlers, middleware, types, and migrations. A module exposes
 `Routes(r chi.Router)` when it has routes, registering
 paths relative to its prefix (`/me`, not `/api/auth/me`).

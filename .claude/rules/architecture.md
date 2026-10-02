@@ -6,16 +6,20 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
 - Keep domain and application logic independent of HTTP frameworks, database drivers,
   generated persistence models, cache clients, and external provider SDKs.
 - Put external implementations in adapters and dependency construction in bootstrap.
-- Keep infrastructure under `internal/platform/`; keep policy-bearing capabilities
-  under `internal/modules/`.
+- `internal/platform/` holds everything that is not a business app (C122): technical
+  infrastructure (config, postgres, redis, http) and the platform capabilities that own
+  tables (identity, reference, tenancy, authorization, audit). `internal/modules/` holds
+  business apps only (HRMS, inventory, …).
 - A module owns its persistence writes. Do not reach into another module's SQL package.
 - A module keeps all of its code in its own folder and registers its routes relative to
   its prefix (`Routes(r chi.Router)`). Only the edition package
   (`internal/edition/<name>`, C95) constructs, wires, and mounts modules, through the
   `RegisterModules` callback of `bootstrap.Run`; bootstrap builds infrastructure.
   Modules inherit the default middleware and apply authentication themselves (C92).
-- Module migrations live in `internal/modules/<module>/migrations`, listed in the
-  edition's `Migrations`; `cmd/api` and `cmd/migrate` share the edition (C95).
+- Migrations live in the owning package's `migrations` folder
+  (`internal/platform/<name>/migrations` or `internal/modules/<name>/migrations`), each
+  with its own history table, listed in the edition's `Migrations` (platform first);
+  `cmd/api` and `cmd/migrate` share the edition (C95, C122).
 - Business modules may depend on platform modules; a module needing another business
   module defines the interface in its own `application` package. Platform modules never
   import business modules (C95).

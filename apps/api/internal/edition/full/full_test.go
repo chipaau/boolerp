@@ -12,16 +12,22 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
-	"github.com/boolmv/erp/apps/api/internal/modules/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 )
 
 func TestMigrationsListEveryModuleWithItsTables(t *testing.T) {
-	require.Len(t, Migrations, 1)
-	assert.Equal(t, "identity", Migrations[0].Name)
-	files, err := fs.Glob(Migrations[0].FS, "*.sql")
-	require.NoError(t, err)
-	assert.Contains(t, files, "00001_users.sql")
+	names := make([]string, len(Migrations))
+	for i, m := range Migrations {
+		names[i] = m.Name
+	}
+	assert.Equal(t, []string{"reference", "identity"}, names, "in dependency order")
+
+	for name, file := range map[int]string{0: "00001_countries.sql", 1: "00001_users.sql"} {
+		files, err := fs.Glob(Migrations[name].FS, "*.sql")
+		require.NoError(t, err)
+		assert.Contains(t, files, file)
+	}
 }
 
 func TestRegisterModulesMountsAuthBehindAuthentication(t *testing.T) {

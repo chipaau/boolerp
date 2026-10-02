@@ -14,16 +14,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
-	"github.com/boolmv/erp/apps/api/internal/modules/identity"
-	identityseeds "github.com/boolmv/erp/apps/api/internal/modules/identity/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/auth"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity"
+	identityseeds "github.com/boolmv/erp/apps/api/internal/platform/identity/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
+	"github.com/boolmv/erp/apps/api/internal/platform/reference"
 	"github.com/boolmv/erp/apps/api/internal/platform/seed"
 )
 
-// Migrations are the edition's modules' tables, in dependency order: a module's
-// tables come after those of the modules they reference.
+// Migrations are the edition's tables, in dependency order: a package's tables come
+// after those of the packages they reference. Platform capabilities come first,
+// business modules after them (C122).
 var Migrations = []postgres.ModuleMigrations{
+	{Name: "reference", FS: reference.Migrations()},
 	{Name: "identity", FS: identity.Migrations()},
 }
 

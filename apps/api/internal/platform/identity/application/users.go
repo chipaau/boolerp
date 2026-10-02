@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/boolmv/erp/apps/api/internal/modules/identity/domain"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/domain"
 )
 
 // Users stores users (adapters/store implements it).

@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/boolmv/erp/apps/api/internal/edition/full"
-	"github.com/boolmv/erp/apps/api/internal/modules/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
 	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
 	"github.com/boolmv/erp/apps/api/internal/platform/seed"
