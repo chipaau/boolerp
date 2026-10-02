@@ -9,7 +9,12 @@ import { useAvatarChoices, useSetAvatar } from './queries'
 
 /**
  * Change the photo behind the topbar avatar: upload your own (read locally, shown at once) or
- * pick one of the workspace's portraits; "Just my initials" clears it. Save applies it everywhere.
+ * pick one of the workspace's portraits; "Just my initials" clears it.
+ *
+ * Save updates this tab only. The photo is held in the query cache, not on the identity, so it does
+ * not reach another tab or the operator console and does not survive a reload — the copy below says
+ * so rather than promising otherwise. It becomes a real claim once the picture lives on the Kratos
+ * identity beside the name and e-mail, which is the only place both apps can read it from.
  */
 export function AvatarDialog({ open, name, current, onClose }: { open: boolean; name: string; current?: string; onClose: () => void }) {
   const choices = useAvatarChoices()
@@ -72,7 +77,7 @@ export function AvatarDialog({ open, name, current, onClose }: { open: boolean; 
         <DialogHeader className="flex-row items-start justify-between gap-3.5 border-b border-divider px-6 pt-[22px] pb-4 text-left">
           <div>
             <DialogTitle className="text-[19px] tracking-[-0.015em]">Your photo</DialogTitle>
-            <DialogDescription className="mt-1 text-compact text-muted-foreground">Shown beside your name across the workspace.</DialogDescription>
+            <DialogDescription className="mt-1 text-compact text-muted-foreground">Shown beside your name in the topbar.</DialogDescription>
           </div>
           <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
             <X className="size-4" />
@@ -107,7 +112,7 @@ export function AvatarDialog({ open, name, current, onClose }: { open: boolean; 
         </div>
 
         <div className="flex items-center justify-between gap-3 px-6 pt-4 pb-[18px]">
-          <span className="text-meta text-muted-foreground">{pick === undefined ? 'Your initials, in the workspace colours' : 'Everyone sees the new photo straight away'}</span>
+          <span className="text-meta text-muted-foreground">{pick === undefined ? 'Your initials, in the workspace colours' : 'Applies here now · not saved to your account yet, so it resets when you reload'}</span>
           <div className="flex items-center gap-[9px]">
             <Button variant="outline" onClick={onClose}>
               Cancel

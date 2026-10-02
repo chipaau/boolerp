@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 
 import {
   AccountMenu,
+  accountMenuItems,
   AppSwitcherMenu,
   BrandMark,
   HeaderDivider,
@@ -149,6 +150,36 @@ describe("AccountMenu", () => {
     const signOut = screen.getByText("Sign out")
     expect(signOut).toHaveClass("text-tone-risk-foreground")
     await userEvent.click(signOut)
+    expect(onSignOut).toHaveBeenCalled()
+  })
+})
+
+describe("accountMenuItems", () => {
+  it("offers the photo then sign out when the app can change a photo", () => {
+    const items = accountMenuItems({ onChangePhoto: () => {}, onSignOut: () => {} })
+    expect(items.map((i) => i.key)).toEqual(["photo", "signout"])
+    expect(items.map((i) => i.label)).toEqual(["Change photo…", "Sign out"])
+  })
+
+  it("omits the photo when the app has nowhere to keep one", () => {
+    const items = accountMenuItems({ onSignOut: () => {} })
+    expect(items.map((i) => i.key)).toEqual(["signout"])
+  })
+
+  it("marks only sign out destructive, and wires both actions", async () => {
+    const onChangePhoto = vi.fn()
+    const onSignOut = vi.fn()
+    const items = accountMenuItems({ onChangePhoto, onSignOut })
+    expect(items.find((i) => i.key === "photo")?.destructive).toBeUndefined()
+    expect(items.find((i) => i.key === "signout")?.destructive).toBe(true)
+
+    render(<AccountMenu user={{ name: "Aisha Ali", email: "aisha@example.mv" }} items={items} />)
+    await userEvent.click(screen.getByRole("button", { name: "Aisha Ali. Account menu" }))
+    await userEvent.click(await screen.findByText("Change photo…"))
+    expect(onChangePhoto).toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole("button", { name: "Aisha Ali. Account menu" }))
+    await userEvent.click(await screen.findByText("Sign out"))
     expect(onSignOut).toHaveBeenCalled()
   })
 })
