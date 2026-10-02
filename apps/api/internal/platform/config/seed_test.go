@@ -31,10 +31,3 @@ func TestSeedNeedsAnExplicitNonProductionEnvironment(t *testing.T) {
 		assert.Equal(t, env, cfg.App.Environment)
 	}
 }
-
-func TestSeedReadsTheTeamPasswordFromAFile(t *testing.T) {
-	cfg, err := LoadSeed(seedEnviron(t, "APP_ENV=dev", "SEED_TEAM_PASSWORD_FILE="+secretFile(t, "pw")))
-	require.NoError(t, err)
-	assert.Equal(t, "pw", cfg.Users.TeamPassword)
-	assert.Equal(t, "s3cret", cfg.DB.Password)
-}

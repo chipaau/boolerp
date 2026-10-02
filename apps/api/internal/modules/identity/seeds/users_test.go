@@ -28,14 +28,14 @@ func env(environment string) seed.Env {
 
 func TestTeamAccountsInDev(t *testing.T) {
 	accounts := &fakeAccounts{seen: map[string]identity.NewAccount{}}
-	users := NewUsers(accounts, "pw")
+	users := NewUsers(accounts)
 	require.NoError(t, users.Run(t.Context(), env("dev")))
 	require.NoError(t, users.Run(t.Context(), env("dev")), "running again is fine")
 
 	assert.Len(t, accounts.seen, 3)
 	for _, email := range []string{"ibrahim@bool.mv", "shifau@bool.mv", "mariyam@bool.mv"} {
 		a := accounts.seen[email]
-		assert.Equal(t, "pw", a.Password, email)
+		assert.Equal(t, "password", a.Password, email)
 		assert.Equal(t, email, a.GoogleSubject, email)
 		assert.NotEmpty(t, a.Phone, email)
 	}
@@ -44,13 +44,7 @@ func TestTeamAccountsInDev(t *testing.T) {
 func TestTeamAccountsOnlyInDev(t *testing.T) {
 	for _, e := range []string{"test", "staging"} {
 		accounts := &fakeAccounts{seen: map[string]identity.NewAccount{}}
-		require.NoError(t, NewUsers(accounts, "pw").Run(t.Context(), env(e)))
+		require.NoError(t, NewUsers(accounts).Run(t.Context(), env(e)))
 		assert.Empty(t, accounts.seen, e)
 	}
-}
-
-func TestDevNeedsTheTeamPassword(t *testing.T) {
-	accounts := &fakeAccounts{seen: map[string]identity.NewAccount{}}
-	assert.Error(t, NewUsers(accounts, "").Run(t.Context(), env("dev")))
-	assert.Empty(t, accounts.seen)
 }

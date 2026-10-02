@@ -285,9 +285,9 @@ docker compose run --rm seed
 ```
 
 In `dev`, `identity.users` creates the team's development accounts, verified and
-active: `ibrahim@bool.mv`, `shifau@bool.mv`, and `mariyam@bool.mv`. Their password is
-the contents of `docker/secrets/dev/seed_team_password` (`SEED_TEAM_PASSWORD_FILE`);
-they also sign in through the development Google stand-in (`oidc.bool.test`) with the
+active: `ibrahim@bool.mv`, `shifau@bool.mv`, and `mariyam@bool.mv`, with the password
+`password` (set in the seeder: a public development value, not a secret, so not a file).
+They also sign in through the development Google stand-in (`oidc.bool.test`) with the
 email as the username and the claims `{"email": "<email>", "email_verified": true}`.
 The password is public, so these accounts are seeded only in `dev`. An account that
 already exists is left as it is.

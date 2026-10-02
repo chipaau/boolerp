@@ -3,7 +3,6 @@ package seeds
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/boolmv/erp/apps/api/internal/modules/identity"
@@ -17,15 +16,17 @@ type Accounts interface {
 
 // Users seeds accounts and their users: the team's development accounts.
 type Users struct {
-	accounts     Accounts
-	teamPassword string
+	accounts Accounts
 }
 
-// NewUsers returns the users seeder. teamPassword is the team accounts'
-// password (SEED_TEAM_PASSWORD_FILE), required in dev.
-func NewUsers(accounts Accounts, teamPassword string) *Users {
-	return &Users{accounts: accounts, teamPassword: teamPassword}
+// NewUsers returns the users seeder.
+func NewUsers(accounts Accounts) *Users {
+	return &Users{accounts: accounts}
 }
+
+// teamPassword is the team accounts' password: a public development value, not
+// a secret, which is why they are seeded only in dev.
+const teamPassword = "password"
 
 // Name implements seed.Seeder.
 func (*Users) Name() string { return "identity.users" }
@@ -50,14 +51,11 @@ func (u *Users) Run(ctx context.Context, env seed.Env) error {
 		env.Logger.InfoContext(ctx, "team accounts are seeded only in dev; skipped")
 		return nil
 	}
-	if u.teamPassword == "" {
-		return errors.New("SEED_TEAM_PASSWORD_FILE is required in dev")
-	}
 	var created, existing int
 	for _, m := range team {
 		_, isNew, err := u.accounts.EnsureAccount(ctx, identity.NewAccount{
 			Email: m.email, Phone: m.phone, DisplayName: m.name,
-			Password: u.teamPassword,
+			Password: teamPassword,
 			// The development Google stand-in signs in with the email as username.
 			GoogleSubject: m.email,
 		})

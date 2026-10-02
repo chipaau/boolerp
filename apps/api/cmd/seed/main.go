@@ -63,7 +63,6 @@ func run() int {
 			KratosAdminURL: cfg.Identity.KratosAdminURL,
 			HydraAdminURL:  cfg.Identity.HydraAdminURL,
 		},
-		TeamPassword: cfg.Users.TeamPassword,
 	}, &http.Client{Timeout: 10 * time.Second}, logger)
 
 	if err := seed.Run(ctx, seeders, seed.NewEnv(cfg.App.Environment, logger)); err != nil {

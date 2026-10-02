@@ -337,8 +337,7 @@ services:
       APP_DB_SSLMODE: disable
       APP_IDENTITY_KRATOS_ADMIN_URL: http://kratos:4434
       APP_IDENTITY_HYDRA_ADMIN_URL: http://hydra:4445
-      SEED_TEAM_PASSWORD_FILE: /run/secrets/seed_team_password
-    secrets: [db_app_password, seed_team_password]
+    secrets: [db_app_password]
     volumes:
       - .:/w
       - gocache:/root/.cache/go-build
@@ -627,9 +626,6 @@ secrets:
     file: ./docker/secrets/dev/postgres_password
   db_app_password:
     file: ./docker/secrets/dev/db_app_password
-  # The team's development accounts (cmd/seed, dev only, C50).
-  seed_team_password:
-    file: ./docker/secrets/dev/seed_team_password
   db_migrate_password:
     file: ./docker/secrets/dev/db_migrate_password
   db_kratos_password:

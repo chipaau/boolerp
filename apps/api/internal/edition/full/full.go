@@ -53,8 +53,7 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
 
 // SeedSettings configure the seeders (from config.Seed).
 type SeedSettings struct {
-	Identity     identity.Settings
-	TeamPassword string // the team's development accounts (identity.users)
+	Identity identity.Settings
 }
 
 // Seeders are the edition's modules' seeders, one per store, in dependency
@@ -63,6 +62,6 @@ type SeedSettings struct {
 func Seeders(db *pgxpool.Pool, s SeedSettings, client *http.Client, logger *slog.Logger) []seed.Seeder {
 	users := identity.New(db, s.Identity, client, logger)
 	return []seed.Seeder{
-		identityseeds.NewUsers(users, s.TeamPassword),
+		identityseeds.NewUsers(users),
 	}
 }
