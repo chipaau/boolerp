@@ -45,6 +45,18 @@ Generated persistence packages remain behind adapters.
 Do not impose redundant unit/integration/browser suites on every low-level operation
 or invent a global coverage percentage.
 
+## Telemetry, tracing, and audit in tests (C110)
+
+Test runs export no telemetry. The API's and BFFs' traces and metrics are off unless
+`OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER` are set: unit and feature tests never set
+them, and the end-to-end CI job sets both to `none`. Kratos and Hydra never send Ory their
+anonymous usage reports (`SQA_OPT_OUT`, set in Compose for development and tests alike), and
+their own tracing is not configured.
+
+Audit stays on in tests. It is a business record written in the same transaction as the
+change it describes (step 9), so tests must exercise it: an audited change without its record,
+or a failed audit write that does not roll the change back, is a defect a test has to catch.
+
 ## End-to-end tests (C109)
 
 Playwright tests run in a real browser against the running Compose stack, through Traefik,

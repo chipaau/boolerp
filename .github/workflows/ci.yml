@@ -205,7 +205,10 @@ jobs:
             --entrypoints.web.address=:80
 
       - name: Create .env from the committed example
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          # no lgtm service here; without this the API and BFFs log export errors
+          printf 'OTEL_TRACES_EXPORTER=none\nOTEL_METRICS_EXPORTER=none\n' >> .env
 
       - name: Start the stack
         run: |
@@ -214,16 +217,18 @@ jobs:
           docker compose up hydra-clients
           docker compose up -d --build --wait api bff-workspace bff-admin identity workspace admin
 
+      # Ready means the site itself answers: 2xx, or 3xx (the login service redirects / into a
+      # login flow). Traefik answers 404 (no route yet) or 502/504 (service not up) until then.
       - name: Wait until every site answers through Traefik
         run: |
           for host in identity.bool.test demo.bool.test admin.bool.test; do
-            for i in $(seq 1 90); do
+            for i in $(seq 1 120); do
               code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $host" http://localhost/ || true)
-              [ "$code" = 200 ] && break
+              case "$code" in 2??|3??) break ;; esac
               sleep 3
             done
             echo "$host: $code"
-            [ "$code" = 200 ] || { docker compose logs; exit 1; }
+            case "$code" in 2??|3??) ;; *) docker compose logs; exit 1 ;; esac
           done
           # compile the login page once, so the first test is not waiting on Next.js
           curl -s -o /dev/null -H "Host: identity.bool.test" http://localhost/login || true
