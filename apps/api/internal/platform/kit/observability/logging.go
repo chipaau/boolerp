@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/requestid"
 )
 
 // Redacted replaces the value of a sensitive attribute.

@@ -26,8 +26,8 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/boolmv/erp/apps/api/internal/bff/session"
-	"github.com/boolmv/erp/apps/api/internal/platform/auth"
-	"github.com/boolmv/erp/apps/api/internal/platform/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 )
 
 // Prefix is where the BFF mounts these routes; /api/* belongs to the API (C96).

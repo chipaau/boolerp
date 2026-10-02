@@ -20,7 +20,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/requestid"
 )
 
 // serviceName identifies the API in traces unless OTEL_SERVICE_NAME overrides it.

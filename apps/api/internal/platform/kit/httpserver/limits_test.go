@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/observability"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/observability"
 )
 
 // quick is the deadline under test; slow is long enough never to fire.

@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/config"
-	"github.com/boolmv/erp/apps/api/internal/testdb"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
 
 // Feature tests (C77, C82): they need PostgreSQL and Redis (see docs/testing.md).

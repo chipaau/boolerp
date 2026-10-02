@@ -33,30 +33,36 @@ apps/api/
       tracing.go, metrics.go
     edition/
       full/              every module: RegisterModules, Migrations, and Seeders (C95, C118)
-    platform/            infrastructure and platform capabilities (C122)
-      identity/          users (C94)
+    platform/            platform capabilities: tables or policy (C122, C125)
+      identity/          users and authentication (C94)
         identity.go      New, Resolve, EnsureAccount, Migrations
+        auth/            access tokens, Authenticate, the caller, GET /api/auth/me (C91)
         domain/          User, Account, NewAccount
         application/     Service (Resolve, Sync, EnsureAccount) and its ports
         adapters/
           kratos/        Kratos admin API through ory/client-go
+          hydra/         Hydra admin API: ending logins (C101)
           store/         users in PostgreSQL
         migrations/      embedded Goose SQL, history migrations.identity_version
         seeds/           one seeder per store: users.go (C50, C118)
       reference/         shared reference data: countries (C122)
         migrations/      history migrations.reference_version
-      auth/              access tokens, Authenticate, the caller, GET /api/auth/me (C91, C92)
-      config/            settings grouped by concern (C44)
-      httpinput/         JSON request decoding and validation
-      httpserver/        server limits and graceful shutdown (framework-agnostic)
-      seed/              the Seeder interface, the runner, and the shared gofakeit generator (C118)
-      observability/     slog logger and redaction, tracing, metrics
-      postgres/          pool, database/sql for Goose, module migrations
-      problem/           RFC 9457 errors and panic recovery
-      redis/             fail-fast Redis client
-      requestid/         request IDs
-    testdb/              feature-test transactions as the runtime role
+      kit/               technical building blocks, no business meaning (C125)
+        config/          settings grouped by concern (C44)
+        httpinput/       JSON request decoding and validation
+        httpserver/      server limits and graceful shutdown (framework-agnostic)
+        seed/            the Seeder interface, the runner, and the shared gofakeit generator (C118)
+        observability/   slog logger and redaction, tracing, metrics
+        postgres/        pool, database/sql for Goose, module migrations
+        problem/         RFC 9457 errors and panic recovery
+        redis/           fail-fast Redis client
+        requestid/       request IDs
+        testdb/          feature-test transactions as the runtime role
 ```
+
+A capability grows into one shape (C125): a root package with `New`, `Routes`, and
+`Migrations`, and `domain/`, `application/`, `adapters/`, `migrations/`, and `seeds/`
+as it needs them; sub-capabilities, such as identity's `auth`, are subpackages of it.
 
 `main` loads configuration, builds the logger, and hands both to `bootstrap.Run` with
 its edition's `RegisterModules`. `bootstrap.Run` constructs every dependency explicitly
@@ -221,13 +227,14 @@ no generic `Module` interface or container.
 **Dependencies between modules:** business modules may depend on platform modules. A
 module that needs another business module defines the interface it needs in its own
 `application` package, and the edition passes the other module in. Platform modules
-never import business modules: `auth` receives a `ResolveUser` function, which the
-edition builds from the identity module. No module reads another module's tables.
+never import business modules. Within a capability, a subpackage may use its parent:
+`identity/auth` resolves users through the identity module, behind a small `Users`
+interface. No module reads another module's tables.
 
 Modules inherit the router's default middleware (request ID, request logging, panic
 recovery, origin checks, body limit, tracing). Authentication is not a default: a
 module applies it to its own routes (`r.Use(authModule.Authenticate)`), receiving the
-auth module's middleware from the edition when it is not the auth module itself.
+authentication middleware (`identity/auth`) from the edition.
 Handlers read the caller (token and user) with `auth.FromContext`.
 
 ## PostgreSQL-only and persistence

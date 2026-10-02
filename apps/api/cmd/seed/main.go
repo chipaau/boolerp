@@ -14,11 +14,11 @@ import (
 	"time"
 
 	"github.com/boolmv/erp/apps/api/internal/edition/full"
-	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
-	"github.com/boolmv/erp/apps/api/internal/platform/observability"
-	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
-	"github.com/boolmv/erp/apps/api/internal/platform/seed"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/observability"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/postgres"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 )
 
 // timeout bounds a whole run.

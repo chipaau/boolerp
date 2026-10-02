@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/redis"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/redis"
 )
 
 // A feature test (C77): sessions in a real Redis at REDIS_TEST_HOST hold neither

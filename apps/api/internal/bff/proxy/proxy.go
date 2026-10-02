@@ -19,7 +19,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/boolmv/erp/apps/api/internal/bff/session"
-	"github.com/boolmv/erp/apps/api/internal/platform/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 )
 
 // RefreshBefore is how long before the access token expires the proxy refreshes

@@ -14,10 +14,10 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/httplog/v3"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/config"
-	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
-	"github.com/boolmv/erp/apps/api/internal/platform/problem"
-	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpserver"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/requestid"
 )
 
 const (

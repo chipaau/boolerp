@@ -20,7 +20,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 )
 
 // validate checks request structs' `validate` tags (C27, C74). It is safe for
