@@ -1,6 +1,6 @@
 name: CI
 
-# Pull requests only (C78): merges into dev/develop are not re-checked, because
+# Pull requests only (C78): merges into develop are not re-checked, because
 # the pull request already was. workflow_dispatch allows a manual run.
 on:
   pull_request:

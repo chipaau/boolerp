@@ -314,7 +314,7 @@ running for compilation and runtime checks; configuration validation alone does
 not prove them.
 
 Step 2 adds HTTP contract tests and real TCP checks for request limits, slow
-clients, and interrupted responses. CI runs on pull requests and pushes to `dev`.
+clients, and interrupted responses. CI runs on pull requests to `develop` (C78, C123).
 
 ## Tooling
 
