@@ -36,6 +36,10 @@ type Logins interface {
 // Accounts.Get when Kratos has no such account.
 var ErrNotFound = errors.New("identity: not found")
 
+// ErrNoAccount is returned by Resolve when a token's account has no user yet
+// and cannot get one: Kratos has no such account, or it is disabled.
+var ErrNoAccount = errors.New("identity: no usable account")
+
 // Service is the identity use cases.
 type Service struct {
 	users    Users
@@ -61,7 +65,10 @@ func (s *Service) Disable(ctx context.Context, kratosIdentityID string) error {
 }
 
 // Resolve returns the user for a Kratos account, creating it from the account
-// on first use (C94).
+// on first use (C94). A deleted or disabled account gets no user: ErrNoAccount.
+// An existing user is returned without asking Kratos; a disabled account's
+// tokens are revoked by Disable, and those already issued expire within 10
+// minutes (C101).
 func (s *Service) Resolve(ctx context.Context, kratosIdentityID string) (domain.User, error) {
 	u, err := s.users.ByKratosID(ctx, kratosIdentityID)
 	if err == nil {
@@ -70,11 +77,20 @@ func (s *Service) Resolve(ctx context.Context, kratosIdentityID string) (domain.
 	if !errors.Is(err, ErrNotFound) {
 		return domain.User{}, err
 	}
-	return s.Sync(ctx, kratosIdentityID)
+	a, err := s.accounts.Get(ctx, kratosIdentityID)
+	if errors.Is(err, ErrNotFound) {
+		return domain.User{}, ErrNoAccount
+	}
+	if err != nil {
+		return domain.User{}, err
+	}
+	if !a.Active {
+		return domain.User{}, ErrNoAccount
+	}
+	return s.users.Save(ctx, a)
 }
 
-// Sync copies a Kratos account into its user, creating it if needed. Resolve
-// calls it on first use.
+// Sync copies a Kratos account into its user, creating it if needed.
 func (s *Service) Sync(ctx context.Context, kratosIdentityID string) (domain.User, error) {
 	a, err := s.accounts.Get(ctx, kratosIdentityID)
 	if err != nil {

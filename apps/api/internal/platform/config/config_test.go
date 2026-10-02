@@ -44,6 +44,7 @@ func defaults() Config {
 			ReadHeaderTimeout: 5 * time.Second,
 			ReadTimeout:       15 * time.Second,
 			WriteTimeout:      30 * time.Second,
+			RequestTimeout:    25 * time.Second,
 			IdleTimeout:       60 * time.Second,
 		},
 		DB: DB{
@@ -83,7 +84,7 @@ func TestLoadValues(t *testing.T) {
 		"APP_ENV=prod", "APP_PORT=9000", "APP_SHUTDOWN_TIMEOUT=3s",
 		"APP_LOG_FORMAT=text", "APP_LOG_LEVEL=DEBUG",
 		"APP_HTTP_MAX_BODY_BYTES=2048", "APP_HTTP_READ_HEADER_TIMEOUT=2s", "APP_HTTP_READ_TIMEOUT=2s",
-		"APP_HTTP_WRITE_TIMEOUT=3s", "APP_HTTP_IDLE_TIMEOUT=4s",
+		"APP_HTTP_WRITE_TIMEOUT=3s", "APP_HTTP_IDLE_TIMEOUT=4s", "APP_HTTP_REQUEST_TIMEOUT=2500ms",
 		"APP_HTTP_TRUSTED_PROXY_HOPS=2", "APP_HTTP_ALLOWED_ORIGINS=https://app.bool.mv,http://localhost:3000",
 		"APP_DB_HOST=10.0.0.5", "APP_DB_PORT=6543", "APP_DB_SSLMODE=disable", "APP_DB_MAX_CONNS=5",
 		"APP_DB_PING_TIMEOUT=500ms",
@@ -99,6 +100,7 @@ func TestLoadValues(t *testing.T) {
 			ReadHeaderTimeout: 2 * time.Second,
 			ReadTimeout:       2 * time.Second,
 			WriteTimeout:      3 * time.Second,
+			RequestTimeout:    2500 * time.Millisecond,
 			IdleTimeout:       4 * time.Second,
 			TrustedProxyHops:  2,
 			AllowedOrigins:    []string{"https://app.bool.mv", "http://localhost:3000"},
@@ -165,6 +167,12 @@ func TestLoadInvalid(t *testing.T) {
 		{"body limit too large", []string{"APP_HTTP_MAX_BODY_BYTES=104857601"}, "APP_HTTP_MAX_BODY_BYTES", "104857601"},
 		{"idle timeout not a duration", []string{"APP_HTTP_IDLE_TIMEOUT=s3cret"}, "APP_HTTP_IDLE_TIMEOUT", "s3cret"},
 		{"read timeout zero", []string{"APP_HTTP_READ_TIMEOUT=0s"}, "APP_HTTP_READ_TIMEOUT", ""},
+		{"request timeout zero", []string{"APP_HTTP_REQUEST_TIMEOUT=0s"}, "APP_HTTP_REQUEST_TIMEOUT", ""},
+		{
+			"request timeout not below write timeout",
+			[]string{"APP_HTTP_REQUEST_TIMEOUT=30s", "APP_HTTP_WRITE_TIMEOUT=30s"},
+			"APP_HTTP_REQUEST_TIMEOUT", "",
+		},
 		// withDB adds the required settings first, so later entries override them.
 		{"DB host empty", []string{"APP_DB_HOST="}, "APP_DB_HOST", ""},
 		{"DB host invalid", []string{"APP_DB_HOST=db/s3cret"}, "APP_DB_HOST", "s3cret"},
@@ -270,7 +278,7 @@ func TestEveryFieldHasAVariable(t *testing.T) {
 	for path, variable := range api.byPath {
 		assert.Regexp(t, `^APP_[A-Z_]+$`, variable, path)
 	}
-	assert.Len(t, api.byPath, 31, "update this count when adding a setting")
+	assert.Len(t, api.byPath, 32, "update this count when adding a setting")
 
 	migrate := variables(reflect.TypeFor[Migrate]())
 	for path, variable := range migrate.byPath {

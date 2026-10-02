@@ -62,6 +62,7 @@ func RunBFF(ctx context.Context, cfg config.BFF, logger *slog.Logger) error {
 
 	router, err := newRouter(logger, routerConfig{
 		MaxBodyBytes:     cfg.HTTP.MaxBodyBytes,
+		RequestTimeout:   cfg.HTTP.RequestTimeout,
 		TrustedProxyHops: cfg.HTTP.TrustedProxyHops,
 		AllowedOrigins:   cfg.HTTP.AllowedOrigins,
 		CheckReady:       func(ctx context.Context) error { return store.Ping(ctx).Err() },

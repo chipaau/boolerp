@@ -12,6 +12,10 @@ type HTTP struct {
 	ReadTimeout       time.Duration `env:"READ_TIMEOUT" envDefault:"15s" validate:"gt=0,max=5m"`
 	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT" envDefault:"30s" validate:"gt=0,max=10m,gtfield=ReadTimeout"`
 	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT" envDefault:"60s" validate:"gt=0,max=10m"`
+	// RequestTimeout is each request's context deadline (C114): database, cache,
+	// and provider calls made for the request stop when it passes. Below the
+	// write timeout, so the handler can still send its error response.
+	RequestTimeout time.Duration `env:"REQUEST_TIMEOUT" envDefault:"25s" validate:"gt=0,ltfield=WriteTimeout"`
 
 	// TrustedProxyHops is the number of reverse proxies in front of the API that
 	// append to X-Forwarded-For (C40). 0 trusts no forwarded header.

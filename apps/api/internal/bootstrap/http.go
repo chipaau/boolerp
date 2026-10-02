@@ -51,9 +51,10 @@ func newServer(handler http.Handler, cfg config.HTTP, logger *slog.Logger) *http
 
 // routerConfig holds the settings the router needs from runtime configuration.
 type routerConfig struct {
-	MaxBodyBytes     int64    // request body limit
-	TrustedProxyHops int      // reverse proxies appending to X-Forwarded-For (C40)
-	AllowedOrigins   []string // browser origins allowed cross-origin (C41)
+	MaxBodyBytes     int64         // request body limit
+	RequestTimeout   time.Duration // each request's context deadline; zero sets none (C114)
+	TrustedProxyHops int           // reverse proxies appending to X-Forwarded-For (C40)
+	AllowedOrigins   []string      // browser origins allowed cross-origin (C41)
 
 	CheckReady   func(context.Context) error // dependency check for readiness, e.g. pool.Ping
 	ReadyTimeout time.Duration               // bound on CheckReady
@@ -141,6 +142,10 @@ func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
 	r.Use(middleware.GetHead)
 	// Handlers reading more than maxBodyBytes get an *http.MaxBytesError.
 	r.Use(middleware.RequestSize(rc.MaxBodyBytes))
+	// Give every request a context deadline (C114).
+	if rc.RequestTimeout > 0 {
+		r.Use(deadline(rc.RequestTimeout))
+	}
 
 	// Routing failures are problem details too (C35, C37).
 	r.NotFound(notFound)
@@ -222,4 +227,20 @@ func allowedMethods(r *http.Request) []string {
 		}
 	}
 	return allowed
+}
+
+// deadline gives each request's context a deadline of d. Work done for the
+// request (database, cache, providers) then fails with the context's error, and
+// the handler answers with its usual problem response (C114). It writes
+// nothing itself: chi's middleware.Timeout would add a bare 504 with no problem
+// body after the handler, breaking the error format (C35), or a superfluous
+// WriteHeader when the handler has answered.
+func deadline(d time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), d)
+			defer cancel()
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }

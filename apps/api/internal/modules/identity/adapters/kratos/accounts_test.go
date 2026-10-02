@@ -21,6 +21,9 @@ func kratosAdmin(t *testing.T) *httptest.Server {
 		case "/admin/identities/k1":
 			_, _ = w.Write([]byte(`{"id":"k1","schema_id":"registration","schema_url":"x","state":"active",
 				"traits":{"email":"a@b.test","phone":"+9607770000","name":"Aisha"}}`))
+		case "/admin/identities/off":
+			_, _ = w.Write([]byte(`{"id":"off","schema_id":"registration","schema_url":"x","state":"inactive",
+				"traits":{"email":"o@b.test"}}`))
 		case "/admin/identities/missing":
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"error":{"code":404,"message":"s3cret-detail"}}`))
@@ -41,6 +44,11 @@ func TestGetMapsTheAccount(t *testing.T) {
 	assert.Equal(t, "a@b.test", a.Email)
 	assert.Equal(t, "+9607770000", a.Phone)
 	assert.Equal(t, "Aisha", a.DisplayName)
+	assert.True(t, a.Active)
+
+	off, err := NewAccounts(srv.URL, srv.Client()).Get(t.Context(), "off")
+	require.NoError(t, err)
+	assert.False(t, off.Active, "an inactive (disabled) account")
 }
 
 func TestGetUnknownAccount(t *testing.T) {

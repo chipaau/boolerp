@@ -74,7 +74,8 @@ func (f *fakeAccounts) Get(_ context.Context, id string) (domain.Account, error)
 func setup() (*Service, *fakeUsers, *fakeAccounts) {
 	users := &fakeUsers{byKratos: map[string]domain.User{}}
 	accounts := &fakeAccounts{accounts: map[string]domain.Account{
-		"k1": {KratosIdentityID: "k1", Email: "a@b.test", Phone: "+9607770000", DisplayName: "Aisha"},
+		"k1":       {KratosIdentityID: "k1", Email: "a@b.test", Phone: "+9607770000", DisplayName: "Aisha", Active: true},
+		"disabled": {KratosIdentityID: "disabled", Email: "d@b.test", Active: false},
 	}}
 	return NewService(users, accounts, &fakeLogins{}), users, accounts
 }
@@ -98,16 +99,24 @@ func TestResolveUsesTheStoredUser(t *testing.T) {
 }
 
 func TestResolveUnknownAccount(t *testing.T) {
-	s, _, _ := setup()
+	s, users, _ := setup()
 	_, err := s.Resolve(t.Context(), "nobody")
-	assert.ErrorIs(t, err, ErrNotFound)
+	assert.ErrorIs(t, err, ErrNoAccount)
+	assert.Empty(t, users.byKratos)
+}
+
+func TestResolveDoesNotCreateADisabledAccountsUser(t *testing.T) {
+	s, users, _ := setup()
+	_, err := s.Resolve(t.Context(), "disabled")
+	assert.ErrorIs(t, err, ErrNoAccount)
+	assert.NotContains(t, users.byKratos, "disabled")
 }
 
 func TestSyncUpdatesFromKratos(t *testing.T) {
 	s, users, accounts := setup()
 	_, err := s.Resolve(t.Context(), "k1")
 	require.NoError(t, err)
-	accounts.accounts["k1"] = domain.Account{KratosIdentityID: "k1", Email: "a@b.test", Phone: "+9607771111", DisplayName: "Aisha A."}
+	accounts.accounts["k1"] = domain.Account{KratosIdentityID: "k1", Email: "a@b.test", Phone: "+9607771111", DisplayName: "Aisha A.", Active: true}
 
 	u, err := s.Sync(t.Context(), "k1")
 	require.NoError(t, err)

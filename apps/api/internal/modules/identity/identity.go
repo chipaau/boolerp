@@ -52,8 +52,12 @@ func New(db store.DB, s Settings, client *http.Client, logger *slog.Logger) *Mod
 	)}
 }
 
+// ErrNoAccount is returned by Resolve for a deleted or disabled account that
+// has no user yet.
+var ErrNoAccount = application.ErrNoAccount
+
 // Resolve returns the user for a Kratos account (a token's sub), creating it on
-// first use.
+// first use; a deleted or disabled account gets ErrNoAccount.
 func (m *Module) Resolve(ctx context.Context, kratosIdentityID string) (domain.User, error) {
 	return m.service.Resolve(ctx, kratosIdentityID)
 }

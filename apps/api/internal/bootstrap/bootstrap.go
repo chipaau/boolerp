@@ -74,6 +74,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, registerMo
 
 	router, err := newRouter(logger, routerConfig{
 		MaxBodyBytes:     cfg.HTTP.MaxBodyBytes,
+		RequestTimeout:   cfg.HTTP.RequestTimeout,
 		TrustedProxyHops: cfg.HTTP.TrustedProxyHops,
 		AllowedOrigins:   cfg.HTTP.AllowedOrigins,
 		CheckReady:       pool.Ping,

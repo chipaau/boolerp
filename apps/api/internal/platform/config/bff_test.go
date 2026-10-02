@@ -38,6 +38,7 @@ func TestLoadBFFDefaults(t *testing.T) {
 			ReadHeaderTimeout: 5 * time.Second,
 			ReadTimeout:       15 * time.Second,
 			WriteTimeout:      30 * time.Second,
+			RequestTimeout:    25 * time.Second,
 			IdleTimeout:       60 * time.Second,
 		},
 		Redis: Redis{Host: "redis-sessions", Port: 6379, TLS: true, Timeout: 500 * time.Millisecond},

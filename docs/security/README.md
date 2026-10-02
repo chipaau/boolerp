@@ -28,9 +28,9 @@ check is in the change that fixed it.
 | 12 | No `Cache-Control: no-store` on personal data (`/api/auth/me`, proxied API responses) | API, BFF proxy | V14 | Low | Fixed (C112) |
 | 13 | Logout skips revoking the refresh token when discovery fails | BFF logout | V7, V10 | Low | Fixed (C112) |
 | 14 | The account page's "Sign out" ends only the Kratos session | Login service | V7 | Low | Open |
-| 15 | Deleted or disabled accounts get 503, not 401; a disabled account's first request still creates its user; a machine client's token would be treated as a person | API `auth`, identity module | V6, V8 | Low | Open |
+| 15 | Deleted or disabled accounts get 503, not 401; a disabled account's first request still creates its user; a machine client's token would be treated as a person | API `auth`, identity module | V6, V8 | Low | Fixed (C114) |
 | 16 | Telemetry labels from client headers (`Host`, leftmost `X-Forwarded-For`) | API, BFF tracing | V16 | Low | Open |
-| 17 | No request deadline below the write timeout | API | V15 | Low | Open |
+| 17 | No request deadline below the write timeout | API | V15 | Low | Fixed (C114) |
 | 18 | National ID number stored in `localStorage` | Admin notifications | V14 | Low | Open |
 | 19 | Anonymous `/auth/login` creates a Redis entry in a no-eviction store | BFF login | V7 | Low | Open |
 | 20 | CI runs no vulnerability, image, or secret scanning | CI | SSDF | Medium | Fixed (C113) |

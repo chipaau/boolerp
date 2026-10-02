@@ -17,4 +17,5 @@ type Account struct {
 	Email            string
 	Phone            string
 	DisplayName      string
+	Active           bool // false once the account is disabled (C101)
 }

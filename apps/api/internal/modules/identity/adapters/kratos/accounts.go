@@ -46,6 +46,7 @@ func (a *Accounts) Get(ctx context.Context, kratosIdentityID string) (domain.Acc
 		Email:            text(traits["email"]),
 		Phone:            text(traits["phone"]),
 		DisplayName:      text(traits["name"]),
+		Active:           identity.GetState() == "active",
 	}, nil
 }
 
