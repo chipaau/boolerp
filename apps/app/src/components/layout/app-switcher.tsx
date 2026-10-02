@@ -1,13 +1,12 @@
-import { Link, useMatch } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@workspace/ui/components/button'
 import { AppSwitcherMenu } from '@workspace/ui/components/workspace-header'
 import { AppIcon } from '@/components/app-icon'
-import { APPS } from '@/lib/apps'
+import { APPS, useCurrentApp } from '@/lib/apps'
 
 /** The shared apps grid fed with the workspace apps (current one in amber), plus "Browse all apps". */
 export function AppSwitcher() {
-  const match = useMatch({ from: '/_app/$app', shouldThrow: false })
-  const current = match?.params.app
+  const current = useCurrentApp()?.slug
   return (
     <AppSwitcherMenu
       items={APPS.map((app) => ({

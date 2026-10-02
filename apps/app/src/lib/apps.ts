@@ -2,6 +2,7 @@ import { Activity, BadgeCheck, Boxes, Briefcase, Building2, CalendarDays, ChartC
 
 export type { AppDef, AppMenuItem, AppMenuSection } from '@workspace/app-kit'
 import type { AppDef } from '@workspace/app-kit'
+import { useLocation } from '@tanstack/react-router'
 import { apps as editionApps } from 'virtual:edition'
 
 // The apps hosted by the workspace shell, in the order they appear on the Home honeycomb (the
@@ -177,3 +178,13 @@ export function getApp(slug: string): AppDef | undefined {
 }
 
 export { findMenuItem } from '@workspace/app-kit'
+
+/**
+ * The app the browser is in, from the URL's first segment (/<slug>/…), or undefined outside
+ * apps (home, notifications). Works for app packages and prototypes alike; the top bar's switcher
+ * and the app frame both read it, so the workspace chrome never depends on an app's routes.
+ */
+export function useCurrentApp(): AppDef | undefined {
+  const slug = useLocation({ select: (l) => l.pathname.split('/')[1] ?? '' })
+  return getApp(slug)
+}

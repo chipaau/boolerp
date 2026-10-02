@@ -47,6 +47,9 @@ Rules:
   declaration; the API checks again.
 - Route files stay thin; a route's search params are validated in the route, and pages read
   them from their own route.
+- The top bar is the workspace's (suite) menu: brand, search, theme, workspace, app switcher,
+  notifications, account. It is the same for every app and stays in place when switching apps;
+  a manifest cannot change it. The shell knows the current app from the URL (`useCurrentApp`).
 - The shell draws each app's sidebar (or the app's rail) around its pages.
 
 ## Editions (C107)
