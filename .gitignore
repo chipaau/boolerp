@@ -15,6 +15,7 @@ tmp/
 # go
 apps/api/bin/
 apps/api/internal/web/dist/
+apps/api/cover.out
 
 # env & editor: every .env file except the committed examples (C113)
 .env

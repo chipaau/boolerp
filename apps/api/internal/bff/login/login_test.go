@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,7 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 
 	"github.com/boolmv/erp/apps/api/internal/bff/session"
 )
@@ -425,4 +427,16 @@ func TestBackchannelLogoutRefusesInvalidTokens(t *testing.T) {
 		_, ok := b.whoami()
 		assert.True(t, ok, "%s: still signed in", name)
 	}
+}
+
+func TestRedactOAuth2KeepsOnlyTheErrorCode(t *testing.T) {
+	body := []byte(`{"error":"invalid_grant","error_description":"s3cret request detail"}`)
+	err := redactOAuth2(&oauth2.RetrieveError{ErrorCode: "invalid_grant", Body: body})
+	assert.EqualError(t, err, "token endpoint: invalid_grant")
+
+	err = redactOAuth2(&oauth2.RetrieveError{Body: body})
+	assert.EqualError(t, err, "token endpoint: unknown", "a response without a code")
+
+	other := errors.New("dial tcp: connection refused")
+	assert.Equal(t, other, redactOAuth2(other), "other errors carry no response body")
 }

@@ -25,6 +25,7 @@ env:
   GRYPE_IMAGE: anchore/grype:v0.119.0@sha256:8c2c9234a345577a6d321a4753aa3ee1276d8975c8452d2344a56b57733ecad3
   GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
   GOVULNCHECK_VERSION: v1.8.0
+  GO_TEST_COVERAGE_VERSION: v2.19.0
 
 jobs:
   # Decides which jobs a pull request needs (C78). Skipped jobs report success,
@@ -136,7 +137,7 @@ jobs:
             go run "golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION" ./...
 
   api-feature:
-    name: API feature tests
+    name: API feature tests and coverage
     needs: changes
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
@@ -152,10 +153,17 @@ jobs:
         run: .github/scripts/start-postgres.sh
       - name: Start Redis
         run: docker run -d --name redis --network ci "$REDIS_IMAGE"
-      # Migrate the suite database once, then run only the TestFeature* tests
-      # against real PostgreSQL and Redis (C77, C79).
-      - name: Feature tests
+      # Migrate the suite database once, then run the whole suite, unit and
+      # TestFeature* tests, against real PostgreSQL and Redis (C77, C79), writing the
+      # coverage profile.
+      - name: Unit and feature tests
         run: GO_MOD_CACHE="$HOME/go-mod" .github/scripts/run-feature-tests.sh
+      # Fails when total coverage drops below apps/api/.testcoverage.yml's threshold
+      # (C119). go-test-coverage is GPL-3.0, run here as a tool only, never imported.
+      - name: Coverage threshold
+        run: |
+          docker run --rm -v "$PWD/apps/api:/src" -v "$HOME/go-mod:/go/pkg/mod" -w /src "$GO_IMAGE" \
+            go run "github.com/vladopajic/go-test-coverage/v2@$GO_TEST_COVERAGE_VERSION" --config=.testcoverage.yml
 
   # The only place the binaries are compiled: the production image, whose
   # migrate command then runs against PostgreSQL.

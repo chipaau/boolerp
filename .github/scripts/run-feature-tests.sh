@@ -2,7 +2,8 @@
 # Runs the API feature tests (C77, C79) against the PostgreSQL and Redis started by
 # start-postgres.sh and a "redis" container on the "ci" network:
 #   1. migrate the suite database once, with the real migrate command;
-#   2. run every TestFeature* test.
+#   2. run the whole suite, unit and feature tests, writing apps/api/cover.out for the
+#      coverage check (C119).
 # GO_IMAGE defaults to golang:1.27; GO_MOD_CACHE, when set, is mounted as the module cache.
 set -euo pipefail
 
@@ -24,4 +25,4 @@ docker run --rm --network ci -v "$PWD/apps/api:/src" ${cache[@]+"${cache[@]}"} -
   -e POSTGRES_TEST_APP_USER=erp_app -e POSTGRES_TEST_APP_PASSWORD="$(<"$secrets/db_app_password")" \
   -e POSTGRES_TEST_MIGRATE_USER=erp_migrate -e POSTGRES_TEST_MIGRATE_PASSWORD="$(<"$secrets/db_migrate_password")" \
   -e REDIS_TEST_HOST=redis \
-  "$image" go test -race -tags feature -run '^TestFeature' ./...
+  "$image" go test -race -tags feature -coverprofile=cover.out ./...
