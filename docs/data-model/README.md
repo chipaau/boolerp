@@ -5,6 +5,25 @@ Status: open. One table is approved and implemented: `users` (below). (A `sessio
 table was approved for sessions in PostgreSQL and withdrawn when sessions moved to the
 BFF's Redis, C90.)
 
+## Diagram
+
+[`erd.dbml`](erd.dbml) is the entity-relationship diagram in DBML: open
+[dbdiagram.io](https://dbdiagram.io) and paste it in (or import the file) to see it.
+
+**A table appears in the diagram, and gets a migration, only after the user has
+explicitly confirmed its fields; the same applies to every modification.** Each table
+is proposed on its own, showing `Column | Type | Constraints / default | Current |
+Proposed`, so the whole table is seen before and after; approving a design or an
+approach is not field confirmation. The confirmation is recorded below, and the diagram
+and migration are added in the same change. Partial indexes, CHECK constraints,
+triggers, and row-level security are summarised in notes, since DBML cannot express
+them. To check the diagram parses:
+
+```sh
+docker run --rm -v "$PWD/docs/data-model:/d" -w /d node:26-alpine \
+  npx -y -p @dbml/cli@10.2.0 dbml2sql erd.dbml --postgres -o /tmp/erd.sql
+```
+
 The previous foundation DDL and wider schemas are archived. They are not a starting
 schema, and their old approval labels do not apply to this rebuild.
 
