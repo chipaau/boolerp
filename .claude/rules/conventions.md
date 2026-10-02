@@ -7,8 +7,6 @@
 - Distinguish discussion, documentation work, and application implementation.
   Authorization to update documentation or create a branch does not authorize scaffolding.
 - Continue work already authorized without repeatedly asking for the same permission.
-- Confirm data models table by table before implementing tables, migrations, or queries
-  against them. Record explicit approval once; do not infer it from illustrative examples.
 - Be critical, explain practical trade-offs, and verify claims when evidence is needed.
 - Prefer established, maintained frameworks, libraries, and SDKs that fit the
   confirmed architecture and use case. Do not build in-house substitutes for
@@ -30,6 +28,21 @@
   implementation details inside a confirmed decision do not require repeated approval.
 - Do not change unrelated files, remove existing data, or repair the previous API
   merely to keep it running during the rebuild.
+
+## Data model: explicit field confirmation (important)
+
+- A table goes into `docs/data-model/erd.dbml` and gets a migration **only after the user
+  has explicitly confirmed its fields**. The same applies to every modification: adding,
+  changing, renaming, or removing a column, key, index, or constraint.
+- Ask one table at a time, and show the fields in a table with these columns:
+  `Column | Type | Constraints / default | Current | Proposed`. List every current column
+  (unchanged ones marked "unchanged"), then each new, changed, or removed one, so the
+  user sees the whole table before and after. For a new table, "Current" is empty.
+- Approval of a design, an approach, or an illustrative example is not field
+  confirmation. Never infer it; record the confirmation (date, table) in
+  `docs/data-model/README.md` when given.
+- Update `erd.dbml` and write the migration in the same change, after confirmation;
+  queries against a table come only after its migration exists.
 
 ## Documentation
 

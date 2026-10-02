@@ -4,7 +4,10 @@ Status: confirmed requirements and current scope, 2026-09-26.
 
 ## Product requirements
 
-- Bool ERP serves organizations in the Maldives.
+- Bool ERP serves organisations in any country, starting with the Maldives. Nothing is
+  limited to one country: country-specific rules (legal forms, identity documents,
+  addresses, phone formats, time zones) are data per country, never assumptions in code
+  or defaults.
 - The backend is Go, developed within the existing monorepo.
 - The UI is English. Dhivehi is supported as content where needed; a Dhivehi UI,
   automatic language selection, and universally required bilingual fields are not requirements.

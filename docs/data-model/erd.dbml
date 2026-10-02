@@ -1,0 +1,38 @@
+// Bool ERP API database: entity-relationship diagram in DBML.
+// Paste into https://dbdiagram.io (or import this file) to view it.
+//
+// Only tables whose fields the user has explicitly confirmed are here, each added
+// in the same change as its migration; the migrations are the source of truth.
+// Modifications follow the same rule. Proposed designs (docs/platform/tenancy.md)
+// are not drawn until their fields are confirmed. Partial indexes, CHECK
+// constraints, triggers, and row-level security go in notes, since DBML cannot
+// express them. See docs/data-model/README.md.
+
+Project bool_erp {
+  database_type: 'PostgreSQL'
+  Note: 'Bool ERP API database (PostgreSQL 18).'
+}
+
+// ---------------------------------------------------------------------------
+// identity module
+// ---------------------------------------------------------------------------
+
+Table users {
+  id uuid [pk, default: `uuidv7()`]
+  kratos_identity_id uuid [not null, unique, note: 'the Kratos identity (a token sub)']
+  email text [not null, note: 'personal data: never logged, cached, or traced']
+  phone text [not null, note: 'contact number, not an identifier (C85)']
+  display_name text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: '''
+  Confirmed 2026-10-01 (C94); migration identity/migrations/00001_users.sql.
+  One row per person who has used the platform; a projection of their Kratos
+  account, created on first use. Global, not tenant-scoped.
+  '''
+}
+
+TableGroup identity {
+  users
+}

@@ -46,7 +46,7 @@ created.
 
 Some work passes between related tenants. Central procurement is the first case: an
 optional arrangement between a tenant and an ancestor, limited to agreed item
-categories (a health centre and its atoll health centre, for medical items only);
+categories (a health centre and its regional health centre, for medical items only);
 everything else the tenant procures itself.
 
 Such work uses **shared rows with one writer each**:
@@ -65,8 +65,11 @@ Other cross-tenant cases (a preschool whose payroll its council runs) are open.
 
 ## Approved table designs (C116)
 
-Approved by the user on 2026-10-02 after reviewing the previous implementation (`develop`),
-adopted with improvements. Not yet created; migrations follow these designs.
+Approved by the user on 2026-10-02 as designs, after reviewing the previous
+implementation (`develop`), adopted with improvements. These are proposals, not
+confirmed fields: each table's fields are confirmed explicitly, one table at a time,
+before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
+([data model](../data-model/README.md)).
 
 **`tenants`**
 - `id` uuidv7; `slug` unique, a DNS label (lowercase, 3–63 characters), not a reserved
@@ -79,15 +82,55 @@ adopted with improvements. Not yet created; migrations follow these designs.
 - `parent_id`: never the tenant itself, never part of a cycle (trigger), never the
   operator. No ltree: each transaction walks up `parent_id` once and sets
   `app.ancestor_tenants` for policies that read published data.
-- `country` ISO 3166 alpha-2 (CHECK, default `MV`); `timezone` (default
-  `Indian/Maldives`, checked by the application).
+- `country` ISO 3166 alpha-2 (CHECK) and `timezone` (checked by the application), both
+  chosen at provisioning: no country defaults (the product is not limited to one
+  country).
 - `status` provisioning / active / suspended / archived, with guarded, audited
   transitions (409 on an illegal one); `activated_at`, `suspended_at`, `archived_at`;
   `created_at`, `updated_at` (trigger).
 - Row-level security: a tenant reads its own row; the operator tenant reads all rows and
   alone inserts and updates them.
-- Deferred: legal-form and sector classification, identity number, local-script name.
-  The subscription (plan, seats, apps) lives in its own tables.
+- Classification (C120): `legal_form` and `institution_type` (its sector follows), and
+  `identity_number`, whose kind the legal form decides. Deferred: the local-script
+  name. The subscription (plan, seats, apps) lives in its own tables.
+
+**Classification reference tables** (C120)
+- Two dimensions: what an organisation is in law (**legal form**) and what it does
+  (**sector**, refined by **institution type**). A private and a government hospital
+  share the institution type and differ in legal form.
+- `legal_forms`, `sectors`, `institution_types` (each institution type belongs to one
+  sector): a stable `code`, a `name`, and active/retired dates.
+- **Legal forms belong to a country** (`country`, ISO 3166 alpha-2): each country has its
+  own list, and each legal form names the identity document its tenants carry (company
+  registration number, …, or none). A tenant picks a legal form of its own country.
+- **Sectors and institution types are global**, with country-neutral names.
+- A tenant picks a legal form and an institution type; its sector follows.
+- Not tenant-scoped: readable by every tenant, written only by the operator
+  tenant (admin console), so a new type needs no release. Code attaches behaviour by
+  `code` where it matters (the identity document by legal form; provisioning templates
+  and arrangements by institution type or sector) and falls back to a generic default
+  for entries added later.
+- Seeded initially with:
+  - **Legal forms, Maldives (`MV`), the first country:** government ministry / central
+    office; independent institution; statutory body; judiciary / parliament; local
+    council (city, atoll, island) — none of
+    these carries an identity number; state-owned enterprise, public company (Plc), and
+    private company (Pvt Ltd) — company registration number; partnership / sole
+    proprietorship — business registration number; cooperative society — cooperative
+    registration number; association / NGO — association registration number;
+    international organisation / mission — none.
+  - **Sectors and institution types (global):** government administration (ministry office,
+    department, regulatory authority, council secretariat); health (regional hospital,
+    district hospital, health centre, clinic, pharmacy, laboratory); education (preschool,
+    school, higher secondary school, college / university, training centre); utilities
+    (power, water and sewerage, waste management); transport (airport, airline, sea
+    transport, ports and logistics); tourism (resort, hotel / guesthouse, liveaboard,
+    travel agency); finance (bank, insurance, pension / fund, finance company); telecom
+    and media (telecom operator, media / broadcaster); trade and industry (retail,
+    wholesale / import, fisheries, construction, manufacturing); community (sports club /
+    association, religious organisation, charity); other (other).
+- Whether classification is required at provisioning or before activation is settled
+  with the `tenants` migration.
 
 **`memberships`** (previously `tenant_users`)
 - `id`, `user_id`, `tenant_id`; unique `(tenant_id, id)` so tenant tables reference a
