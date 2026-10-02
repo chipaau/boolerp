@@ -7,7 +7,7 @@ monorepo at `/Users/chipaau/code/bool/erp`.
 The implementation scope is the platform backbone and HRMS employee records.
 Frontend integration is deferred.
 
-The previous API is preserved in `apps/api.bak/`. On 2026-09-28 the rebuild's
+On 2026-09-28 the rebuild's
 earlier implementation was removed so it can be rebuilt step by step (C24);
 `apps/api` currently contains no implementation. Chi, pgx/v5 pgxpool, Goose, and
 `slog` remain the selected tools. See the [roadmap](roadmap.md) for the rebuild order,

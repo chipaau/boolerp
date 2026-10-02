@@ -40,7 +40,7 @@ the new API contract or blocks backend progress.
 
 ## Current implementation boundary
 
-On 2026-09-26, the user authorized renaming the previous API to `apps/api.bak`,
+On 2026-09-26, the user authorized setting the previous API aside,
 creating the proposed directory structure, and adding a simple API entry point.
 The initial layer is a standard-library HTTP server with a liveness endpoint.
 

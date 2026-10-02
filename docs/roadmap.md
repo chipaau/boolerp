@@ -8,7 +8,7 @@ Resolve one decision at a time using the [decision register](decisions/README.md
 | Stage | Outcome | Current status |
 | --- | --- | --- |
 | 0. Documentation baseline | Fresh branch, current scope/decisions, archived history, centralized agent rules, four-service Compose | Documentation/configuration milestone; no new application implementation |
-| 0a. Executable scaffold | Preserve apps/api.bak; start the rebuild with a simple chi server (platform step 0) | Done on 2026-09-28 (platform step 0) |
+| 0a. Executable scaffold | Start the rebuild with a simple chi server (platform step 0) | Done on 2026-09-28 (platform step 0) |
 | 1. Tenant model | Agree what a tenant represents and its relationship to a licensed customer | Decided on 2026-10-02 (C115); isolation (D02) next |
 | 2. Platform implementation | Deliver the increments below; resolve D02–D12 as needed and approve tables individually | Reset on 2026-09-28 (C24); steps 0–5 and H1–H6 done; step 7 (identity) done through 7e, with 7f and 7g waiting on step 6 and object storage; security fixes under ASVS L2 (C111, C112) in progress; then step 6 (needs D01) |
 | 3. Platform acceptance | Prove protected operations, audit, tracing, caching, domains, and same-release SaaS/self-host installation, licensing, upgrades, and restore | Not started |
@@ -132,8 +132,8 @@ Those steps prove the backbone against HRMS rules; frontend integration remains
 deferred. Broader business modules and a complete production rollout are outside
 this plan.
 
-The previous API is preserved in `apps/api.bak`. It is not a source of inherited
-implementation decisions, and its migrations must not be used for the new API.
+The previous API is not a source of inherited implementation decisions, and its
+migrations must not be used for the new API.
 Keep existing databases intact unless a separate data migration/reset is authorized.
 
 Do not expand the business scope beyond employee records or build a generic
