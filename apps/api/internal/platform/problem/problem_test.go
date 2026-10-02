@@ -54,3 +54,39 @@ func TestWriteKeepsExistingHeaders(t *testing.T) {
 
 	assert.Equal(t, "GET, HEAD", rec.Header().Get("Allow"))
 }
+
+func TestWriteValidationListsEveryField(t *testing.T) {
+	for _, tt := range []struct {
+		errs   []FieldError
+		detail string
+	}{
+		{[]FieldError{{Pointer: "#/email", Code: "email", Detail: "must be an email address"}}, "The request has 1 invalid field."},
+		{[]FieldError{
+			{Pointer: "#/email", Code: "required", Detail: "is required"},
+			{Parameter: "pageSize", Code: "max", Detail: "must be at most 100"},
+		}, "The request has 2 invalid fields."},
+	} {
+		rec := httptest.NewRecorder()
+		WriteValidation(rec, httptest.NewRequest(http.MethodPost, "/api/things", nil), tt.errs)
+
+		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+		assert.Equal(t, "application/problem+json", rec.Header().Get("Content-Type"))
+		var body struct {
+			Type   string       `json:"type"`
+			Detail string       `json:"detail"`
+			Errors []FieldError `json:"errors"`
+		}
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+		assert.Equal(t, TypeValidation, body.Type)
+		assert.Equal(t, tt.detail, body.Detail)
+		assert.Equal(t, tt.errs, body.Errors)
+	}
+}
+
+func TestValidationErrorNamesFieldsAndRules(t *testing.T) {
+	err := &ValidationError{Errors: []FieldError{
+		{Pointer: "#/email", Code: "required"},
+		{Parameter: "pageSize", Code: "max"},
+	}}
+	assert.Equal(t, "validation failed: #/email required, pageSize max", err.Error())
+}

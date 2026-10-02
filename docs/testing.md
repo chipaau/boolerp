@@ -111,7 +111,7 @@ count as successful.
 | --- | --- | --- |
 | API lint | `golangci-lint fmt --diff` (formatting) and `golangci-lint run` (C75) | nothing |
 | API unit tests | `go test -race ./...` | nothing |
-| API feature tests | `run-feature-tests.sh`: `cmd/migrate` once, then `go test -race -tags feature -run '^TestFeature' ./...` (C77, C79) | PostgreSQL (roles script) and Redis |
+| API feature tests and coverage | `run-feature-tests.sh`: `cmd/migrate` once, then the whole suite, unit and feature tests, `go test -race -tags feature -coverprofile=cover.out ./...` (C77, C79); then go-test-coverage fails the job below the threshold in `apps/api/.testcoverage.yml` (C119) | PostgreSQL (roles script) and Redis |
 | API vulnerabilities | `govulncheck` (C113): known vulnerabilities in Go code the API calls | nothing |
 | API image | builds the production image, runs its `migrate`, and scans it with Grype (C113) | PostgreSQL |
 | workspace / admin / identity | frontend typecheck and build | nothing |
@@ -123,6 +123,23 @@ count as successful.
 Merging a failing pull request is not blocked: required status checks need a paid GitHub
 plan for private repositories. Check that CI passed before merging. Dependabot (C76)
 update pull requests go through the same jobs.
+
+### Coverage (C119)
+
+The API's total statement coverage, from the unit and feature tests together, must stay
+at or above the threshold in `apps/api/.testcoverage.yml` (85%); the API feature-test
+job fails otherwise. The process entry points (`cmd/*`) are excluded: they only read
+settings, wire the build, and start a process, and the end-to-end suite runs them,
+which Go's coverage cannot see. Everything they call is counted. When coverage rises,
+raise the threshold in the same pull request; never lower it to make a check pass. The
+check uses [go-test-coverage](https://github.com/vladopajic/go-test-coverage) (GPL-3.0,
+run as a tool in CI, never imported). To measure locally, run the feature tests as CI
+does (above) and then:
+
+```sh
+docker run --rm -v "$PWD/apps/api:/src" -w /src golang:1.27 \
+  go run github.com/vladopajic/go-test-coverage/v2@v2.19.0 --config=.testcoverage.yml
+```
 
 ### Supply chain (C113)
 
