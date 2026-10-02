@@ -31,6 +31,7 @@ jobs:
     outputs:
       api: ${{ steps.filter.outputs.api }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      e2e: ${{ steps.filter.outputs.e2e }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -56,6 +57,15 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
               - 'docker/node.Dockerfile'
+              - '.github/workflows/ci.yml'
+            # anything the end-to-end suite exercises: apps, BFF, API, identity services, the suite
+            e2e:
+              - 'apps/**'
+              - 'packages/**'
+              - 'e2e/**'
+              - 'docker/**'
+              - 'compose.yaml'
+              - 'pnpm-lock.yaml'
               - '.github/workflows/ci.yml'
 
   api-lint:
@@ -170,25 +180,23 @@ jobs:
       - name: Build
         run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm --filter ${{ matrix.app }} run build
 
-  # Playwright against the real compose stack — mirrors local dev exactly (e2e/run.sh resolves
-  # Traefik's IP off the shared `proxy` network and maps *.bool.test to it), except the `proxy`
-  # network + Traefik container are normally a shared dev-machine fixture outside this repo, so CI
-  # stands up a throwaway one here instead of assuming it pre-exists.
+  # End-to-end tests (C109): the Compose stack behind a throwaway Traefik on the runner, then
+  # e2e/run.sh (Playwright's image on the proxy and internal networks). Traefik publishes port 80
+  # because the BFFs and the API reach the login service's issuer through the host
+  # (identity.bool.test -> host-gateway).
   e2e:
-    name: Legacy E2E (deferred during API rebuild)
-    if: ${{ false }}
+    name: End-to-end tests
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
-    needs: [api-unit, frontend]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
-      - name: Create the shared proxy network
-        run: docker network create proxy
-
-      - name: Start Traefik (docker-label routing, same as the shared dev instance)
+      - name: Start Traefik on a shared proxy network
         run: |
-          docker run -d --name traefik \
-            --network proxy \
+          docker network create proxy
+          docker run -d --name traefik --network proxy -p 80:80 \
             -v /var/run/docker.sock:/var/run/docker.sock:ro \
             traefik:v3.6 \
             --providers.docker=true \
@@ -196,35 +204,40 @@ jobs:
             --providers.docker.exposedbydefault=false \
             --entrypoints.web.address=:80
 
-      - name: Install JS dependencies (populates e2e/node_modules for run.sh)
-        run: |
-          docker build -f docker/node.Dockerfile -t erp-node .
-          docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm install --frozen-lockfile
-
-      # .env is gitignored and is the only place config values live, so CI creates it the same way a
-      # developer does. compose.yaml interpolates ${VAR} with no fallback — without this, every
-      # variable would be empty and the stack would fail rather than quietly start on stale defaults.
       - name: Create .env from the committed example
         run: cp .env.example .env
 
-      - name: Bring up the dev stack
-        run: docker compose up -d --build
-
-      - name: Wait for the API to start
+      - name: Start the stack
         run: |
-          for i in $(seq 1 60); do
-            [ "$(docker inspect --format='{{.State.Health.Status}}' erp-api-1 2>/dev/null)" = "healthy" ] && exit 0
-            sleep 2
+          docker compose up -d --build --wait postgres redis redis-sessions kratos hydra
+          docker compose run --rm migrate
+          docker compose up hydra-clients
+          docker compose up -d --build --wait api bff-workspace bff-admin identity workspace admin
+
+      - name: Wait until every site answers through Traefik
+        run: |
+          for host in identity.bool.test demo.bool.test admin.bool.test; do
+            for i in $(seq 1 90); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $host" http://localhost/ || true)
+              [ "$code" = 200 ] && break
+              sleep 3
+            done
+            echo "$host: $code"
+            [ "$code" = 200 ] || { docker compose logs; exit 1; }
           done
-          echo "api never became healthy" >&2
-          docker compose logs
-          exit 1
+          # compile the login page once, so the first test is not waiting on Next.js
+          curl -s -o /dev/null -H "Host: identity.bool.test" http://localhost/login || true
 
-      - name: Seed dev logins (operator + tenant owner)
-        run: docker compose run --rm api sh -c "go run -buildvcs=false ./cmd/provision-dev"
+      - name: Run the end-to-end suite
+        run: e2e/run.sh
 
-      - name: Run Playwright suite
-        run: cd e2e && ./run.sh
+      - name: Keep traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: e2e/test-results
+          retention-days: 7
 
       - name: Dump stack logs on failure
         if: failure()
