@@ -32,6 +32,7 @@ type fakeAccounts struct {
 	calls       int
 	err         error
 	deactivated []string
+	created     []domain.NewAccount
 }
 
 func (f *fakeAccounts) Deactivate(_ context.Context, id string) error {
@@ -68,6 +69,25 @@ func (f *fakeAccounts) Get(_ context.Context, id string) (domain.Account, error)
 	if !ok {
 		return domain.Account{}, ErrNotFound
 	}
+	return a, nil
+}
+
+func (f *fakeAccounts) FindByEmail(_ context.Context, email string) (domain.Account, error) {
+	if f.err != nil {
+		return domain.Account{}, f.err
+	}
+	for _, a := range f.accounts {
+		if a.Email == email {
+			return a, nil
+		}
+	}
+	return domain.Account{}, ErrNotFound
+}
+
+func (f *fakeAccounts) Create(_ context.Context, n domain.NewAccount) (domain.Account, error) {
+	f.created = append(f.created, n)
+	a := domain.Account{KratosIdentityID: "new-" + n.Email, Email: n.Email, Phone: n.Phone, DisplayName: n.DisplayName, Active: true}
+	f.accounts[a.KratosIdentityID] = a
 	return a, nil
 }
 
@@ -155,4 +175,35 @@ func TestDisableReportsAHydraFailure(t *testing.T) {
 	s := NewService(&fakeUsers{byKratos: map[string]domain.User{}}, accounts, &fakeLogins{err: errors.New("hydra down")})
 	assert.Error(t, s.Disable(t.Context(), "k1"))
 	assert.Equal(t, []string{"k1"}, accounts.deactivated, "no one can sign in again meanwhile; retrying finishes the job")
+}
+
+func TestEnsureAccountCreatesOnceThenReuses(t *testing.T) {
+	s, users, accounts := setup()
+	n := domain.NewAccount{Email: "new@b.test", Phone: "+9607000001", DisplayName: "New", Password: "pw", GoogleSubject: "new@b.test"}
+
+	u, created, err := s.EnsureAccount(t.Context(), n)
+	require.NoError(t, err)
+	assert.True(t, created)
+	assert.Equal(t, "new@b.test", u.Email)
+	assert.Contains(t, users.byKratos, "new-new@b.test", "the user is created too")
+
+	_, created, err = s.EnsureAccount(t.Context(), n)
+	require.NoError(t, err)
+	assert.False(t, created, "running again creates nothing")
+	assert.Len(t, accounts.created, 1)
+}
+
+func TestEnsureAccountUsesAnExistingAccount(t *testing.T) {
+	s, _, accounts := setup()
+	u, created, err := s.EnsureAccount(t.Context(), domain.NewAccount{Email: "a@b.test", Phone: "+9607000009"})
+	require.NoError(t, err)
+	assert.False(t, created)
+	assert.Equal(t, "+9607770000", u.Phone, "an existing account is left as it is")
+	assert.Empty(t, accounts.created)
+}
+
+func TestEnsureAccountNeedsEmailAndPhone(t *testing.T) {
+	s, _, _ := setup()
+	_, _, err := s.EnsureAccount(t.Context(), domain.NewAccount{Email: "x@b.test"})
+	assert.ErrorIs(t, err, ErrInvalidAccount)
 }

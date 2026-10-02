@@ -20,6 +20,10 @@ type Users interface {
 // Accounts are the accounts in Kratos (adapters/kratos implements it).
 type Accounts interface {
 	Get(ctx context.Context, kratosIdentityID string) (domain.Account, error)
+	// FindByEmail returns the account that signs in with email, or ErrNotFound.
+	FindByEmail(ctx context.Context, email string) (domain.Account, error)
+	// Create creates an active account with a verified email.
+	Create(ctx context.Context, a domain.NewAccount) (domain.Account, error)
 	// Deactivate stops the account signing in and ends its Kratos sessions.
 	Deactivate(ctx context.Context, kratosIdentityID string) error
 }
@@ -97,4 +101,28 @@ func (s *Service) Sync(ctx context.Context, kratosIdentityID string) (domain.Use
 		return domain.User{}, err
 	}
 	return s.users.Save(ctx, a)
+}
+
+// ErrInvalidAccount is returned by EnsureAccount for an account without an
+// email or phone, which Kratos's schema requires (C85).
+var ErrInvalidAccount = errors.New("identity: an account needs an email and a phone")
+
+// EnsureAccount returns the user for the account that signs in with a.Email,
+// creating the Kratos account (verified, active) and the user if they do not
+// exist; created reports whether the account was new. An existing account is
+// left as it is. Seeds and provisioning use it (C50, C116).
+func (s *Service) EnsureAccount(ctx context.Context, a domain.NewAccount) (u domain.User, created bool, err error) {
+	if a.Email == "" || a.Phone == "" {
+		return domain.User{}, false, ErrInvalidAccount
+	}
+	account, err := s.accounts.FindByEmail(ctx, a.Email)
+	if errors.Is(err, ErrNotFound) {
+		account, err = s.accounts.Create(ctx, a)
+		created = err == nil
+	}
+	if err != nil {
+		return domain.User{}, false, err
+	}
+	u, err = s.Resolve(ctx, account.KratosIdentityID)
+	return u, created, err
 }

@@ -40,6 +40,11 @@ func (a *Accounts) Get(ctx context.Context, kratosIdentityID string) (domain.Acc
 		// The SDK's error can carry the response body; report only that it failed.
 		return domain.Account{}, errors.New("kratos: reading the account failed")
 	}
+	return account(identity), nil
+}
+
+// account maps a Kratos identity to the module's Account.
+func account(identity *ory.Identity) domain.Account {
 	traits, _ := identity.Traits.(map[string]any)
 	return domain.Account{
 		KratosIdentityID: identity.Id,
@@ -47,7 +52,63 @@ func (a *Accounts) Get(ctx context.Context, kratosIdentityID string) (domain.Acc
 		Phone:            text(traits["phone"]),
 		DisplayName:      text(traits["name"]),
 		Active:           identity.GetState() == "active",
-	}, nil
+	}
+}
+
+// FindByEmail implements application.Accounts: the identity whose credentials
+// identifier (its login email) is email.
+func (a *Accounts) FindByEmail(ctx context.Context, email string) (domain.Account, error) {
+	identities, resp, err := a.api.IdentityAPI.ListIdentities(ctx).CredentialsIdentifier(email).Execute()
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	if err != nil {
+		return domain.Account{}, errors.New("kratos: looking up the account failed")
+	}
+	if len(identities) == 0 {
+		return domain.Account{}, application.ErrNotFound
+	}
+	return account(&identities[0]), nil
+}
+
+// Create implements application.Accounts: an active identity with the
+// registration schema, its email verified, and the password and Google
+// sign-in it is given.
+func (a *Accounts) Create(ctx context.Context, n domain.NewAccount) (domain.Account, error) {
+	traits := map[string]any{"email": n.Email, "phone": n.Phone}
+	if n.DisplayName != "" {
+		traits["name"] = n.DisplayName
+	}
+	body := ory.NewCreateIdentityBody("registration", traits)
+	body.SetState("active")
+	body.SetVerifiableAddresses([]ory.VerifiableIdentityAddress{
+		*ory.NewVerifiableIdentityAddress("completed", n.Email, true, "email"),
+	})
+	credentials := ory.IdentityWithCredentials{}
+	if n.Password != "" {
+		credentials.Password = &ory.IdentityWithCredentialsPassword{
+			Config: &ory.IdentityWithCredentialsPasswordConfig{Password: &n.Password},
+		}
+	}
+	if n.GoogleSubject != "" {
+		credentials.Oidc = &ory.IdentityWithCredentialsOidc{Config: &ory.IdentityWithCredentialsOidcConfig{
+			Providers: []ory.IdentityWithCredentialsOidcConfigProvider{
+				*ory.NewIdentityWithCredentialsOidcConfigProvider("google", n.GoogleSubject),
+			},
+		}}
+	}
+	body.SetCredentials(credentials)
+
+	identity, resp, err := a.api.IdentityAPI.CreateIdentity(ctx).CreateIdentityBody(*body).Execute()
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	if err != nil {
+		// The SDK's error can carry the request or response body (with the
+		// password); report only that it failed.
+		return domain.Account{}, errors.New("kratos: creating the account failed")
+	}
+	return account(identity), nil
 }
 
 // Deactivate implements application.Accounts: the identity's state becomes

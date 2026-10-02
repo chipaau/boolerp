@@ -19,3 +19,13 @@ type Account struct {
 	DisplayName      string
 	Active           bool // false once the account is disabled (C101)
 }
+
+// NewAccount is an account to create in Kratos: verified email, contact phone,
+// and optionally a password and a Google sign-in (the provider's subject).
+type NewAccount struct {
+	Email         string
+	Phone         string
+	DisplayName   string
+	Password      string // empty: no password sign-in
+	GoogleSubject string // empty: no Google sign-in
+}

@@ -264,6 +264,24 @@ Without `--watch`, the container does not watch source changes. Restart it to re
 docker compose restart api
 ```
 
+## Seed data (C50)
+
+`cmd/seed` creates development and test data through the modules' use cases, as the
+API's runtime role, so seeded data passes the same rules as real data. It refuses to
+run unless `APP_ENV` is set explicitly to `dev`, `test`, or `staging`, is not in the
+production image, and can run repeatedly without duplicating anything:
+
+```sh
+docker compose run --rm seed
+```
+
+In `dev` it creates the team's development accounts, verified and active:
+`ibrahim@bool.mv`, `shifau@bool.mv`, and `mariyam@bool.mv`. Their password is the
+contents of `docker/secrets/dev/seed_team_password` (`SEED_TEAM_PASSWORD_FILE`); they
+also sign in through the development Google stand-in (`oidc.bool.test`) by entering
+the email as the username. The password is public, so these accounts are seeded only
+in `dev`, never in `test` or `staging`. An account that already exists is left as it is.
+
 ## Validate the runtime
 
 The module uses the Go 1.27 development baseline, pgx/v5, and Goose. No generated
