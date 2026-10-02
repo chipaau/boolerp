@@ -14,9 +14,17 @@ concurrency:
 permissions:
   contents: read
 
+# Actions are pinned to commit SHAs and images to digests (C113): a tag can be moved to other
+# code, as trivy-action's were in March 2026. Dependabot updates the Actions and the
+# Dockerfiles; the images below and in .github/scripts and e2e/run.sh are updated by hand.
 env:
-  GO_IMAGE: golang:1.27
-  LINT_IMAGE: golangci/golangci-lint:v2.14.0
+  GO_IMAGE: golang:1.27@sha256:e0174e51e81218523251d85d248a90d24c3d5e81543b4f07a5d66229397db190
+  LINT_IMAGE: golangci/golangci-lint:v2.14.0@sha256:ad862ba6b3798cbe0fd9fd7408d498fd74fbd2623a92406b2fd3898faf0bf98f
+  REDIS_IMAGE: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
+  TRAEFIK_IMAGE: traefik:v3.6@sha256:31267173a15b4944e797a76ffd9c419707c8d8b32fe5b610f80cd0cfa05f372d
+  GRYPE_IMAGE: anchore/grype:v0.119.0@sha256:8c2c9234a345577a6d321a4753aa3ee1276d8975c8452d2344a56b57733ecad3
+  GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+  GOVULNCHECK_VERSION: v1.8.0
 
 jobs:
   # Decides which jobs a pull request needs (C78). Skipped jobs report success,
@@ -33,8 +41,10 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       e2e: ${{ steps.filter.outputs.e2e }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: dorny/paths-filter@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -74,8 +84,10 @@ jobs:
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/cache@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go-mod
           key: go-mod-${{ hashFiles('apps/api/go.sum') }}
@@ -91,8 +103,10 @@ jobs:
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/cache@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go-mod
           key: go-mod-${{ hashFiles('apps/api/go.sum') }}
@@ -102,21 +116,42 @@ jobs:
           docker run --rm -v "$PWD/apps/api:/src" -v "$HOME/go-mod:/go/pkg/mod" -w /src "$GO_IMAGE" \
             go test -race ./...
 
+  # Known vulnerabilities in the Go modules that the API's code calls (C113).
+  api-vulns:
+    name: API vulnerabilities
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go-mod
+          key: go-mod-${{ hashFiles('apps/api/go.sum') }}
+      - name: govulncheck
+        run: |
+          docker run --rm -v "$PWD/apps/api:/src" -v "$HOME/go-mod:/go/pkg/mod" -w /src "$GO_IMAGE" \
+            go run "golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION" ./...
+
   api-feature:
     name: API feature tests
     needs: changes
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/cache@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go-mod
           key: go-mod-${{ hashFiles('apps/api/go.sum') }}
       - name: Start PostgreSQL with the application roles
         run: .github/scripts/start-postgres.sh
       - name: Start Redis
-        run: docker run -d --name redis --network ci redis:8-alpine
+        run: docker run -d --name redis --network ci "$REDIS_IMAGE"
       # Migrate the suite database once, then run only the TestFeature* tests
       # against real PostgreSQL and Redis (C77, C79).
       - name: Feature tests
@@ -130,7 +165,9 @@ jobs:
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Start PostgreSQL with the application roles
         run: .github/scripts/start-postgres.sh
       - name: Build the production image
@@ -141,6 +178,11 @@ jobs:
             -e MIGRATE_DB_HOST=postgres -e MIGRATE_DB_NAME=erp -e MIGRATE_DB_USER=erp_migrate \
             -e MIGRATE_DB_PASSWORD_FILE=/run/secrets/db_migrate_password -e MIGRATE_DB_SSLMODE=disable \
             -v "$PWD/docker/secrets/dev:/run/secrets:ro" erp-api-release
+      # Known vulnerabilities in the image's packages and binaries, high and critical (C113).
+      - name: Scan the image
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$GRYPE_IMAGE" \
+            erp-api-release --fail-on high --only-fixed
 
   # The BFF's release images (C99), one per instance, each with its own app
   # embedded; built when the BFF or the apps change.
@@ -154,9 +196,15 @@ jobs:
       matrix:
         app: [workspace, admin]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Build the production image
         run: docker build -f docker/bff.Dockerfile --build-arg APP=${{ matrix.app }} -t erp-bff-${{ matrix.app }} .
+      - name: Scan the image
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$GRYPE_IMAGE" \
+            erp-bff-${{ matrix.app }} --fail-on high --only-fixed
 
   # Typecheck + build each frontend app, in the same Node 24 + pnpm 11 image dev/CI both use
   # (docker/node.Dockerfile) — never the runner's own Node.
@@ -170,7 +218,9 @@ jobs:
       matrix:
         app: [workspace, admin, identity]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Build the shared Node dev image
         run: docker build -f docker/node.Dockerfile -t erp-node .
       - name: Install workspace dependencies
@@ -179,6 +229,36 @@ jobs:
         run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm --filter ${{ matrix.app }} run typecheck
       - name: Build
         run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm --filter ${{ matrix.app }} run build
+
+  # Known vulnerabilities in the frontend's production dependencies, high and critical (C113).
+  frontend-audit:
+    name: Frontend dependency audit
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the shared Node dev image
+        run: docker build -f docker/node.Dockerfile -t erp-node .
+      - name: pnpm audit
+        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm audit --prod --audit-level high
+
+  # Secrets committed anywhere in the history (C113); every pull request, whatever it changes.
+  # Gitleaks runs from its image: its GitHub Action needs a paid licence for organisation repositories.
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo "$GITLEAKS_IMAGE" \
+            git --no-banner --redact --config .gitleaks.toml .
 
   # End-to-end tests (C109): the Compose stack behind a throwaway Traefik on the runner, then
   # e2e/run.sh (Playwright's image on the proxy and internal networks). Traefik publishes port 80
@@ -191,14 +271,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Start Traefik on a shared proxy network
         run: |
           docker network create proxy
           docker run -d --name traefik --network proxy -p 80:80 \
             -v /var/run/docker.sock:/var/run/docker.sock:ro \
-            traefik:v3.6 \
+            "$TRAEFIK_IMAGE" \
             --providers.docker=true \
             --providers.docker.network=proxy \
             --providers.docker.exposedbydefault=false \
@@ -238,7 +320,7 @@ jobs:
 
       - name: Keep traces of failed tests
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: e2e-test-results
           path: e2e/test-results

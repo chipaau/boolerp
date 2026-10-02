@@ -16,9 +16,11 @@ tmp/
 apps/api/bin/
 apps/api/internal/web/dist/
 
-# env & editor
+# env & editor: every .env file except the committed examples (C113)
 .env
-.env.local
+.env.*
+!.env.example
+!**/.env.example
 *.log
 .DS_Store
 
