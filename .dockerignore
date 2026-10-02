@@ -4,4 +4,3 @@
 !**/.env.example
 .git
 **/node_modules
-apps/api.bak

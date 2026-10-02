@@ -6,9 +6,7 @@ The active checkout is `/Users/chipaau/code/bool/erp`, remote
 `git@github.com:boolmv/erp.git`. Do not run the rebuild from the sibling `go-erp`
 checkout.
 
-The fresh API lives in `apps/api/` in this monorepo. The previous source is preserved
-in `apps/api.bak/`; its migrations, providers, and frontend consumers are not the
-rebuild baseline.
+The fresh API lives in `apps/api/` in this monorepo.
 
 **Reset (C24, 2026-09-28):** the implementation of steps 0–3 was removed to rebuild
 the API from scratch. The commands, settings, and layout below describe the rebuild
@@ -19,7 +17,6 @@ target and will not work until the corresponding roadmap step is rebuilt.
 | Location | Purpose |
 | --- | --- |
 | apps/api/ | New Go API and directory scaffold |
-| apps/api.bak/ | Previous API preserved without changes; excluded from new-API builds |
 | apps/workspace/ | The workspace shell and its apps (C102, C108) |
 | docs/ | All product and engineering documentation |
 | .claude/ | Substantive agent instructions |
@@ -74,7 +71,7 @@ it directly so shutdown signals reach the server. Runtime settings are described
 below. The API creates its PostgreSQL pool at startup, checks the database through
 `/api/readyz`, and does not run migrations automatically. Redis remains for a later layer.
 
-Do not run migrations from `apps/api.bak` or reset existing volumes. The new
+Do not reset existing volumes. The new
 `cmd/migrate` is an explicit migration command; `cmd/worker` remains a placeholder.
 A standalone migration service is not part of this Compose baseline.
 

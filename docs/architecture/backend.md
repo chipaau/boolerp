@@ -6,8 +6,7 @@ was removed for a step-by-step rebuild (C24); the layout below is the target, an
 describe target contracts, without approving application tables. Remaining policy contracts and tool choices are proposed. See
 [the decision register](../decisions/README.md).
 
-The new API lives in `apps/api/`; the previous implementation is preserved in
-`apps/api.bak/`. Directories are created only when a step needs them. Filenames in
+The new API lives in `apps/api/`. Directories are created only when a step needs them. Filenames in
 the target tree below illustrate future responsibilities unless listed as current;
 they are not approved tables or contracts.
 
