@@ -23,6 +23,8 @@ urls:
   login: http://identity.bool.test/login
   registration: http://identity.bool.test/registration
   consent: http://identity.bool.test/consent
+  # Hydra's logout step: the login service ends the Kratos session and accepts it (C101).
+  logout: http://identity.bool.test/logout
   error: http://identity.bool.test/error
 
 oidc:

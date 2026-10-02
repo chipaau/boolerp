@@ -26,7 +26,10 @@ var Migrations = []postgres.ModuleMigrations{
 func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
 	cfg := d.Config
 
-	users := identity.New(d.Pool, identity.Settings{KratosAdminURL: cfg.Identity.KratosAdminURL}, d.HTTPClient)
+	users := identity.New(d.Pool, identity.Settings{
+		KratosAdminURL: cfg.Identity.KratosAdminURL,
+		HydraAdminURL:  cfg.Identity.HydraAdminURL,
+	}, d.HTTPClient)
 
 	// auth turns a token's subject into the user through identity.
 	resolve := func(ctx context.Context, subject string) (auth.User, error) {

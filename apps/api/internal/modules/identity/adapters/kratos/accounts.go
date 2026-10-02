@@ -1,5 +1,5 @@
-// Package kratos reads accounts from Kratos's admin API (internal network only)
-// with Ory's SDK, github.com/ory/client-go (C94).
+// Package kratos reads and deactivates accounts with Kratos's admin API
+// (internal network only) through Ory's SDK, github.com/ory/client-go (C94, C101).
 package kratos
 
 import (
@@ -47,6 +47,34 @@ func (a *Accounts) Get(ctx context.Context, kratosIdentityID string) (domain.Acc
 		Phone:            text(traits["phone"]),
 		DisplayName:      text(traits["name"]),
 	}, nil
+}
+
+// Deactivate implements application.Accounts: the identity's state becomes
+// inactive, which Kratos refuses at login, and its sessions are deleted.
+func (a *Accounts) Deactivate(ctx context.Context, kratosIdentityID string) error {
+	_, resp, err := a.api.IdentityAPI.PatchIdentity(ctx, kratosIdentityID).
+		JsonPatch([]ory.JsonPatch{{Op: "replace", Path: "/state", Value: "inactive"}}).Execute()
+	if resp != nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusNotFound {
+			return application.ErrNotFound
+		}
+	}
+	if err != nil {
+		return errors.New("kratos: deactivating the account failed")
+	}
+	resp, err = a.api.IdentityAPI.DeleteIdentitySessions(ctx, kratosIdentityID).Execute()
+	if resp != nil {
+		_ = resp.Body.Close()
+		// Kratos answers 404 when the identity has no sessions to delete.
+		if resp.StatusCode == http.StatusNotFound {
+			return nil
+		}
+	}
+	if err != nil {
+		return errors.New("kratos: deleting the account's sessions failed")
+	}
+	return nil
 }
 
 func text(v any) string {

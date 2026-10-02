@@ -110,11 +110,23 @@ func New(client *goredis.Client, sealer *Sealer, s Settings, onError func(http.R
 
 // SignIn stores a completed login under a new session token, so a token planted
 // before the login (session fixation) is worthless. The tokens get a new key
-// that expires with the session's lifetime.
+// that expires with the session's lifetime, and are listed under Hydra's login
+// session, so back-channel logout can find them (C101).
 func (s *Sessions) SignIn(ctx context.Context, in SignedIn) error {
 	id := randomID()
 	if err := s.writeTokens(ctx, in.Account, id, in.Tokens, s.lifetime); err != nil {
 		return err
+	}
+	if in.HydraSession != "" {
+		key := s.hydraSessionKey(in.HydraSession)
+		_, err := s.redis.TxPipelined(ctx, func(p goredis.Pipeliner) error {
+			p.SAdd(ctx, key, id)
+			p.Expire(ctx, key, s.lifetime)
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("session: listing under the Hydra session: %w", err)
+		}
 	}
 	if err := s.RenewToken(ctx); err != nil {
 		return fmt.Errorf("session: renewing the token: %w", err)
@@ -165,14 +177,41 @@ func (s *Sessions) SaveTokens(ctx context.Context, in SignedIn) error {
 	return s.writeTokens(ctx, in.Account, in.TokensID, in.Tokens, goredis.KeepTTL)
 }
 
-// SignOut deletes the session's tokens and destroys the session.
+// SignOut deletes the session's tokens, removes it from its Hydra login
+// session's list, and destroys the session.
 func (s *Sessions) SignOut(ctx context.Context) error {
 	if id := s.GetString(ctx, keyTokensID); id != "" {
-		if err := s.redis.Del(ctx, s.tokensKey(id)).Err(); err != nil {
+		_, err := s.redis.TxPipelined(ctx, func(p goredis.Pipeliner) error {
+			p.Del(ctx, s.tokensKey(id))
+			if sid := s.GetString(ctx, keyHydraSession); sid != "" {
+				p.SRem(ctx, s.hydraSessionKey(sid), id)
+			}
+			return nil
+		})
+		if err != nil {
 			return fmt.Errorf("session: deleting tokens: %w", err)
 		}
 	}
 	return s.Destroy(ctx)
+}
+
+// EndHydraSession signs out every session of this BFF instance that belongs to
+// a Hydra login session, after Hydra's back-channel logout (C101). It deletes
+// their tokens; each session is then signed out on its next request (Current).
+func (s *Sessions) EndHydraSession(ctx context.Context, hydraSession string) error {
+	key := s.hydraSessionKey(hydraSession)
+	ids, err := s.redis.SMembers(ctx, key).Result()
+	if err != nil {
+		return fmt.Errorf("session: reading the Hydra session: %w", err)
+	}
+	keys := []string{key}
+	for _, id := range ids {
+		keys = append(keys, s.tokensKey(id))
+	}
+	if err := s.redis.Del(ctx, keys...).Err(); err != nil {
+		return fmt.Errorf("session: ending the Hydra session: %w", err)
+	}
+	return nil
 }
 
 func (s *Sessions) writeTokens(ctx context.Context, account, id string, tokens Tokens, ttl time.Duration) error {
@@ -188,6 +227,8 @@ func (s *Sessions) writeTokens(ctx context.Context, account, id string, tokens T
 }
 
 func (s *Sessions) tokensKey(id string) string { return s.prefix + "tokens:" + id }
+
+func (s *Sessions) hydraSessionKey(sid string) string { return s.prefix + "hydra-session:" + sid }
 
 // tokensAAD binds sealed tokens to their account and key, so a record copied to
 // another key or session does not open.

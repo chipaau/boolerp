@@ -120,11 +120,12 @@ func TestSignInAndCurrent(t *testing.T) {
 		assert.Equal(t, signedIn, got)
 	})
 
-	// Two keys: the session and the tokens; neither holds a readable token.
+	// The session, its tokens, and its Hydra login's list; none holds a readable token.
 	keys := mr.Keys()
-	require.Len(t, keys, 2)
+	require.Len(t, keys, 3)
 	for _, k := range keys {
-		assert.True(t, strings.HasPrefix(k, "bff:test:session:") || strings.HasPrefix(k, "bff:test:tokens:"), k)
+		assert.True(t, strings.HasPrefix(k, "bff:test:session:") || strings.HasPrefix(k, "bff:test:tokens:") ||
+			k == "bff:test:hydra-session:sid-1", k)
 		v, _ := mr.Get(k)
 		assert.NotContains(t, v, "s3cret", k)
 		assert.LessOrEqual(t, mr.TTL(k), 12*time.Hour, k)
@@ -216,4 +217,38 @@ func TestNotSignedIn(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, ok)
 	})
+}
+
+func TestEndingAHydraSessionSignsOutItsSessions(t *testing.T) {
+	client, _ := redisFor(t)
+	s := newSessions(t, client, keyA, true)
+	app := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, signedIn)) })
+	tab := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, signedIn)) })
+	other := signedIn
+	other.HydraSession = "sid-2"
+	elsewhere := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, other)) })
+
+	require.NoError(t, s.EndHydraSession(t.Context(), "sid-1"))
+
+	for name, cookies := range map[string][]*http.Cookie{"app": app, "second tab": tab} {
+		inSession(t, s, cookies, func(ctx context.Context) {
+			_, ok, err := s.Current(ctx)
+			require.NoError(t, err)
+			assert.False(t, ok, "%s: signed out", name)
+		})
+	}
+	inSession(t, s, elsewhere, func(ctx context.Context) {
+		_, ok, err := s.Current(ctx)
+		require.NoError(t, err)
+		assert.True(t, ok, "another login stays signed in")
+	})
+	assert.NoError(t, s.EndHydraSession(t.Context(), "unknown"), "an unknown login is nothing to do")
+}
+
+func TestSignOutLeavesNothingBehind(t *testing.T) {
+	client, mr := redisFor(t)
+	s := newSessions(t, client, keyA, true)
+	cookies := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, signedIn)) })
+	inSession(t, s, cookies, func(ctx context.Context) { require.NoError(t, s.SignOut(ctx)) })
+	assert.Empty(t, mr.Keys())
 }

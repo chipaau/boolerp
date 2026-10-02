@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AccountMenu } from '@workspace/ui/components/workspace-header'
 import { AvatarDialog } from '@/features/shell/avatar-dialog'
 import { useMembership } from '@/features/shell/queries'
+import { signOut } from '@/lib/session'
 import { useCurrentUser } from './user-context'
 
 /**
@@ -23,7 +24,7 @@ export function UserMenu() {
           { key: 'profile', label: 'Profile & preferences' },
           { key: 'settings', label: 'Settings & permissions' },
           { key: 'switch', label: 'Switch workspace' },
-          // Sign out returns with the BFF's /auth/logout (roadmap step 7e).
+          { key: 'signout', label: 'Sign out', destructive: true, onClick: signOut },
         ]}
       />
       <AvatarDialog open={photo} name={user.name} current={membership?.avatar} onClose={() => setPhoto(false)} />

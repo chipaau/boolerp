@@ -30,6 +30,7 @@ type provider struct {
 	key     *rsa.PrivateKey
 	nonce   string // the nonce the next ID token carries
 	refresh string // the refresh token the next exchange returns
+	revoked []string
 }
 
 func newProvider(t *testing.T) *provider {
@@ -46,8 +47,15 @@ func newProvider(t *testing.T) *provider {
 			"authorization_endpoint":                p.URL + "/oauth2/auth",
 			"token_endpoint":                        p.URL + "/oauth2/token",
 			"jwks_uri":                              p.URL + "/jwks",
+			"end_session_endpoint":                  p.URL + "/oauth2/sessions/logout",
+			"revocation_endpoint":                   p.URL + "/oauth2/revoke",
 			"id_token_signing_alg_values_supported": []string{"RS256"},
 		})
+	})
+	mux.HandleFunc("/oauth2/revoke", func(w http.ResponseWriter, r *http.Request) {
+		if id, secret, ok := r.BasicAuth(); ok && id == "erp-app" && secret == "client-s3cret" {
+			p.revoked = append(p.revoked, r.FormValue("token"))
+		}
 	})
 	mux.HandleFunc("/jwks", func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{
@@ -139,7 +147,18 @@ type browser struct {
 
 func (b *browser) get(target string) *httptest.ResponseRecorder {
 	b.t.Helper()
-	req := httptest.NewRequest(http.MethodGet, target, nil)
+	return b.do(httptest.NewRequest(http.MethodGet, target, nil))
+}
+
+func (b *browser) post(target string, form url.Values) *httptest.ResponseRecorder {
+	b.t.Helper()
+	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return b.do(req)
+}
+
+func (b *browser) do(req *http.Request) *httptest.ResponseRecorder {
+	b.t.Helper()
 	req.Host = "demo.bool.test"
 	for _, c := range b.cookies {
 		req.AddCookie(c)
@@ -308,4 +327,98 @@ func TestRefreshWhileTheProviderIsDown(t *testing.T) {
 	_, err := h.Refresh(t.Context(), session.Tokens{Refresh: "refresh-s3cret"})
 	require.Error(t, err)
 	assert.NotErrorIs(t, err, ErrRefreshRefused, "unavailable is not refused: the session is kept")
+}
+
+// signIn completes a login in b.
+func signIn(t *testing.T, p *provider, b *browser) {
+	t.Helper()
+	q := startLogin(t, b, "/")
+	p.nonce = q.Get("nonce")
+	require.Equal(t, http.StatusFound, b.get("/auth/callback?code=c1&state="+q.Get("state")).Code)
+	_, ok := b.whoami()
+	require.True(t, ok)
+}
+
+// logoutToken signs a back-channel logout token; change edits its claims.
+func (p *provider) logoutToken(t *testing.T, change func(map[string]any)) string {
+	t.Helper()
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: p.key},
+		(&jose.SignerOptions{}).WithType("logout+jwt").WithHeader("kid", "k1"))
+	require.NoError(t, err)
+	claims := map[string]any{
+		"iss": p.URL, "aud": []string{"erp-app"}, "iat": time.Now().Unix(), "jti": "j1",
+		"sub": "account-1", "sid": "hydra-session-1",
+		"events": map[string]any{"http://schemas.openid.net/event/backchannel-logout": map[string]any{}},
+	}
+	if change != nil {
+		change(claims)
+	}
+	raw, err := jwt.Signed(signer).Claims(claims).Serialize()
+	require.NoError(t, err)
+	return raw
+}
+
+func TestLogoutEndsTheSessionAndGoesToHydra(t *testing.T) {
+	p := newProvider(t)
+	b := &browser{t: t, handler: app(t, p)}
+	signIn(t, p, b)
+
+	rec := b.post("/auth/logout", nil)
+
+	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	u, err := url.Parse(rec.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, p.URL+"/oauth2/sessions/logout", u.Scheme+"://"+u.Host+u.Path)
+	assert.NotEmpty(t, u.Query().Get("id_token_hint"))
+	assert.Equal(t, "http://demo.bool.test/", u.Query().Get("post_logout_redirect_uri"))
+	assert.Equal(t, []string{"refresh-s3cret"}, p.revoked, "the refresh token is revoked")
+	_, ok := b.whoami()
+	assert.False(t, ok, "signed out of the BFF")
+}
+
+func TestLogoutWithoutASessionGoesHome(t *testing.T) {
+	rec := (&browser{t: t, handler: app(t, newProvider(t))}).post("/auth/logout", nil)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/", rec.Header().Get("Location"))
+}
+
+func TestLogoutIsNotAGet(t *testing.T) {
+	rec := (&browser{t: t, handler: app(t, newProvider(t))}).get("/auth/logout")
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+}
+
+func TestBackchannelLogoutSignsOutTheLogin(t *testing.T) {
+	p := newProvider(t)
+	b := &browser{t: t, handler: app(t, p)}
+	signIn(t, p, b)
+
+	hydra := &browser{t: t, handler: b.handler} // Hydra calls without the browser's cookie
+	rec := hydra.post("/auth/backchannel-logout", url.Values{"logout_token": {p.logoutToken(t, nil)}})
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	_, ok := b.whoami()
+	assert.False(t, ok, "the browser's session ended")
+}
+
+func TestBackchannelLogoutRefusesInvalidTokens(t *testing.T) {
+	p := newProvider(t)
+	other := newProvider(t) // a different signing key and issuer
+	for name, token := range map[string]string{
+		"another client": p.logoutToken(t, func(c map[string]any) { c["aud"] = []string{"erp-admin"} }),
+		"another issuer": other.logoutToken(t, nil),
+		"no event":       p.logoutToken(t, func(c map[string]any) { delete(c, "events") }),
+		"no session":     p.logoutToken(t, func(c map[string]any) { delete(c, "sid") }),
+		"has a nonce":    p.logoutToken(t, func(c map[string]any) { c["nonce"] = "n" }),
+		"too old":        p.logoutToken(t, func(c map[string]any) { c["iat"] = time.Now().Add(-time.Hour).Unix() }),
+		"not a token":    "garbage",
+		"missing":        "",
+	} {
+		b := &browser{t: t, handler: app(t, p)}
+		signIn(t, p, b)
+		rec := (&browser{t: t, handler: b.handler}).post("/auth/backchannel-logout", url.Values{"logout_token": {token}})
+		assert.Equal(t, http.StatusBadRequest, rec.Code, name)
+		_, ok := b.whoami()
+		assert.True(t, ok, "%s: still signed in", name)
+	}
 }
