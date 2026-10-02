@@ -1,4 +1,4 @@
-package seed
+package seeds
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/modules/identity"
+	"github.com/boolmv/erp/apps/api/internal/platform/seed"
 )
 
 type fakeAccounts struct {
@@ -21,11 +22,15 @@ func (f *fakeAccounts) EnsureAccount(_ context.Context, a identity.NewAccount) (
 	return identity.User{Email: a.Email}, !existed, nil
 }
 
+func env(environment string) seed.Env {
+	return seed.NewEnv(environment, slog.New(slog.DiscardHandler))
+}
+
 func TestTeamAccountsInDev(t *testing.T) {
 	accounts := &fakeAccounts{seen: map[string]identity.NewAccount{}}
-	s := Settings{Environment: "dev", TeamPassword: "pw"}
-	require.NoError(t, Run(t.Context(), s, accounts, slog.New(slog.DiscardHandler)))
-	require.NoError(t, Run(t.Context(), s, accounts, slog.New(slog.DiscardHandler)), "running again is fine")
+	users := NewUsers(accounts, "pw")
+	require.NoError(t, users.Run(t.Context(), env("dev")))
+	require.NoError(t, users.Run(t.Context(), env("dev")), "running again is fine")
 
 	assert.Len(t, accounts.seen, 3)
 	for _, email := range []string{"ibrahim@bool.mv", "shifau@bool.mv", "mariyam@bool.mv"} {
@@ -37,15 +42,15 @@ func TestTeamAccountsInDev(t *testing.T) {
 }
 
 func TestTeamAccountsOnlyInDev(t *testing.T) {
-	for _, env := range []string{"test", "staging"} {
+	for _, e := range []string{"test", "staging"} {
 		accounts := &fakeAccounts{seen: map[string]identity.NewAccount{}}
-		require.NoError(t, Run(t.Context(), Settings{Environment: env, TeamPassword: "pw"}, accounts, slog.New(slog.DiscardHandler)))
-		assert.Empty(t, accounts.seen, env)
+		require.NoError(t, NewUsers(accounts, "pw").Run(t.Context(), env(e)))
+		assert.Empty(t, accounts.seen, e)
 	}
 }
 
 func TestDevNeedsTheTeamPassword(t *testing.T) {
 	accounts := &fakeAccounts{seen: map[string]identity.NewAccount{}}
-	assert.Error(t, Run(t.Context(), Settings{Environment: "dev"}, accounts, slog.New(slog.DiscardHandler)))
+	assert.Error(t, NewUsers(accounts, "").Run(t.Context(), env("dev")))
 	assert.Empty(t, accounts.seen)
 }

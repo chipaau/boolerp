@@ -7,13 +7,18 @@ package full
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
 	"github.com/boolmv/erp/apps/api/internal/modules/identity"
+	identityseeds "github.com/boolmv/erp/apps/api/internal/modules/identity/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/auth"
 	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
+	"github.com/boolmv/erp/apps/api/internal/platform/seed"
 )
 
 // Migrations are the edition's modules' tables, in dependency order: a module's
@@ -44,4 +49,20 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
 		d.HTTPClient, resolve, d.Logger)
 
 	r.Route("/api/auth", authModule.Routes)
+}
+
+// SeedSettings configure the seeders (from config.Seed).
+type SeedSettings struct {
+	Identity     identity.Settings
+	TeamPassword string // the team's development accounts (identity.users)
+}
+
+// Seeders are the edition's modules' seeders, one per store, in dependency
+// order like Migrations: a store is seeded after the stores it references.
+// cmd/seed runs them (C50).
+func Seeders(db *pgxpool.Pool, s SeedSettings, client *http.Client, logger *slog.Logger) []seed.Seeder {
+	users := identity.New(db, s.Identity, client, logger)
+	return []seed.Seeder{
+		identityseeds.NewUsers(users, s.TeamPassword),
+	}
 }

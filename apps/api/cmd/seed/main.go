@@ -1,5 +1,6 @@
-// Command seed creates development and test data through the modules' use cases
-// (C50). It refuses to run unless APP_ENV is set explicitly to dev, test, or
+// Command seed runs the edition's seeders (C50): one per store, kept in each
+// module's seeds folder and listed in order by the edition, like Laravel's
+// seeders. It refuses to run unless APP_ENV is set explicitly to dev, test, or
 // staging, and it is not built into the production image.
 package main
 
@@ -12,11 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/boolmv/erp/apps/api/internal/edition/full"
 	"github.com/boolmv/erp/apps/api/internal/modules/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/observability"
 	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
-	"github.com/boolmv/erp/apps/api/internal/seed"
+	"github.com/boolmv/erp/apps/api/internal/platform/seed"
 )
 
 // timeout bounds a whole run.
@@ -56,16 +58,15 @@ func run() int {
 	}
 	defer pool.Close()
 
-	users := identity.New(pool, identity.Settings{
-		KratosAdminURL: cfg.Identity.KratosAdminURL,
-		HydraAdminURL:  cfg.Identity.HydraAdminURL,
+	seeders := full.Seeders(pool, full.SeedSettings{
+		Identity: identity.Settings{
+			KratosAdminURL: cfg.Identity.KratosAdminURL,
+			HydraAdminURL:  cfg.Identity.HydraAdminURL,
+		},
+		TeamPassword: cfg.Users.TeamPassword,
 	}, &http.Client{Timeout: 10 * time.Second}, logger)
 
-	err = seed.Run(ctx, seed.Settings{
-		Environment:  cfg.App.Environment,
-		TeamPassword: cfg.Users.TeamPassword,
-	}, users, logger)
-	if err != nil {
+	if err := seed.Run(ctx, seeders, seed.NewEnv(cfg.App.Environment, logger)); err != nil {
 		logger.Error("seed failed", "error", err)
 		return 1
 	}
