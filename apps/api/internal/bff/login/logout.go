@@ -43,6 +43,11 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		problem.Error(w, r, http.StatusServiceUnavailable, "Sign-out is unavailable right now.")
 		return
 	}
+	// Hydra's logout revokes the login's tokens too; this makes sure the refresh
+	// token is dead even if the browser never reaches Hydra, or Hydra's discovery
+	// cannot be read below.
+	h.revoke(ctx, in.Tokens.Refresh)
+
 	p, err := h.discover(ctx)
 	if err != nil {
 		// The BFF session is gone; Hydra's and Kratos's end when they expire.
@@ -58,10 +63,6 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	// Hydra's logout revokes the login's tokens too; this makes sure the refresh
-	// token is dead even if the browser never reaches Hydra.
-	h.revoke(ctx, in.Tokens.Refresh)
-
 	q := url.Values{
 		"id_token_hint":            {in.Tokens.IDToken},
 		"post_logout_redirect_uri": {h.scheme() + "://" + r.Host + "/"},
@@ -105,15 +106,14 @@ func (h *Handler) backchannelLogout(w http.ResponseWriter, r *http.Request) {
 		problem.Error(w, r, http.StatusBadRequest, "A logout token is required.")
 		return
 	}
-	p, err := h.discover(ctx)
-	if err != nil {
+	if _, err := h.discover(ctx); err != nil {
 		h.logger.WarnContext(ctx, "back-channel logout: discovery failed", "error", err)
 		problem.Error(w, r, http.StatusServiceUnavailable, "")
 		return
 	}
 	// Signature (Hydra's keys), issuer, and audience (this client). A logout token
 	// may have no expiry, so its age is checked from iat below.
-	token, err := p.Verifier(&oidc.Config{ClientID: h.settings.ClientID, SkipExpiryCheck: true}).
+	token, err := h.verifier(&oidc.Config{ClientID: h.settings.ClientID, SkipExpiryCheck: true}).
 		Verify(oidc.ClientContext(ctx, h.client), raw)
 	if err != nil {
 		h.logger.WarnContext(ctx, "back-channel logout: token rejected", "error", err)

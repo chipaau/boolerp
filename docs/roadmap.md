@@ -10,7 +10,7 @@ Resolve one decision at a time using the [decision register](decisions/README.md
 | 0. Documentation baseline | Fresh branch, current scope/decisions, archived history, centralized agent rules, four-service Compose | Documentation/configuration milestone; no new application implementation |
 | 0a. Executable scaffold | Preserve apps/api.bak; start the rebuild with a simple chi server (platform step 0) | Done on 2026-09-28 (platform step 0) |
 | 1. Tenant model | Agree what a tenant represents and its relationship to a licensed customer | Next discussion, D01 |
-| 2. Platform implementation | Deliver the increments below; resolve D02–D12 as needed and approve tables individually | Reset on 2026-09-28 (C24); steps 0–5 and H1–H6 done; step 7 (identity, 7a–7g) in progress (7a–7c-1 and 7d done), then step 6 (needs D01) |
+| 2. Platform implementation | Deliver the increments below; resolve D02–D12 as needed and approve tables individually | Reset on 2026-09-28 (C24); steps 0–5 and H1–H6 done; step 7 (identity) done through 7e, with 7f and 7g waiting on step 6 and object storage; security fixes under ASVS L2 (C111, C112) in progress; then step 6 (needs D01) |
 | 3. Platform acceptance | Prove protected operations, audit, tracing, caching, domains, and same-release SaaS/self-host installation, licensing, upgrades, and restore | Not started |
 | 4. Employee operation | Resolve D11 and implement one approved employee operation through domain/application/adapters, including access, audit, and trace | Not started |
 | 5. Cache-backed employee read | Prove scoped Redis caching, invalidation, and failure behavior for a concrete employee read | Not started |

@@ -25,6 +25,9 @@ urls:
   consent: http://identity.bool.test/consent
   # Hydra's logout step: the login service ends the Kratos session and accepts it (C101).
   logout: http://identity.bool.test/logout
+  # Where a logout no app started ends (one confirmed on the login service). An app's
+  # logout returns to one of that client's post_logout_redirect_uris instead.
+  post_logout_redirect: http://identity.bool.test/
   error: http://identity.bool.test/error
 
 oidc:
@@ -32,18 +35,24 @@ oidc:
     supported_types: [public]
 
 # Access tokens are JWTs that the API verifies locally against Hydra's published
-# keys (C91), valid for 10 minutes; the BFF refreshes them. Other lifetimes are
-# Hydra's defaults (C89).
+# keys (C91), valid for 10 minutes; the BFF refreshes them. Refresh tokens last
+# 12 hours, as Kratos sessions and BFF sessions do (C96), instead of Hydra's 30
+# days. Other lifetimes are Hydra's defaults (C89).
 strategies:
   access_token: jwt
 ttl:
   access_token: 10m
+  refresh_token: 12h
 
-# Refresh tokens rotate on every use. A used one stays valid for a minute, so two
-# requests refreshing at once (several BFF processes, or a request that read the
-# tokens just before another saved new ones) do not look like token theft, which
-# would revoke the session's tokens; later reuse still does (C98).
 oauth2:
+  # Every authorization code flow must use PKCE (RFC 7636), confidential clients
+  # too (ASVS V10, C111); the BFFs always send it.
+  pkce:
+    enforced: true
+  # Refresh tokens rotate on every use. A used one stays valid for a minute, so
+  # two requests refreshing at once (several BFF processes, or a request that read
+  # the tokens just before another saved new ones) do not look like token theft,
+  # which would revoke the session's tokens; later reuse still does (C98).
   grant:
     refresh_token:
       rotation_grace_period: 1m

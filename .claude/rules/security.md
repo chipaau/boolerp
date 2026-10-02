@@ -1,9 +1,14 @@
 # Security rules
 
+- The project's security standard is **OWASP ASVS 5.0, Level 2** (C111), with Level 3
+  where cheap for authentication, sessions, and the admin console. Check designs and
+  changes against the relevant ASVS requirements, and record exceptions with their reason.
+  Build practices follow NIST SSDF (SP 800-218). Open findings are tracked in
+  [the security review](../../docs/security/README.md).
 - Flag security implications when proposing or reviewing changes. If a change
   affects authentication, authorization, input validation, data exposure, or
   cryptographic boundaries, state the risk and mitigation explicitly.
-- Follow OWASP top-10 protections: validate and sanitize all external input,
+- Follow the OWASP Top 10 protections (awareness; ASVS is the requirement set): validate and sanitize all external input,
   use parameterized queries, enforce least privilege, and prevent injection
   (SQL, command, header, log).
 - Never log, cache, or return credentials, tokens, session identifiers,

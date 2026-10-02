@@ -10,6 +10,7 @@ import { SelectField } from '@workspace/ui/components/select'
 import { useToast } from '@workspace/ui/components/toast'
 import { ToneDot } from '@workspace/ui/components/tone-dot'
 import { LinkTab, LinkTabs } from '@workspace/ui/components/tabs'
+import { downloadCsv } from '@workspace/ui/lib/csv'
 import { cn } from '@workspace/ui/lib/utils'
 import { BRAND } from '@workspace/ui/lib/brand'
 import { OrgCanvas, OrgChartToolbar, buildOrgTree, useOrgChart } from '@workspace/org/org-chart'
@@ -82,17 +83,8 @@ export function UnitsPage() {
 
   function exportCsv() {
     const rows = [['Code', 'Name', 'Type', 'Parent'], ...liveUnits(units).map((u) => [u.code, u.name, u.kind, u.parent ? unitPath(units, u.parent) : ''])]
-    const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(',')).join('\n')
     const name = 'bool-admin-units.csv'
-    try {
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-      a.download = name
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000)
-    } catch {
-      // a blocked download still logs the intent
-    }
+    downloadCsv(name, rows)
     log('Export', `${name} downloaded`)
     toast(`${name} downloaded`)
   }

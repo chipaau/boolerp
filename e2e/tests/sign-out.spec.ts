@@ -20,3 +20,22 @@ test('signing out of the workspace signs out of the admin console too', async ({
   await page.goto(`${ADMIN}/`)
   await expect(page).toHaveURL(new RegExp(`^${IDENTITY}/login`))
 })
+
+// A logout no app started (a plain link to Hydra's logout, which any site can make) is asked
+// about first (C112); staying signed in keeps the session, confirming ends it.
+test('a logout link from elsewhere asks first', async ({ page }) => {
+  await openSignedIn(page, `${WORKSPACE}/`)
+  const me = `${WORKSPACE}/api/auth/me`
+
+  await page.goto(`${IDENTITY}/oauth2/sessions/logout`)
+  await expect(page).toHaveURL(new RegExp(`^${IDENTITY}/logout/confirm`))
+  await page.getByRole('button', { name: 'Stay signed in' }).click()
+  await expect(page).toHaveURL(new RegExp(`^${IDENTITY}/settings`)) // the login service's account page
+  expect((await page.request.get(me)).status()).toBe(200)
+
+  await page.goto(`${IDENTITY}/oauth2/sessions/logout`)
+  await expect(page).toHaveURL(new RegExp(`^${IDENTITY}/logout/confirm`))
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page).toHaveURL(new RegExp(`^${IDENTITY}/login`))
+  await expect.poll(async () => (await page.request.get(me)).status()).toBe(401)
+})

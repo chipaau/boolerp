@@ -7,7 +7,9 @@ export type Me = { id: string; email: string; phone: string; displayName?: strin
 
 /** Sends the browser to the BFF's sign-in, returning to `returnTo` (a path on this site). */
 export function signIn(returnTo: string = window.location.pathname + window.location.search): Promise<never> {
-  const path = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/'
+  // The BFF checks it again; parsing it as the browser would keeps only a path on this site.
+  const url = URL.parse(returnTo, window.location.origin)
+  const path = url?.origin === window.location.origin ? url.pathname + url.search + url.hash : '/'
   window.location.assign(`/auth/login?return_to=${encodeURIComponent(path)}`)
   // The page is being replaced; nothing after this should run.
   return new Promise<never>(() => {})

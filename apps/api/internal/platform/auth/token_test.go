@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -31,7 +32,8 @@ func knownUser(_ context.Context, subject string) (User, error) {
 // issuer publishes a signing key at /.well-known/jwks.json, as Hydra does.
 type issuer struct {
 	*httptest.Server
-	key *rsa.PrivateKey
+	key     *rsa.PrivateKey
+	fetches atomic.Int32 // downloads of the keys
 }
 
 func newIssuer(t *testing.T) *issuer {
@@ -44,6 +46,7 @@ func newIssuer(t *testing.T) *issuer {
 			http.NotFound(w, r)
 			return
 		}
+		iss.fetches.Add(1)
 		_ = json.NewEncoder(w).Encode(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{
 			{Key: &key.PublicKey, KeyID: "k1", Algorithm: "RS256", Use: "sig"},
 		}})
@@ -108,6 +111,7 @@ func TestValidTokenPasses(t *testing.T) {
 	rec := call(t, iss, "Bearer "+sign(t, iss.valid()))
 	assert.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Equal(t, "account-1 via bff-workspace", rec.Body.String())
+	assert.Contains(t, rec.Header().Get("Cache-Control"), "no-store", "answers about the caller are not cached")
 }
 
 func TestSchemeIsCaseInsensitive(t *testing.T) {
@@ -150,6 +154,30 @@ func TestInvalidTokensAreRefused(t *testing.T) {
 	t.Run("not a JWT", func(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, call(t, iss, "Bearer s3cret-garbage").Code)
 	})
+}
+
+func TestForgedTokensDoNotDownloadTheKeysEachTime(t *testing.T) {
+	iss := newIssuer(t)
+	forger, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), knownUser, slog.New(slog.DiscardHandler))
+	handler := m.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
+	send := func(token string) int {
+		req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	require.Equal(t, http.StatusOK, send(sign(t, iss.valid())))
+	forged := iss.valid()
+	forged.key = forger
+	for range 20 {
+		assert.Equal(t, http.StatusUnauthorized, send(sign(t, forged)))
+	}
+	assert.Equal(t, http.StatusOK, send(sign(t, iss.valid())), "real tokens still pass, from the cached keys")
+	assert.Equal(t, int32(1), iss.fetches.Load(), "the keys are downloaded once within KeyFetchInterval")
 }
 
 func TestRecentlyExpiredTokenIsWithinTheAllowance(t *testing.T) {

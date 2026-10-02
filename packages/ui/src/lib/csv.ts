@@ -1,6 +1,19 @@
-/** Rows of cells as CSV text: every cell quoted, quotes doubled, CRLF between rows (what spreadsheets expect). */
+/**
+ * A text cell that a spreadsheet would run as a formula (starting with = + - @, a tab, or a
+ * carriage return) gets a leading apostrophe, so it stays text (OWASP, CSV injection).
+ * Numbers are left alone, so negative amounts stay numbers.
+ */
+function neutralise(v: string | number | null | undefined): string {
+  if (typeof v !== 'string') return String(v ?? '')
+  return /^[=+\-@\t\r]/.test(v) ? `'${v}` : v
+}
+
+/**
+ * Rows of cells as CSV text: every cell quoted, quotes doubled, formula-like text neutralised,
+ * CRLF between rows (what spreadsheets expect).
+ */
 export function toCsv(rows: (string | number | null | undefined)[][]) {
-  return rows.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n')
+  return rows.map((r) => r.map((v) => `"${neutralise(v).replace(/"/g, '""')}"`).join(',')).join('\r\n')
 }
 
 /** Downloads rows as a CSV file. A blocked download fails quietly; callers still log the intent. */

@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/boolmv/erp/apps/api/internal/bff/session"
+	"github.com/boolmv/erp/apps/api/internal/platform/auth"
 	"github.com/boolmv/erp/apps/api/internal/platform/problem"
 )
 
@@ -66,6 +68,7 @@ type Handler struct {
 	// starts while Hydra is down.
 	mu       sync.Mutex
 	provider *oidc.Provider
+	keys     oidc.KeySet // Hydra's signing keys, downloads limited (auth.KeyClient)
 }
 
 // New returns the login handler. client makes the requests to Hydra (discovery,
@@ -96,8 +99,26 @@ func (h *Handler) discover(ctx context.Context) (*oidc.Provider, error) {
 	if err != nil {
 		return nil, err
 	}
+	var doc struct {
+		JWKS string `json:"jwks_uri"`
+	}
+	if err := p.Claims(&doc); err != nil || doc.JWKS == "" {
+		return nil, errors.New("login: Hydra's discovery document has no jwks_uri")
+	}
+	// The provider's own key set downloads the keys again for every token that
+	// does not verify; this one is limited, since back-channel logout tokens come
+	// from anyone who can reach the BFF.
+	h.keys = oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), auth.KeyClient(h.client)), doc.JWKS)
 	h.provider = p
 	return p, nil
+}
+
+// verifier checks tokens Hydra issued to this client, with h.keys; discover
+// must have succeeded.
+func (h *Handler) verifier(cfg *oidc.Config) *oidc.IDTokenVerifier {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return oidc.NewVerifier(h.settings.Issuer, h.keys, cfg)
 }
 
 // oauth2Config is the client for the domain the request arrived on. Hydra only
@@ -192,7 +213,7 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Signature (Hydra's published keys), issuer, audience (this client), and expiry.
-	idToken, err := p.Verifier(&oidc.Config{ClientID: h.settings.ClientID}).Verify(exchangeCtx, rawIDToken)
+	idToken, err := h.verifier(&oidc.Config{ClientID: h.settings.ClientID}).Verify(exchangeCtx, rawIDToken)
 	if err != nil {
 		h.logger.WarnContext(ctx, "login failed: ID token rejected", "error", err)
 		problem.Error(w, r, http.StatusBadRequest, "Sign-in could not be completed. Start again.")
@@ -264,9 +285,14 @@ func (h *Handler) Refresh(ctx context.Context, old session.Tokens) (session.Toke
 }
 
 // safeReturnTo accepts only a path on this site ("/settings"), so the login
-// cannot be used to send someone to another site after signing in.
+// cannot be used to send someone to another site after signing in. url.Parse
+// rejects control characters, which browsers strip from a redirect ("/\t/evil"
+// would become "//evil"); a backslash is refused because browsers read "/\"
+// as "//".
 func safeReturnTo(path string) string {
-	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") || strings.ContainsAny(path, "\\\r\n") {
+	u, err := url.Parse(path)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.User != nil ||
+		!strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") || strings.Contains(path, "\\") {
 		return "/"
 	}
 	return path
