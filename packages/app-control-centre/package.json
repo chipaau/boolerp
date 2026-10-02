@@ -1,0 +1,29 @@
+{
+  "name": "@workspace/app-control-centre",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Control Centre app hosted by the workspace shell (C102): manifest, rail, routes, and features.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@workspace/app-kit": "workspace:*",
+    "@workspace/assets": "workspace:*",
+    "@workspace/org": "workspace:*",
+    "@workspace/ui": "workspace:*",
+    "lucide-react": "^1.45.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "vitest": "^5.0.1"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "*",
+    "@tanstack/react-router": "*",
+    "react": "^19"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

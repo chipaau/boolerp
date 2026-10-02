@@ -1,4 +1,5 @@
-import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { Outlet, createRootRouteWithContext } from '@tanstack/react-router'
+import type { QueryClient } from '@tanstack/react-query'
 import { useScrollbarReveal } from '@workspace/ui/hooks/use-scrollbar-reveal'
 
 import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools'
@@ -7,7 +8,8 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import '../styles.css'
 
-export const Route = createRootRoute({
+// Route loaders prefetch through the router's context (C103): queryClient.ensureQueryData(...).
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootComponent,
 })
 

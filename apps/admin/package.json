@@ -20,6 +20,7 @@
     "@tanstack/react-router": "latest",
     "@tanstack/react-router-devtools": "latest",
     "@workspace/assets": "workspace:*",
+    "@workspace/session": "workspace:*",
     "@workspace/ui": "workspace:*",
     "lucide-react": "^1.45.0",
     "react": "^19.3.0",

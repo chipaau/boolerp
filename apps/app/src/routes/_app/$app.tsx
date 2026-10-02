@@ -1,27 +1,13 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
-import { SidebarInset } from '@workspace/ui/components/sidebar'
-import { AppSidebar } from '@/components/layout/app-sidebar'
 import { getApp } from '@/lib/apps'
 
-// One dynamic route serves every app: resolve its config from the slug, render its sidebar + content.
+// One dynamic route serves every prototype app (apps without their own package yet): an unknown
+// slug goes home. The shell's _app layout draws the app's sidebar around it.
 export const Route = createFileRoute('/_app/$app')({
   beforeLoad: ({ params }) => {
     if (!getApp(params.app)) {
       throw redirect({ to: '/' })
     }
   },
-  component: AppShell,
+  component: Outlet,
 })
-
-function AppShell() {
-  const { app } = Route.useParams()
-  const cfg = getApp(app)!
-  return (
-    <>
-      <AppSidebar app={cfg} />
-      <SidebarInset className="min-h-0 overflow-y-auto">
-        <Outlet />
-      </SidebarInset>
-    </>
-  )
-}

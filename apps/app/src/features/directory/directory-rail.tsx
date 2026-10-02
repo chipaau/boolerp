@@ -5,9 +5,9 @@ import { ToneDot } from '@workspace/ui/components/tone-dot'
 import { SidebarNavGroups } from '@workspace/ui/components/workspace-sidebar'
 import type { SidebarNavItem } from '@workspace/ui/components/workspace-sidebar'
 import type { AppDef } from '@/lib/apps'
-import { awayInfo, isOnBooks, unitKids, unitMembers, unitTone } from '@/features/org/logic'
-import { usePeople, useUnits } from '@/features/org/queries'
-import type { Unit } from '@/features/org/types'
+import { awayInfo, isOnBooks, unitKids, unitMembers, unitTone } from '@workspace/org/logic'
+import { usePeople, useUnits } from '@workspace/org/queries'
+import type { Unit } from '@workspace/org/types'
 import { useDirectorySearch } from './directory-search'
 
 /**

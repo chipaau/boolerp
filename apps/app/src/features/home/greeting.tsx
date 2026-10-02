@@ -1,5 +1,5 @@
 import { useCurrentUser } from '@/components/layout/user-context'
-import { monthDay, weekdayLong } from '@/lib/dates'
+import { monthDay, weekdayLong } from '@workspace/ui/lib/dates'
 import { useStats } from './queries'
 import { TodayMarker } from './markers'
 

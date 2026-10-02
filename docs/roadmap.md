@@ -14,7 +14,7 @@ Resolve one decision at a time using the [decision register](decisions/README.md
 | 3. Platform acceptance | Prove protected operations, audit, tracing, caching, domains, and same-release SaaS/self-host installation, licensing, upgrades, and restore | Not started |
 | 4. Employee operation | Resolve D11 and implement one approved employee operation through domain/application/adapters, including access, audit, and trace | Not started |
 | 5. Cache-backed employee read | Prove scoped Redis caching, invalidation, and failure behavior for a concrete employee read | Not started |
-| 6. Frontend integration | Define/generate client contract, connect frontend, add browser validation, package assets as agreed | Deferred |
+| 6. Frontend integration | Define/generate client contract, connect frontend, add browser validation, package assets as agreed | Started 2026-10-02: workspace structure decided (ADR 0004, C102–C106) and Control Centre moved into its own package; the other workspace apps move one at a time; `@workspace/api` comes with the first real API resource ([frontend structure](architecture/frontend.md)) |
 
 Deployment constraints inform earlier choices; postponing implementation does not
 mean ignoring custom-domain or self-host requirements during identity design.

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AccountMenu } from '@workspace/ui/components/workspace-header'
 import { AvatarDialog } from '@/features/shell/avatar-dialog'
 import { useMembership } from '@/features/shell/queries'
-import { signOut } from '@/lib/session'
+import { signOut } from '@workspace/session'
 import { useCurrentUser } from './user-context'
 
 /**

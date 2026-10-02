@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { NotificationRule } from '@/features/org/types'
+import type { NotificationRule } from '@workspace/org/types'
 import type { NotificationCategory } from '@/features/shell/types'
 import { NOTIFICATION_CATEGORIES, categoryForEvent, deliveredInApp, deliveryFor, preferenceFor } from './logic'
 import type { NotificationPreference } from './types'

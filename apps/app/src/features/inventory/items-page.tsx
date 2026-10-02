@@ -28,7 +28,7 @@ import {
   TableRow,
   TableToolbar,
 } from '@workspace/ui/components/table'
-import { PageTitle } from '@/components/layout/page'
+import { PageTitle } from '@workspace/ui/components/page'
 import { FILTERS, STATUS_TONE, filterItems, summarize } from './logic'
 import { useItems } from './queries'
 import type { ItemFilter } from './types'

@@ -108,6 +108,9 @@ services:
   app:
     <<: *node
     command: pnpm --filter app dev
+    environment:
+      # The workspace edition to serve (apps/app/editions/<name>.ts, C107).
+      EDITION: ${EDITION:-full}
     networks:
       - proxy
       - internal

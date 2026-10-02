@@ -1,0 +1,6 @@
+export { ApprovalsPage } from './approvals-page'
+export { CodesPage } from './codes-page'
+export { RegionsPage } from './regions-page'
+export { HolidaysPage } from './holidays-page'
+export { NotificationRulesPage } from './notifications-rules-page'
+export { ActivityPage } from './activity-page'

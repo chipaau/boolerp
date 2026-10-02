@@ -24,7 +24,7 @@ import {
   TableRow,
   TableToolbar,
 } from '@workspace/ui/components/table'
-import { PageHeader } from '@/components/layout/page'
+import { PageHeader } from '@workspace/ui/components/page'
 import type { AppDef, AppMenuItem } from '@/lib/apps'
 import { variantFor } from './variants'
 

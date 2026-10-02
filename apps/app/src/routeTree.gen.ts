@@ -9,83 +9,192 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AppRouteImport } from './routes/_app'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AppIndexRouteImport } from './routes/_app/index'
-import { Route as AppAppRouteImport } from './routes/_app/$app'
-import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
-import { Route as AppAppIndexRouteImport } from './routes/_app/$app/index'
-import { Route as AppAppSectionRouteImport } from './routes/_app/$app/$section'
-import { Route as AppNotificationsPreferencesRouteImport } from './routes/_app/notifications_.preferences'
+import { Route as appRouteImport } from './routes/_app'
+import { Route as loginRouteImport } from './routes/login'
+import { Route as IndexRouteImport } from './routes/_app/index'
+import { Route as AppRouteImport } from './routes/_app/$app'
+import { Route as NotificationsRouteImport } from './routes/_app/notifications'
+import { Route as AppIndexRouteImport } from './routes/_app/$app/index'
+import { Route as AppSectionRouteImport } from './routes/_app/$app/$section'
+import { Route as ControlCentreIndexRouteImport } from './../../../packages/app-control-centre/src/routes/index'
+import { Route as ControlCentreActivityRouteImport } from './../../../packages/app-control-centre/src/routes/activity'
+import { Route as ControlCentreApprovalsRouteImport } from './../../../packages/app-control-centre/src/routes/approvals'
+import { Route as ControlCentreBillingRouteImport } from './../../../packages/app-control-centre/src/routes/billing'
+import { Route as ControlCentreCodesRouteImport } from './../../../packages/app-control-centre/src/routes/codes'
+import { Route as ControlCentreEmployeesRouteImport } from './../../../packages/app-control-centre/src/routes/employees'
+import { Route as ControlCentreHolidaysRouteImport } from './../../../packages/app-control-centre/src/routes/holidays'
+import { Route as ControlCentreNotificationsRouteImport } from './../../../packages/app-control-centre/src/routes/notifications'
+import { Route as ControlCentreRegionsRouteImport } from './../../../packages/app-control-centre/src/routes/regions'
+import { Route as ControlCentreSiteTypesRouteImport } from './../../../packages/app-control-centre/src/routes/site-types'
+import { Route as ControlCentreSitesRouteImport } from './../../../packages/app-control-centre/src/routes/sites'
+import { Route as ControlCentreUnitsRouteImport } from './../../../packages/app-control-centre/src/routes/units'
+import { Route as Notifications_DotpreferencesRouteImport } from './routes/_app/notifications_.preferences'
 
-const AppRoute = AppRouteImport.update({
+const appRoute = appRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoginRoute = LoginRouteImport.update({
+const loginRoute = loginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => appRoute,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/$app',
+  path: '/$app',
+  getParentRoute: () => appRoute,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => appRoute,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAppRoute = AppAppRouteImport.update({
-  id: '/$app',
-  path: '/$app',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppNotificationsRoute = AppNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAppIndexRoute = AppAppIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppAppRoute,
-} as any)
-const AppAppSectionRoute = AppAppSectionRouteImport.update({
+const AppSectionRoute = AppSectionRouteImport.update({
   id: '/$section',
   path: '/$section',
-  getParentRoute: () => AppAppRoute,
+  getParentRoute: () => AppRoute,
 } as any)
-const AppNotificationsPreferencesRoute =
-  AppNotificationsPreferencesRouteImport.update({
+const ControlCentreIndexRoute = ControlCentreIndexRouteImport.update({
+  id: '/control-centre/',
+  path: '/control-centre/',
+  getParentRoute: () => appRoute,
+} as any)
+const ControlCentreActivityRoute = ControlCentreActivityRouteImport.update({
+  id: '/control-centre/activity',
+  path: '/control-centre/activity',
+  getParentRoute: () => appRoute,
+} as any)
+const ControlCentreApprovalsRoute = ControlCentreApprovalsRouteImport.update({
+  id: '/control-centre/approvals',
+  path: '/control-centre/approvals',
+  getParentRoute: () => appRoute,
+} as any)
+const ControlCentreBillingRoute = ControlCentreBillingRouteImport.update({
+  id: '/control-centre/billing',
+  path: '/control-centre/billing',
+  getParentRoute: () => appRoute,
+} as any)
+const ControlCentreCodesRoute = ControlCentreCodesRouteImport.update({
+  id: '/control-centre/codes',
+  path: '/control-centre/codes',
+  getParentRoute: () => appRoute,
+} as any)
+const ControlCentreEmployeesRoute = ControlCentreEmployeesRouteImport.update({
+  id: '/control-centre/employees',
+  path: '/control-centre/employees',
+  getParentRoute: () => appRoute,
+} as any)
+const ControlCentreHolidaysRoute = ControlCentreHolidaysRouteImport.update({
+  id: '/control-centre/holidays',
+  path: '/control-centre/holidays',
+  getParentRoute: () => appRoute,
+} as any)
+const ControlCentreNotificationsRoute =
+  ControlCentreNotificationsRouteImport.update({
+    id: '/control-centre/notifications',
+    path: '/control-centre/notifications',
+    getParentRoute: () => appRoute,
+  } as any)
+const ControlCentreRegionsRoute = ControlCentreRegionsRouteImport.update({
+  id: '/control-centre/regions',
+  path: '/control-centre/regions',
+  getParentRoute: () => appRoute,
+} as any)
+const ControlCentreSiteTypesRoute = ControlCentreSiteTypesRouteImport.update({
+  id: '/control-centre/site-types',
+  path: '/control-centre/site-types',
+  getParentRoute: () => appRoute,
+} as any)
+const ControlCentreSitesRoute = ControlCentreSitesRouteImport.update({
+  id: '/control-centre/sites',
+  path: '/control-centre/sites',
+  getParentRoute: () => appRoute,
+} as any)
+const ControlCentreUnitsRoute = ControlCentreUnitsRouteImport.update({
+  id: '/control-centre/units',
+  path: '/control-centre/units',
+  getParentRoute: () => appRoute,
+} as any)
+const Notifications_DotpreferencesRoute =
+  Notifications_DotpreferencesRouteImport.update({
     id: '/notifications_/preferences',
     path: '/notifications/preferences',
-    getParentRoute: () => AppRoute,
+    getParentRoute: () => appRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AppIndexRoute
-  '/login': typeof LoginRoute
-  '/$app': typeof AppAppRouteWithChildren
-  '/notifications': typeof AppNotificationsRoute
-  '/$app/$section': typeof AppAppSectionRoute
-  '/notifications/preferences': typeof AppNotificationsPreferencesRoute
-  '/$app/': typeof AppAppIndexRoute
+  '/': typeof IndexRoute
+  '/login': typeof loginRoute
+  '/$app': typeof AppRouteWithChildren
+  '/notifications': typeof NotificationsRoute
+  '/$app/$section': typeof AppSectionRoute
+  '/control-centre/activity': typeof ControlCentreActivityRoute
+  '/control-centre/approvals': typeof ControlCentreApprovalsRoute
+  '/control-centre/billing': typeof ControlCentreBillingRoute
+  '/control-centre/codes': typeof ControlCentreCodesRoute
+  '/control-centre/employees': typeof ControlCentreEmployeesRoute
+  '/control-centre/holidays': typeof ControlCentreHolidaysRoute
+  '/control-centre/notifications': typeof ControlCentreNotificationsRoute
+  '/control-centre/regions': typeof ControlCentreRegionsRoute
+  '/control-centre/site-types': typeof ControlCentreSiteTypesRoute
+  '/control-centre/sites': typeof ControlCentreSitesRoute
+  '/control-centre/units': typeof ControlCentreUnitsRoute
+  '/notifications/preferences': typeof Notifications_DotpreferencesRoute
+  '/$app/': typeof AppIndexRoute
+  '/control-centre/': typeof ControlCentreIndexRoute
 }
 export interface FileRoutesByTo {
-  '/login': typeof LoginRoute
-  '/notifications': typeof AppNotificationsRoute
-  '/': typeof AppIndexRoute
-  '/$app/$section': typeof AppAppSectionRoute
-  '/notifications/preferences': typeof AppNotificationsPreferencesRoute
-  '/$app': typeof AppAppIndexRoute
+  '/login': typeof loginRoute
+  '/notifications': typeof NotificationsRoute
+  '/': typeof IndexRoute
+  '/$app/$section': typeof AppSectionRoute
+  '/control-centre/activity': typeof ControlCentreActivityRoute
+  '/control-centre/approvals': typeof ControlCentreApprovalsRoute
+  '/control-centre/billing': typeof ControlCentreBillingRoute
+  '/control-centre/codes': typeof ControlCentreCodesRoute
+  '/control-centre/employees': typeof ControlCentreEmployeesRoute
+  '/control-centre/holidays': typeof ControlCentreHolidaysRoute
+  '/control-centre/notifications': typeof ControlCentreNotificationsRoute
+  '/control-centre/regions': typeof ControlCentreRegionsRoute
+  '/control-centre/site-types': typeof ControlCentreSiteTypesRoute
+  '/control-centre/sites': typeof ControlCentreSitesRoute
+  '/control-centre/units': typeof ControlCentreUnitsRoute
+  '/notifications/preferences': typeof Notifications_DotpreferencesRoute
+  '/$app': typeof AppIndexRoute
+  '/control-centre': typeof ControlCentreIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_app': typeof AppRouteWithChildren
-  '/login': typeof LoginRoute
-  '/_app/$app': typeof AppAppRouteWithChildren
-  '/_app/notifications': typeof AppNotificationsRoute
-  '/_app/': typeof AppIndexRoute
-  '/_app/$app/$section': typeof AppAppSectionRoute
-  '/_app/notifications_/preferences': typeof AppNotificationsPreferencesRoute
-  '/_app/$app/': typeof AppAppIndexRoute
+  '/_app': typeof appRouteWithChildren
+  '/login': typeof loginRoute
+  '/_app/$app': typeof AppRouteWithChildren
+  '/_app/notifications': typeof NotificationsRoute
+  '/_app/': typeof IndexRoute
+  '/_app/$app/$section': typeof AppSectionRoute
+  '/_app/control-centre/activity': typeof ControlCentreActivityRoute
+  '/_app/control-centre/approvals': typeof ControlCentreApprovalsRoute
+  '/_app/control-centre/billing': typeof ControlCentreBillingRoute
+  '/_app/control-centre/codes': typeof ControlCentreCodesRoute
+  '/_app/control-centre/employees': typeof ControlCentreEmployeesRoute
+  '/_app/control-centre/holidays': typeof ControlCentreHolidaysRoute
+  '/_app/control-centre/notifications': typeof ControlCentreNotificationsRoute
+  '/_app/control-centre/regions': typeof ControlCentreRegionsRoute
+  '/_app/control-centre/site-types': typeof ControlCentreSiteTypesRoute
+  '/_app/control-centre/sites': typeof ControlCentreSitesRoute
+  '/_app/control-centre/units': typeof ControlCentreUnitsRoute
+  '/_app/notifications_/preferences': typeof Notifications_DotpreferencesRoute
+  '/_app/$app/': typeof AppIndexRoute
+  '/_app/control-centre/': typeof ControlCentreIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -95,16 +204,40 @@ export interface FileRouteTypes {
     | '/$app'
     | '/notifications'
     | '/$app/$section'
+    | '/control-centre/activity'
+    | '/control-centre/approvals'
+    | '/control-centre/billing'
+    | '/control-centre/codes'
+    | '/control-centre/employees'
+    | '/control-centre/holidays'
+    | '/control-centre/notifications'
+    | '/control-centre/regions'
+    | '/control-centre/site-types'
+    | '/control-centre/sites'
+    | '/control-centre/units'
     | '/notifications/preferences'
     | '/$app/'
+    | '/control-centre/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/notifications'
     | '/'
     | '/$app/$section'
+    | '/control-centre/activity'
+    | '/control-centre/approvals'
+    | '/control-centre/billing'
+    | '/control-centre/codes'
+    | '/control-centre/employees'
+    | '/control-centre/holidays'
+    | '/control-centre/notifications'
+    | '/control-centre/regions'
+    | '/control-centre/site-types'
+    | '/control-centre/sites'
+    | '/control-centre/units'
     | '/notifications/preferences'
     | '/$app'
+    | '/control-centre'
   id:
     | '__root__'
     | '/_app'
@@ -113,13 +246,25 @@ export interface FileRouteTypes {
     | '/_app/notifications'
     | '/_app/'
     | '/_app/$app/$section'
+    | '/_app/control-centre/activity'
+    | '/_app/control-centre/approvals'
+    | '/_app/control-centre/billing'
+    | '/_app/control-centre/codes'
+    | '/_app/control-centre/employees'
+    | '/_app/control-centre/holidays'
+    | '/_app/control-centre/notifications'
+    | '/_app/control-centre/regions'
+    | '/_app/control-centre/site-types'
+    | '/_app/control-centre/sites'
+    | '/_app/control-centre/units'
     | '/_app/notifications_/preferences'
     | '/_app/$app/'
+    | '/_app/control-centre/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AppRoute: typeof AppRouteWithChildren
-  LoginRoute: typeof LoginRoute
+  appRoute: typeof appRouteWithChildren
+  loginRoute: typeof loginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -128,93 +273,200 @@ declare module '@tanstack/react-router' {
       id: '/_app'
       path: ''
       fullPath: '/'
-      preLoaderRoute: typeof AppRouteImport
+      preLoaderRoute: typeof appRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+      preLoaderRoute: typeof loginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/': {
       id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof AppRoute
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof appRoute
     }
     '/_app/$app': {
       id: '/_app/$app'
       path: '/$app'
       fullPath: '/$app'
-      preLoaderRoute: typeof AppAppRouteImport
-      parentRoute: typeof AppRoute
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof appRoute
     }
     '/_app/notifications': {
       id: '/_app/notifications'
       path: '/notifications'
       fullPath: '/notifications'
-      preLoaderRoute: typeof AppNotificationsRouteImport
-      parentRoute: typeof AppRoute
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof appRoute
     }
     '/_app/$app/': {
       id: '/_app/$app/'
       path: '/'
       fullPath: '/$app/'
-      preLoaderRoute: typeof AppAppIndexRouteImport
-      parentRoute: typeof AppAppRoute
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/$app/$section': {
       id: '/_app/$app/$section'
       path: '/$section'
       fullPath: '/$app/$section'
-      preLoaderRoute: typeof AppAppSectionRouteImport
-      parentRoute: typeof AppAppRoute
+      preLoaderRoute: typeof AppSectionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/control-centre/': {
+      id: '/_app/control-centre/'
+      path: '/control-centre'
+      fullPath: '/control-centre/'
+      preLoaderRoute: typeof ControlCentreIndexRouteImport
+      parentRoute: typeof appRoute
+    }
+    '/_app/control-centre/activity': {
+      id: '/_app/control-centre/activity'
+      path: '/control-centre/activity'
+      fullPath: '/control-centre/activity'
+      preLoaderRoute: typeof ControlCentreActivityRouteImport
+      parentRoute: typeof appRoute
+    }
+    '/_app/control-centre/approvals': {
+      id: '/_app/control-centre/approvals'
+      path: '/control-centre/approvals'
+      fullPath: '/control-centre/approvals'
+      preLoaderRoute: typeof ControlCentreApprovalsRouteImport
+      parentRoute: typeof appRoute
+    }
+    '/_app/control-centre/billing': {
+      id: '/_app/control-centre/billing'
+      path: '/control-centre/billing'
+      fullPath: '/control-centre/billing'
+      preLoaderRoute: typeof ControlCentreBillingRouteImport
+      parentRoute: typeof appRoute
+    }
+    '/_app/control-centre/codes': {
+      id: '/_app/control-centre/codes'
+      path: '/control-centre/codes'
+      fullPath: '/control-centre/codes'
+      preLoaderRoute: typeof ControlCentreCodesRouteImport
+      parentRoute: typeof appRoute
+    }
+    '/_app/control-centre/employees': {
+      id: '/_app/control-centre/employees'
+      path: '/control-centre/employees'
+      fullPath: '/control-centre/employees'
+      preLoaderRoute: typeof ControlCentreEmployeesRouteImport
+      parentRoute: typeof appRoute
+    }
+    '/_app/control-centre/holidays': {
+      id: '/_app/control-centre/holidays'
+      path: '/control-centre/holidays'
+      fullPath: '/control-centre/holidays'
+      preLoaderRoute: typeof ControlCentreHolidaysRouteImport
+      parentRoute: typeof appRoute
+    }
+    '/_app/control-centre/notifications': {
+      id: '/_app/control-centre/notifications'
+      path: '/control-centre/notifications'
+      fullPath: '/control-centre/notifications'
+      preLoaderRoute: typeof ControlCentreNotificationsRouteImport
+      parentRoute: typeof appRoute
+    }
+    '/_app/control-centre/regions': {
+      id: '/_app/control-centre/regions'
+      path: '/control-centre/regions'
+      fullPath: '/control-centre/regions'
+      preLoaderRoute: typeof ControlCentreRegionsRouteImport
+      parentRoute: typeof appRoute
+    }
+    '/_app/control-centre/site-types': {
+      id: '/_app/control-centre/site-types'
+      path: '/control-centre/site-types'
+      fullPath: '/control-centre/site-types'
+      preLoaderRoute: typeof ControlCentreSiteTypesRouteImport
+      parentRoute: typeof appRoute
+    }
+    '/_app/control-centre/sites': {
+      id: '/_app/control-centre/sites'
+      path: '/control-centre/sites'
+      fullPath: '/control-centre/sites'
+      preLoaderRoute: typeof ControlCentreSitesRouteImport
+      parentRoute: typeof appRoute
+    }
+    '/_app/control-centre/units': {
+      id: '/_app/control-centre/units'
+      path: '/control-centre/units'
+      fullPath: '/control-centre/units'
+      preLoaderRoute: typeof ControlCentreUnitsRouteImport
+      parentRoute: typeof appRoute
     }
     '/_app/notifications_/preferences': {
       id: '/_app/notifications_/preferences'
       path: '/notifications/preferences'
       fullPath: '/notifications/preferences'
-      preLoaderRoute: typeof AppNotificationsPreferencesRouteImport
-      parentRoute: typeof AppRoute
+      preLoaderRoute: typeof Notifications_DotpreferencesRouteImport
+      parentRoute: typeof appRoute
     }
   }
 }
 
-interface AppAppRouteChildren {
-  AppAppSectionRoute: typeof AppAppSectionRoute
-  AppAppIndexRoute: typeof AppAppIndexRoute
-}
-
-const AppAppRouteChildren: AppAppRouteChildren = {
-  AppAppSectionRoute: AppAppSectionRoute,
-  AppAppIndexRoute: AppAppIndexRoute,
-}
-
-const AppAppRouteWithChildren =
-  AppAppRoute._addFileChildren(AppAppRouteChildren)
-
 interface AppRouteChildren {
-  AppAppRoute: typeof AppAppRouteWithChildren
-  AppNotificationsRoute: typeof AppNotificationsRoute
+  AppSectionRoute: typeof AppSectionRoute
   AppIndexRoute: typeof AppIndexRoute
-  AppNotificationsPreferencesRoute: typeof AppNotificationsPreferencesRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAppRoute: AppAppRouteWithChildren,
-  AppNotificationsRoute: AppNotificationsRoute,
+  AppSectionRoute: AppSectionRoute,
   AppIndexRoute: AppIndexRoute,
-  AppNotificationsPreferencesRoute: AppNotificationsPreferencesRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
-const rootRouteChildren: RootRouteChildren = {
+interface appRouteChildren {
+  AppRoute: typeof AppRouteWithChildren
+  NotificationsRoute: typeof NotificationsRoute
+  IndexRoute: typeof IndexRoute
+  ControlCentreActivityRoute: typeof ControlCentreActivityRoute
+  ControlCentreApprovalsRoute: typeof ControlCentreApprovalsRoute
+  ControlCentreBillingRoute: typeof ControlCentreBillingRoute
+  ControlCentreCodesRoute: typeof ControlCentreCodesRoute
+  ControlCentreEmployeesRoute: typeof ControlCentreEmployeesRoute
+  ControlCentreHolidaysRoute: typeof ControlCentreHolidaysRoute
+  ControlCentreNotificationsRoute: typeof ControlCentreNotificationsRoute
+  ControlCentreRegionsRoute: typeof ControlCentreRegionsRoute
+  ControlCentreSiteTypesRoute: typeof ControlCentreSiteTypesRoute
+  ControlCentreSitesRoute: typeof ControlCentreSitesRoute
+  ControlCentreUnitsRoute: typeof ControlCentreUnitsRoute
+  Notifications_DotpreferencesRoute: typeof Notifications_DotpreferencesRoute
+  ControlCentreIndexRoute: typeof ControlCentreIndexRoute
+}
+
+const appRouteChildren: appRouteChildren = {
   AppRoute: AppRouteWithChildren,
-  LoginRoute: LoginRoute,
+  NotificationsRoute: NotificationsRoute,
+  IndexRoute: IndexRoute,
+  ControlCentreActivityRoute: ControlCentreActivityRoute,
+  ControlCentreApprovalsRoute: ControlCentreApprovalsRoute,
+  ControlCentreBillingRoute: ControlCentreBillingRoute,
+  ControlCentreCodesRoute: ControlCentreCodesRoute,
+  ControlCentreEmployeesRoute: ControlCentreEmployeesRoute,
+  ControlCentreHolidaysRoute: ControlCentreHolidaysRoute,
+  ControlCentreNotificationsRoute: ControlCentreNotificationsRoute,
+  ControlCentreRegionsRoute: ControlCentreRegionsRoute,
+  ControlCentreSiteTypesRoute: ControlCentreSiteTypesRoute,
+  ControlCentreSitesRoute: ControlCentreSitesRoute,
+  ControlCentreUnitsRoute: ControlCentreUnitsRoute,
+  Notifications_DotpreferencesRoute: Notifications_DotpreferencesRoute,
+  ControlCentreIndexRoute: ControlCentreIndexRoute,
+}
+
+const appRouteWithChildren = appRoute._addFileChildren(appRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  appRoute: appRouteWithChildren,
+  loginRoute: loginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

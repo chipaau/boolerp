@@ -1,0 +1,13 @@
+{
+  "name": "@workspace/session",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sign-in, the signed-in user, and sign-out through the app's backend-for-frontend (docs/platform/bff-frontend.md).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

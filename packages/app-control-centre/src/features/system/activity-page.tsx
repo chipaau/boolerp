@@ -1,0 +1,169 @@
+import { useState } from 'react'
+import { Download } from 'lucide-react'
+import { Avatar, AvatarFallback } from '@workspace/ui/components/avatar'
+import { Badge } from '@workspace/ui/components/badge'
+import { Button } from '@workspace/ui/components/button'
+import { Card } from '@workspace/ui/components/card'
+import { SelectField } from '@workspace/ui/components/select'
+import { SearchField } from '@workspace/ui/components/search-field'
+import { useToast } from '@workspace/ui/components/toast'
+import { downloadCsv } from '@workspace/ui/lib/csv'
+import { PersonAvatar } from '@workspace/org/people-bits'
+import { useAudit, useAuditLog, usePeople, useUnits } from '@workspace/org/queries'
+import type { AuditEntry } from '@workspace/org/types'
+import { ControlTitle } from '../shared'
+
+const APPS = ['Control Centre', 'Inventory', 'Calendar', 'Scan']
+const DAYS = [
+  { id: 'all', label: 'All time' },
+  { id: '7', label: 'Last 7 days' },
+  { id: '30', label: 'Last 30 days' },
+  { id: '90', label: 'Last 90 days' },
+]
+const unique = (list: string[]) => list.filter((v, i, all) => all.indexOf(v) === i)
+const selectClass = 'w-auto'
+
+/**
+ * Everything that happened across the suite, newest first, grouped by day. Read-only; the export
+ * downloads the whole log as CSV and records that it did.
+ */
+export function ActivityPage() {
+  const audit = useAudit(), people = usePeople(), units = useUnits()
+  const log = useAuditLog()
+  const toast = useToast()
+  const [scope, setScope] = useState('all')
+  const [q, setQ] = useState('')
+  const [who, setWho] = useState('all')
+  const [days, setDays] = useState('all')
+  const [app, setApp] = useState('all')
+  const [significant, setSignificant] = useState(false)
+
+  const aq = q.trim().toLowerCase()
+  const shown = audit.filter(
+    (a) =>
+      (!aq || `${a.text} ${a.who} ${a.scope} ${a.app}`.toLowerCase().includes(aq)) &&
+      (scope === 'all' || a.scope === scope) &&
+      (app === 'all' || a.app === app) &&
+      (who === 'all' || a.who === who) &&
+      (days === 'all' || a.days <= Number(days)) &&
+      (!significant || a.sev === 'high')
+  )
+  const filtered = scope !== 'all' || app !== 'all' || who !== 'all' || days !== 'all' || significant || !!aq
+  // the log reads as a diary, so entries sit under the day they happened
+  const groups = shown.reduce<{ date: string; rows: AuditEntry[] }[]>((acc, a) => {
+    const date = a.days === 0 ? 'Today' : a.when.split(',')[0].trim()
+    let g = acc.find((x) => x.date === date)
+    if (!g) acc.push((g = { date, rows: [] }))
+    g.rows.push(a)
+    return acc
+  }, [])
+
+  function clear() {
+    setScope('all'); setApp('all'); setWho('all'); setDays('all'); setSignificant(false); setQ('')
+  }
+  function exportLog() {
+    const name = 'bool-activity-log.csv'
+    const rows = [['When', 'Area', 'Change', 'By'], ...audit.map((a) => [a.when, a.scope, a.text, a.who])]
+    downloadCsv(name, rows)
+    log('Export', `${name} downloaded`)
+    toast(`${name} downloaded`)
+  }
+
+  return (
+    <div className="min-h-0 w-full overflow-y-auto">
+      <div className="px-8 pt-7 pb-24">
+        <ControlTitle
+          overline="System"
+          title="Activity log"
+          description="Everything that happened across the suite, newest first — who did it and what changed. Nothing here can be edited."
+          actions={
+            <Button variant="outline" onClick={exportLog}>
+              <Download strokeWidth={1.8} />
+              Export CSV
+            </Button>
+          }
+        />
+
+        <div className="mt-[18px] mb-3 flex flex-wrap gap-[7px]">
+          {['all', ...unique(audit.map((a) => a.scope))].map((s) => (
+            <Badge key={s} variant={scope === s ? 'filter-active' : 'filter'} render={<button type="button" aria-pressed={scope === s} onClick={() => setScope(s)} />}>
+              {s === 'all' ? 'Everything' : s}
+            </Badge>
+          ))}
+        </div>
+
+        <Card className="gap-0 overflow-clip py-0">
+          <div className="flex flex-wrap items-center gap-2.5 border-b border-divider px-5 py-[13px]">
+            <SearchField size="sm" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search what changed, or who changed it" className="min-w-[160px] flex-[2_1_220px]" />
+            <SelectField
+              aria-label="Who"
+              value={who}
+              onValueChange={setWho}
+              className={selectClass}
+              options={[{ value: 'all', label: 'Anyone' }, ...unique(audit.map((a) => a.who)).map((w) => ({ value: w, label: w }))]}
+            />
+            <SelectField aria-label="When" value={days} onValueChange={setDays} className={selectClass} options={DAYS.map((d) => ({ value: d.id, label: d.label }))} />
+            <SelectField
+              aria-label="App"
+              value={app}
+              onValueChange={setApp}
+              className={selectClass}
+              options={[{ value: 'all', label: 'All apps' }, ...unique([...APPS, ...audit.map((a) => a.app)]).map((a) => ({ value: a, label: a }))]}
+            />
+            <Badge variant={significant ? 'warning' : 'outline'} render={<button type="button" aria-pressed={significant} onClick={() => setSignificant((v) => !v)} />}>
+              {significant ? 'Significant only' : 'All severities'}
+            </Badge>
+            {filtered && (
+              <Button variant="link" size="xs" onClick={clear}>
+                Clear
+              </Button>
+            )}
+            <span className="min-w-2 flex-1" />
+            <span className="text-compact text-faint">
+              {shown.length} of {audit.length} entries
+            </span>
+          </div>
+
+          {groups.map((g) => (
+            <div key={g.date}>
+              <div className="flex items-center justify-between gap-3 border-b border-divider bg-surface-band px-5 py-[9px]">
+                <span className="text-meta font-extrabold tracking-[0.06em] text-foreground uppercase">{g.date}</span>
+                <span className="text-caption text-faint">{g.rows.length === 1 ? '1 entry' : `${g.rows.length} entries`}</span>
+              </div>
+              {g.rows.map((a) => {
+                const person = people.find((p) => p.name === a.who)
+                return (
+                  <div key={a.id} className="flex flex-wrap items-center gap-[13px] border-b border-divider px-5 py-[13px] last:border-b-0">
+                    {person ? (
+                      <PersonAvatar person={person} units={units} className="size-[30px]" />
+                    ) : (
+                      <Avatar name={a.who || '?'} className="size-[30px]">
+                        <AvatarFallback className="text-micro" />
+                      </Avatar>
+                    )}
+                    <span className="min-w-0 flex-[1_1_240px]">
+                      <span className="block text-ui leading-[1.45] font-bold text-pretty text-foreground">{a.text}</span>
+                      <span className="mt-1 block text-caption text-faint">
+                        {a.who} · {a.app}
+                      </span>
+                    </span>
+                    <Badge variant="secondary" size="sm">
+                      {a.scope}
+                    </Badge>
+                    {a.sev === 'high' && (
+                      <Badge variant="warning" size="sm">
+                        Significant
+                      </Badge>
+                    )}
+                    <span className="shrink-0 text-meta text-faint tabular-nums">{a.when.split(',').slice(1).join(',').trim() || a.when}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+          {shown.length === 0 && <div className="px-5 py-6 text-ui-sm text-body">{aq ? `Nothing in the log matches “${q.trim()}”.` : 'Nothing has happened in that area yet.'}</div>}
+        </Card>
+      </div>
+    </div>
+  )
+}

@@ -3,15 +3,15 @@
 // rules, preferences and "me" arrive. Preferences are personal, so changes are not audited.
 import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
-import { notificationRulesQuery, orgMeQuery } from '@/features/org/queries'
+import { notificationRulesQuery, orgMeQuery } from '@workspace/org/queries'
 import { useNotifications } from '@/features/shell/queries'
 import type { NotificationCategory } from '@/features/shell/types'
 import { deliveredInApp } from './logic'
 import * as mock from './mock'
 import type { NotificationChannel, NotificationPreference } from './types'
 
-export { useNotify } from './notify'
-export type { NotifyPayload } from './notify'
+export { useNotify } from '@workspace/org/notify'
+export type { NotifyPayload } from '@workspace/org/notify'
 
 export const notificationPreferencesQuery = () =>
   queryOptions({ queryKey: ['notifications', 'preferences'] as const, queryFn: async (): Promise<NotificationPreference[]> => mock.NOTIFICATION_PREFERENCES })

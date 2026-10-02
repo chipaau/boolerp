@@ -15,6 +15,11 @@ and [development](../../docs/development.md).
 - `apps/app` and `apps/admin` sign in only through their BFF, following
   [app integration](../../docs/platform/bff-frontend.md): no Kratos or Hydra calls and no
   tokens in the browser. `packages/auth` (the previous design) was removed (C100).
+- Read [frontend structure](../../docs/architecture/frontend.md). Workspace apps (Control
+  Centre, HRMS, Tasks, Inventory, …) are packages `packages/app-<slug>` with a `defineApp`
+  manifest (a permission per page) and file routes mounted by the shell's edition (C102);
+  apps never import each other or the shell; shared data is a platform package such as
+  `@workspace/org` (C106). Inside an app: `features/<feature>/` and thin routes.
 - Internal applications (`apps/app`, `apps/admin`) use React with Vite and TanStack
   Router; each is embedded in and served by its backend-for-frontend service
   (`bff-app`, `bff-admin`, C90, ADR 0003). Public-facing applications,

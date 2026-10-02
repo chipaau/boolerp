@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@works
 import { cn } from '@workspace/ui/lib/utils'
 import { DAY_END, DAY_START, HOUR_PX, addDays, dayOfMonth, fmtTime, fromMinutes, isWeekend, meetingsOn, packLanes, snap15, toMinutes, weekdayShort } from './logic'
 import { MeetingHoverCard, TONE, useCalendarMap } from './meeting-bits'
-import { holidayForEveryone } from '@/features/org/logic'
+import { holidayForEveryone } from '@workspace/org/logic'
 import { useHolidayMap, useMe } from './queries'
 import type { Meeting } from './types'
 

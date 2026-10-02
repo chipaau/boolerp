@@ -1,71 +1,19 @@
-import type { LucideIcon } from 'lucide-react'
-import { Activity, BadgeCheck, Bell, Boxes, Briefcase, Building2, CalendarDays, ChartColumn, ClipboardCheck, ClipboardList, FileBarChart, FileSignature, FolderOpen, GitBranch, Layers, LayoutDashboard, ListTodo, MapPin, NotebookPen, Package, PackageMinus, Receipt, ScanBarcode, ScrollText, Settings, Shield, ShoppingCart, SlidersHorizontal, Target, Truck, UserCog, Users, Wrench } from 'lucide-react'
+import { Activity, BadgeCheck, Boxes, Briefcase, Building2, CalendarDays, ChartColumn, ClipboardCheck, ClipboardList, FileBarChart, FileSignature, FolderOpen, Layers, LayoutDashboard, ListTodo, NotebookPen, Package, PackageMinus, Receipt, ScanBarcode, ScrollText, Settings, ShoppingCart, Target, Truck, UserCog, Users, Wrench } from 'lucide-react'
 
-export type AppMenuItem = {
-  title: string
-  slug: string // empty string = the app home
-  icon?: LucideIcon
-  /**
-   * Shows a live count at the right edge, read from the shell's nav counts under `key`
-   * (see features/shell); `tone` colours it (plain by default). The registry never holds numbers.
-   */
-  badge?: { key: string; tone?: 'risk' | 'warning' }
-  /** Search params the link carries (saved views preset a filter / query). */
-  search?: Record<string, string>
-}
-export type AppMenuSection = { title?: string; items: AppMenuItem[] }
-
-export type AppDef = {
-  slug: string
-  name: string
-  description: string
-  icon: LucideIcon
-  menu: AppMenuSection[]
-}
+export type { AppDef, AppMenuItem, AppMenuSection } from '@workspace/app-kit'
+import type { AppDef } from '@workspace/app-kit'
+import { useLocation } from '@tanstack/react-router'
+import { apps as editionApps } from 'virtual:edition'
 
 // The apps hosted by the workspace shell, in the order they appear on the Home honeycomb (the
-// first eight get a tile; the rest are reachable from the switcher). Sections without a real
-// screen in features/screens.ts render the prototype page (src/proto) until one exists.
+// first eight get a tile; the rest are reachable from the switcher): first the edition's app
+// packages (editions/<name>.ts, C107), each with its own manifest and routes (C102), then the
+// apps that are still prototypes here: sections without a real screen in features/screens.ts
+// render the prototype page (src/proto) until one exists.
 // Archived apps (Staff Hub, Finance) live in src/_archive.
 export const APPS: AppDef[] = [
-  {
-    slug: 'control-centre',
-    name: 'Control Centre',
-    description: 'The record every app reads',
-    icon: SlidersHorizontal,
-    menu: [
-      { items: [{ title: 'Overview', slug: '', icon: LayoutDashboard }] },
-      {
-        title: 'Organisation',
-        items: [
-          { title: 'Admin units', slug: 'units', icon: Building2 },
-          { title: 'Employees', slug: 'employees', icon: Users },
-        ],
-      },
-      {
-        title: 'Inventory',
-        items: [
-          { title: 'Site types', slug: 'site-types', icon: Shield },
-          { title: 'Sites', slug: 'sites', icon: MapPin },
-        ],
-      },
-      {
-        title: 'System',
-        items: [
-          { title: 'Approval chains', slug: 'approvals', icon: GitBranch },
-          { title: 'Codes & numbering', slug: 'codes', icon: Settings },
-          { title: 'Regions', slug: 'regions', icon: MapPin },
-          { title: 'Public holidays', slug: 'holidays', icon: CalendarDays },
-          { title: 'Notifications', slug: 'notifications', icon: Bell },
-          { title: 'Activity log', slug: 'activity', icon: Activity },
-        ],
-      },
-      {
-        title: 'Account',
-        items: [{ title: 'Billing & plan', slug: 'billing', icon: Receipt }],
-      },
-    ],
-  },
+  ...editionApps,
+
   {
     slug: 'tasks',
     name: 'Task',
@@ -229,6 +177,14 @@ export function getApp(slug: string): AppDef | undefined {
   return APPS.find((a) => a.slug === slug)
 }
 
-export function findMenuItem(app: AppDef, section: string): AppMenuItem | undefined {
-  return app.menu.flatMap((s) => s.items).find((i) => i.slug === section)
+export { findMenuItem } from '@workspace/app-kit'
+
+/**
+ * The app the browser is in, from the URL's first segment (/<slug>/…), or undefined outside
+ * apps (home, notifications). Works for app packages and prototypes alike; the top bar's switcher
+ * and the app frame both read it, so the workspace chrome never depends on an app's routes.
+ */
+export function useCurrentApp(): AppDef | undefined {
+  const slug = useLocation({ select: (l) => l.pathname.split('/')[1] ?? '' })
+  return getApp(slug)
 }

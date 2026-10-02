@@ -6,6 +6,6 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
-    coverage: { provider: 'v8', include: ['src/lib/dates.ts', 'src/lib/csv.ts', 'src/features/org/logic.ts'] },
+    coverage: { provider: 'v8' },
   },
 })
