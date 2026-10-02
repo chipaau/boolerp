@@ -112,13 +112,39 @@ count as successful.
 | API lint | `golangci-lint fmt --diff` (formatting) and `golangci-lint run` (C75) | nothing |
 | API unit tests | `go test -race ./...` | nothing |
 | API feature tests | `run-feature-tests.sh`: `cmd/migrate` once, then `go test -race -tags feature -run '^TestFeature' ./...` (C77, C79) | PostgreSQL (roles script) and Redis |
-| API image | builds the production image and runs its `migrate` | PostgreSQL |
+| API vulnerabilities | `govulncheck` (C113): known vulnerabilities in Go code the API calls | nothing |
+| API image | builds the production image, runs its `migrate`, and scans it with Grype (C113) | PostgreSQL |
 | workspace / admin / identity | frontend typecheck and build | nothing |
-| BFF images | builds the workspace and admin release images | nothing |
+| Frontend dependency audit | `pnpm audit --prod --audit-level high` (C113) | nothing |
+| BFF images | builds the workspace and admin release images and scans them with Grype (C113) | nothing |
+| Secret scan | Gitleaks over the whole history, every pull request (C113) | nothing |
+| End-to-end tests | the Compose stack behind a throwaway Traefik, then `e2e/run.sh` (C109) | the stack |
 
 Merging a failing pull request is not blocked: required status checks need a paid GitHub
 plan for private repositories. Check that CI passed before merging. Dependabot (C76)
 update pull requests go through the same jobs.
+
+### Supply chain (C113)
+
+- **Scans:** a finding fails its job. Grype fails on high or critical vulnerabilities that
+  have a fix (`--fail-on high --only-fixed`); `pnpm audit` on high or critical ones in
+  production dependencies; `govulncheck` on any vulnerability the code calls (one only in
+  a required module, never called, is reported without failing). Gitleaks uses
+  `.gitleaks.toml`: its default rules, with `docker/secrets/dev/` allowed (public by
+  design, C80). To clear a finding, update the dependency; if no fix applies, record the
+  exception and its reason in the [security review](security/README.md) before ignoring it
+  in the tool's own configuration.
+- **Pinning:** Actions are pinned to commit SHAs (with the version in a comment) and images
+  to digests (`image:tag@sha256:…`), because a tag can be moved to other code. Dependabot
+  updates the Actions and the Dockerfiles' base images, digest included. Images named in
+  `ci.yml`'s `env`, `.github/scripts/start-postgres.sh`, and `e2e/run.sh` are updated by
+  hand: replace the tag and digest together (`docker buildx imagetools inspect <image:tag>`
+  prints the digest). The Dockerfiles install a pinned `corepack`.
+- **Workflow token:** every checkout sets `persist-credentials: false`, so the token is not
+  left in the repository's Git configuration for later steps.
+- **Frontend versions:** dependencies use version ranges (`^`), never `latest`; installs
+  use the lockfile (`--frozen-lockfile`). The e2e harness installs `@playwright/test` with
+  npm and no lockfile, which is still exact: it and its two dependencies pin exact versions.
 
 ### Unit and feature tests (C77)
 

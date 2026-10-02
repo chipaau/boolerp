@@ -1,0 +1,8 @@
+# Gitleaks configuration for CI's secret scan (C113): the default rules, plus the paths that
+# hold secrets public by design.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Development secrets, committed on purpose and never used outside development (C80)"
+paths = ['''^docker/secrets/dev/''']

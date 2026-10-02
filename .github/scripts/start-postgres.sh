@@ -20,7 +20,7 @@ docker run -d --name postgres --network ci \
   -e POSTGRES_MIGRATE_PASSWORD_FILE=/run/secrets/db_migrate_password \
   -v "$PWD/docker/secrets/dev:/run/secrets:ro" \
   -v "$PWD/docker/postgres/init:/docker-entrypoint-initdb.d:ro" \
-  postgres:18 >/dev/null
+  postgres:18@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722 >/dev/null
 
 for _ in $(seq 1 60); do
   if docker logs postgres 2>&1 | grep -q "PostgreSQL init process complete" &&

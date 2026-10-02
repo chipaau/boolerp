@@ -33,9 +33,9 @@ check is in the change that fixed it.
 | 17 | No request deadline below the write timeout | API | V15 | Low | Open |
 | 18 | National ID number stored in `localStorage` | Admin notifications | V14 | Low | Open |
 | 19 | Anonymous `/auth/login` creates a Redis entry in a no-eviction store | BFF login | V7 | Low | Open |
-| 20 | CI runs no vulnerability, image, or secret scanning | CI | SSDF | Medium | Open |
-| 21 | Actions and base images pinned by tag, not SHA or digest; `corepack@latest`; `latest` versions for TanStack | CI, Dockerfiles, `package.json` | SSDF | Medium | Open |
-| 22 | `checkout` keeps credentials; `.gitignore` misses `.env.*`; e2e installs without the lockfile | CI, repository | SSDF | Low | Open |
+| 20 | CI runs no vulnerability, image, or secret scanning | CI | SSDF | Medium | Fixed (C113) |
+| 21 | Actions and base images pinned by tag, not SHA or digest; `corepack@latest`; `latest` versions for TanStack | CI, Dockerfiles, `package.json` | SSDF | Medium | Fixed (C113) |
+| 22 | `checkout` keeps credentials; `.gitignore` misses `.env.*`; e2e installs without the lockfile | CI, repository | SSDF | Low | Fixed (C113) |
 | 23 | Mock data pairs real Maldivian organisations with personal-looking data | Admin mocks | V14 | Low | Open |
 
 ## Before any real deployment
@@ -60,6 +60,9 @@ private network; two-factor login for admin users.
   admin APIs on a private network ([deployment](../platform/deployment.md)).
 - 10: enforcing PKCE stops `hydra perform authorization-code`, which sends none, from
   signing in with `dev-test-client`.
+- 20–22: scanners, pinning, and their upkeep are described in
+  [testing](../testing.md#supply-chain-c113). The e2e install keeps no lockfile; Playwright's
+  dependencies are exact versions.
 
 ## Checked and not an issue
 

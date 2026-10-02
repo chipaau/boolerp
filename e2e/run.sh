@@ -26,7 +26,7 @@ cid=$(docker create \
   -e EDITION="${EDITION:-full}" -e KRATOS_ADMIN_URL=http://kratos:4434 \
   -v "$(pwd)/..:/repo" -w /repo/e2e \
   -v erp-e2e-node-modules:/repo/e2e/node_modules \
-  mcr.microsoft.com/playwright:v1.63.0-noble \
+  mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27 \
   sh -c 'test -x node_modules/.bin/playwright || npm install --no-save --no-package-lock --no-audit --no-fund >/dev/null
 exec ./node_modules/.bin/playwright test "$@"' playwright "$@")
 docker network connect erp_internal "$cid"
