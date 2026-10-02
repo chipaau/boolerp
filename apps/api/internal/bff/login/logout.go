@@ -11,7 +11,7 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	ory "github.com/ory/client-go"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 )
 
 // backchannelLogoutEvent is the event a back-channel logout token carries

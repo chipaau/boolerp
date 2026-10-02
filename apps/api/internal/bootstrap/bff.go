@@ -17,9 +17,9 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/bff/proxy"
 	"github.com/boolmv/erp/apps/api/internal/bff/session"
 	"github.com/boolmv/erp/apps/api/internal/bff/web"
-	"github.com/boolmv/erp/apps/api/internal/platform/config"
-	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
-	"github.com/boolmv/erp/apps/api/internal/platform/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpserver"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 )
 
 // RunBFF builds one backend-for-frontend instance (C90, C96, C98, C99) from cfg and serves

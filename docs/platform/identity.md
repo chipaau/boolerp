@@ -156,7 +156,7 @@ key client (`auth.KeyClient`) allows one download every 10 seconds, so forged to
 cannot make it fetch from Hydra on every request (C112; the BFF's verifiers use it
 too). A client must be allowed the `erp-api` audience
 and request it (`audience=erp-api`). Health checks are public; `GET /api/auth/me` (the
-`auth` module, C92) returns the caller's user (7d) and client. Every authenticated
+`identity/auth`, C92, C125) returns the caller's user (7d) and client. Every authenticated
 answer carries `Cache-Control: no-store` (chi's `middleware.NoCache`, C112). To try it,
 get a token with an OAuth2 client that sends PKCE (above) and call
 `curl -H "Authorization: Bearer <token>" http://api.bool.test/api/auth/me` (app domains' `/api` goes through their BFF, C98).
@@ -174,8 +174,8 @@ A deleted or disabled Kratos account gets no row: the request gets 401 (`invalid
 C114). A token whose `sub` is its own `client_id` (Hydra's `client_credentials`) is a
 client acting for itself, with no user.
 
-The `auth` module's `Authenticate` middleware resolves the token's subject to the user
-through a `ResolveUser` function the edition supplies, and keeps the caller (token and
+The `Authenticate` middleware (`internal/platform/identity/auth`, C125) resolves the
+token's subject to the user through the identity module, and keeps the caller (token and
 user) in the request context (`auth.FromContext`). If the user cannot be loaded (Kratos
 or the database unavailable), the request gets 503 without the cause. The copy is not refreshed after creation yet:
 self-service settings cannot change account fields (C85), so traits change only through

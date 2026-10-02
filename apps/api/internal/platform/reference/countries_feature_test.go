@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
-	"github.com/boolmv/erp/apps/api/internal/testdb"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/postgres"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
 
 func TestFeatureTheMaldivesIsOffered(t *testing.T) {

@@ -17,11 +17,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/auth"
-	"github.com/boolmv/erp/apps/api/internal/platform/httpinput"
-	"github.com/boolmv/erp/apps/api/internal/platform/observability"
-	"github.com/boolmv/erp/apps/api/internal/platform/problem"
-	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/observability"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/requestid"
 )
 
 var discard = slog.New(slog.DiscardHandler)
@@ -390,6 +391,11 @@ func TestRequestInputThroughTheRouter(t *testing.T) {
 	assert.Equal(t, problem.ContentType, tooLarge.Header().Get("Content-Type"))
 }
 
+// noUsers is a Users for requests that never get as far as resolving a user.
+type noUsers struct{}
+
+func (noUsers) Resolve(context.Context, string) (identity.User, error) { return identity.User{}, nil }
+
 func TestModulesInheritDefaultsAndApplyTheirOwnAuth(t *testing.T) {
 	// No issuer is reachable: a request without a token is refused before any
 	// key is needed, and health checks never ask for one.
@@ -397,7 +403,7 @@ func TestModulesInheritDefaultsAndApplyTheirOwnAuth(t *testing.T) {
 	// Mounted as main mounts it.
 	router.Route("/api/auth", auth.New(t.Context(),
 		auth.Settings{Issuer: "http://127.0.0.1:1/", Audience: "erp-api"}, &http.Client{Timeout: time.Second},
-		func(context.Context, string) (auth.User, error) { return auth.User{}, nil }, slog.New(slog.DiscardHandler)).Routes)
+		noUsers{}, slog.New(slog.DiscardHandler)).Routes)
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/auth/me", nil))

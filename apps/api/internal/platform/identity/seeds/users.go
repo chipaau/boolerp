@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
-	"github.com/boolmv/erp/apps/api/internal/platform/seed"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 )
 
 // Accounts creates accounts and their users (the identity module).

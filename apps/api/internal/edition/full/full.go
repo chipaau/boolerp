@@ -6,7 +6,6 @@ package full
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 
@@ -14,12 +13,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
-	"github.com/boolmv/erp/apps/api/internal/platform/auth"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
 	identityseeds "github.com/boolmv/erp/apps/api/internal/platform/identity/seeds"
-	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/postgres"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 	"github.com/boolmv/erp/apps/api/internal/platform/reference"
-	"github.com/boolmv/erp/apps/api/internal/platform/seed"
 )
 
 // Migrations are the edition's tables, in dependency order: a package's tables come
@@ -40,16 +39,9 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
 		HydraAdminURL:  cfg.Identity.HydraAdminURL,
 	}, d.HTTPClient, d.Logger)
 
-	// auth turns a token's subject into the user through identity.
-	resolve := func(ctx context.Context, subject string) (auth.User, error) {
-		u, err := users.Resolve(ctx, subject)
-		if errors.Is(err, identity.ErrNoAccount) {
-			return auth.User{}, auth.ErrUnknownUser
-		}
-		return auth.User{ID: u.ID, Email: u.Email, Phone: u.Phone, DisplayName: u.DisplayName}, err
-	}
+	// Authentication resolves a token's subject to its user through identity.
 	authModule := auth.New(ctx, auth.Settings{Issuer: cfg.Auth.Issuer, Audience: cfg.Auth.Audience},
-		d.HTTPClient, resolve, d.Logger)
+		d.HTTPClient, users, d.Logger)
 
 	r.Route("/api/auth", authModule.Routes)
 }

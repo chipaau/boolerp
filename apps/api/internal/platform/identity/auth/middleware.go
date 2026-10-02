@@ -8,7 +8,9 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 )
 
 // Authenticate lets a request through only with a valid access token, and puts
@@ -35,8 +37,8 @@ func (m *Module) Authenticate(next http.Handler) http.Handler {
 		}
 		caller := Caller{Token: token}
 		if token.Subject != "" {
-			user, err := m.resolve(r.Context(), token.Subject)
-			if errors.Is(err, ErrUnknownUser) {
+			user, err := m.users.Resolve(r.Context(), token.Subject)
+			if errors.Is(err, identity.ErrNoAccount) {
 				w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
 				problem.Error(w, r, http.StatusUnauthorized, "The account is not available.")
 				return

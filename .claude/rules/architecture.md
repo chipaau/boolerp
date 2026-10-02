@@ -6,10 +6,14 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
 - Keep domain and application logic independent of HTTP frameworks, database drivers,
   generated persistence models, cache clients, and external provider SDKs.
 - Put external implementations in adapters and dependency construction in bootstrap.
-- `internal/platform/` holds everything that is not a business app (C122): technical
-  infrastructure (config, postgres, redis, http) and the platform capabilities that own
-  tables (identity, reference, tenancy, authorization, audit). `internal/modules/` holds
-  business apps only (HRMS, inventory, …).
+- `internal/platform/` holds the platform capabilities, things with tables or policy
+  (identity with its `auth`, reference, later tenancy, authorization, audit), and
+  `internal/platform/kit/` the technical building blocks with no business meaning
+  (config, postgres, redis, http, problem, observability, requestid, seed, testdb)
+  (C122, C125). `internal/modules/` holds business apps only (HRMS, inventory, …).
+- A capability grows into one shape: a root package with `New`, `Routes`, and
+  `Migrations`, plus `domain/`, `application/`, `adapters/`, `migrations/`, and `seeds/`
+  as needed; sub-capabilities are subpackages (`identity/auth`).
 - A module owns its persistence writes. Do not reach into another module's SQL package.
 - A module keeps all of its code in its own folder and registers its routes relative to
   its prefix (`Routes(r chi.Router)`). Only the edition package

@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 )
 
 //go:embed all:app

@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
-	"github.com/boolmv/erp/apps/api/internal/platform/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
 )
 
 func TestMigrationsListEveryModuleWithItsTables(t *testing.T) {

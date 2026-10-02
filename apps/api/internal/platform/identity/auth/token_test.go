@@ -19,14 +19,23 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 )
 
+// usersFunc adapts a function to Users.
+type usersFunc func(ctx context.Context, subject string) (identity.User, error)
+
+func (f usersFunc) Resolve(ctx context.Context, subject string) (identity.User, error) {
+	return f(ctx, subject)
+}
+
 // knownUser resolves every subject to the same user.
-func knownUser(_ context.Context, subject string) (User, error) {
+func knownUser(_ context.Context, subject string) (identity.User, error) {
 	if subject != "account-1" {
-		return User{}, errors.New("unexpected subject " + subject)
+		return identity.User{}, errors.New("unexpected subject " + subject)
 	}
-	return User{ID: "user-1", Email: "a@b.test", Phone: "+9607770000", DisplayName: "Aisha"}, nil
+	return identity.User{ID: "user-1", Email: "a@b.test", Phone: "+9607770000", DisplayName: "Aisha"}, nil
 }
 
 // issuer publishes a signing key at /.well-known/jwks.json, as Hydra does.
@@ -91,7 +100,7 @@ func sign(t *testing.T, c claims) string {
 // a handler that echoes the verified token.
 func call(t *testing.T, iss *issuer, authorization string) *httptest.ResponseRecorder {
 	t.Helper()
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), knownUser, slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(knownUser), slog.New(slog.DiscardHandler))
 	handler := m.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		caller, ok := FromContext(r.Context())
 		require.True(t, ok)
@@ -160,7 +169,7 @@ func TestForgedTokensDoNotDownloadTheKeysEachTime(t *testing.T) {
 	iss := newIssuer(t)
 	forger, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), knownUser, slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(knownUser), slog.New(slog.DiscardHandler))
 	handler := m.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
 	send := func(token string) int {
 		req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
@@ -189,7 +198,7 @@ func TestRecentlyExpiredTokenIsWithinTheAllowance(t *testing.T) {
 
 func TestRoutesProtectMe(t *testing.T) {
 	iss := newIssuer(t)
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), knownUser, slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(knownUser), slog.New(slog.DiscardHandler))
 	r := chi.NewRouter()
 	r.Route("/api/auth", m.Routes) // as bootstrap mounts it
 
@@ -208,11 +217,11 @@ func TestRoutesProtectMe(t *testing.T) {
 func TestCallerIsTheResolvedUser(t *testing.T) {
 	iss := newIssuer(t)
 	var resolved []string
-	resolve := func(ctx context.Context, subject string) (User, error) {
+	resolve := func(ctx context.Context, subject string) (identity.User, error) {
 		resolved = append(resolved, subject)
 		return knownUser(ctx, subject)
 	}
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), resolve, slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(resolve), slog.New(slog.DiscardHandler))
 	var caller Caller
 	handler := m.Authenticate(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		caller, _ = FromContext(r.Context())
@@ -229,8 +238,10 @@ func TestCallerIsTheResolvedUser(t *testing.T) {
 
 func TestUnavailableUserIsA503WithoutTheCause(t *testing.T) {
 	iss := newIssuer(t)
-	failing := func(context.Context, string) (User, error) { return User{}, errors.New("s3cret-cause") }
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), failing, slog.New(slog.DiscardHandler))
+	failing := func(context.Context, string) (identity.User, error) {
+		return identity.User{}, errors.New("s3cret-cause")
+	}
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(failing), slog.New(slog.DiscardHandler))
 	handler := m.Authenticate(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("must not be reached") }))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer "+sign(t, iss.valid()))
@@ -243,8 +254,8 @@ func TestUnavailableUserIsA503WithoutTheCause(t *testing.T) {
 
 func TestADeletedOrDisabledAccountIsA401(t *testing.T) {
 	iss := newIssuer(t)
-	gone := func(context.Context, string) (User, error) { return User{}, ErrUnknownUser }
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), gone, slog.New(slog.DiscardHandler))
+	gone := func(context.Context, string) (identity.User, error) { return identity.User{}, identity.ErrNoAccount }
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(gone), slog.New(slog.DiscardHandler))
 	handler := m.Authenticate(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("must not be reached") }))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer "+sign(t, iss.valid()))
@@ -257,11 +268,11 @@ func TestADeletedOrDisabledAccountIsA401(t *testing.T) {
 
 func TestAClientActingForItselfHasNoUser(t *testing.T) {
 	iss := newIssuer(t)
-	resolve := func(context.Context, string) (User, error) {
+	resolve := func(context.Context, string) (identity.User, error) {
 		t.Error("a client's own token is not resolved to a user")
-		return User{}, nil
+		return identity.User{}, nil
 	}
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), resolve, slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(resolve), slog.New(slog.DiscardHandler))
 	var caller Caller
 	handler := m.Authenticate(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		caller, _ = FromContext(r.Context())

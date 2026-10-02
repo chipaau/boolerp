@@ -21,8 +21,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/config"
-	"github.com/boolmv/erp/apps/api/internal/platform/httpserver"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpserver"
 )
 
 // telemetryFlushTimeout bounds exporting the last spans or metric readings on

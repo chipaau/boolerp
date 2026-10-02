@@ -24,7 +24,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/postgres"
 )
 
 // Roles, as used in POSTGRES_TEST_<role>_USER and _PASSWORD.

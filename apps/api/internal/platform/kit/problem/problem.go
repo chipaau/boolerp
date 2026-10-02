@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/requestid"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/requestid"
 )
 
 // ContentType is the media type RFC 9457 registers for problem details.

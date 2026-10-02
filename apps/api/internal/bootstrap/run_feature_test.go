@@ -18,8 +18,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/config"
-	"github.com/boolmv/erp/apps/api/internal/testdb"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
 
 // freePort returns a TCP port nothing is listening on.

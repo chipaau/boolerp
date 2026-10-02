@@ -17,8 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/edition/full"
-	"github.com/boolmv/erp/apps/api/internal/platform/postgres"
-	"github.com/boolmv/erp/apps/api/internal/testdb"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/postgres"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
 
 // Feature tests (C77). The migrator, privilege, and concurrency tests run on

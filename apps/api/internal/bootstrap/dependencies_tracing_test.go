@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
 )
 
 // recordingTracing returns tracing that records ended spans.

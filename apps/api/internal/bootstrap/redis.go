@@ -7,8 +7,8 @@ import (
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	goredis "github.com/redis/go-redis/v9"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/config"
-	"github.com/boolmv/erp/apps/api/internal/platform/redis"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/redis"
 )
 
 // newCache builds the Redis client. Redis is a cache and optional at runtime

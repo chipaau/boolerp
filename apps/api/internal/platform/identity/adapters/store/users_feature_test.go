@@ -11,7 +11,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/adapters/store"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/application"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/domain"
-	"github.com/boolmv/erp/apps/api/internal/testdb"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
 
 // Feature tests (C77, C79): the users table in the migrated suite database, as
