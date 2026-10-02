@@ -290,6 +290,10 @@ func TestReturnToStaysOnThisSite(t *testing.T) {
 		"/\\evil.test":        "/",
 		"settings":            "/",
 		"/ok\r\nSet-Cookie:x": "/",
+		"/\t/evil.test":       "/",
+		"/\x00/evil.test":     "/",
+		"/\v/evil.test":       "/",
+		"/\x7f/evil.test":     "/",
 	} {
 		assert.Equal(t, want, safeReturnTo(in), "return_to %q", in)
 	}

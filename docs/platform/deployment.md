@@ -50,6 +50,11 @@ See [development](../development.md), [tenancy](tenancy.md), and [identity](iden
 - Make the API reachable only through the proxy (no published port, firewall or
   network policy), because anyone connecting directly can write their own
   `X-Forwarded-For`.
+- Keep Kratos's and Hydra's admin APIs (ports 4434 and 4445, which have no
+  authentication) on a private network that the edge proxy and anything else outside
+  the deployment cannot reach (C112). The development Compose file does not: Kratos and
+  Hydra join the shared `proxy` network so Traefik can route their public APIs, which
+  leaves their admin ports reachable from other projects' containers on that network.
 
 ## Rate limiting (C81)
 
@@ -71,8 +76,11 @@ there is no limit at all.
 - Rejected requests get the proxy's `429`: Traefik sends `Retry-After` and a plain-text
   body, not the API's problem details (see [HTTP](http.md)).
 
-Limits that need to know the user, such as login attempts, cannot be enforced by the
-proxy; they are decided with identity (step 7).
+The login domain has its own, tighter limits per address (C112): 10 Kratos form
+submissions a minute (sign-in, registration, recovery, verification), 20 requests a
+second for the login pages, and 100 for Hydra; see [identity](identity.md). Limits
+that need to know the account, such as attempts per account across addresses, are
+not enforced yet.
 
 ## Database migrations (C46, C47)
 

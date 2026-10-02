@@ -17,7 +17,7 @@ import type { OryClientConfiguration } from '@ory/elements-react'
 // The address browsers use (Kratos is under /kratos on the same host, C85), and the
 // one this server uses inside Compose. Both come from the environment, read per
 // request so that building the app needs neither.
-const publicUrl = () => required('IDENTITY_PUBLIC_URL')
+export const publicUrl = () => required('IDENTITY_PUBLIC_URL')
 const kratosPublicUrl = () => `${publicUrl()}/kratos`
 
 function required(name: string): string {

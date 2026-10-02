@@ -104,6 +104,13 @@ services:
       - traefik.http.routers.erp-identity.priority=30
       - traefik.http.routers.erp-identity.service=erp-identity
       - traefik.http.services.erp-identity.loadbalancer.server.port=3000
+      # Rate limits per client address (Traefik's ratelimit, C111): pages and Kratos's
+      # public API here, Kratos's form submissions (sign-in, registration, recovery,
+      # verification, settings) much tighter, on Kratos's routers below. Behind another
+      # proxy in production, the limits need its ipStrategy to see the client address.
+      - traefik.http.middlewares.erp-auth-limit.ratelimit.average=20
+      - traefik.http.middlewares.erp-auth-limit.ratelimit.burst=50
+      - traefik.http.routers.erp-identity.middlewares=erp-auth-limit
 
   workspace:
     <<: *node
@@ -415,8 +422,18 @@ services:
       - traefik.http.routers.erp-kratos.entrypoints=web
       - traefik.http.routers.erp-kratos.priority=40
       - traefik.http.routers.erp-kratos.service=erp-kratos
-      - traefik.http.routers.erp-kratos.middlewares=erp-kratos-strip
+      - traefik.http.routers.erp-kratos.middlewares=erp-auth-limit,erp-kratos-strip
       - traefik.http.middlewares.erp-kratos-strip.stripprefix.prefixes=/kratos
+      # Form submissions: 10 a minute per address, against password guessing and
+      # code or email flooding (C111).
+      - "traefik.http.routers.erp-kratos-submit.rule=Host(`identity.bool.test`) && PathPrefix(`/kratos/self-service`) && Method(`POST`)"
+      - traefik.http.routers.erp-kratos-submit.entrypoints=web
+      - traefik.http.routers.erp-kratos-submit.priority=41
+      - traefik.http.routers.erp-kratos-submit.service=erp-kratos
+      - traefik.http.routers.erp-kratos-submit.middlewares=erp-kratos-submit-limit,erp-kratos-strip
+      - traefik.http.middlewares.erp-kratos-submit-limit.ratelimit.average=10
+      - traefik.http.middlewares.erp-kratos-submit-limit.ratelimit.period=1m
+      - traefik.http.middlewares.erp-kratos-submit-limit.ratelimit.burst=10
       - traefik.http.services.erp-kratos.loadbalancer.server.port=4433
 
   # OAuth2 and OpenID Connect (C83, C89): Ory Hydra with Kratos as its login. Its
@@ -453,6 +470,11 @@ services:
       - traefik.http.routers.erp-hydra.priority=40
       - traefik.http.routers.erp-hydra.service=erp-hydra
       - traefik.http.services.erp-hydra.loadbalancer.server.port=4444
+      # Looser than erp-auth-limit: in development the BFFs' token requests reach Hydra
+      # through Traefik from one address, the Docker host's (C111).
+      - traefik.http.middlewares.erp-hydra-limit.ratelimit.average=100
+      - traefik.http.middlewares.erp-hydra-limit.ratelimit.burst=200
+      - traefik.http.routers.erp-hydra.middlewares=erp-hydra-limit
 
   # Applies Hydra's own migrations to its database before it starts.
   hydra-migrate:

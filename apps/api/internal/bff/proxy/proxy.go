@@ -109,6 +109,11 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			problem.Error(w, r, http.StatusUnauthorized, "Sign in to continue.")
 			return
 		}
+		if errors.Is(err, session.ErrSignedOut) {
+			// Signed out (here or by back-channel logout) while refreshing.
+			problem.Error(w, r, http.StatusUnauthorized, "Sign in to continue.")
+			return
+		}
 		if err != nil {
 			p.logger.WarnContext(ctx, "refreshing the access token failed", "error", err)
 			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")

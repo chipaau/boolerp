@@ -157,6 +157,23 @@ func TestAStaleSessionSaveKeepsRefreshedTokens(t *testing.T) {
 	})
 }
 
+func TestARefreshDoesNotUndoASignOut(t *testing.T) {
+	client, mr := redisFor(t)
+	s := newSessions(t, client, keyA, true)
+	cookies := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, signedIn)) })
+
+	// A request starts refreshing; back-channel logout ends the login meanwhile.
+	inSession(t, s, cookies, func(ctx context.Context) {
+		in, ok, err := s.Current(ctx)
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.NoError(t, s.EndHydraSession(ctx, "sid-1"))
+		in.Tokens.Refresh = "refresh-2"
+		assert.ErrorIs(t, s.SaveTokens(ctx, in), ErrSignedOut)
+		assert.False(t, mr.Exists(s.tokensKey(in.TokensID)), "the tokens are not written back")
+	})
+}
+
 func TestPlainHTTPUsesThePlainCookieName(t *testing.T) {
 	client, _ := redisFor(t)
 	s := newSessions(t, client, keyA, false)

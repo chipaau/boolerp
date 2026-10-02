@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { headers } from 'next/headers'
 import './globals.css'
 
 export const metadata: Metadata = { title: 'Bool', icons: { icon: '/favicon.png?v=4' } }
@@ -7,7 +8,9 @@ export const metadata: Metadata = { title: 'Bool', icons: { icon: '/favicon.png?
 // Apply the saved/system theme before paint to avoid a flash (as in the other apps).
 const themeScript = `try{var t=localStorage.getItem('erp-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}`
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // The Content-Security-Policy's nonce for this page (proxy.ts).
+  const nonce = (await headers()).get('x-nonce') ?? undefined
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -18,7 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400&display=swap"
           rel="stylesheet"
         />
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>{children}</body>
     </html>

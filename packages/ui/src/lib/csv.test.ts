@@ -5,6 +5,11 @@ describe('toCsv', () => {
   it('quotes every cell, doubles quotes, blanks nullish, joins rows with CRLF', () => {
     expect(toCsv([['a', 1, null], ['say "hi"', undefined, 'x,y']])).toBe('"a","1",""\r\n"say ""hi""","","x,y"')
   })
+  it('keeps formula-like text from running in a spreadsheet, but not numbers', () => {
+    expect(toCsv([['=HYPERLINK("http://x")', '+1', '-2', '@SUM(A1)', '\tx', '\rx', 'a=b', -3]])).toBe(
+      `"'=HYPERLINK(""http://x"")","'+1","'-2","'@SUM(A1)","'\tx","'\rx","a=b","-3"`,
+    )
+  })
 })
 
 describe('parseCsv', () => {

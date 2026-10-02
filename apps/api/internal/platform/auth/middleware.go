@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5/middleware"
+
 	"github.com/boolmv/erp/apps/api/internal/platform/problem"
 )
 
@@ -13,9 +15,11 @@ import (
 // (FromContext). Otherwise it answers 401 with WWW-Authenticate: Bearer (RFC
 // 6750) and problem details; the token and the reason it failed are not echoed.
 // If the user cannot be loaded (Kratos or the database unavailable on a first
-// request), it answers 503. Modules apply it to their own routes.
+// request), it answers 503. Every answer is marked not to be cached (chi's
+// middleware.NoCache), since it is about the caller. Modules apply it to their
+// own routes.
 func (m *Module) Authenticate(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return middleware.NoCache(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, ok := fromHeader(r.Header.Get("Authorization"))
 		if !ok {
 			w.Header().Set("WWW-Authenticate", `Bearer`)
@@ -39,7 +43,7 @@ func (m *Module) Authenticate(next http.Handler) http.Handler {
 			caller.User = &user
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextKey{}, caller)))
-	})
+	}))
 }
 
 // fromHeader reads "Bearer <token>"; the scheme is case-insensitive (RFC 9110).

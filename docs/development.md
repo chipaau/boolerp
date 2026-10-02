@@ -55,6 +55,13 @@ The configuration retains the shared external `proxy` network used by local
 Traefik routing at `*.bool.test`; the proxy is not a fifth service in this file.
 That external network/proxy must be provided separately when running this setup.
 
+Other Compose projects on the same `proxy` network can reach the services joined to it,
+including Kratos's and Hydra's admin ports, and their service names share its DNS: a
+name such as `postgres` exists in other local projects too. Our services resolve their
+own because Docker answers from the project's `internal` network first in practice,
+which Docker does not guarantee. This is accepted for development (C112); production
+keeps the admin APIs private ([deployment](platform/deployment.md)).
+
 Validate configuration without starting services or printing resolved secrets:
 
 ```sh

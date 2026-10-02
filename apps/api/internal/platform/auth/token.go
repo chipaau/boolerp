@@ -30,11 +30,12 @@ type Verifier struct {
 }
 
 // NewVerifier returns a verifier for tokens from issuer meant for audience. Keys are
-// fetched from <issuer>.well-known/jwks.json on first use, with client, and
-// cached; ctx bounds those fetches, so pass the application's lifetime context.
+// fetched from <issuer>.well-known/jwks.json on first use, with client limited by
+// KeyClient, and cached; ctx bounds those fetches, so pass the application's
+// lifetime context.
 func NewVerifier(ctx context.Context, issuer, audience string, client *http.Client) *Verifier {
 	jwks := strings.TrimSuffix(issuer, "/") + "/.well-known/jwks.json"
-	keys := oidc.NewRemoteKeySet(oidc.ClientContext(ctx, client), jwks)
+	keys := oidc.NewRemoteKeySet(oidc.ClientContext(ctx, KeyClient(client)), jwks)
 	return &Verifier{verifier: oidc.NewVerifier(issuer, keys, &oidc.Config{
 		// Despite the name, ClientID is the audience the token must include.
 		ClientID: audience,

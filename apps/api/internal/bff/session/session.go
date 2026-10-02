@@ -171,10 +171,29 @@ func (s *Sessions) Current(ctx context.Context) (SignedIn, bool, error) {
 	}, true, nil
 }
 
+// ErrSignedOut is returned by SaveTokens when the session was signed out while
+// its tokens were being refreshed.
+var ErrSignedOut = errors.New("session: signed out")
+
 // SaveTokens replaces a session's tokens after a refresh, keeping the key's
-// expiry (the session's absolute lifetime).
+// expiry (the session's absolute lifetime). It writes only if the tokens still
+// exist (SET XX KEEPTTL): a sign-out or back-channel logout that deleted them
+// during the refresh must not be undone, which would also leave the tokens
+// without an expiry. Then it returns ErrSignedOut.
 func (s *Sessions) SaveTokens(ctx context.Context, in SignedIn) error {
-	return s.writeTokens(ctx, in.Account, in.TokensID, in.Tokens, goredis.KeepTTL)
+	plaintext, err := json.Marshal(in.Tokens)
+	if err != nil {
+		return fmt.Errorf("session: %w", err)
+	}
+	sealed := s.sealer.Seal(plaintext, tokensAAD(in.Account, in.TokensID))
+	err = s.redis.SetArgs(ctx, s.tokensKey(in.TokensID), sealed, goredis.SetArgs{Mode: "XX", KeepTTL: true}).Err()
+	if errors.Is(err, goredis.Nil) {
+		return ErrSignedOut
+	}
+	if err != nil {
+		return fmt.Errorf("session: storing tokens: %w", err)
+	}
+	return nil
 }
 
 // SignOut deletes the session's tokens, removes it from its Hydra login

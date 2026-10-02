@@ -1,16 +1,63 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { Configuration, FrontendApi, ResponseError } from '@ory/client-fetch'
 import { hydraAdmin } from '@/lib/hydra'
+import { publicUrl } from '@/lib/kratos'
 
-// Hydra's logout step (C101). An app's BFF sends the browser to Hydra's logout; Hydra
-// sends it here with a logout_challenge. This route ends the browser's Kratos session
-// (passing on Kratos's cookie-clearing headers), then accepts Hydra's logout request,
-// which ends Hydra's login session, notifies the other apps of that login
-// (back-channel logout), and returns the browser to the app.
+// Hydra's logout step (C101). An app's BFF sends the browser to Hydra's logout with the
+// person's ID token as id_token_hint; Hydra checks that it belongs to the browser's login and
+// sends the browser here with a logout_challenge marked rp_initiated. That logout proceeds at
+// once. Any other logout (a plain link to Hydra's logout, which any site can make) is asked
+// about first, so another site cannot sign people out: the confirmation page posts back here.
+//
+// Addresses are built from IDENTITY_PUBLIC_URL, not request.nextUrl, whose origin is the
+// address the server listens on (http://0.0.0.0:3000), not the one the browser used.
+
 export async function GET(request: NextRequest) {
   const challenge = request.nextUrl.searchParams.get('logout_challenge')
   if (!challenge) return new NextResponse('Missing logout_challenge.', { status: 400 })
 
+  const logout = await hydraAdmin().getOAuth2LogoutRequest({ logoutChallenge: challenge })
+  if (!logout.rp_initiated) {
+    const confirm = new URL('/logout/confirm', publicUrl())
+    confirm.search = new URLSearchParams({ logout_challenge: challenge }).toString()
+    return NextResponse.redirect(confirm, 303)
+  }
+  return endLogin(request, challenge)
+}
+
+// The confirmation page's answer: sign out, or stay signed in.
+export async function POST(request: NextRequest) {
+  if (!fromThisSite(request)) return new NextResponse('Forbidden.', { status: 403 })
+  const form = await request.formData()
+  const challenge = form.get('logout_challenge')
+  if (typeof challenge !== 'string' || !challenge) {
+    return new NextResponse('Missing logout_challenge.', { status: 400 })
+  }
+  if (form.get('action') !== 'logout') {
+    await hydraAdmin().rejectOAuth2LogoutRequest({ logoutChallenge: challenge })
+    return NextResponse.redirect(new URL('/', publicUrl()), 303)
+  }
+  return endLogin(request, challenge)
+}
+
+/**
+ * Whether the request came from a page of this site. Next.js checks this for Server
+ * Actions only, and a Server Action cannot pass on Kratos's cookie-clearing headers, so
+ * this route checks it itself: Sec-Fetch-Site, sent by every current browser, or the
+ * Origin header as a fallback.
+ */
+function fromThisSite(request: NextRequest): boolean {
+  const site = request.headers.get('sec-fetch-site')
+  if (site) return site === 'same-origin'
+  return request.headers.get('origin') === new URL(publicUrl()).origin
+}
+
+/**
+ * Ends the browser's Kratos session (passing on Kratos's cookie-clearing headers), then
+ * accepts Hydra's logout request, which ends Hydra's login session, notifies the other apps
+ * of that login (back-channel logout), and returns the browser to the app.
+ */
+async function endLogin(request: NextRequest, challenge: string): Promise<NextResponse> {
   const kratosUrl = process.env.KRATOS_INTERNAL_URL
   if (!kratosUrl) throw new Error('KRATOS_INTERNAL_URL is not set')
   const kratos = new FrontendApi(
