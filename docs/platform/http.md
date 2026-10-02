@@ -158,12 +158,16 @@ redaction does not apply to them; a panic value containing a secret would be
 logged. Step 2e's panic recovery should intercept panics before net/http logs them. The body limit is `chi/middleware.RequestSize`, which wraps the
 body in `http.MaxBytesReader`; a handler reading past the limit receives
 `*http.MaxBytesError`; `httpinput.Decode` turns it into a `413` problem response (H2).
-`chi/middleware.Timeout` is not used yet: the network deadlines above already bound
-slow clients, and a per-request handler deadline becomes useful once handlers do
-database work (step 3).
+Every request's context also gets a deadline, `APP_HTTP_REQUEST_TIMEOUT` (25 seconds,
+below the write timeout, C114): database, cache, and provider calls made with the
+request's context fail once it passes, and the handler answers with its usual problem
+response while the connection can still carry it. A small middleware sets only the
+deadline. `chi/middleware.Timeout` is not used: after the handler it writes a bare 504
+without a problem body, or a superfluous status when the handler has answered (a
+verified gap against C35).
 
-These are network deadlines. They do not preempt computation inside a handler or
-provide an application operation timeout. An expired write deadline can close the
+The server's deadlines above are network deadlines. They, and the request deadline, do
+not preempt computation inside a handler that ignores its context. An expired write deadline can close the
 connection without a JSON response. Requests rejected by the HTTP parser before
 dispatch, including oversized headers, may receive Go's native error response
 without a request ID. A common application error format does not replace protocol

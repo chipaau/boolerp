@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -35,6 +36,11 @@ func (m *Module) Authenticate(next http.Handler) http.Handler {
 		caller := Caller{Token: token}
 		if token.Subject != "" {
 			user, err := m.resolve(r.Context(), token.Subject)
+			if errors.Is(err, ErrUnknownUser) {
+				w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
+				problem.Error(w, r, http.StatusUnauthorized, "The account is not available.")
+				return
+			}
 			if err != nil {
 				m.logger.ErrorContext(r.Context(), "loading the caller's user failed", "error", err)
 				problem.Error(w, r, http.StatusServiceUnavailable, "Your account could not be loaded. Try again shortly.")

@@ -170,11 +170,14 @@ the Kratos identity ID. A user is created **on first use**: when a request carri
 person's token and no row exists for its subject, the module reads the identity from
 Kratos's admin API (`ory/client-go`, `APP_IDENTITY_KRATOS_ADMIN_URL`) and inserts the
 row. A person who registers but never uses an app has no row until their first login.
+A deleted or disabled Kratos account gets no row: the request gets 401 (`invalid_token`,
+C114). A token whose `sub` is its own `client_id` (Hydra's `client_credentials`) is a
+client acting for itself, with no user.
 
 The `auth` module's `Authenticate` middleware resolves the token's subject to the user
 through a `ResolveUser` function the edition supplies, and keeps the caller (token and
-user) in the request context (`auth.FromContext`). If the user cannot be loaded, the
-request gets 503 without the cause. The copy is not refreshed after creation yet:
+user) in the request context (`auth.FromContext`). If the user cannot be loaded (Kratos
+or the database unavailable), the request gets 503 without the cause. The copy is not refreshed after creation yet:
 self-service settings cannot change account fields (C85), so traits change only through
 the admin API, and the code that does that will refresh the user.
 

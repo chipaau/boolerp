@@ -111,6 +111,7 @@ silently removed.
 | `APP_HTTP_READ_TIMEOUT` | `15s` | Positive Go duration up to `5m`; full request read, including the body |
 | `APP_HTTP_WRITE_TIMEOUT` | `30s` | Positive Go duration up to `10m`; greater than the read timeout to leave room for a failure response |
 | `APP_HTTP_IDLE_TIMEOUT` | `60s` | Positive Go duration up to `10m`; wait between keep-alive requests |
+| `APP_HTTP_REQUEST_TIMEOUT` | `25s` | Positive Go duration below the write timeout; each request's context deadline, so database, cache, and provider calls made for it stop, and the handler still answers with its problem response (C114) |
 | `APP_HTTP_TRUSTED_PROXY_HOPS` | `0` (Compose: `1`) | Integer 0–10; reverse proxies appending to `X-Forwarded-For` (C40). `0` ignores forwarded headers |
 | `APP_HTTP_ALLOWED_ORIGINS` | empty | Comma-separated origins (`https://app.example`), no wildcards, allowed cross-origin (C41). Empty allows none |
 | `APP_DB_HOST` | none (required) | PostgreSQL host name or IP (C43) |

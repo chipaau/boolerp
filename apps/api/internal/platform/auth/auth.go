@@ -9,6 +9,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -32,8 +33,13 @@ type User struct {
 }
 
 // ResolveUser returns the user for a token's subject (a Kratos account),
-// creating it on first use.
+// creating it on first use. It returns ErrUnknownUser when the account is
+// deleted or disabled and has no user.
 type ResolveUser func(ctx context.Context, subject string) (User, error)
+
+// ErrUnknownUser is what a ResolveUser returns for an account that cannot
+// sign in; Authenticate answers 401 for it.
+var ErrUnknownUser = errors.New("auth: the token's account is deleted or disabled")
 
 // Caller is who a request is from: the verified token and, when the token is
 // for a person (it has a subject), their user.

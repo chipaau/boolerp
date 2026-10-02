@@ -64,7 +64,13 @@ func (v *Verifier) Verify(ctx context.Context, raw string) (Token, error) {
 	if claims.ClientID == "" {
 		return Token{}, errNotAccessToken
 	}
-	return Token{Subject: t.Subject, ClientID: claims.ClientID, Scopes: claims.Scopes}, nil
+	subject := t.Subject
+	// A client acting for itself (client_credentials): Hydra sets sub to the
+	// client's ID. It is not a person, so it has no subject here.
+	if subject == claims.ClientID {
+		subject = ""
+	}
+	return Token{Subject: subject, ClientID: claims.ClientID, Scopes: claims.Scopes}, nil
 }
 
 type tokenError string

@@ -240,3 +240,41 @@ func TestUnavailableUserIsA503WithoutTheCause(t *testing.T) {
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.NotContains(t, rec.Body.String(), "s3cret-cause")
 }
+
+func TestADeletedOrDisabledAccountIsA401(t *testing.T) {
+	iss := newIssuer(t)
+	gone := func(context.Context, string) (User, error) { return User{}, ErrUnknownUser }
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), gone, slog.New(slog.DiscardHandler))
+	handler := m.Authenticate(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("must not be reached") }))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+sign(t, iss.valid()))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Equal(t, `Bearer error="invalid_token"`, rec.Header().Get("WWW-Authenticate"))
+}
+
+func TestAClientActingForItselfHasNoUser(t *testing.T) {
+	iss := newIssuer(t)
+	resolve := func(context.Context, string) (User, error) {
+		t.Error("a client's own token is not resolved to a user")
+		return User{}, nil
+	}
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), resolve, slog.New(slog.DiscardHandler))
+	var caller Caller
+	handler := m.Authenticate(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		caller, _ = FromContext(r.Context())
+	}))
+	c := iss.valid()
+	c.clientID = "account-1" // Hydra's client_credentials tokens: sub is the client's ID
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+sign(t, c))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Nil(t, caller.User)
+	assert.Empty(t, caller.Token.Subject)
+	assert.Equal(t, "account-1", caller.Token.ClientID)
+}

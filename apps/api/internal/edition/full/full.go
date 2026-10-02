@@ -6,6 +6,7 @@ package full
 
 import (
 	"context"
+	"errors"
 
 	"github.com/go-chi/chi/v5"
 
@@ -34,6 +35,9 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
 	// auth turns a token's subject into the user through identity.
 	resolve := func(ctx context.Context, subject string) (auth.User, error) {
 		u, err := users.Resolve(ctx, subject)
+		if errors.Is(err, identity.ErrNoAccount) {
+			return auth.User{}, auth.ErrUnknownUser
+		}
 		return auth.User{ID: u.ID, Email: u.Email, Phone: u.Phone, DisplayName: u.DisplayName}, err
 	}
 	authModule := auth.New(ctx, auth.Settings{Issuer: cfg.Auth.Issuer, Audience: cfg.Auth.Audience},

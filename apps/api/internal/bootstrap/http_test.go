@@ -413,3 +413,32 @@ func TestModulesInheritDefaultsAndApplyTheirOwnAuth(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code, path)
 	}
 }
+
+func TestEveryRequestHasADeadline(t *testing.T) {
+	router, _ := withConfig(t, routerConfig{MaxBodyBytes: 1024, RequestTimeout: 50 * time.Millisecond})
+	var left time.Duration
+	router.Get("/api/deadline", func(w http.ResponseWriter, r *http.Request) {
+		d, ok := r.Context().Deadline()
+		require.True(t, ok)
+		left = time.Until(d)
+		w.WriteHeader(http.StatusNoContent)
+	})
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/deadline", nil))
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Greater(t, left, time.Duration(0))
+	assert.LessOrEqual(t, left, 50*time.Millisecond)
+}
+
+func TestAnExpiredRequestKeepsTheHandlersProblemResponse(t *testing.T) {
+	router, _ := withConfig(t, routerConfig{MaxBodyBytes: 1024, RequestTimeout: 20 * time.Millisecond})
+	// Like a database call made with the request's context: it fails once the deadline passes.
+	router.Get("/api/slow", func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+		problem.Error(w, r, http.StatusServiceUnavailable, "Try again shortly.")
+	})
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/slow", nil))
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code, "the handler's answer, not a bare 504")
+	assert.Contains(t, rec.Header().Get("Content-Type"), "application/problem+json")
+}
