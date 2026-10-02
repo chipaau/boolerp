@@ -22,7 +22,7 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
 - A build with fewer modules is another edition with its own mains, not build tags or
   runtime switches (C93). Editions and licensing themselves are not decided.
 - Treat the documented layout as a target; create files only when an approved use case needs them.
-- PostgreSQL, Redis, chi, pgx/v5 pgxpool, Goose, Ory Kratos, Ory Hydra, and Cerbos are selected;
+- PostgreSQL, Redis, chi, pgx/v5 pgxpool, Goose, sqlc (C116), Ory Kratos, Ory Hydra, and Cerbos are selected;
   S3 is the object-storage API and `chipaau/minio` is the development server. See
   the decision register and ADR 0002 for exact scope. SDKs, persistence interfaces,
   transaction APIs, and provider contracts not listed there remain undecided.

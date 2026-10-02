@@ -1,7 +1,8 @@
 # Authorization
 
-Status: required backbone capability; Cerbos is selected as the policy engine.
-Permission model and integration contracts remain open.
+Status: required backbone capability; Cerbos is selected as the policy engine. The
+role and assignment tables are designed (C116), see
+[tenancy](tenancy.md#approved-table-designs-c116); policies and integration are open.
 
 ## Required boundary
 

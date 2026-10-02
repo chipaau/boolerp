@@ -1,6 +1,7 @@
 # Business audit
 
-Status: audit is confirmed as required; schema and capture policy open.
+Status: required; the `audit_log` design is approved (C116), see
+[tenancy](tenancy.md#approved-table-designs-c116). Not implemented yet.
 
 Audit records explain business actions and their actors. Technical logs and traces
 are not a replacement, and Redis is not the durable audit store.
