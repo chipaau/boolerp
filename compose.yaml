@@ -391,6 +391,9 @@ services:
   kratos:
     image: oryd/kratos:v26.2.0
     command: ["serve", "--dev", "--watch-courier", "-c", "/etc/kratos/kratos.yml", "-c", "/run/secrets/kratos.yml"]
+    environment:
+      # No anonymous usage reports to Ory ("SQA"), in development or tests (C110).
+      SQA_OPT_OUT: "true"
     volumes:
       - ./docker/kratos:/etc/kratos:ro
     secrets:
@@ -422,6 +425,9 @@ services:
   hydra:
     image: oryd/hydra:v26.2.0
     command: ["serve", "all", "--dev", "-c", "/etc/hydra/hydra.yml", "-c", "/run/secrets/hydra.yml"]
+    environment:
+      # No anonymous usage reports to Ory ("SQA"), in development or tests (C110).
+      SQA_OPT_OUT: "true"
     volumes:
       - ./docker/hydra:/etc/hydra:ro
     secrets:

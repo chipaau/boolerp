@@ -35,6 +35,7 @@ packages/app-control-centre/src/
     index.tsx  units.tsx  employees.tsx  …
   features/<feature>/      data and components; index.ts is what other features import
     shared/  overview/  organisation/  sites/  system/  billing/
+packages/app-control-centre/e2e/   the app's end-to-end journeys (run by e2e/, C109)
 ```
 
 Rules:
