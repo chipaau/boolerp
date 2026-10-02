@@ -1,6 +1,7 @@
 package kratos
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/modules/identity/application"
+	"github.com/boolmv/erp/apps/api/internal/modules/identity/domain"
 )
 
 // kratosAdmin answers GET /admin/identities/{id} like Kratos's admin API.
@@ -96,5 +98,60 @@ func TestDeactivateSetsInactiveAndDeletesSessions(t *testing.T) {
 	assert.NoError(t, accounts.Deactivate(t.Context(), "nosessions"), "no sessions is nothing to delete")
 	err := accounts.Deactivate(t.Context(), "missing")
 	assert.ErrorIs(t, err, application.ErrNotFound)
+	assert.NotContains(t, err.Error(), "s3cret")
+}
+
+func TestFindByEmailAndCreate(t *testing.T) {
+	var created map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/admin/identities":
+			if r.URL.Query().Get("credentials_identifier") == "a@b.test" {
+				_, _ = w.Write([]byte(`[{"id":"k1","schema_id":"registration","schema_url":"x","state":"active","traits":{"email":"a@b.test","phone":"+9607770000"}}]`))
+				return
+			}
+			_, _ = w.Write([]byte(`[]`))
+		case r.Method == http.MethodPost && r.URL.Path == "/admin/identities":
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&created))
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"id":"k2","schema_id":"registration","schema_url":"x","state":"active","traits":{"email":"n@b.test","phone":"+9607000001","name":"New"}}`))
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	accounts := NewAccounts(srv.URL, srv.Client())
+
+	a, err := accounts.FindByEmail(t.Context(), "a@b.test")
+	require.NoError(t, err)
+	assert.Equal(t, "k1", a.KratosIdentityID)
+	_, err = accounts.FindByEmail(t.Context(), "nobody@b.test")
+	assert.ErrorIs(t, err, application.ErrNotFound)
+
+	n, err := accounts.Create(t.Context(), domain.NewAccount{
+		Email: "n@b.test", Phone: "+9607000001", DisplayName: "New", Password: "pw", GoogleSubject: "n@b.test",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "k2", n.KratosIdentityID)
+	assert.True(t, n.Active)
+	assert.Equal(t, "registration", created["schema_id"])
+	assert.Equal(t, "active", created["state"])
+	assert.Equal(t, map[string]any{"email": "n@b.test", "phone": "+9607000001", "name": "New"}, created["traits"])
+	addresses := created["verifiable_addresses"].([]any)
+	assert.Equal(t, true, addresses[0].(map[string]any)["verified"], "the email is verified")
+	credentials := created["credentials"].(map[string]any)
+	assert.Contains(t, credentials, "password")
+	assert.Contains(t, credentials, "oidc")
+}
+
+func TestCreateFailureHidesThePassword(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":{"code":400,"message":"s3cret-detail"}}`))
+	}))
+	t.Cleanup(srv.Close)
+	_, err := NewAccounts(srv.URL, srv.Client()).Create(t.Context(), domain.NewAccount{Email: "n@b.test", Phone: "+9607000001", Password: "s3cret-pw"})
+	require.Error(t, err)
 	assert.NotContains(t, err.Error(), "s3cret")
 }

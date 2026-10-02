@@ -33,21 +33,23 @@ apps/api/
       http.go            router, middleware, liveness/readiness, http.Server
       tracing.go, metrics.go
     edition/
-      full/              every module: RegisterModules and Migrations (C95)
+      full/              every module: RegisterModules, Migrations, and Seeders (C95, C118)
     modules/
       identity/          users (C94)
-        identity.go      New, Resolve, Migrations
-        domain/          User, Account
-        application/     Service (Resolve, Sync) and its ports
+        identity.go      New, Resolve, EnsureAccount, Migrations
+        domain/          User, Account, NewAccount
+        application/     Service (Resolve, Sync, EnsureAccount) and its ports
         adapters/
           kratos/        Kratos admin API through ory/client-go
           store/         users in PostgreSQL
         migrations/      embedded Goose SQL, history migrations.identity_version
+        seeds/           one seeder per store: users.go (C50, C118)
     platform/
       auth/              access tokens, Authenticate, the caller, GET /api/auth/me (C91, C92)
       config/            settings grouped by concern (C44)
       httpinput/         JSON request decoding and validation
       httpserver/        server limits and graceful shutdown (framework-agnostic)
+      seed/              the Seeder interface, the runner, and the shared gofakeit generator (C118)
       observability/     slog logger and redaction, tracing, metrics
       postgres/          pool, database/sql for Goose, module migrations
       problem/           RFC 9457 errors and panic recovery

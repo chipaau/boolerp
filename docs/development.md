@@ -264,6 +264,34 @@ Without `--watch`, the container does not watch source changes. Restart it to re
 docker compose restart api
 ```
 
+## Seed data (C50, C118)
+
+Seeds work like Laravel's seeders. Each module keeps **one seeder per store** in its
+`seeds` folder (`internal/modules/identity/seeds/users.go`), and the edition lists them
+in dependency order (`full.Seeders`), as it lists migrations: a store is seeded after
+the stores it references. `cmd/seed` runs the list. Seeders implement `seed.Seeder`
+(`internal/platform/seed`) and create data through their module's use cases, as the
+API's runtime role, so seeded data passes the same rules as real data. Each can run
+repeatedly without duplicating anything. Generated data comes from
+[gofakeit](https://github.com/brianvoe/gofakeit) (`env.Fake`), seeded with a fixed value
+so every run generates the same data; Maldivian names, addresses, and phone formats
+need our own lists. Seeders log counts, never personal data.
+
+`cmd/seed` refuses to run unless `APP_ENV` is set explicitly to `dev`, `test`, or
+`staging`, and is not in the production image:
+
+```sh
+docker compose run --rm seed
+```
+
+In `dev`, `identity.users` creates the team's development accounts, verified and
+active: `ibrahim@bool.mv`, `shifau@bool.mv`, and `mariyam@bool.mv`, with the password
+`password` (set in the seeder: a public development value, not a secret, so not a file).
+They also sign in through the development Google stand-in (`oidc.bool.test`) with the
+email as the username and the claims `{"email": "<email>", "email_verified": true}`.
+The password is public, so these accounts are seeded only in `dev`. An account that
+already exists is left as it is.
+
 ## Validate the runtime
 
 The module uses the Go 1.27 development baseline, pgx/v5, and Goose. No generated

@@ -62,6 +62,18 @@ func (m *Module) Resolve(ctx context.Context, kratosIdentityID string) (domain.U
 	return m.service.Resolve(ctx, kratosIdentityID)
 }
 
+// EnsureAccount returns the user for the account that signs in with a.Email,
+// creating the account and user if needed; created reports a new account.
+func (m *Module) EnsureAccount(ctx context.Context, a domain.NewAccount) (u domain.User, created bool, err error) {
+	return m.service.EnsureAccount(ctx, a)
+}
+
+// NewAccount is an account EnsureAccount creates.
+type NewAccount = domain.NewAccount
+
+// User is the module's user.
+type User = domain.User
+
 // Disable stops a person signing in and ends their access (C101). It has no
 // HTTP route until authorization decides who may call it (roadmap step 8).
 func (m *Module) Disable(ctx context.Context, kratosIdentityID string) error {
