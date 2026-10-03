@@ -273,8 +273,9 @@ same seed files**; only the command differs:
 
 | Seeders | Listed in | Production: `cmd/deploy` | Development: `cmd/seed` | Role |
 | --- | --- | --- | --- | --- |
-| Seed files: countries, legal forms, sectors, institution types | `full.DataSeeders` | yes, after the migrations | yes, first | migration role (owns the tables) |
+| Seed files: countries, legal forms, sectors, institution types; the operator tenant | `full.DataSeeders` | yes, after the migrations | yes, first | migration role (owns the tables) |
 | The team's accounts without passwords | `full.DeploySeeders` | yes | no (the demo seeder creates them) | migration role |
+| Sample tenants (C143) | `full.SampleSeeders` | never | yes, in `dev`, after the seed files | migration role, until tenancy has a create-tenant operation |
 | Demo data: team accounts with the dev password, gofakeit data | `full.Seeders` | never | yes, after the seed files | runtime role, through use cases |
 
 A development database is prepared with:
@@ -299,6 +300,13 @@ transaction, never deletes, and never touches `active_to`. `reference.legal_form
 the same for `legal_forms.csv` (per country, keyed by country and code), after the
 countries it references, `reference.sectors` for `sectors.csv`, and `reference.institution_types` for
 `institution_types.csv`, after the sectors.
+
+`tenancy.operator` creates Bool's operator tenant (`workspace`, C142) if none exists, after
+the reference lists; an existing operator is left as it is.
+
+In development, `tenancy.sample_tenants` (C143) then adds the sample tenants in
+`tenancy/seeds/sample_tenants.csv` (ministries, atoll hospitals, health centres, clinics,
+councils, schools, colleges), as the table owner, until tenancy has a create-tenant operation.
 
 `identity.team_accounts` creates the team's accounts (`identity/seeds/team.go`) in
 Kratos, with a verified email and no password. For each account it creates, `deploy`

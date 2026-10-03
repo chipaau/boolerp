@@ -1,5 +1,6 @@
--- Tenants (C115, C136, C138; fields confirmed 2026-10-04): the registry of customer
--- organisations, each one data boundary, and the single operator tenant (Bool).
+-- Tenants (C115, C136, C141; fields confirmed 2026-10-04): the registry of customer
+-- organisations, each one data boundary, and the single operator tenant (Bool). Its
+-- institution types, the primary one flagged, are in tenant_institution_types (00002).
 -- Classification references the reference module's lists (C134 allows the foreign
 -- keys). The schema only: no tenant is created by a migration (C135).
 
@@ -26,7 +27,6 @@ CREATE TABLE tenants (
     is_operator      boolean     NOT NULL DEFAULT false,
     country          char(2)     NOT NULL REFERENCES countries (code) ON DELETE RESTRICT,
     legal_form_id    uuid,
-    institution_type text        REFERENCES institution_types (code) ON DELETE RESTRICT,  -- the primary type
     -- The number of the document the legal form names; the application requires it
     -- when the form names one and refuses it when the form names none.
     identity_number  text        CHECK (btrim(identity_number) <> ''),
@@ -44,9 +44,9 @@ CREATE TABLE tenants (
 
     -- The legal form must be one of the tenant's own country.
     FOREIGN KEY (legal_form_id, country) REFERENCES legal_forms (id, country) ON DELETE RESTRICT,
-    -- Classification and time zone are required before a tenant leaves provisioning (C136).
-    CHECK (status = 'provisioning'
-           OR (legal_form_id IS NOT NULL AND institution_type IS NOT NULL AND timezone IS NOT NULL)),
+    -- The legal form and time zone are required before a tenant leaves provisioning
+    -- (C136); its primary institution type is checked by tenant_institution_types (00002).
+    CHECK (status = 'provisioning' OR (legal_form_id IS NOT NULL AND timezone IS NOT NULL)),
     -- The status timestamps follow the status.
     CHECK (status NOT IN ('active', 'suspended') OR activated_at IS NOT NULL),
     CHECK (status <> 'suspended' OR suspended_at IS NOT NULL),

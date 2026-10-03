@@ -22,6 +22,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/reference"
 	referenceseeds "github.com/boolmv/erp/apps/api/internal/platform/reference/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy"
+	tenancyseeds "github.com/boolmv/erp/apps/api/internal/platform/tenancy/seeds"
 )
 
 // Migrations are the edition's tables, in dependency order: a package's tables come
@@ -56,7 +57,7 @@ type SeedSettings struct {
 }
 
 // DataSeeders load the seed files every database needs (C135, C137): the
-// reference lists, in dependency order like Migrations. Both cmd/deploy (in
+// reference lists and the operator tenant (C142), in dependency order like Migrations. Both cmd/deploy (in
 // production) and cmd/seed (in development) run them, as the migration role (db),
 // which owns the tables, so production and development load the same files.
 func DataSeeders(db *pgxpool.Pool) []seed.Seeder {
@@ -65,6 +66,17 @@ func DataSeeders(db *pgxpool.Pool) []seed.Seeder {
 		referenceseeds.NewLegalForms(db),
 		referenceseeds.NewSectors(db),
 		referenceseeds.NewInstitutionTypes(db),
+		tenancyseeds.NewOperator(db, tenancyseeds.Bool),
+	}
+}
+
+// SampleSeeders load development's sample data that must be written as the
+// migration role (db), because its module has no operation to create it through
+// yet (C143): the sample tenants. cmd/seed runs them after DataSeeders; each skips
+// itself outside dev.
+func SampleSeeders(db *pgxpool.Pool) []seed.Seeder {
+	return []seed.Seeder{
+		tenancyseeds.NewSamples(db),
 	}
 }
 

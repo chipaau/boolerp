@@ -65,6 +65,8 @@ func (w *world) operator(t *testing.T) string {
 // time) use; never do this to a table other packages' tests use.
 func (w *world) enforce(t *testing.T) {
 	t.Helper()
+	// ALTER TABLE refuses while commit-time checks are pending: run them now.
+	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
 	exec(t, w.tx, `ALTER TABLE tenants FORCE ROW LEVEL SECURITY`)
 }
 
@@ -81,6 +83,18 @@ func (w *world) visible(t *testing.T) []string {
 	codes, err := pgx.CollectRows(rows, pgx.RowTo[string])
 	require.NoError(t, err)
 	return codes
+}
+
+// activate classifies tenant and makes it active, with x_tenancy_type as its primary
+// type, then runs the commit-time checks at once (SET CONSTRAINTS ALL IMMEDIATE),
+// as the test's transaction never commits.
+func (w *world) activate(t *testing.T, tenant string) {
+	t.Helper()
+	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
+		VALUES ($1, 'x_tenancy_type', true)`, tenant)
+	exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1, timezone = 'Indian/Maldives',
+		status = 'active', activated_at = now() WHERE id = $2`, w.formXTNoDocument, tenant)
+	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
 }
 
 func exec(t *testing.T, tx pgx.Tx, sql string, args ...any) {
@@ -207,13 +221,12 @@ func TestFeatureTenantConstraints(t *testing.T) {
 		"bad phone":       {insert + `, phone) VALUES ('x-c', 'XTC', 'C', 'XT', '7771234')`, "23514"},
 		"blank email":     {insert + `, email) VALUES ('x-c', 'XTC', 'C', 'XT', ' ')`, "23514"},
 		"unknown status":  {insert + `, status) VALUES ('x-c', 'XTC', 'C', 'XT', 'draft')`, "23514"},
-		"unknown type":    {insert + `, institution_type) VALUES ('x-c', 'XTC', 'C', 'XT', 'x_none')`, "23503"},
 		"active without classification": {insert + `, status, activated_at)
 			VALUES ('x-c', 'XTC', 'C', 'XT', 'active', now())`, "23514"},
-		"active without activated_at": {insert + `, status, legal_form_id, institution_type, timezone)
-			VALUES ('x-c', 'XTC', 'C', 'XT', 'active', '%FORM%', 'x_tenancy_type', 'Indian/Maldives')`, "23514"},
-		"suspended without suspended_at": {insert + `, status, legal_form_id, institution_type, timezone, activated_at)
-			VALUES ('x-c', 'XTC', 'C', 'XT', 'suspended', '%FORM%', 'x_tenancy_type', 'Indian/Maldives', now())`, "23514"},
+		"active without activated_at": {insert + `, status, legal_form_id, timezone)
+			VALUES ('x-c', 'XTC', 'C', 'XT', 'active', '%FORM%', 'Indian/Maldives')`, "23514"},
+		"suspended without suspended_at": {insert + `, status, legal_form_id, timezone, activated_at)
+			VALUES ('x-c', 'XTC', 'C', 'XT', 'suspended', '%FORM%', 'Indian/Maldives', now())`, "23514"},
 		"archived without archived_at":  {insert + `, status) VALUES ('x-c', 'XTC', 'C', 'XT', 'archived')`, "23514"},
 		"legal form of another country": {insert + `, legal_form_id) VALUES ('x-c', 'XTC', 'C', 'XT', '%FORMXU%')`, "23503"},
 		"a second operator":             {insert + `, is_operator) VALUES ('x-c', 'XTC', 'C', 'XT', true)`, "23505"},
@@ -243,9 +256,7 @@ func TestFeatureTheSameIdentityNumberInAnotherCountry(t *testing.T) {
 
 func TestFeatureAnActiveTenantIsClassified(t *testing.T) {
 	w := newWorld(t)
-	a := w.tenant(t, "x-a", "XTA")
-	exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1, institution_type = 'x_tenancy_type', timezone = 'Indian/Maldives',
-		status = 'active', activated_at = now() WHERE id = $2`, w.formXTNoDocument, a)
+	w.activate(t, w.tenant(t, "x-a", "XTA"))
 }
 
 func TestFeatureTheOperatorStaysActiveAndHasNoParent(t *testing.T) {
@@ -285,8 +296,7 @@ func TestFeatureTheSlugIsLockedOnceActive(t *testing.T) {
 	w := newWorld(t)
 	a := w.tenant(t, "x-a", "XTA")
 	exec(t, w.tx, `UPDATE tenants SET slug = 'x-a2' WHERE id = $1`, a)
-	exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1, institution_type = 'x_tenancy_type', timezone = 'Indian/Maldives',
-		status = 'active', activated_at = now() WHERE id = $2`, w.formXTNoDocument, a)
+	w.activate(t, a)
 	_, err := savepoint(t, w.tx, `UPDATE tenants SET slug = 'x-a3' WHERE id = $1`, a)
 	assert.Equal(t, "23514", code(t, err))
 }
@@ -300,7 +310,8 @@ func TestFeatureReferencedClassificationCannotBeDeleted(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			w := newWorld(t)
 			a := w.tenant(t, "x-a", "XTA")
-			exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1, institution_type = 'x_tenancy_type' WHERE id = $2`, w.formXTNoDocument, a)
+			exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1 WHERE id = $2`, w.formXTNoDocument, a)
+			exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type')`, a)
 			_, err := w.tx.Exec(t.Context(), sql)
 			assert.Contains(t, []string{"23001", "23503"}, code(t, err))
 		})

@@ -23,7 +23,7 @@ mean ignoring custom-domain or self-host requirements during identity design.
 
 Status: the API is built step by step (C24). Steps 0–5 and
 H1–H6 are done, identity (step 7) is done through 7e, and step 6 (tenancy) is in progress:
-the classification lists and `tenants` are built (C136–C139); `tenant_institution_types`,
+the classification lists, `tenants`, and `tenant_institution_types` are built (C136–C141);
 domains, memberships, and the transaction boundary come next. This breaks
 the platform stage above into small increments, including the backend deployment
 proof, so there is a clear platform milestone before HRMS.

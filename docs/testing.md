@@ -1,7 +1,7 @@
 # Verification strategy
 
 Status: in use. CI runs the checks below on every pull request (and weekly); the API's
-coverage must stay at or above 85% (C119).
+coverage must stay at or above 87% (C119, raised by C143).
 
 ## Documentation and configuration
 
@@ -43,7 +43,7 @@ database drivers, generated SQL models, Redis clients, or provider implementatio
 Generated persistence packages remain behind adapters.
 
 Do not impose redundant unit/integration/browser suites on every low-level operation.
-The one coverage rule is the API's 85% threshold (C119), measured, never assumed.
+The one coverage rule is the API's 87% threshold (C119, C143), measured, never assumed.
 
 ## Telemetry, tracing, and audit in tests (C110)
 
@@ -114,7 +114,7 @@ count as successful.
 | Job | Runs | Needs |
 | --- | --- | --- |
 | API lint | `golangci-lint fmt --diff` (formatting) and `golangci-lint run` (C75) | nothing |
-| API feature tests and coverage | `run-feature-tests.sh`: `cmd/migrate` once, then the whole suite, unit and feature tests, `go test -race -tags feature -coverprofile=cover.out ./...` (C77, C79); then go-test-coverage fails the job below the threshold in `apps/api/.testcoverage.yml` (C119) | PostgreSQL (roles script) and Redis |
+| API feature tests and coverage | `run-feature-tests.sh`: `cmd/migrate` once, then the whole suite, unit and feature tests, `go test -race -tags feature -coverpkg=./... -coverprofile=cover.out ./...` (C77, C79, C143); then go-test-coverage fails the job below the threshold in `apps/api/.testcoverage.yml` (C119) | PostgreSQL (roles script) and Redis |
 | API vulnerabilities | `govulncheck` (C113): known vulnerabilities in Go code the API calls | nothing |
 | API image | builds the production image, runs its `migrate`, and scans it with Grype (C113) | PostgreSQL |
 | workspace / admin / identity / website | frontend typecheck (where the app has one) and build | nothing |
@@ -135,7 +135,8 @@ update pull requests go through the same jobs.
 ### Coverage (C119)
 
 The API's total statement coverage, from the unit and feature tests together, must stay
-at or above the threshold in `apps/api/.testcoverage.yml` (85%); the API feature-test
+at or above the threshold in `apps/api/.testcoverage.yml` (87%); every test counts towards
+the code it runs, in any package (`go test -coverpkg=./...`, C143); the API feature-test
 job fails otherwise. The process entry points (`cmd/*`) are excluded: they only read
 settings, wire the build, and start a process, and the end-to-end suite runs them,
 which Go's coverage cannot see. Everything they call is counted. When coverage rises,

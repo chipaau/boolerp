@@ -63,7 +63,8 @@ func run() int {
 		logger.Error("startup failed", "error", err)
 		return 1
 	}
-	err = seed.Run(ctx, full.DataSeeders(owner), env)
+	// Then development's samples that must also be written as the owner (C143).
+	err = seed.Run(ctx, append(full.DataSeeders(owner), full.SampleSeeders(owner)...), env)
 	owner.Close()
 	if err != nil {
 		logger.Error("seed failed", "error", err)

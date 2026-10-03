@@ -129,7 +129,6 @@ Table tenants {
   is_operator boolean [not null, default: false, note: 'at most one true; never set by the runtime role (policies)']
   country char(2) [not null, ref: > countries.code, note: 'ON DELETE RESTRICT']
   legal_form_id uuid [note: 'FK (legal_form_id, country) -> legal_forms (id, country), ON DELETE RESTRICT']
-  institution_type text [ref: > institution_types.code, note: 'the primary type; ON DELETE RESTRICT']
   identity_number text [note: 'the number of the document the legal form names; unique per country (case-insensitive)']
   registered_on date
   timezone text [note: 'IANA name, checked by the application']
@@ -143,11 +142,32 @@ Table tenants {
   updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
 
   Note: '''
-  Confirmed 2026-10-04 (C136, C138, C139); migration platform/tenancy/migrations/00001_tenants.sql.
-  CHECKs: classification and time zone before leaving provisioning; status timestamps follow
+  Confirmed 2026-10-04 (C136, C139, C141); migration platform/tenancy/migrations/00001_tenants.sql.
+  CHECKs: legal form and time zone before leaving provisioning (and a primary type, see
+  tenant_institution_types); status timestamps follow
   the status; the operator is never suspended or archived and has no parent.
   RLS enabled: a tenant reads its own row; the operator tenant reads all and alone creates
   and changes them (lookup.is_operator_tenant, owned by erp_lookup); no delete policy.
+  '''
+}
+
+Table tenant_institution_types {
+  tenant_id uuid [not null, ref: > tenants.id, note: 'ON DELETE RESTRICT']
+  institution_type text [not null, ref: > institution_types.code, note: 'ON DELETE RESTRICT; indexed']
+  is_primary boolean [not null, default: false, note: 'at most one true per tenant (unique partial index)']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  indexes {
+    (tenant_id, institution_type) [pk]
+  }
+
+  Note: '''
+  Confirmed 2026-10-04 (C141); migration platform/tenancy/migrations/00002_tenant_institution_types.sql.
+  Every institution type of a tenant, the primary one flagged. A tenant outside provisioning
+  has exactly one primary: a constraint trigger on tenants and on this table, deferred to commit.
+  RLS enabled: a tenant reads its own rows; the operator reads all and alone adds, changes,
+  and removes them.
   '''
 }
 
@@ -157,6 +177,7 @@ TableGroup identity {
 
 TableGroup tenancy {
   tenants
+  tenant_institution_types
 }
 
 TableGroup reference {
