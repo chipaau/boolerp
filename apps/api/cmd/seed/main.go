@@ -1,7 +1,10 @@
-// Command seed runs the edition's seeders (C50): one per store, kept in each
-// module's seeds folder and listed in order by the edition, like Laravel's
-// seeders. It refuses to run unless APP_ENV is set explicitly to dev, test, or
-// staging, and it is not built into the production image.
+// Command seed fills a development database after cmd/migrate (C50, C137): first
+// the seed files every database needs (the reference lists, the same files
+// cmd/deploy loads in production) as the migration role, then the demo data as
+// the runtime role. Seeders are one per store, kept in each module's seeds folder
+// and listed in order by the edition, like Laravel's seeders. It refuses to run
+// unless APP_ENV is set explicitly to dev, test, or staging, and it is not built
+// into the production image.
 package main
 
 import (
@@ -43,6 +46,31 @@ func run() int {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	env := seed.NewEnv(cfg.App.Environment, logger)
+
+	// The seed files first, as the migration role that owns their tables: the same
+	// files cmd/deploy loads in production (C137).
+	owner, err := postgres.NewPool(ctx, postgres.Settings{
+		Host:     cfg.Migrate.Host,
+		Port:     cfg.Migrate.Port,
+		Name:     cfg.Migrate.Name,
+		User:     cfg.Migrate.User,
+		Password: cfg.Migrate.Password,
+		SSLMode:  cfg.Migrate.SSLMode,
+		MaxConns: 2,
+	})
+	if err != nil {
+		logger.Error("startup failed", "error", err)
+		return 1
+	}
+	err = seed.Run(ctx, full.DataSeeders(owner), env)
+	owner.Close()
+	if err != nil {
+		logger.Error("seed failed", "error", err)
+		return 1
+	}
+
+	// Then the demo data, as the runtime role.
 	pool, err := postgres.NewPool(ctx, postgres.Settings{
 		Host:     cfg.DB.Host,
 		Port:     cfg.DB.Port,
@@ -65,7 +93,7 @@ func run() int {
 		},
 	}, &http.Client{Timeout: 10 * time.Second}, logger)
 
-	if err := seed.Run(ctx, seeders, seed.NewEnv(cfg.App.Environment, logger)); err != nil {
+	if err := seed.Run(ctx, seeders, env); err != nil {
 		logger.Error("seed failed", "error", err)
 		return 1
 	}

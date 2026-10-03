@@ -31,9 +31,10 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   (`internal/platform/<name>/migrations` or `internal/modules/<name>/migrations`), each
   with its own history table, listed in the edition's `Migrations` (platform first);
   `cmd/api`, `cmd/migrate`, `cmd/deploy`, and `cmd/seed` share the edition (C95, C122).
-- Migrations hold schema only, never data. Production's starting data is a seed file
-  in the owning package's `seeds` folder, listed in the edition's `DeploySeeders` and
-  loaded by `cmd/deploy` after it applies the migrations; other seeders are demo data (C135).
+- Migrations hold schema only, never data. Data every database needs is a seed file in
+  the owning package's `seeds` folder, listed in the edition's `DataSeeders`: production
+  loads it with `cmd/deploy` (migrations, then seeds; production only), development with
+  `cmd/migrate` then `cmd/seed`. Other seeders are demo data, never in production (C135, C137).
 - Business modules may depend on platform modules; a module needing another business
   module defines the interface in its own `application` package. Platform modules never
   import business modules (C95).

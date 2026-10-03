@@ -4,17 +4,11 @@
 package seeds
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
-	"encoding/csv"
-	"errors"
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
-
-	"github.com/jackc/pgx/v5"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 )
@@ -38,26 +32,13 @@ var (
 // ParseCountries reads countries CSV (lines starting with # are comments): a
 // header, then one country per line. It rejects a malformed or duplicated row.
 func ParseCountries(data []byte) ([]Country, error) {
-	r := csv.NewReader(bytes.NewReader(data))
-	r.Comment = '#'
-	r.FieldsPerRecord = 4
-	header, err := r.Read()
+	records, err := readCSV("countries", data, "code", "alpha3", "name", "phone_prefix")
 	if err != nil {
-		return nil, fmt.Errorf("countries header: %w", err)
-	}
-	if strings.Join(header, ",") != "code,alpha3,name,phone_prefix" {
-		return nil, fmt.Errorf("countries header: got %q", header)
+		return nil, err
 	}
 	var countries []Country
 	codes, alpha3s := map[string]bool{}, map[string]bool{}
-	for {
-		rec, err := r.Read()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("countries: %w", err)
-		}
+	for _, rec := range records {
 		c := Country{Code: rec[0], Alpha3: rec[1], Name: rec[2], PhonePrefix: rec[3]}
 		switch {
 		case !codePattern.MatchString(c.Code):
@@ -77,11 +58,6 @@ func ParseCountries(data []byte) ([]Country, error) {
 		countries = append(countries, c)
 	}
 	return countries, nil
-}
-
-// DB is what the seeder needs: a pool, or a transaction in tests (C79).
-type DB interface {
-	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
 // Countries seeds the ISO 3166-1 list from countries.csv.
@@ -114,30 +90,14 @@ func (c *Countries) Run(ctx context.Context, env seed.Env) error {
 	if err != nil {
 		return err
 	}
-	tx, err := c.db.Begin(ctx)
+	rows := make([]row, len(countries))
+	for i, k := range countries {
+		rows[i] = row{key: k.Code, args: []any{k.Code, k.Alpha3, k.Name, k.PhonePrefix}}
+	}
+	n, err := upsertAll(ctx, c.db, upsert, rows)
 	if err != nil {
-		return fmt.Errorf("begin: %w", err)
+		return fmt.Errorf("country %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
-
-	var inserted, updated, unchanged int
-	for _, k := range countries {
-		var isNew bool
-		err := tx.QueryRow(ctx, upsert, k.Code, k.Alpha3, k.Name, k.PhonePrefix).Scan(&isNew)
-		switch {
-		case errors.Is(err, pgx.ErrNoRows):
-			unchanged++
-		case err != nil:
-			return fmt.Errorf("country %s: %w", k.Code, err)
-		case isNew:
-			inserted++
-		default:
-			updated++
-		}
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit: %w", err)
-	}
-	env.Logger.InfoContext(ctx, "countries seeded", "inserted", inserted, "updated", updated, "unchanged", unchanged)
+	env.Logger.InfoContext(ctx, "countries seeded", "inserted", n.inserted, "updated", n.updated, "unchanged", n.unchanged)
 	return nil
 }

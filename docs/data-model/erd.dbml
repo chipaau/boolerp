@@ -51,9 +51,33 @@ Table countries {
   Note: '''
   Confirmed 2026-10-03 (C120, C121), meaning changed 2026-10-04 (C135); migration
   platform/reference/migrations/00001_countries.sql. The ISO 3166-1 list (249), loaded
-  by cmd/deploy from reference/seeds/countries.csv; a country is offered when it has
+  by cmd/deploy (production) and cmd/seed (development) from reference/seeds/countries.csv; a country is offered when it has
   legal forms. Global reference data. RLS enabled: everyone reads; no write policy yet
   (operator-only writes come with the operator rule), so only the migration role writes.
+  '''
+}
+
+Table legal_forms {
+  id uuid [pk, default: `uuidv7()`]
+  country char(2) [not null, ref: > countries.code, note: 'ON DELETE RESTRICT']
+  code text [not null, note: 'e.g. private_company; CHECK ^[a-z][a-z0-9_]{1,49}$']
+  name text [not null, note: 'not blank']
+  category text [not null, note: 'government | private | non_profit | international (CHECK)']
+  identity_document text [note: 'the registration number its organisations carry; null = none; not blank']
+  active_from timestamptz [not null, default: `now()`]
+  active_to timestamptz [note: 'retired; null = offered; CHECK active_to >= active_from']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  indexes {
+    (country, code) [unique]
+  }
+
+  Note: '''
+  Confirmed 2026-10-04 (C136); migration platform/reference/migrations/00002_legal_forms.sql.
+  What an organisation is in law, per country; the category is what cross-country rules
+  attach to. Loaded by cmd/deploy and cmd/seed from reference/seeds/legal_forms.csv (the Maldives' 12).
+  RLS enabled: everyone reads; no write policy yet, so only the migration role writes.
   '''
 }
 
@@ -63,4 +87,5 @@ TableGroup identity {
 
 TableGroup reference {
   countries
+  legal_forms
 }

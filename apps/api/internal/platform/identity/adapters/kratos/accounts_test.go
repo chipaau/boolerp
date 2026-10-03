@@ -242,3 +242,22 @@ func TestRecoverReturnsTheLinkAndCode(t *testing.T) {
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), "s3cret")
 }
+
+func TestAddSignInDoesNotResendAGoogleSignInTheAccountHas(t *testing.T) {
+	var updated map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"id":"k1","schema_id":"registration","schema_url":"x","state":"active","traits":{},
+				"credentials":{"oidc":{"type":"oidc","identifiers":["google:a@b.test"]}}}`))
+			return
+		}
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&updated))
+		_, _ = w.Write([]byte(`{"id":"k1","schema_id":"registration","schema_url":"x","state":"active","traits":{}}`))
+	}))
+	t.Cleanup(srv.Close)
+	require.NoError(t, NewAccounts(srv.URL, srv.Client()).AddSignIn(t.Context(), "k1", "pw", "a@b.test"))
+	credentials := updated["credentials"].(map[string]any)
+	assert.Contains(t, credentials, "password")
+	assert.NotContains(t, credentials, "oidc", "Kratos refuses a duplicate Google sign-in")
+}

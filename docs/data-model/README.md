@@ -59,9 +59,9 @@ legal forms. Global reference data, not tenant-scoped.
 The migration holds the schema only; the 249 rows come from the seed file
 `apps/api/internal/platform/reference/seeds/countries.csv` (public-domain
 [datasets/country-codes](https://github.com/datasets/country-codes)), loaded by
-`cmd/deploy` (C135). Row-level security is enabled: everyone reads; there is
+`cmd/deploy` in production and `cmd/seed` in development (C135, C137). Row-level security is enabled: everyone reads; there is
 no write policy until the operator rule exists, so the runtime role cannot change
-countries; only the migration role (migrations and `cmd/deploy`) does. The migration is
+countries; only the migration role (migrations, `cmd/deploy`, `cmd/seed`) does. The migration is
 `apps/api/internal/platform/reference/migrations/00001_countries.sql`.
 
 ### `users` (identity module, C94)
@@ -88,3 +88,27 @@ are personal data: never logged, cached, or traced. The migration is
 
 See [tenancy](../platform/tenancy.md), [HRMS employees](../hrms/employees.md),
 and [the decision register](../decisions/README.md).
+
+### `legal_forms` (platform reference data, C120, C136)
+
+Fields confirmed 2026-10-04 by the user, with the seed rows and their categories. What an
+organisation is in law, per country; a tenant picks one of its own country's. Global
+reference data, not tenant-scoped.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default. |
+| `country` | `char(2)` | Not null; references `countries.code`, `ON DELETE RESTRICT`. |
+| `code` | `text` | Not null; CHECK `^[a-z][a-z0-9_]{1,49}$`; unique with `country`. |
+| `name` | `text` | Not null, not blank. |
+| `category` | `text` | Not null; one of `government`, `private`, `non_profit`, `international`: what cross-country rules attach to. |
+| `identity_document` | `text` | Nullable: the registration number its organisations carry; null = none; not blank. |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable: retired; null = offered; not before `active_from`. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger on every update. |
+
+The migration holds the schema only; the rows come from
+`apps/api/internal/platform/reference/seeds/legal_forms.csv` (the Maldives' 12), loaded
+by `cmd/deploy` and `cmd/seed` after the countries (C135, C137). Row-level security as for `countries`:
+everyone reads; only the migration role writes until the operator rule exists. The
+migration is `apps/api/internal/platform/reference/migrations/00002_legal_forms.sql`.

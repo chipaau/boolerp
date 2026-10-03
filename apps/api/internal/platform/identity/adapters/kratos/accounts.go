@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	ory "github.com/ory/client-go"
@@ -119,7 +120,8 @@ func signIn(password, googleSubject string) ory.IdentityWithCredentials {
 
 // AddSignIn implements application.Accounts: Kratos's update replaces the whole
 // identity, so it sends the account's own schema, state, and traits back with the
-// credentials.
+// credentials. Kratos refuses a Google sign-in the account already has (409), so
+// one already there is not sent again; the password is always set.
 func (a *Accounts) AddSignIn(ctx context.Context, kratosIdentityID, password, googleSubject string) error {
 	identity, resp, err := a.api.IdentityAPI.GetIdentity(ctx, kratosIdentityID).Execute()
 	if resp != nil {
@@ -130,6 +132,9 @@ func (a *Accounts) AddSignIn(ctx context.Context, kratosIdentityID, password, go
 	}
 	if err != nil {
 		return errors.New("kratos: reading the account failed")
+	}
+	if hasGoogle(identity, googleSubject) {
+		googleSubject = ""
 	}
 	traits, _ := identity.Traits.(map[string]any)
 	body := ory.NewUpdateIdentityBody(identity.SchemaId, identity.GetState(), traits)
@@ -143,6 +148,16 @@ func (a *Accounts) AddSignIn(ctx context.Context, kratosIdentityID, password, go
 		return errors.New("kratos: adding the sign-in failed")
 	}
 	return nil
+}
+
+// hasGoogle reports whether the account already signs in with Google as subject
+// (Kratos records it as the identifier "google:<subject>").
+func hasGoogle(identity *ory.Identity, subject string) bool {
+	if subject == "" {
+		return false
+	}
+	oidc, ok := identity.GetCredentials()["oidc"]
+	return ok && slices.Contains(oidc.Identifiers, "google:"+subject)
 }
 
 // Recover implements application.Accounts with Kratos's recovery code (the

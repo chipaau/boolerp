@@ -1,0 +1,16 @@
+# Legal forms per country (C120, C136; confirmed 2026-10-04): country (ISO alpha-2),
+# code, name, category (government, private, non_profit, international), and the
+# registration number its organisations carry (empty: none).
+country,code,name,category,identity_document
+MV,government_ministry,Government ministry / central office,government,
+MV,independent_institution,Independent institution,government,
+MV,statutory_body,Statutory body,government,
+MV,judiciary_parliament,Judiciary / parliament,government,
+MV,local_council,"Local council (city, atoll, island)",government,
+MV,state_owned_enterprise,State-owned enterprise,government,Company registration number
+MV,public_company,Public company (Plc),private,Company registration number
+MV,private_company,Private company (Pvt Ltd),private,Company registration number
+MV,partnership_sole_proprietorship,Partnership / sole proprietorship,private,Business registration number
+MV,cooperative_society,Cooperative society,private,Cooperative registration number
+MV,association_ngo,Association / NGO,non_profit,Association registration number
+MV,international_organisation,International organisation / mission,international,

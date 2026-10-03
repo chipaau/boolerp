@@ -1,11 +1,14 @@
 package config
 
-// Seed holds cmd/seed's settings (C50). It runs as the API's runtime role, so
-// seeded data passes the same rules as data the API writes.
+// Seed holds cmd/seed's settings (C50, C137). It loads the seed files (the
+// reference lists) as the migration role, which owns those tables (MIGRATE_DB_*),
+// then the demo data as the API's runtime role (APP_DB_*), so demo data passes
+// the same rules as data the API writes.
 type Seed struct {
-	App      SeedApp  `envPrefix:"APP_"`
-	DB       DB       `envPrefix:"APP_DB_"`
-	Identity Identity `envPrefix:"APP_IDENTITY_"`
+	App      SeedApp   `envPrefix:"APP_"`
+	DB       DB        `envPrefix:"APP_DB_"`
+	Migrate  MigrateDB `envPrefix:"MIGRATE_DB_"`
+	Identity Identity  `envPrefix:"APP_IDENTITY_"`
 }
 
 // SeedApp is the seed guard: APP_ENV must be set explicitly (the API's dev

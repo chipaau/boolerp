@@ -16,12 +16,17 @@ func deployEnviron(t *testing.T, extra ...string) []string {
 	}, extra...)
 }
 
-func TestDeployRunsInEveryNamedEnvironmentAsTheMigrationRole(t *testing.T) {
+func TestDeployRunsOnlyInProductionLikeEnvironmentsAsTheMigrationRole(t *testing.T) {
 	_, err := LoadDeploy(deployEnviron(t))
 	require.Error(t, err, "the environment must be named")
 	assert.Contains(t, err.Error(), "APP_ENV")
 
-	for _, env := range []string{"dev", "test", "staging", "prod"} {
+	for _, env := range []string{"dev", "test"} {
+		_, err := LoadDeploy(deployEnviron(t, "APP_ENV="+env))
+		require.Error(t, err, "development uses migrate and seed (C137)")
+		assert.Contains(t, err.Error(), "APP_ENV")
+	}
+	for _, env := range []string{"staging", "prod"} {
 		cfg, err := LoadDeploy(deployEnviron(t, "APP_ENV="+env, "APP_DB_USER=erp_app"))
 		require.NoError(t, err, env)
 		assert.Equal(t, Deploy{App: DeployApp{Environment: env}, DB: MigrateDB{

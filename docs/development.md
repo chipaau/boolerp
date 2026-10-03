@@ -42,8 +42,8 @@ examples always used) under `/run/secrets`, the way Docker and Kubernetes secret
 mounted in production, so development exercises the same `_FILE` settings; there is
 no password in `.env` or any variable. Each container gets only the passwords it
 needs. The `migrate` service (profile `tools`) runs migrations on
-demand: `docker compose run --rm migrate`; `deploy` runs them too, then loads
-production's starting data: `docker compose run --rm deploy` (C135).
+demand: `docker compose run --rm migrate`, then `seed` fills the database:
+`docker compose run --rm seed` (C137).
 Keep Compose project name `erp` so volume names stay stable. Preserve the current `.env`; on a
 new checkout only, initialize it from `.env.example`. Removed service volumes are
 not deleted.
@@ -73,11 +73,10 @@ below. The API creates its PostgreSQL pool at startup, checks the database throu
 optional cache (C52) with no application data yet; the BFFs keep sessions in their own
 Redis (`redis-sessions`).
 
-Migrations run explicitly, never at API startup: `docker compose run --rm deploy`
-(`cmd/deploy`) applies them and then production's starting data (the country list);
-`docker compose run --rm migrate` (`cmd/migrate`) applies the migrations alone. Demo data
-comes from
-`docker compose run --rm seed` (C50, C135). Migrations hold no data.
+Migrations run explicitly, never at API startup. In development:
+`docker compose run --rm migrate` (`cmd/migrate`), then `docker compose run --rm seed`
+(`cmd/seed`: the seed files, then demo data). In production, `cmd/deploy` does both
+steps for a release; it is not run in development (C137). Migrations hold no data.
 Development volumes are disposable; reset them when needed.
 
 ## Runtime configuration
@@ -266,27 +265,38 @@ Without `--watch`, the container does not watch source changes. Restart it to re
 docker compose restart api
 ```
 
-## Seed data (C50, C118, C135)
+## Seed data (C50, C118, C135, C137)
 
-There are two kinds of seeders, both `seed.Seeder` and both idempotent:
+Seeders are `seed.Seeder`s and all idempotent. Production and development load **the
+same seed files**; only the command differs:
 
-| Kind | Listed in | Run by | Role | Environments |
+| Seeders | Listed in | Production: `cmd/deploy` | Development: `cmd/seed` | Role |
 | --- | --- | --- | --- | --- |
-| Production's starting data (the ISO country list, the team's accounts) | `full.DeploySeeders` | `cmd/deploy`, after it applies the migrations | migration role (owns the tables) | all, including production |
-| Demo data (team accounts, gofakeit data) | `full.Seeders` | `cmd/seed` | runtime role, through use cases | dev, test, staging; never production |
+| Seed files: countries, legal forms | `full.DataSeeders` | yes, after the migrations | yes, first | migration role (owns the tables) |
+| The team's accounts without passwords | `full.DeploySeeders` | yes | no (the demo seeder creates them) | migration role |
+| Demo data: team accounts with the dev password, gofakeit data | `full.Seeders` | never | yes, after the seed files | runtime role, through use cases |
 
-A new database is prepared with:
+A development database is prepared with:
 
 ```sh
-docker compose run --rm deploy  # migrations, then production's starting data
-docker compose run --rm seed    # demo data, optional
+docker compose run --rm migrate
+docker compose run --rm seed
+```
+
+In production, one command per release (it refuses `APP_ENV` other than `staging` or
+`prod`):
+
+```sh
+APP_ENV=prod MIGRATE_DB_HOST=… APP_IDENTITY_KRATOS_ADMIN_URL=… deploy
 ```
 
 `reference.countries` loads `internal/platform/reference/seeds/countries.csv`, the 249
 ISO 3166-1 countries and territories from the public-domain
 [datasets/country-codes](https://github.com/datasets/country-codes), with the cleaning
 noted at the top of the file. It adds new rows and corrects changed ones in one
-transaction, never deletes, and never touches `active_to`.
+transaction, never deletes, and never touches `active_to`. `reference.legal_forms` does
+the same for `legal_forms.csv` (per country, keyed by country and code), after the
+countries it references.
 
 `identity.team_accounts` creates the team's accounts (`identity/seeds/team.go`) in
 Kratos, with a verified email and no password. For each account it creates, `deploy`
@@ -295,7 +305,8 @@ sets their own password; it prints them only to a terminal (never the log), so i
 or another non-interactive run the person uses "Forgot password" instead. An existing
 account is left as it is, so later deploys print nothing. `deploy` therefore needs
 Kratos's admin API (`APP_IDENTITY_KRATOS_ADMIN_URL`, and `APP_IDENTITY_HYDRA_ADMIN_URL`
-for the identity module).
+for the identity module). `cmd/deploy` is not a Compose service: it is production's
+command and never runs in development (C137).
 
 Tests never rely on any seeded data ([testing](testing.md)).
 

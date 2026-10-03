@@ -94,7 +94,13 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   `identity_number`, whose kind the legal form decides. Deferred: the local-script
   name. The subscription (plan, seats, apps) lives in its own tables.
 
-**Classification reference tables** (C120)
+**Classification reference tables** (C120, structure C136)
+- Owned by the `reference` module; loaded from seed files by `cmd/deploy` and `cmd/seed` (C135, C137). Each legal form also
+  carries a global **category** (`government`, `private`, `non_profit`,
+  `international`): rules that differ by kind of organisation attach to the category,
+  never to one country's forms. A tenant's classification is required before it can
+  become active. FindCare finds healthcare providers by sector and filters by
+  institution type and category.
 - Two dimensions: what an organisation is in law (**legal form**) and what it does
   (**sector**, refined by **institution type**). A private and a government hospital
   share the institution type and differ in legal form.
