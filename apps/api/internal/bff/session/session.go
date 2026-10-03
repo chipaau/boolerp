@@ -111,8 +111,13 @@ func New(client *goredis.Client, sealer *Sealer, s Settings, onError func(http.R
 // SignIn stores a completed login under a new session token, so a token planted
 // before the login (session fixation) is worthless. The tokens get a new key
 // that expires with the session's lifetime, and are listed under Hydra's login
-// session, so back-channel logout can find them (C101).
+// session, so back-channel logout can find them (C101). A session that was
+// already signed in loses its previous tokens and Hydra-session entry, so a
+// repeat sign-in leaves no live refresh token behind (the caller revokes it).
 func (s *Sessions) SignIn(ctx context.Context, in SignedIn) error {
+	if err := s.dropTokens(ctx); err != nil {
+		return err
+	}
 	id := randomID()
 	if err := s.writeTokens(ctx, in.Account, id, in.Tokens, s.lifetime); err != nil {
 		return err
@@ -199,19 +204,30 @@ func (s *Sessions) SaveTokens(ctx context.Context, in SignedIn) error {
 // SignOut deletes the session's tokens, removes it from its Hydra login
 // session's list, and destroys the session.
 func (s *Sessions) SignOut(ctx context.Context) error {
-	if id := s.GetString(ctx, keyTokensID); id != "" {
-		_, err := s.redis.TxPipelined(ctx, func(p goredis.Pipeliner) error {
-			p.Del(ctx, s.tokensKey(id))
-			if sid := s.GetString(ctx, keyHydraSession); sid != "" {
-				p.SRem(ctx, s.hydraSessionKey(sid), id)
-			}
-			return nil
-		})
-		if err != nil {
-			return fmt.Errorf("session: deleting tokens: %w", err)
-		}
+	if err := s.dropTokens(ctx); err != nil {
+		return err
 	}
 	return s.Destroy(ctx)
+}
+
+// dropTokens deletes the session's tokens, if any, and removes them from their
+// Hydra login session's list.
+func (s *Sessions) dropTokens(ctx context.Context) error {
+	id := s.GetString(ctx, keyTokensID)
+	if id == "" {
+		return nil
+	}
+	_, err := s.redis.TxPipelined(ctx, func(p goredis.Pipeliner) error {
+		p.Del(ctx, s.tokensKey(id))
+		if sid := s.GetString(ctx, keyHydraSession); sid != "" {
+			p.SRem(ctx, s.hydraSessionKey(sid), id)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("session: deleting tokens: %w", err)
+	}
+	return nil
 }
 
 // EndHydraSession signs out every session of this BFF instance that belongs to

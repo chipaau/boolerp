@@ -37,6 +37,11 @@ check is in the change that fixed it.
 | 21 | Actions and base images pinned by tag, not SHA or digest; `corepack@latest`; `latest` versions for TanStack | CI, Dockerfiles, `package.json` | SSDF | Medium | Fixed (C113) |
 | 22 | `checkout` keeps credentials; `.gitignore` misses `.env.*`; e2e installs without the lockfile | CI, repository | SSDF | Low | Fixed (C113) |
 | 23 | Mock data pairs real Maldivian organisations with personal-looking data | Admin mocks | V14 | Low | Open |
+| 24 | Sign-out after the BFF session idled out (30 minutes) only reloaded the app, leaving the Kratos and Hydra sessions (12 hours) to sign the browser straight back in (scan of 2026-10-03) | BFF logout | V7 | Medium | Fixed (C126) |
+| 25 | The API's runtime role could delete any user (default DELETE privilege, no row-level security on `users`) | `users` table | V8 | Medium | Fixed (C126) |
+| 26 | Signing in again left the previous session's tokens in Redis, with a live refresh token, for up to 12 hours | BFF session | V7 | Low | Fixed (C126) |
+| 27 | Hydra discovery held a lock during a network call of up to 10 seconds, queueing every login and back-channel logout while Hydra was slow or down | BFF login | V15 | Low | Fixed (C126) |
+| 28 | The login service's logout and consent routes answered 500 for a used, expired, or unknown challenge (a double-click or reload) | Login service | V16 | Low | Fixed (C126) |
 
 ## Before any real deployment
 

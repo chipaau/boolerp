@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { Configuration, FrontendApi, ResponseError } from '@ory/client-fetch'
-import { hydraAdmin } from '@/lib/hydra'
+import { goneChallengeRedirect, hydraAdmin } from '@/lib/hydra'
 import { publicUrl } from '@/lib/kratos'
 
 // Hydra's logout step (C101). An app's BFF sends the browser to Hydra's logout with the
@@ -16,13 +16,15 @@ export async function GET(request: NextRequest) {
   const challenge = request.nextUrl.searchParams.get('logout_challenge')
   if (!challenge) return new NextResponse('Missing logout_challenge.', { status: 400 })
 
-  const logout = await hydraAdmin().getOAuth2LogoutRequest({ logoutChallenge: challenge })
-  if (!logout.rp_initiated) {
-    const confirm = new URL('/logout/confirm', publicUrl())
-    confirm.search = new URLSearchParams({ logout_challenge: challenge }).toString()
-    return NextResponse.redirect(confirm, 303)
-  }
-  return endLogin(request, challenge)
+  return orGone(async () => {
+    const logout = await hydraAdmin().getOAuth2LogoutRequest({ logoutChallenge: challenge })
+    if (!logout.rp_initiated) {
+      const confirm = new URL('/logout/confirm', publicUrl())
+      confirm.search = new URLSearchParams({ logout_challenge: challenge }).toString()
+      return NextResponse.redirect(confirm, 303)
+    }
+    return endLogin(request, challenge)
+  })
 }
 
 // The confirmation page's answer: sign out, or stay signed in.
@@ -33,11 +35,27 @@ export async function POST(request: NextRequest) {
   if (typeof challenge !== 'string' || !challenge) {
     return new NextResponse('Missing logout_challenge.', { status: 400 })
   }
-  if (form.get('action') !== 'logout') {
-    await hydraAdmin().rejectOAuth2LogoutRequest({ logoutChallenge: challenge })
-    return NextResponse.redirect(new URL('/', publicUrl()), 303)
+  return orGone(async () => {
+    if (form.get('action') !== 'logout') {
+      await hydraAdmin().rejectOAuth2LogoutRequest({ logoutChallenge: challenge })
+      return NextResponse.redirect(new URL('/', publicUrl()), 303)
+    }
+    return endLogin(request, challenge)
+  })
+}
+
+/**
+ * Runs a logout step; a challenge Hydra no longer has (used, expired, or unknown) sends
+ * the browser on instead of failing with a 500.
+ */
+async function orGone(step: () => Promise<NextResponse>): Promise<NextResponse> {
+  try {
+    return await step()
+  } catch (err) {
+    const to = await goneChallengeRedirect(err, new URL('/', publicUrl()).toString())
+    if (to) return NextResponse.redirect(to, 303)
+    throw err
   }
-  return endLogin(request, challenge)
 }
 
 /**

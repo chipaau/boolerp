@@ -269,3 +269,25 @@ func TestSignOutLeavesNothingBehind(t *testing.T) {
 	inSession(t, s, cookies, func(ctx context.Context) { require.NoError(t, s.SignOut(ctx)) })
 	assert.Empty(t, mr.Keys())
 }
+
+func TestSigningInAgainDropsThePreviousTokens(t *testing.T) {
+	client, mr := redisFor(t)
+	s := newSessions(t, client, keyA, true)
+	cookies := inSession(t, s, nil, func(ctx context.Context) { require.NoError(t, s.SignIn(ctx, signedIn)) })
+	inSession(t, s, cookies, func(ctx context.Context) {
+		again := signedIn
+		again.Tokens.Refresh = "refresh-2"
+		require.NoError(t, s.SignIn(ctx, again))
+	})
+
+	var tokens []string
+	for _, k := range mr.Keys() {
+		if strings.HasPrefix(k, "bff:test:tokens:") {
+			tokens = append(tokens, k)
+		}
+	}
+	assert.Len(t, tokens, 1, "the first login's tokens are gone")
+	members, err := mr.SMembers("bff:test:hydra-session:sid-1")
+	require.NoError(t, err)
+	assert.Len(t, members, 1, "only the new tokens are listed under the Hydra session")
+}

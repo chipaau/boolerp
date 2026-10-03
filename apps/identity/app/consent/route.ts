@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { hydraAdmin } from '@/lib/hydra'
+import { goneChallengeRedirect, hydraAdmin } from '@/lib/hydra'
+import { publicUrl } from '@/lib/kratos'
 
 // Hydra's consent step (C87, C89). Kratos handles only Hydra's login step, so this
 // route answers the consent step through Hydra's admin API. First-party clients
@@ -9,6 +10,18 @@ export async function GET(request: NextRequest) {
   const challenge = request.nextUrl.searchParams.get('consent_challenge')
   if (!challenge) return new NextResponse('Missing consent_challenge.', { status: 400 })
 
+  try {
+    return await consent(challenge)
+  } catch (err) {
+    // A consent challenge that was already used or has expired (a reload or the back
+    // button) continues where Hydra says, or goes home, instead of failing with a 500.
+    const to = await goneChallengeRedirect(err, new URL('/', publicUrl()).toString())
+    if (to) return NextResponse.redirect(to, 303)
+    throw err
+  }
+}
+
+async function consent(challenge: string): Promise<NextResponse> {
   const hydra = hydraAdmin()
   const consent = await hydra.getOAuth2ConsentRequest({ consentChallenge: challenge })
 

@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/oauth2"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/boolmv/erp/apps/api/internal/bff/session"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
@@ -65,8 +66,10 @@ type Handler struct {
 	client   *http.Client
 
 	// Hydra's discovery is read on the first login, not at startup, so the BFF
-	// starts while Hydra is down.
+	// starts while Hydra is down. mu guards provider and keys only briefly;
+	// flight makes concurrent first callers share one fetch.
 	mu       sync.Mutex
+	flight   singleflight.Group
 	provider *oidc.Provider
 	keys     oidc.KeySet // Hydra's signing keys, downloads limited (auth.KeyClient)
 }
@@ -86,14 +89,30 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/backchannel-logout", h.backchannelLogout)
 }
 
-// discover returns Hydra's provider, reading its discovery document once.
+// discover returns Hydra's provider, reading its discovery document once it
+// succeeds. The lock is never held during the fetch: concurrent callers share
+// one fetch (singleflight), and a failure is not remembered, so the next
+// request tries again instead of every request queueing behind one slow call.
 func (h *Handler) discover(ctx context.Context) (*oidc.Provider, error) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.provider != nil {
-		return h.provider, nil
+	p := h.provider
+	h.mu.Unlock()
+	if p != nil {
+		return p, nil
 	}
-	ctx, cancel := context.WithTimeout(oidc.ClientContext(ctx, h.client), 10*time.Second)
+	v, err, _ := h.flight.Do("discover", func() (any, error) {
+		return h.fetchProvider(ctx)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return v.(*oidc.Provider), nil
+}
+
+// fetchProvider reads Hydra's discovery document and keeps the provider and its
+// key set. The first caller's cancellation does not end the shared fetch.
+func (h *Handler) fetchProvider(ctx context.Context) (*oidc.Provider, error) {
+	ctx, cancel := context.WithTimeout(oidc.ClientContext(context.WithoutCancel(ctx), h.client), 10*time.Second)
 	defer cancel()
 	p, err := oidc.NewProvider(ctx, h.settings.Issuer)
 	if err != nil {
@@ -108,8 +127,10 @@ func (h *Handler) discover(ctx context.Context) (*oidc.Provider, error) {
 	// The provider's own key set downloads the keys again for every token that
 	// does not verify; this one is limited, since back-channel logout tokens come
 	// from anyone who can reach the BFF.
-	h.keys = oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), auth.KeyClient(h.client)), doc.JWKS)
-	h.provider = p
+	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), auth.KeyClient(h.client)), doc.JWKS)
+	h.mu.Lock()
+	h.keys, h.provider = keys, p
+	h.mu.Unlock()
 	return p, nil
 }
 
@@ -233,6 +254,11 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Signing in again over a live session: its refresh token is revoked here,
+	// and SignIn deletes its tokens, so nothing of the old login stays usable.
+	if prev, ok, err := h.sessions.Current(ctx); err == nil && ok {
+		h.revoke(ctx, prev.Tokens.Refresh)
+	}
 	if err := h.sessions.SignIn(ctx, session.SignedIn{
 		Account:      idToken.Subject,
 		HydraSession: claims.SID,
