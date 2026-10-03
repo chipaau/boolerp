@@ -15,6 +15,13 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   `Migrations`, plus `domain/`, `application/`, `adapters/`, `migrations/`, and `seeds/`
   as needed; sub-capabilities are subpackages (`identity/auth`).
 - A module owns its persistence writes. Do not reach into another module's SQL package.
+- Design every module so it can become a separate service later, all services sharing
+  one PostgreSQL database (C134). Foreign keys across modules are allowed, always
+  `ON DELETE RESTRICT` and only to a stable key (`id`, `code`). Another module's data is
+  read only through the read-only views its owner publishes, each `security_invoker = true`
+  and tested as the runtime role; never join another module's tables. No transaction
+  spans modules: effects in another module go through an outbox event written in the
+  same transaction and handled idempotently.
 - A module keeps all of its code in its own folder and registers its routes relative to
   its prefix (`Routes(r chi.Router)`). Only the edition package
   (`internal/edition/<name>`, C95) constructs, wires, and mounts modules, through the

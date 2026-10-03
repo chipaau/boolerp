@@ -62,6 +62,11 @@ On a new, empty Compose PostgreSQL volume, the initialization script creates:
   select/insert/update/delete on future migration-owned tables and `USAGE` on
   their sequences; it cannot call `setval` to change sequence values. It also
   cannot access the migration-history schema or table.
+- The `erp_lookup` role (C131, added with the first tenancy tables): `NOLOGIN BYPASSRLS`,
+  so no one connects as it. It owns the tenant lookup function and has column-level
+  `SELECT` only on the columns that lookup reads. Creating a `BYPASSRLS` role needs a
+  superuser, so the initialization script (and a self-hosted install) creates it; the
+  migration role is a member only so it can give the function to it.
 
 Compose passes the API only its explicit `APP_*` settings, including the runtime role's `APP_DB_*`; it does
 not pass the cluster-owner password or migration settings. Passwords are Compose

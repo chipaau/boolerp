@@ -18,6 +18,16 @@ Status: confirmed requirements and current scope, 2026-09-26.
   The number of tenants permitted within that customer is still open.
 - Backend distribution supports binaries or containers. Licensing should discourage
   unauthorized resale, with no claim that customer-controlled binaries are tamper-proof.
+- FindCare (`findcare.mv`, a public health appointment system) is a separate Bool
+  product, not a tenant. Bool runs its admin side and clinic management; patients are
+  not tenant members, and they see clinics' available doctors and services, book
+  appointments, pay, and later follow a doctor's queue. Its cross-tenant reads and its
+  bookings into a clinic need their own explicit, audited path; it is not in the current
+  implementation scope (C131).
+- A tenant uses the Bool workspace on its subdomain or its own domain, and may run
+  public portals by audience on its own domains (a student portal at
+  `portal.cyryx.edu.mv`, a lecturer portal at `lecturer.cyryx.edu.mv`). Bool's apps
+  define the portal types; tenants enable them (C132).
 - Workspace, public-portal, and integration entry points should share business
   operations when those surfaces are implemented.
 

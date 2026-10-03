@@ -156,15 +156,35 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   cannot start a login. A background job re-checks custom domains and revokes one whose
   record is gone (built with step 7f).
 - Row-level security: a tenant sees its own domains, the operator tenant all; the
-  request lookup uses a narrow function. The admin console's domain is the operator
-  tenant's. TLS per custom domain and Hydra's redirect addresses belong to step 7f and
+  request lookup uses a narrow function owned by the `erp_lookup` role (C131, below).
+  The admin console's domain is the operator tenant's. Product domains such as
+  `findcare.mv` are not tenants' domains and are not in this table (C131).
+- Each domain serves either the tenant's workspace or one of its portals (C132), so
+  `workspace.cyryx.edu.mv` and `portal.cyryx.edu.mv` both belong to Cyryx but open
+  different applications. The fields that record this are settled with the table. TLS per custom domain and Hydra's redirect addresses belong to step 7f and
   deployment.
+
+**Portals** (C132)
+- A tenant may enable any number of portal types that Bool's apps define (a student
+  portal, a lecturer portal, …) and give each its own domains; the portal's pages,
+  permissions, and data come from the app's code. All portals use the same API.
+- Each portal domain is a Hydra client with its own login design; portal apps are
+  public-facing (Next.js, C87).
+- Who gets in (C133): staff are members, with roles that open their portals; students,
+  applicants, and patients sign in with ordinary accounts that the app's own records
+  link to, and never become members or seats.
 
 **Resolving a request's tenant**
 - Browser requests: the BFF passes the browser's host, looked up in `domains`. Direct
   API clients (mobile, integrations) name the tenant in a header. Neither proves access:
   an active membership does, checked with the tenant's status in one call through the
   narrow function before the request's transaction.
+- The lookup before any tenant is known (C131): a `SECURITY DEFINER` function owned by
+  `erp_lookup`, a `NOLOGIN BYPASSRLS` role with column-level `SELECT` on only the
+  columns it reads and no writes. It pins `search_path`, schema-qualifies its tables,
+  takes the host as a parameter, and returns the tenant and what the domain serves
+  (the workspace or a portal, C132), or nothing. Only the runtime role
+  may execute it; the policies themselves are not loosened.
 - Every outsider gets the same 404 (unknown host, a tenant they do not belong to, a
   suspended one), so tenants and their status cannot be probed. A member of a tenant
   that is not active gets 403 with `tenant_suspended` or `tenant_archived`.

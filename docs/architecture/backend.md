@@ -102,8 +102,8 @@ Source dependencies point inward: adapters depend on application/domain contract
 An application may call a persistence port at runtime without importing its
 PostgreSQL implementation. HTTP and job adapters must not access tables directly.
 
-Each capability owns its writes. Collaboration uses explicit application contracts,
-and operations requiring atomic writes need an agreed transaction contract.
+Each capability owns its writes. Collaboration uses explicit application contracts;
+an atomic write stays inside one module (C134, below).
 Generated SQL types remain inside persistence adapters under the proposed port design.
 A module's database adapter is `adapters/store` (package `store`), named by its role
 rather than the database, so it never clashes with `internal/platform/postgres`;
@@ -151,7 +151,18 @@ module that needs another business module defines the interface it needs in its 
 `application` package, and the edition passes the other module in. Platform modules
 never import business modules. Within a capability, a subpackage may use its parent:
 `identity/auth` resolves users through the identity module, behind a small `Users`
-interface. No module reads another module's tables.
+interface. No module reads another module's tables; it reads the views the owner
+publishes (below).
+
+**Splittable modules on one database (C134):** any module can later become its own
+service, and every service keeps sharing the one PostgreSQL database.
+- Foreign keys may cross modules, always `ON DELETE RESTRICT` and only to a stable key.
+- Another module's data is read through read-only views its owner publishes, each
+  `security_invoker = true` so the caller's row-level security applies; never its tables.
+- No transaction spans modules. A change another module reacts to writes an outbox
+  event in the same transaction; the receiver handles it idempotently, with retries.
+- After a split, each service gets its own database role (grants on its tables and the
+  views it reads), pool limit, and statement timeout.
 
 Modules inherit the router's default middleware (request ID, request logging, panic
 recovery, origin checks, body limit, tracing). Authentication is not a default: a
