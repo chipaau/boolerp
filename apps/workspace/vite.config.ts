@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig } from 'vite'
+import type { Plugin } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
 
 import { tanstackRouter } from '@tanstack/router-plugin/vite'

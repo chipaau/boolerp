@@ -82,8 +82,12 @@ EDITION=full e2e/run.sh
 
 `run.sh` runs Playwright's image on the `proxy` network (the `*.bool.test` hosts mapped to
 Traefik) and Compose's internal network (Kratos's admin API), with its dependencies in the
-`erp-e2e-node-modules` volume. The suite uses one worker and one account. It is not yet run
-in CI.
+`erp-e2e-node-modules` volume. The suite uses one worker and one account, and runs in CI
+(C109). Before the tests, `e2e/warm.sh` opens the pages the suite reaches first, so the
+development servers have compiled them before a test is timed. App journeys (the app
+projects) start signed in: a `signed-in` setup project signs in once and saves the browser
+state, so they do not sign in before every test; the platform tests (sign-in, sign-out)
+still use fresh browsers (C127).
 
 See [employee scope](hrms/employees.md) and [execution](platform/execution.md).
 
@@ -110,15 +114,19 @@ count as successful.
 | Job | Runs | Needs |
 | --- | --- | --- |
 | API lint | `golangci-lint fmt --diff` (formatting) and `golangci-lint run` (C75) | nothing |
-| API unit tests | `go test -race ./...` | nothing |
 | API feature tests and coverage | `run-feature-tests.sh`: `cmd/migrate` once, then the whole suite, unit and feature tests, `go test -race -tags feature -coverprofile=cover.out ./...` (C77, C79); then go-test-coverage fails the job below the threshold in `apps/api/.testcoverage.yml` (C119) | PostgreSQL (roles script) and Redis |
 | API vulnerabilities | `govulncheck` (C113): known vulnerabilities in Go code the API calls | nothing |
 | API image | builds the production image, runs its `migrate`, and scans it with Grype (C113) | PostgreSQL |
-| workspace / admin / identity | frontend typecheck and build | nothing |
+| workspace / admin / identity / website | frontend typecheck (where the app has one) and build | nothing |
+| Frontend lint and tests | `pnpm -r run lint` and the vitest suites of every app and package that has them (C127) | nothing |
 | Frontend dependency audit | `pnpm audit --prod --audit-level high` (C113) | nothing |
 | BFF images | builds the workspace and admin release images and scans them with Grype (C113) | nothing |
 | Secret scan | Gitleaks over the whole history, every pull request (C113) | nothing |
-| End-to-end tests | the Compose stack behind a throwaway Traefik, then `e2e/run.sh` (C109) | the stack |
+| End-to-end tests | the Compose stack behind a throwaway Traefik, `e2e/warm.sh`, then `e2e/run.sh` (C109, C127) | the stack |
+
+Every job also runs weekly (Mondays 03:00 UTC) and on a manual run, whatever changed, so the
+scanners report new vulnerabilities in code and images no pull request touched (C127). The
+API's unit tests run once, inside the feature-test job, with the race detector.
 
 Merging a failing pull request is not blocked: required status checks need a paid GitHub
 plan for private repositories. Check that CI passed before merging. Dependabot (C76)

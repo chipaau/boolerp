@@ -215,7 +215,10 @@ the admin API (`http://kratos:4434`) is only on the internal network.
   requests a second (bursts of 50) for the login service's pages and Kratos's public
   API, 10 a minute for Kratos's form submissions (`POST /kratos/self-service/*`), over
   which requests are held or refused with 429, and 100 a second for Hydra, since in
-  development the BFFs' token requests reach it from one address.
+  development the BFFs' token requests reach it from one address. The login service's
+  static assets (`/_next/`) have their own route without the limit (C127): they carry
+  nothing sensitive, and a development page loads dozens of them, which used up the
+  page limit within a few pages.
 - **Headers:** the login service sends a per-page Content-Security-Policy with a nonce
   (`apps/identity/proxy.ts`, as the Next.js guide sets it; no `form-action`, because the
   login form's redirects go through Hydra to every app domain), and `nosniff`,

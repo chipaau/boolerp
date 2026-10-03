@@ -1,10 +1,14 @@
 name: CI
 
-# Pull requests only (C78): merges into develop are not re-checked, because
-# the pull request already was. workflow_dispatch allows a manual run.
+# Pull requests (C78): merges into develop are not re-checked, because the pull
+# request already was. Every job also runs weekly and on a manual run, whatever
+# changed, so the scanners report new vulnerabilities in code and images that
+# no pull request touched.
 on:
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1' # Mondays 03:00 UTC
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -45,7 +49,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Only pull requests are filtered; scheduled and manual runs run every job.
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        if: github.event_name == 'pull_request'
         id: filter
         with:
           filters: |
@@ -62,6 +68,7 @@ jobs:
               - 'apps/workspace/**'
               - 'apps/admin/**'
               - 'apps/identity/**'
+              - 'apps/website/**'
               - 'packages/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
@@ -77,12 +84,15 @@ jobs:
               - 'docker/**'
               - 'compose.yaml'
               - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - '.env.example'
               - '.github/workflows/ci.yml'
 
   api-lint:
     name: API lint
     needs: changes
-    if: needs.changes.outputs.api == 'true'
+    if: github.event_name != 'pull_request' || needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -98,30 +108,11 @@ jobs:
           docker run --rm -v "$PWD/apps/api:/src" -v "$HOME/go-mod:/go/pkg/mod" -w /src "$LINT_IMAGE" \
             sh -ec 'golangci-lint fmt --diff ./... && golangci-lint run ./...'
 
-  api-unit:
-    name: API unit tests
-    needs: changes
-    if: needs.changes.outputs.api == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/go-mod
-          key: go-mod-${{ hashFiles('apps/api/go.sum') }}
-      # No external services: feature tests are excluded by their build tag (C77).
-      - name: Unit tests
-        run: |
-          docker run --rm -v "$PWD/apps/api:/src" -v "$HOME/go-mod:/go/pkg/mod" -w /src "$GO_IMAGE" \
-            go test -race ./...
-
   # Known vulnerabilities in the Go modules that the API's code calls (C113).
   api-vulns:
     name: API vulnerabilities
     needs: changes
-    if: needs.changes.outputs.api == 'true'
+    if: github.event_name != 'pull_request' || needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -139,7 +130,7 @@ jobs:
   api-feature:
     name: API feature tests and coverage
     needs: changes
-    if: needs.changes.outputs.api == 'true'
+    if: github.event_name != 'pull_request' || needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -170,7 +161,7 @@ jobs:
   api-image:
     name: API image
     needs: changes
-    if: needs.changes.outputs.api == 'true'
+    if: github.event_name != 'pull_request' || needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -197,7 +188,7 @@ jobs:
   bff-image:
     name: BFF image (${{ matrix.app }})
     needs: changes
-    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.frontend == 'true'
+    if: github.event_name != 'pull_request' || needs.changes.outputs.api == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -214,17 +205,17 @@ jobs:
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$GRYPE_IMAGE" \
             erp-bff-${{ matrix.app }} --fail-on high --only-fixed
 
-  # Typecheck + build each frontend app, in the same Node 24 + pnpm 11 image dev/CI both use
+  # Typecheck + build each frontend app, in the same Node 26 + pnpm 12 image dev/CI both use
   # (docker/node.Dockerfile) — never the runner's own Node.
   frontend:
     name: ${{ matrix.app }} — typecheck & build
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        app: [workspace, admin, identity]
+        app: [workspace, admin, identity, website]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -234,15 +225,35 @@ jobs:
       - name: Install workspace dependencies
         run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm install --frozen-lockfile
       - name: Typecheck
-        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm --filter ${{ matrix.app }} run typecheck
+        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm --filter ${{ matrix.app }} run --if-present typecheck
       - name: Build
         run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm --filter ${{ matrix.app }} run build
+
+  # Lint and unit tests of every frontend app and package that has them (vitest, eslint);
+  # the e2e package's Playwright suite has its own job.
+  frontend-checks:
+    name: Frontend lint and tests
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the shared Node dev image
+        run: docker build -f docker/node.Dockerfile -t erp-node .
+      - name: Install workspace dependencies
+        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm install --frozen-lockfile
+      - name: Lint
+        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm -r --if-present run lint
+      - name: Unit tests
+        run: docker run --rm -v "${{ github.workspace }}:/w" -w /w erp-node pnpm -r --if-present --filter '!e2e' run test
 
   # Known vulnerabilities in the frontend's production dependencies, high and critical (C113).
   frontend-audit:
     name: Frontend dependency audit
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -275,9 +286,11 @@ jobs:
   e2e:
     name: End-to-end tests
     needs: changes
-    if: needs.changes.outputs.e2e == 'true'
+    if: github.event_name != 'pull_request' || needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      E2E_TRAEFIK: localhost # warm.sh reaches the sites through the runner's Traefik
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -304,7 +317,8 @@ jobs:
         run: |
           docker compose up -d --build --wait postgres redis redis-sessions kratos hydra
           docker compose run --rm migrate
-          docker compose up hydra-clients
+          # run, not up: a failed client registration fails the step
+          docker compose run --rm hydra-clients
           docker compose up -d --build --wait api bff-workspace bff-admin identity workspace admin
 
       # Ready means the site itself answers: 2xx, or 3xx (the login service redirects / into a
@@ -320,8 +334,8 @@ jobs:
             echo "$host: $code"
             case "$code" in 2??|3??) ;; *) docker compose logs; exit 1 ;; esac
           done
-          # compile the login page once, so the first test is not waiting on Next.js
-          curl -s -o /dev/null -H "Host: identity.bool.test" http://localhost/login || true
+          # compile the pages the suite reaches first (run.sh does it again, cheaply)
+          e2e/warm.sh
 
       - name: Run the end-to-end suite
         run: e2e/run.sh

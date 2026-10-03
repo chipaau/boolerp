@@ -21,6 +21,9 @@ for host in demo.bool.test admin.bool.test identity.bool.test; do
   hosts+=(--add-host="${host}:${TRAEFIK_IP}")
 done
 
+# compile the first pages before the tests start timing them
+./warm.sh
+
 cid=$(docker create \
   --network proxy "${hosts[@]}" \
   -e EDITION="${EDITION:-full}" -e KRATOS_ADMIN_URL=http://kratos:4434 \

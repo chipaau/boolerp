@@ -1,9 +1,9 @@
 import { Activity, BadgeCheck, Boxes, Briefcase, Building2, CalendarDays, ChartColumn, ClipboardCheck, ClipboardList, FileBarChart, FileSignature, FolderOpen, Layers, LayoutDashboard, ListTodo, NotebookPen, Package, PackageMinus, Receipt, ScanBarcode, ScrollText, Settings, ShoppingCart, Target, Truck, UserCog, Users, Wrench } from 'lucide-react'
-
-export type { AppDef, AppMenuItem, AppMenuSection } from '@workspace/app-kit'
 import type { AppDef } from '@workspace/app-kit'
 import { useLocation } from '@tanstack/react-router'
 import { apps as editionApps } from 'virtual:edition'
+
+export type { AppDef, AppMenuItem, AppMenuSection } from '@workspace/app-kit'
 
 // The apps hosted by the workspace shell, in the order they appear on the Home honeycomb (the
 // first eight get a tile; the rest are reachable from the switcher): first the edition's app

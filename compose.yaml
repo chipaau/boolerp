@@ -77,6 +77,9 @@ x-bff: &bff
       condition: service_healthy
     api:
       condition: service_healthy
+    # the BFF's Hydra client must exist before a login can start
+    hydra-clients:
+      condition: service_completed_successfully
   networks:
     - proxy
     - internal
@@ -93,6 +96,11 @@ services:
       KRATOS_INTERNAL_URL: http://kratos:4433
       # Hydra's admin API, for the consent route only (C87, C89).
       HYDRA_ADMIN_URL: http://hydra:4445
+    depends_on:
+      kratos:
+        condition: service_healthy
+      hydra:
+        condition: service_healthy
     networks:
       - proxy
       - internal
@@ -111,12 +119,20 @@ services:
       - traefik.http.middlewares.erp-auth-limit.ratelimit.average=20
       - traefik.http.middlewares.erp-auth-limit.ratelimit.burst=50
       - traefik.http.routers.erp-identity.middlewares=erp-auth-limit
+      # Next.js's static assets (/_next/) carry no secrets and are the same for everyone, and a
+      # development page loads dozens of them: counting them against erp-auth-limit ran a
+      # browser out of requests within a few pages (429 on the next navigation). They get
+      # their own route without the limit; pages and form submissions keep theirs.
+      - "traefik.http.routers.erp-identity-assets.rule=Host(`identity.bool.test`) && PathPrefix(`/_next/`)"
+      - traefik.http.routers.erp-identity-assets.entrypoints=web
+      - traefik.http.routers.erp-identity-assets.priority=35
+      - traefik.http.routers.erp-identity-assets.service=erp-identity
 
   workspace:
     <<: *node
     command: pnpm --filter workspace dev
     environment:
-      # The workspace edition to serve (apps/app/editions/<name>.ts, C107).
+      # The workspace edition to serve (apps/workspace/editions/<name>.ts, C107).
       EDITION: ${EDITION:-full}
     networks:
       - proxy
@@ -148,7 +164,7 @@ services:
       - traefik.http.services.erp-admin.loadbalancer.server.port=3000
 
   postgres:
-    image: postgres:18
+    image: postgres:18@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-erp}
       POSTGRES_DB: ${POSTGRES_DB:-erp}
@@ -346,12 +362,12 @@ services:
       postgres:
         condition: service_healthy
       kratos:
-        condition: service_started
+        condition: service_healthy
     networks:
       - internal
 
   redis:
-    image: redis:8-alpine
+    image: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
     command: redis-server --save "" --appendonly no
     networks:
       - internal
@@ -366,7 +382,7 @@ services:
   # writes are persisted (AOF), so a restart keeps people signed in. Internal
   # network only; production adds a password and TLS.
   redis-sessions:
-    image: redis:8-alpine
+    image: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
     command: redis-server --save "" --appendonly yes --appendfsync everysec --maxmemory-policy noeviction
     volumes:
       - redis-sessions:/data
@@ -429,7 +445,7 @@ services:
   # http://identity.bool.test/kratos; its admin API stays on the internal network.
   # Its database address and secrets come from a config file mounted as a secret.
   kratos:
-    image: oryd/kratos:v26.2.0
+    image: oryd/kratos:v26.2.0@sha256:2a13bb8d362c7a7ae33bd7c0f5168aee46921f15c916a06346db91c06dc76643
     command: ["serve", "--dev", "--watch-courier", "-c", "/etc/kratos/kratos.yml", "-c", "/run/secrets/kratos.yml"]
     environment:
       # No anonymous usage reports to Ory ("SQA"), in development or tests (C110).
@@ -440,6 +456,12 @@ services:
       # Mounted with a .yml name: Kratos picks the format from the extension.
       - source: kratos_config
         target: kratos.yml
+    # Ready means the admin API answers (the image ships wget, as Hydra's does).
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4434/health/ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
     depends_on:
       kratos-migrate:
         condition: service_completed_successfully
@@ -473,7 +495,7 @@ services:
   # issuer is http://identity.bool.test/; Traefik routes its standard public paths
   # there. Its admin API stays on the internal network.
   hydra:
-    image: oryd/hydra:v26.2.0
+    image: oryd/hydra:v26.2.0@sha256:ff67c7fb5f95074fa53374d41151713554960504b340cd3f95b09e65deaea2a9
     command: ["serve", "all", "--dev", "-c", "/etc/hydra/hydra.yml", "-c", "/run/secrets/hydra.yml"]
     environment:
       # No anonymous usage reports to Ory ("SQA"), in development or tests (C110).
@@ -511,7 +533,7 @@ services:
 
   # Applies Hydra's own migrations to its database before it starts.
   hydra-migrate:
-    image: oryd/hydra:v26.2.0
+    image: oryd/hydra:v26.2.0@sha256:ff67c7fb5f95074fa53374d41151713554960504b340cd3f95b09e65deaea2a9
     command: ["migrate", "sql", "up", "--yes", "--read-from-env", "-c", "/etc/hydra/hydra.yml", "-c", "/run/secrets/hydra.yml"]
     volumes:
       - ./docker/hydra:/etc/hydra:ro
@@ -527,7 +549,7 @@ services:
   # Registers the first-party OAuth2 clients in docker/hydra/clients (C89): creates
   # missing ones and updates the rest; safe to re-run.
   hydra-clients:
-    image: oryd/hydra:v26.2.0
+    image: oryd/hydra:v26.2.0@sha256:ff67c7fb5f95074fa53374d41151713554960504b340cd3f95b09e65deaea2a9
     entrypoint: ["/etc/hydra/register-clients.sh"]
     environment:
       HYDRA_ADMIN_URL: http://hydra:4445
@@ -542,7 +564,7 @@ services:
 
   # Applies Kratos's own migrations to its database before it starts.
   kratos-migrate:
-    image: oryd/kratos:v26.2.0
+    image: oryd/kratos:v26.2.0@sha256:2a13bb8d362c7a7ae33bd7c0f5168aee46921f15c916a06346db91c06dc76643
     command: ["migrate", "sql", "up", "--yes", "--read-from-env", "-c", "/etc/kratos/kratos.yml", "-c", "/run/secrets/kratos.yml"]
     volumes:
       - ./docker/kratos:/etc/kratos:ro
@@ -559,7 +581,7 @@ services:
   # Catches every email and, through its send API, every SMS in development (C85);
   # inbox at http://mail.bool.test.
   mailpit:
-    image: axllent/mailpit:v1.30.4
+    image: axllent/mailpit:v1.30.4@sha256:5a49a77c5bdbe7c5474450b4f46348d09949df3695257729c93a30369382d4f6
     networks:
       - proxy
       - internal
@@ -575,7 +597,7 @@ services:
   # Stand-in for Google in development and CI (C85): an OpenID Connect provider at
   # http://oidc.bool.test/default whose login page lets you choose any user.
   oidc:
-    image: ghcr.io/navikt/mock-oauth2-server:6.0.4
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.4@sha256:47374fe063995d9b6d39ebb6ea21eb5f765025bf0aa08b61b08b439eb91adaf0
     environment:
       JSON_CONFIG: '{"interactiveLogin": true}'
       # Port 80, so browsers (through Traefik) and Kratos (through the internal
@@ -603,7 +625,7 @@ services:
   # Prometheus for metrics, Tempo for traces, Loki for logs, and Grafana at
   # http://grafana.bool.test. Data is not persisted; a restart starts empty.
   lgtm:
-    image: grafana/otel-lgtm:0.34.0
+    image: grafana/otel-lgtm:0.34.0@sha256:b966ea107831d526d9eb8fe4d2d86c9e5731392fad9dce8296bcf2072031f07c
     networks:
       - proxy
       - internal
