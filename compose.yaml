@@ -307,8 +307,8 @@ services:
       - "traefik.http.services.erp-api.loadbalancer.server.port=${APP_PORT:-8080}"
 
   # One-off migrations as the migration role (C47): `docker compose run --rm migrate`.
-  # The "tools" profile keeps it out of `docker compose up`. It is the only service
-  # given the migration role's password (C80).
+  # The "tools" profile keeps it out of `docker compose up`. It and deploy are the
+  # only services given the migration role's password (C80).
   migrate:
     profiles: [tools]
     build:
@@ -334,7 +334,40 @@ services:
     networks:
       - internal
 
-  # Development and test data (C50), run on demand: docker compose run --rm seed.
+  # Prepares the database for a release (C135): `docker compose run --rm deploy`
+  # applies the migrations, then production's starting data (the ISO country list
+  # and the team's accounts, each shown a one-time code to set a password), as the
+  # migration role, which owns the tables. Running it again is safe.
+  deploy:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: docker/go.Dockerfile
+    working_dir: /w/apps/api
+    command: ["go", "run", "./cmd/deploy"]
+    environment:
+      APP_ENV: dev
+      MIGRATE_DB_HOST: postgres
+      MIGRATE_DB_NAME: ${POSTGRES_DB:-erp}
+      MIGRATE_DB_USER: ${POSTGRES_MIGRATE_USER:-erp_migrate}
+      MIGRATE_DB_PASSWORD_FILE: /run/secrets/db_migrate_password
+      MIGRATE_DB_SSLMODE: disable
+      APP_IDENTITY_KRATOS_ADMIN_URL: http://kratos:4434
+      APP_IDENTITY_HYDRA_ADMIN_URL: http://hydra:4445
+    secrets: [db_migrate_password]
+    volumes:
+      - .:/w
+      - gocache:/root/.cache/go-build
+      - gomod:/go/pkg/mod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kratos:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # Demo data (C50, C135), run on demand: docker compose run --rm seed.
   # It runs as the API's runtime role and through the modules' use cases, and
   # refuses unless APP_ENV is set explicitly to dev, test, or staging.
   seed:

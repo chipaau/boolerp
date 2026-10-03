@@ -2,6 +2,8 @@
 // HTTP, the database, and Kratos.
 package domain
 
+import "time"
+
 // User is our record of a person who can sign in (C94).
 type User struct {
 	ID               string // our ID (UUIDv7)
@@ -28,4 +30,13 @@ type NewAccount struct {
 	DisplayName   string
 	Password      string // empty: no password sign-in
 	GoogleSubject string // empty: no Google sign-in
+}
+
+// Recovery is a one-time way into an account without its password (C135): the
+// person opens Link and enters Code to set a password. Both are secrets: shown
+// only to whoever needs them, never logged.
+type Recovery struct {
+	Link      string
+	Code      string
+	ExpiresAt time.Time
 }

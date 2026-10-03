@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	ory "github.com/ory/client-go"
 
@@ -84,20 +85,7 @@ func (a *Accounts) Create(ctx context.Context, n domain.NewAccount) (domain.Acco
 	body.SetVerifiableAddresses([]ory.VerifiableIdentityAddress{
 		*ory.NewVerifiableIdentityAddress("completed", n.Email, true, "email"),
 	})
-	credentials := ory.IdentityWithCredentials{}
-	if n.Password != "" {
-		credentials.Password = &ory.IdentityWithCredentialsPassword{
-			Config: &ory.IdentityWithCredentialsPasswordConfig{Password: &n.Password},
-		}
-	}
-	if n.GoogleSubject != "" {
-		credentials.Oidc = &ory.IdentityWithCredentialsOidc{Config: &ory.IdentityWithCredentialsOidcConfig{
-			Providers: []ory.IdentityWithCredentialsOidcConfigProvider{
-				*ory.NewIdentityWithCredentialsOidcConfigProvider("google", n.GoogleSubject),
-			},
-		}}
-	}
-	body.SetCredentials(credentials)
+	body.SetCredentials(signIn(n.Password, n.GoogleSubject))
 
 	identity, resp, err := a.api.IdentityAPI.CreateIdentity(ctx).CreateIdentityBody(*body).Execute()
 	if resp != nil {
@@ -109,6 +97,72 @@ func (a *Accounts) Create(ctx context.Context, n domain.NewAccount) (domain.Acco
 		return domain.Account{}, errors.New("kratos: creating the account failed")
 	}
 	return account(identity), nil
+}
+
+// signIn is the credentials for a password and a Google subject (either empty).
+func signIn(password, googleSubject string) ory.IdentityWithCredentials {
+	credentials := ory.IdentityWithCredentials{}
+	if password != "" {
+		credentials.Password = &ory.IdentityWithCredentialsPassword{
+			Config: &ory.IdentityWithCredentialsPasswordConfig{Password: &password},
+		}
+	}
+	if googleSubject != "" {
+		credentials.Oidc = &ory.IdentityWithCredentialsOidc{Config: &ory.IdentityWithCredentialsOidcConfig{
+			Providers: []ory.IdentityWithCredentialsOidcConfigProvider{
+				*ory.NewIdentityWithCredentialsOidcConfigProvider("google", googleSubject),
+			},
+		}}
+	}
+	return credentials
+}
+
+// AddSignIn implements application.Accounts: Kratos's update replaces the whole
+// identity, so it sends the account's own schema, state, and traits back with the
+// credentials.
+func (a *Accounts) AddSignIn(ctx context.Context, kratosIdentityID, password, googleSubject string) error {
+	identity, resp, err := a.api.IdentityAPI.GetIdentity(ctx, kratosIdentityID).Execute()
+	if resp != nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusNotFound {
+			return application.ErrNotFound
+		}
+	}
+	if err != nil {
+		return errors.New("kratos: reading the account failed")
+	}
+	traits, _ := identity.Traits.(map[string]any)
+	body := ory.NewUpdateIdentityBody(identity.SchemaId, identity.GetState(), traits)
+	body.SetCredentials(signIn(password, googleSubject))
+	_, resp, err = a.api.IdentityAPI.UpdateIdentity(ctx, kratosIdentityID).UpdateIdentityBody(*body).Execute()
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	if err != nil {
+		// The request carries the password; report only that it failed.
+		return errors.New("kratos: adding the sign-in failed")
+	}
+	return nil
+}
+
+// Recover implements application.Accounts with Kratos's recovery code (the
+// configured recovery method, C85): a link to the recovery page and the code
+// to enter there.
+func (a *Accounts) Recover(ctx context.Context, kratosIdentityID string, ttl time.Duration) (domain.Recovery, error) {
+	body := ory.NewCreateRecoveryCodeForIdentityBody(kratosIdentityID)
+	body.SetExpiresIn(ttl.String())
+	r, resp, err := a.api.IdentityAPI.CreateRecoveryCodeForIdentity(ctx).
+		CreateRecoveryCodeForIdentityBody(*body).Execute()
+	if resp != nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusNotFound {
+			return domain.Recovery{}, application.ErrNotFound
+		}
+	}
+	if err != nil {
+		return domain.Recovery{}, errors.New("kratos: creating the recovery code failed")
+	}
+	return domain.Recovery{Link: r.RecoveryLink, Code: r.RecoveryCode, ExpiresAt: r.GetExpiresAt()}, nil
 }
 
 // Deactivate implements application.Accounts: the identity's state becomes

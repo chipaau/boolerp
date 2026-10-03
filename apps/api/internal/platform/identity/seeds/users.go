@@ -14,13 +14,21 @@ type Accounts interface {
 	EnsureAccount(ctx context.Context, a identity.NewAccount) (identity.User, bool, error)
 }
 
-// Users seeds accounts and their users: the team's development accounts.
+// SignIns creates accounts and gives existing ones a password and Google sign-in.
+type SignIns interface {
+	Accounts
+	AddSignIn(ctx context.Context, kratosIdentityID, password, googleSubject string) error
+}
+
+// Users is a demo seeder (C135): in dev it gives the team's accounts (team.go)
+// the development password and the Google stand-in sign-in, creating any that
+// deploy has not.
 type Users struct {
-	accounts Accounts
+	accounts SignIns
 }
 
 // NewUsers returns the users seeder.
-func NewUsers(accounts Accounts) *Users {
+func NewUsers(accounts SignIns) *Users {
 	return &Users{accounts: accounts}
 }
 
@@ -30,18 +38,6 @@ const teamPassword = "password"
 
 // Name implements seed.Seeder.
 func (*Users) Name() string { return "identity.users" }
-
-// teamAccount is a team member's development account. The team's own work
-// emails are seeded at the user's request (C50); the phones are placeholders.
-type teamAccount struct {
-	email, name, phone string
-}
-
-var team = []teamAccount{
-	{"ibrahim@bool.mv", "Ibrahim", "+9607000001"},
-	{"shifau@bool.mv", "Shifau", "+9607000002"},
-	{"mariyam@bool.mv", "Mariyam", "+9607000003"},
-}
 
 // Run implements seed.Seeder.
 func (u *Users) Run(ctx context.Context, env seed.Env) error {
@@ -53,20 +49,23 @@ func (u *Users) Run(ctx context.Context, env seed.Env) error {
 	}
 	var created, existing int
 	for _, m := range team {
-		_, isNew, err := u.accounts.EnsureAccount(ctx, identity.NewAccount{
+		// The development Google stand-in signs in with the email as username.
+		user, isNew, err := u.accounts.EnsureAccount(ctx, identity.NewAccount{
 			Email: m.email, Phone: m.phone, DisplayName: m.name,
-			Password: teamPassword,
-			// The development Google stand-in signs in with the email as username.
-			GoogleSubject: m.email,
+			Password: teamPassword, GoogleSubject: m.email,
 		})
 		if err != nil {
 			return fmt.Errorf("team account %s: %w", m.name, err)
 		}
 		if isNew {
 			created++
-		} else {
-			existing++
+			continue
 		}
+		// Deploy created it without a password; add the development sign-ins.
+		if err := u.accounts.AddSignIn(ctx, user.KratosIdentityID, teamPassword, m.email); err != nil {
+			return fmt.Errorf("team account %s: %w", m.name, err)
+		}
+		existing++
 	}
 	// Counts only: emails are personal data, never logged (C94).
 	env.Logger.InfoContext(ctx, "team accounts seeded", "created", created, "existing", existing)

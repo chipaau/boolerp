@@ -1,0 +1,259 @@
+# ISO 3166-1 countries and territories (249): alpha-2 code, alpha-3 code, English
+# name (CLDR display name), and international dialling prefix.
+# Source: https://github.com/datasets/country-codes (data/country-codes.csv,
+# commit 2e9d649), Public Domain Dedication and License (PDDL), fetched 2026-10-04.
+# Dialling codes are reduced to the country prefix: the North American plan's
+# "1-xxx" area codes to +1, Vatican "39-06" to +39, St Helena "290 n" to +290,
+# Serbia "381 p" to +381, and U.S. Outlying Islands (none listed) to +1.
+# Names: the CLDR display name with "&" written as "and", "St." as "Saint", and
+# UK and US written as United Kingdom and United States.
+code,alpha3,name,phone_prefix
+AD,AND,Andorra,+376
+AE,ARE,United Arab Emirates,+971
+AF,AFG,Afghanistan,+93
+AG,ATG,Antigua and Barbuda,+1
+AI,AIA,Anguilla,+1
+AL,ALB,Albania,+355
+AM,ARM,Armenia,+374
+AO,AGO,Angola,+244
+AQ,ATA,Antarctica,+672
+AR,ARG,Argentina,+54
+AS,ASM,American Samoa,+1
+AT,AUT,Austria,+43
+AU,AUS,Australia,+61
+AW,ABW,Aruba,+297
+AX,ALA,Åland Islands,+358
+AZ,AZE,Azerbaijan,+994
+BA,BIH,Bosnia,+387
+BB,BRB,Barbados,+1
+BD,BGD,Bangladesh,+880
+BE,BEL,Belgium,+32
+BF,BFA,Burkina Faso,+226
+BG,BGR,Bulgaria,+359
+BH,BHR,Bahrain,+973
+BI,BDI,Burundi,+257
+BJ,BEN,Benin,+229
+BL,BLM,Saint Barthélemy,+590
+BM,BMU,Bermuda,+1
+BN,BRN,Brunei,+673
+BO,BOL,Bolivia,+591
+BQ,BES,Caribbean Netherlands,+599
+BR,BRA,Brazil,+55
+BS,BHS,Bahamas,+1
+BT,BTN,Bhutan,+975
+BV,BVT,Bouvet Island,+47
+BW,BWA,Botswana,+267
+BY,BLR,Belarus,+375
+BZ,BLZ,Belize,+501
+CA,CAN,Canada,+1
+CC,CCK,Cocos Islands,+61
+CD,COD,Congo - Kinshasa,+243
+CF,CAF,Central African Republic,+236
+CG,COG,Congo - Brazzaville,+242
+CH,CHE,Switzerland,+41
+CI,CIV,Côte d’Ivoire,+225
+CK,COK,Cook Islands,+682
+CL,CHL,Chile,+56
+CM,CMR,Cameroon,+237
+CN,CHN,China,+86
+CO,COL,Colombia,+57
+CR,CRI,Costa Rica,+506
+CU,CUB,Cuba,+53
+CV,CPV,Cape Verde,+238
+CW,CUW,Curaçao,+599
+CX,CXR,Christmas Island,+61
+CY,CYP,Cyprus,+357
+CZ,CZE,Czechia,+420
+DE,DEU,Germany,+49
+DJ,DJI,Djibouti,+253
+DK,DNK,Denmark,+45
+DM,DMA,Dominica,+1
+DO,DOM,Dominican Republic,+1
+DZ,DZA,Algeria,+213
+EC,ECU,Ecuador,+593
+EE,EST,Estonia,+372
+EG,EGY,Egypt,+20
+EH,ESH,Western Sahara,+212
+ER,ERI,Eritrea,+291
+ES,ESP,Spain,+34
+ET,ETH,Ethiopia,+251
+FI,FIN,Finland,+358
+FJ,FJI,Fiji,+679
+FK,FLK,Falkland Islands,+500
+FM,FSM,Micronesia,+691
+FO,FRO,Faroe Islands,+298
+FR,FRA,France,+33
+GA,GAB,Gabon,+241
+GB,GBR,United Kingdom,+44
+GD,GRD,Grenada,+1
+GE,GEO,Georgia,+995
+GF,GUF,French Guiana,+594
+GG,GGY,Guernsey,+44
+GH,GHA,Ghana,+233
+GI,GIB,Gibraltar,+350
+GL,GRL,Greenland,+299
+GM,GMB,Gambia,+220
+GN,GIN,Guinea,+224
+GP,GLP,Guadeloupe,+590
+GQ,GNQ,Equatorial Guinea,+240
+GR,GRC,Greece,+30
+GS,SGS,South Georgia and South Sandwich Islands,+500
+GT,GTM,Guatemala,+502
+GU,GUM,Guam,+1
+GW,GNB,Guinea-Bissau,+245
+GY,GUY,Guyana,+592
+HK,HKG,Hong Kong,+852
+HM,HMD,Heard and McDonald Islands,+672
+HN,HND,Honduras,+504
+HR,HRV,Croatia,+385
+HT,HTI,Haiti,+509
+HU,HUN,Hungary,+36
+ID,IDN,Indonesia,+62
+IE,IRL,Ireland,+353
+IL,ISR,Israel,+972
+IM,IMN,Isle of Man,+44
+IN,IND,India,+91
+IO,IOT,British Indian Ocean Territory,+246
+IQ,IRQ,Iraq,+964
+IR,IRN,Iran,+98
+IS,ISL,Iceland,+354
+IT,ITA,Italy,+39
+JE,JEY,Jersey,+44
+JM,JAM,Jamaica,+1
+JO,JOR,Jordan,+962
+JP,JPN,Japan,+81
+KE,KEN,Kenya,+254
+KG,KGZ,Kyrgyzstan,+996
+KH,KHM,Cambodia,+855
+KI,KIR,Kiribati,+686
+KM,COM,Comoros,+269
+KN,KNA,Saint Kitts and Nevis,+1
+KP,PRK,North Korea,+850
+KR,KOR,South Korea,+82
+KW,KWT,Kuwait,+965
+KY,CYM,Cayman Islands,+1
+KZ,KAZ,Kazakhstan,+7
+LA,LAO,Laos,+856
+LB,LBN,Lebanon,+961
+LC,LCA,Saint Lucia,+1
+LI,LIE,Liechtenstein,+423
+LK,LKA,Sri Lanka,+94
+LR,LBR,Liberia,+231
+LS,LSO,Lesotho,+266
+LT,LTU,Lithuania,+370
+LU,LUX,Luxembourg,+352
+LV,LVA,Latvia,+371
+LY,LBY,Libya,+218
+MA,MAR,Morocco,+212
+MC,MCO,Monaco,+377
+MD,MDA,Moldova,+373
+ME,MNE,Montenegro,+382
+MF,MAF,Saint Martin,+590
+MG,MDG,Madagascar,+261
+MH,MHL,Marshall Islands,+692
+MK,MKD,North Macedonia,+389
+ML,MLI,Mali,+223
+MM,MMR,Myanmar,+95
+MN,MNG,Mongolia,+976
+MO,MAC,Macao,+853
+MP,MNP,Northern Mariana Islands,+1
+MQ,MTQ,Martinique,+596
+MR,MRT,Mauritania,+222
+MS,MSR,Montserrat,+1
+MT,MLT,Malta,+356
+MU,MUS,Mauritius,+230
+MV,MDV,Maldives,+960
+MW,MWI,Malawi,+265
+MX,MEX,Mexico,+52
+MY,MYS,Malaysia,+60
+MZ,MOZ,Mozambique,+258
+NA,NAM,Namibia,+264
+NC,NCL,New Caledonia,+687
+NE,NER,Niger,+227
+NF,NFK,Norfolk Island,+672
+NG,NGA,Nigeria,+234
+NI,NIC,Nicaragua,+505
+NL,NLD,Netherlands,+31
+NO,NOR,Norway,+47
+NP,NPL,Nepal,+977
+NR,NRU,Nauru,+674
+NU,NIU,Niue,+683
+NZ,NZL,New Zealand,+64
+OM,OMN,Oman,+968
+PA,PAN,Panama,+507
+PE,PER,Peru,+51
+PF,PYF,French Polynesia,+689
+PG,PNG,Papua New Guinea,+675
+PH,PHL,Philippines,+63
+PK,PAK,Pakistan,+92
+PL,POL,Poland,+48
+PM,SPM,Saint Pierre and Miquelon,+508
+PN,PCN,Pitcairn,+870
+PR,PRI,Puerto Rico,+1
+PS,PSE,Palestine,+970
+PT,PRT,Portugal,+351
+PW,PLW,Palau,+680
+PY,PRY,Paraguay,+595
+QA,QAT,Qatar,+974
+RE,REU,Réunion,+262
+RO,ROU,Romania,+40
+RS,SRB,Serbia,+381
+RU,RUS,Russia,+7
+RW,RWA,Rwanda,+250
+SA,SAU,Saudi Arabia,+966
+SB,SLB,Solomon Islands,+677
+SC,SYC,Seychelles,+248
+SD,SDN,Sudan,+249
+SE,SWE,Sweden,+46
+SG,SGP,Singapore,+65
+SH,SHN,Saint Helena,+290
+SI,SVN,Slovenia,+386
+SJ,SJM,Svalbard and Jan Mayen,+47
+SK,SVK,Slovakia,+421
+SL,SLE,Sierra Leone,+232
+SM,SMR,San Marino,+378
+SN,SEN,Senegal,+221
+SO,SOM,Somalia,+252
+SR,SUR,Suriname,+597
+SS,SSD,South Sudan,+211
+ST,STP,São Tomé and Príncipe,+239
+SV,SLV,El Salvador,+503
+SX,SXM,Sint Maarten,+1
+SY,SYR,Syria,+963
+SZ,SWZ,Eswatini,+268
+TC,TCA,Turks and Caicos Islands,+1
+TD,TCD,Chad,+235
+TF,ATF,French Southern Territories,+262
+TG,TGO,Togo,+228
+TH,THA,Thailand,+66
+TJ,TJK,Tajikistan,+992
+TK,TKL,Tokelau,+690
+TL,TLS,Timor-Leste,+670
+TM,TKM,Turkmenistan,+993
+TN,TUN,Tunisia,+216
+TO,TON,Tonga,+676
+TR,TUR,Türkiye,+90
+TT,TTO,Trinidad and Tobago,+1
+TV,TUV,Tuvalu,+688
+TW,TWN,Taiwan,+886
+TZ,TZA,Tanzania,+255
+UA,UKR,Ukraine,+380
+UG,UGA,Uganda,+256
+UM,UMI,U.S. Outlying Islands,+1
+US,USA,United States,+1
+UY,URY,Uruguay,+598
+UZ,UZB,Uzbekistan,+998
+VA,VAT,Vatican City,+39
+VC,VCT,Saint Vincent and Grenadines,+1
+VE,VEN,Venezuela,+58
+VG,VGB,British Virgin Islands,+1
+VI,VIR,U.S. Virgin Islands,+1
+VN,VNM,Vietnam,+84
+VU,VUT,Vanuatu,+678
+WF,WLF,Wallis and Futuna,+681
+WS,WSM,Samoa,+685
+YE,YEM,Yemen,+967
+YT,MYT,Mayotte,+262
+ZA,ZAF,South Africa,+27
+ZM,ZMB,Zambia,+260
+ZW,ZWE,Zimbabwe,+263

@@ -93,8 +93,8 @@ tests' `erp_platform`, C79) gets identical grants with
 
 For local development, the `migrate` Compose service (profile `tools`, so
 `docker compose up` does not start it) runs `cmd/migrate` as the migration role. It
-is the only service given that role's password, as the file
-`/run/secrets/db_migrate_password` (C80):
+and `deploy` (production's starting data, C135) are the only services given that
+role's password, as the file `/run/secrets/db_migrate_password` (C80):
 
 ```sh
 docker compose run --rm migrate

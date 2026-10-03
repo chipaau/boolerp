@@ -6,6 +6,7 @@ package full
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"net/http"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/postgres"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 	"github.com/boolmv/erp/apps/api/internal/platform/reference"
+	referenceseeds "github.com/boolmv/erp/apps/api/internal/platform/reference/seeds"
 )
 
 // Migrations are the edition's tables, in dependency order: a package's tables come
@@ -46,14 +48,27 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
 	r.Route("/api/auth", authModule.Routes)
 }
 
-// SeedSettings configure the seeders (from config.Seed).
+// SeedSettings configure the seeders (from config.Seed and config.Deploy).
 type SeedSettings struct {
 	Identity identity.Settings
 }
 
-// Seeders are the edition's modules' seeders, one per store, in dependency
-// order like Migrations: a store is seeded after the stores it references.
-// cmd/seed runs them (C50).
+// DeploySeeders load production's starting data (C135), in dependency order like
+// Migrations. cmd/deploy runs them in every environment, after applying the
+// migrations, as the migration role (db), which owns the tables. terminal is
+// where one-time recovery codes for new accounts are shown, or nil for none.
+func DeploySeeders(db *pgxpool.Pool, s SeedSettings, client *http.Client, logger *slog.Logger, terminal io.Writer) []seed.Seeder {
+	users := identity.New(db, s.Identity, client, logger)
+	return []seed.Seeder{
+		referenceseeds.NewCountries(db),
+		identityseeds.NewTeamAccounts(users, terminal),
+	}
+}
+
+// Seeders are the edition's demo data seeders (C135), one per store, in
+// dependency order like Migrations: a store is seeded after the stores it
+// references. cmd/seed runs them (C50), never in production; tests never rely
+// on them.
 func Seeders(db *pgxpool.Pool, s SeedSettings, client *http.Client, logger *slog.Logger) []seed.Seeder {
 	users := identity.New(db, s.Identity, client, logger)
 	return []seed.Seeder{
