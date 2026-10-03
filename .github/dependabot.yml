@@ -55,3 +55,7 @@ updates:
       # service passes Elements the flows it fetched, so the two must match (C86,
       # C129). Move client-fetch by hand when Elements moves.
       - dependency-name: "@ory/client-fetch"
+      # typescript-eslint does not support TypeScript 7 yet (C130,
+      # typescript-eslint/typescript-eslint#10940); stay on 6.x until it does.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
