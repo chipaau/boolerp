@@ -40,8 +40,9 @@ cache framework or cache every employee query automatically.
 
 ## Open decisions
 
-Choose initial cached data, TTLs, key/version format, invalidation strategy,
-stampede control, failure behavior, Redis client, memory limits, and eviction.
+The Redis client (go-redis, C51) and failure behaviour (cache optional, fail fast, C52)
+are decided. Choose the initial cached data, TTLs, key/version format, invalidation
+strategy, stampede control, memory limits, and eviction.
 Decide whether security-related data may be cached and the resulting revocation guarantee.
 
 For ordinary read caching, falling back to PostgreSQL on Redis failure is proposed.

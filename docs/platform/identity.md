@@ -1,7 +1,9 @@
 # Identity and authentication
 
-Status: required backbone capability; Ory Kratos is selected for identity and
-authentication. Session, domain, provisioning, and data-model contracts remain open.
+Status: implemented for the default domains: Kratos accounts, Hydra login, the BFFs'
+sessions and logout, users, and disabled accounts (C83-C101, C112, C114, C126). Open:
+login on verified custom domains (step 7f), identity scope per tenant, and self-hosted
+identity setup (D04).
 
 ## Design scope
 
@@ -19,9 +21,9 @@ authorize employee operations.
 Every web login goes through Ory Hydra (OAuth2/OpenID Connect) with Ory Kratos as its
 login provider: one login service (`identity.bool.test` in development) for every
 domain the API serves, because open-source Kratos cannot set session cookies on
-unrelated domains such as customers' own domains or `findcare.mv`. The API is a Hydra
-client: it completes the login on the request's own domain and keeps its own session
-there. The roadmap delivers this in steps 7a–7g; custom-domain login (7f) follows the
+unrelated domains such as customers' own domains or `findcare.mv`. Each app's BFF is a
+Hydra client: it completes the login on the request's own domain and keeps its own
+session there (C88, C90); the API only accepts Bearer tokens (C91). The roadmap delivers this in steps 7a–7g; custom-domain login (7f) follows the
 tenancy domain registry. Whether ERP and FindCare share accounts is still open.
 
 Each client can have a fully custom login page design (C84): our own login UI reads
@@ -240,16 +242,18 @@ each page's server loads its Kratos flow over the internal network
 it; `theme/bool.tsx` replaces Elements' visual components with the Bool sign-in design
 from `@workspace/ui`. A page without `?flow=` sends the browser to Kratos to start one;
 expired or unknown flows start again. It does not use the removed `packages/auth` (C100). Hydra's consent
-route will be part of the same app (7b).
+and logout steps are routes of the same app (C89, C101, C112).
 
 ## Open decisions
 
-- Identity/session authority and required authentication methods.
-- Whether identities span tenants within an installation, and how membership is represented.
-- Account provisioning, verification, recovery, and secure first-run setup.
-- Session expiry, revocation guarantees, and tenant-specific access removal.
-- Browser CSRF protection, login callbacks, and any future integration credentials.
-- Default-domain and unrelated custom-domain login, including self-hosted operation.
+Decided: accounts and login methods (C85), one account with a membership per tenant
+(C115), sessions, expiry, revocation, and disabled accounts (C96-C101, C126), BFF
+callbacks and CSRF (C96). Still open:
+
+- Login on verified custom domains, including self-hosted operation (step 7f).
+- Tenant-specific access removal (ending a membership), with tenancy.
+- Secure first-run setup (the operator tenant, C116) and integration credentials.
+- Two-factor login for admin users (security review, before deployment).
 
 Authentication must be evaluated together with [tenancy and domains](tenancy.md).
 A shared parent-domain cookie does not solve login on unrelated customer domains.

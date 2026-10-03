@@ -1,6 +1,6 @@
 # Data model status
 
-Updated: 2026-10-01.
+Updated: 2026-10-03.
 Status: open. Two tables are confirmed and implemented: `users` and `countries` (below). (A `sessions`
 table was approved for sessions in PostgreSQL and withdrawn when sessions moved to the
 BFF's Redis, C90.)

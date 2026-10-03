@@ -34,9 +34,11 @@ HRMS employee records are the only business functionality in the current scope.
 Their fields, tables, lifecycle, and concrete operations are not yet approved.
 Employee examples demonstrate the architecture rather than define a schema.
 
-Frontend integration is deferred. Existing frontends may remain in the repository
-and `app` stays in the development Compose configuration, but neither determines
-the new API contract or blocks backend progress.
+Frontend integration has started (C128): the apps sign in through their BFFs, are
+built from workspace packages and editions, and have end-to-end tests. Its standards
+are not set yet: the business API contract and client generation, the data layer, and
+the scope of browser tests. The frontend does not determine the new API contract or
+block backend progress.
 
 ## Current implementation boundary
 
@@ -55,9 +57,9 @@ only public operation.
 On 2026-09-28 the user removed that implementation to rebuild the API from
 scratch, starting with a simple chi server, then configuration, then logging (C24).
 
-This does not approve employee tables, identity/authorization integration
-contracts, application database migrations, or frontend integration. Empty
-directories reserve the proposed boundaries; they are not implemented platform
-capabilities. Continue layer by layer.
+Since then the API has been rebuilt layer by layer: the foundations, identity, and
+the first tables (`users`, `countries`); the [roadmap](../roadmap.md) has the status.
+Employee tables are not approved yet, and each table's fields are confirmed before it
+is created (C121).
 
 See the [decision register](../decisions/README.md) and [roadmap](../roadmap.md).

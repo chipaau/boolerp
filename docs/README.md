@@ -1,17 +1,18 @@
 # Bool ERP documentation
 
-Updated: 2026-09-28.
+Updated: 2026-10-03.
 
 This is the current documentation for a fresh Go API in the GitHub `boolmv/erp`
 monorepo at `/Users/chipaau/code/bool/erp`.
 The implementation scope is the platform backbone and HRMS employee records.
-Frontend integration is deferred.
+Frontend integration has started; its standards are not set yet (C128).
 
-On 2026-09-28 the rebuild's
-earlier implementation was removed so it can be rebuilt step by step (C24);
-`apps/api` currently contains no implementation. Chi, pgx/v5 pgxpool, Goose, and
-`slog` remain the selected tools. See the [roadmap](roadmap.md) for the rebuild order,
-starting with a simple chi server.
+The API was rebuilt step by step from 2026-09-28 (C24). Its HTTP, configuration,
+logging, PostgreSQL, Redis, tracing, and metrics foundations are in place, with
+sign-in through Kratos and Hydra, the BFFs, users, and countries; tenancy,
+authorization, and audit are designed (C115-C120) and next. The
+[roadmap](roadmap.md) has the current status, and the
+[decision register](decisions/README.md) what is decided.
 
 ## Start here
 
@@ -47,6 +48,8 @@ starting with a simple chi server.
 | Schema approval status | [Data model](data-model/README.md) |
 | Repository and tooling | [Development](development.md) |
 | Verification strategy | [Testing](testing.md) |
+| Security standard and findings | [Security review](security/README.md) |
+| Entity-relationship diagram | [ERD](data-model/erd.dbml) |
 
 ## Status and authority
 
@@ -58,7 +61,7 @@ starting with a simple chi server.
 
 The [decision register](decisions/README.md) records what is confirmed. Individual
 component documents develop proposals without silently approving them. Decisions
-are discussed one at a time; no rebuild schema is approved yet.
+are discussed one at a time; each table's fields are confirmed before it is created (C121).
 
 Previous specifications, ADRs, and documentation are not kept in the repository;
 git history holds them. Agent rules are maintained separately under `.claude/`,

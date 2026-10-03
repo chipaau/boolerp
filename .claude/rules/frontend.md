@@ -1,10 +1,14 @@
 # Frontend scope
 
-Frontend integration is deferred. See [product scope](../../docs/product/scope.md)
-and [development](../../docs/development.md).
+Frontend integration has started: the apps sign in through their BFFs, are built from
+workspace packages and editions, and have end-to-end tests. Its standards are not set
+yet: the business API contract and client generation, the data layer (loaders, forms,
+validation), and the scope of browser tests (C128). Propose them and ask; do not set
+them by default. See [product scope](../../docs/product/scope.md) and
+[development](../../docs/development.md).
 
 - Do not inspect or modify frontend application code as a prerequisite for backend design.
-- Keeping `app` in Compose does not make frontend integration part of the current task.
+- Backend design does not wait on the frontend; integration work happens when requested.
 - Do not generate clients, change routes, or embed frontend assets until that work is requested.
 - Documentation and instruction-file relocation is allowed when documentation organization
   is explicitly requested; it does not authorize application changes.

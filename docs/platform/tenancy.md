@@ -82,9 +82,9 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
 - `parent_id`: never the tenant itself, never part of a cycle (trigger), never the
   operator. No ltree: each transaction walks up `parent_id` once and sets
   `app.ancestor_tenants` for policies that read published data.
-- `country` ISO 3166 alpha-2 (CHECK) and `timezone` (checked by the application), both
-  chosen at provisioning: no country defaults (the product is not limited to one
-  country).
+- `country` references `countries.code` (C122) and `timezone` is checked by the
+  application; both are chosen at provisioning, with no country defaults (the product
+  is not limited to one country).
 - `status` provisioning / active / suspended / archived, with guarded, audited
   transitions (409 on an illegal one); `activated_at`, `suspended_at`, `archived_at`;
   `created_at`, `updated_at` (trigger).
@@ -100,7 +100,7 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   share the institution type and differ in legal form.
 - `legal_forms`, `sectors`, `institution_types` (each institution type belongs to one
   sector): a stable `code`, a `name`, and active/retired dates.
-- **Legal forms belong to a country** (`country`, ISO 3166 alpha-2): each country has its
+- **Legal forms belong to a country** (`country`, referencing `countries.code`): each country has its
   own list, and each legal form names the identity document its tenants carry (company
   registration number, …, or none). A tenant picks a legal form of its own country.
 - **Sectors and institution types are global**, with country-neutral names.

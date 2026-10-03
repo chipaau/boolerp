@@ -1,7 +1,7 @@
 # App integration with the BFF
 
-Status: implemented by `apps/workspace` and `apps/admin` (C90, C96–C100), each in
-`src/lib/session.ts`. `packages/auth`, the previous design (Kratos at `/auth` on the
+Status: implemented by `apps/workspace` and `apps/admin` (C90, C96–C100), through the
+shared `@workspace/session` package (`packages/session`). `packages/auth`, the previous design (Kratos at `/auth` on the
 app's domain), was removed (C100). Sign out is `signOut()` there (C101).
 
 Each internal app is served by its backend-for-frontend (`bff-workspace` on tenant domains,

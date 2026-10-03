@@ -14,9 +14,11 @@ The rebuild needs one current baseline without inheriting those decisions.
 Use the existing monorepo for a fresh Go API with hexagonal module boundaries.
 The current business scope is HRMS employee records; the platform backbone is
 the primary design focus. PostgreSQL, Redis caching, audit, and tracing are required.
-Frontend integration is deferred.
+Frontend integration is deferred. (Superseded: integration has started, its standards not
+yet set, C128.)
 
-The development service set is api, app, postgres, and redis. All project
+The development service set is api, app, postgres, and redis. (A starting set, not a
+limit, C08; services are added when a step needs them.) All project
 documentation lives under docs/, agent rules under .claude/, and root agent
 entry points link to those sources.
 

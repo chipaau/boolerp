@@ -5,7 +5,7 @@ Status: accepted (C102–C106).
 
 ## Context
 
-The tenant workspace (`apps/app`) hosts several apps: Control Centre, Task Management,
+The tenant workspace (`apps/app`, renamed `apps/workspace` by C108) hosts several apps: Control Centre, Task Management,
 HRMS, Inventory, Calendar, Directory, and more. They are products in their own right, with
 their own pages, navigation, and permissions, and a customer may have some and not others,
 as the backend's editions allow (C93). The prototype served every app from one dynamic route

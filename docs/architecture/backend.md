@@ -1,16 +1,14 @@
 # Backend architecture
 
-Status: hexagonal modular-monolith direction selected. The earlier implementation
-was removed for a step-by-step rebuild (C24); the layout below is the target, and the
-[HTTP foundation](../platform/http.md) and [PostgreSQL foundation](../platform/postgres.md)
-describe target contracts, without approving application tables. Remaining policy contracts and tool choices are proposed. See
-[the decision register](../decisions/README.md).
+Status: hexagonal modular monolith, rebuilt step by step from 2026-09-28 (C24). The
+current layout below is implemented; the target layout shows where later capabilities
+and business apps go. See [the decision register](../decisions/README.md).
 
 The new API lives in `apps/api/`. Directories are created only when a step needs them. Filenames in
 the target tree below illustrate future responsibilities unless listed as current;
 they are not approved tables or contracts.
 
-**Current layout (rebuild, step 7c-4):**
+**Current layout:**
 
 ```text
 apps/api/
@@ -18,6 +16,7 @@ apps/api/
     api/main.go          process concerns; mounts the edition's modules (C93)
     migrate/main.go      applies the edition's module migrations with MIGRATE_DB_* (C46, C47, C95)
     bff/main.go          one backend-for-frontend instance, such as bff-workspace (C90, C96)
+    seed/main.go         development and test data through the edition's seeders (C50, C118)
   internal/
     bff/                 the BFF's own packages; no database
       login/             /auth/login and /auth/callback with Hydra (PKCE, state, nonce)
@@ -71,103 +70,22 @@ dependencies after the server has shut down. A new dependency gets its own `boot
 
 ## Target layout
 
+Later capabilities and business apps follow the current shape (C122, C125):
+
 ```text
-apps/api/
-  cmd/
-    api/main.go
-    worker/main.go
-    migrate/main.go
-
-  internal/
-    bootstrap/
-      wiring.go
-      routes.go
-      workers.go
-
-    platform/
-      config/
-      postgres/
-        pool.go
-        transaction.go
-        tenant_scope.go
-      httpserver/
-        server.go
-        middleware/
-        response/
-      observability/
-        logging.go
-        tracing.go
-        metrics.go
-      cache/
-        redis/
-      jobs/
-
-    kernel/
-      actor.go
-      tenant_id.go
-
-    modules/
-      identity/
-        domain/
-        application/
-        adapters/
-      tenancy/
-        domain/
-        application/
-        adapters/
-      authorization/
-        domain/
-        application/
-        adapters/
-      audit/
-        domain/
-        application/
-        adapters/
-      hrms/
-        domain/
-          employee.go
-          errors.go
-        application/
-          create_employee.go
-          update_employee.go
-          get_employee.go
-          list_employees.go
-          ports.go
-        adapters/
-          http/
-            handlers.go
-            routes.go
-            requests.go
-            responses.go
-          store/
-            employees.go
-            transaction.go
-            mapping.go
-            queries/
-              employees.sql
-            internal/
-              sqlc/
-
-    web/
-
-  migrations/
-  api/openapi.yaml
-  tests/
-    integration/
-    architecture/
-  sqlc.yaml
-  go.mod
-  go.sum
+apps/api/internal/
+  platform/                capabilities: identity (with auth), reference, then
+    tenancy/ authorization/ audit/   each: New, Routes, Migrations, plus domain/,
+                           application/, adapters/, migrations/, seeds/ as needed
+    kit/                   technical building blocks (config, postgres, redis, http, …)
+  modules/                 business apps, HRMS first
+    hrms/
+      domain/  application/  adapters/ (http, store with sqlc queries)  migrations/  seeds/
 ```
 
-The worker directory is a placeholder. The target tree predates C95: migrations
-live in each module's `migrations` folder, not a global `migrations/`. There are no
-generated query files, employee types, or OpenAPI contract yet. The sqlc paths illustrate the deferred query
-generation option. Kratos and Cerbos adapters are planned against the confirmed
-provider choices; their detailed integration contracts remain open in the
-[decision register](../decisions/README.md).
-The `web` directory and generated frontend client belong to later integration.
-A worker executable does not imply an additional Compose service now.
+There is no worker executable, no generated query code, and no API contract file
+yet: sqlc is selected (C116) and arrives with the first tenancy tables; the business
+API contract and client generation are integration standards still to set (C128).
 
 ## Responsibilities and dependencies
 
@@ -193,10 +111,11 @@ adapters for external providers are named after the provider (`adapters/kratos`)
 
 ## Modules and routes (C92, C93, C95)
 
-Every module keeps all of its code in its own folder (C122): `internal/platform/<name>`
-for technical infrastructure (`postgres`, `redis`, `auth`) and for the platform
-capabilities that own tables (`identity`, `reference`, later `tenancy`, `authorization`,
-`audit`); `internal/modules/<name>` for business apps only (HRMS first). Each folder holds its
+Every module keeps all of its code in its own folder (C122, C125): `internal/platform/<name>`
+for the platform capabilities (`identity` with `identity/auth`, `reference`, later
+`tenancy`, `authorization`, `audit`), `internal/platform/kit/<name>` for technical
+infrastructure (`postgres`, `redis`, `httpserver`, …), and `internal/modules/<name>`
+for business apps only (HRMS first). Each folder holds its
 routes, handlers, middleware, types, and migrations. A module exposes
 `Routes(r chi.Router)` when it has routes, registering
 paths relative to its prefix (`/me`, not `/api/auth/me`).
@@ -209,12 +128,15 @@ embedded migrations in dependency order for `cmd/migrate`:
 
 ```go
 // internal/edition/full/full.go
-var Migrations = []postgres.ModuleMigrations{{Name: "identity", FS: identity.Migrations()}}
+var Migrations = []postgres.ModuleMigrations{
+	{Name: "reference", FS: reference.Migrations()},
+	{Name: "identity", FS: identity.Migrations()},
+}
 
 func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
-	users := identity.New(d.Pool, identity.Settings{...}, d.HTTPClient)
-	resolve := func(ctx context.Context, subject string) (auth.User, error) { ... users.Resolve ... }
-	authModule := auth.New(ctx, auth.Settings{...}, d.HTTPClient, resolve, d.Logger)
+	users := identity.New(d.Pool, identity.Settings{...}, d.HTTPClient, d.Logger)
+	// Authentication resolves a token's subject to its user through identity.
+	authModule := auth.New(ctx, auth.Settings{...}, d.HTTPClient, users, d.Logger)
 	r.Route("/api/auth", authModule.Routes) // GET /api/auth/me
 }
 ```
@@ -252,19 +174,17 @@ query interface alone does not remove dependency on generated persistence types.
 
 | Concern | Status |
 | --- | --- |
-| Go | Selected |
-| PostgreSQL | Selected |
-| Redis caching | Selected |
-| HTTP routing | chi selected and implemented; routes registered in bootstrap, httpserver remains framework-agnostic |
-| pgx/v5 pgxpool | Selected and implemented for the PostgreSQL pool |
-| Goose | Selected and implemented for explicit migrations |
-| sqlc | Deferred until an approved table needs generated queries |
-| Structured slog logs | Implemented in platform step 1; JSON/info to stdout by default |
-| OpenTelemetry | Proposed; propagation, exporter, and operational policy open |
-| Identity/authentication | Ory Kratos and Hydra selected; access tokens (C91) and users (C94) implemented; session lifecycle contracts open |
-| Authorization | Cerbos selected; policy model and enforcement contracts open |
-| File/object storage | S3 API selected; `chipaau/minio` (project's exact MinIO fork) selected for development |
-| Queue implementation and Redis client | Open |
+| Go, PostgreSQL, Redis | Selected and implemented |
+| HTTP routing | chi, implemented; the edition mounts modules (C95) |
+| pgx/v5 pgxpool, Goose | Implemented: the pool and per-module migrations |
+| sqlc | Selected (C116); not used yet, the `users` store is hand-written pgx |
+| Structured slog logs | Implemented (step 1) |
+| OpenTelemetry | Implemented: tracing (C54-C63) and metrics (C82); production backend open |
+| Identity/authentication | Kratos and Hydra; access tokens (C91), users (C94), BFF sessions and logout (C96-C101) implemented; custom-domain login open |
+| Authorization | Cerbos selected; tables designed (C116); policies and integration open (D05) |
+| Redis client | go-redis (C51); cache optional, fail fast (C52) |
+| Queue and background work | Open (D09) |
+| File/object storage | S3 API selected; `chipaau/minio` for development; Go SDK open (D12) |
 
 Audit and tracing are required. The request lifecycle and their relationship to
 transactions and caching are described in [request-lifecycle.md](request-lifecycle.md).

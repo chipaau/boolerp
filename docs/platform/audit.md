@@ -18,18 +18,18 @@ items, not an approved table. Impersonation, if introduced, must preserve both t
 actual actor and effective subject.
 
 Denied/failed attempts cannot rely solely on an audit write inside a transaction
-that rolls back. Their recording policy needs a separate decision.
+that rolls back: a refused attempt is recorded as `denied` in its own transaction (C116).
 
 ## Open decisions
 
-- Which actions, reads, failures, and access changes are audited.
-- Application capture, database capture, or a combination.
-- Redaction and sensitive employee data allowed in before/after evidence.
-- Immutability controls, read permissions, retention, archival, and export.
-- Behavior if audit persistence fails and whether administrative maintenance differs
-  from normal application access.
+Decided (C116): every create, update, and delete is audited with its change, plus
+denied attempts; capture is explicit in the application, in the same transaction (a
+failed audit write fails the change); sensitive fields are redacted; the table is
+append-only twice over; tenants read their own audit with `audit:view`; kept at least
+7 years. Still open:
 
-No historical retention duration, partitioning scheme, or universal delete snapshot
-requirement is inherited.
+- Whether sensitive reads (salaries, national IDs) are audited too.
+- The capture API modules call, with the transaction contract (D06).
+- Archival and export, and monthly partitioning when volume needs it.
 
 See [execution](execution.md), [observability](observability.md), and [data-model status](../data-model/README.md).

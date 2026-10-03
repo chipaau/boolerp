@@ -18,7 +18,7 @@ decide every policy or operational contract around it.
   of chi.
 - Use PostgreSQL as the application database. The platform foundation uses
   pgx/v5 pgxpool and Goose; sqlc remains deferred until an approved table needs
-  generated queries.
+  generated queries. (sqlc was selected in C116; it arrives with the tenancy tables.)
 - Use Ory Kratos for identity and authentication. Session, provisioning, account,
   tenant, and domain-login contracts remain to be agreed.
 - Use Ory Hydra as the OAuth2/OpenID Connect server in front of Kratos (C83): every
@@ -44,6 +44,7 @@ decide every policy or operational contract around it.
 - Canonical path cleanup uses 307 Temporary Redirect and preserves the request
   method, body, and query. This is an intentional behavior change from the prior
   ServeMux redirect; see C23 and the [HTTP contract](../platform/http.md).
+  (Superseded by C39: paths match exactly, with no cleaning or redirects.)
 - Detailed contracts remain open in the [decision register](../decisions/README.md)
   and their component documents.
 - A suitable S3 Go SDK should be used rather than hand-writing S3 protocol code;

@@ -1,13 +1,13 @@
 # Sequential roadmap
 
-Updated: 2026-09-28.
+Updated: 2026-10-03.
 
 This is an implementation sequence, not approval to implement all steps.
 Resolve one decision at a time using the [decision register](decisions/README.md).
 
 | Stage | Outcome | Current status |
 | --- | --- | --- |
-| 0. Documentation baseline | Fresh branch, current scope/decisions, archived history, centralized agent rules, four-service Compose | Documentation/configuration milestone; no new application implementation |
+| 0. Documentation baseline | Fresh branch, current scope/decisions, archived history, centralized agent rules, the starting Compose services | Documentation/configuration milestone; no new application implementation |
 | 0a. Executable scaffold | Start the rebuild with a simple chi server (platform step 0) | Done on 2026-09-28 (platform step 0) |
 | 1. Tenant model | Agree what a tenant represents and its relationship to a licensed customer | Decided on 2026-10-02 (C115); isolation (D02) next |
 | 2. Platform implementation | Deliver the increments below; resolve D02–D12 as needed and approve tables individually | Reset on 2026-09-28 (C24); steps 0–5 and H1–H6 done; step 7 (identity) done through 7e, with 7f and 7g waiting on step 6 and object storage; security fixes under ASVS L2 (C111, C112) in progress; then step 6 (needs D01) |
@@ -21,9 +21,8 @@ mean ignoring custom-domain or self-host requirements during identity design.
 
 ## Platform delivery plan
 
-Status: the earlier implementation of steps 0–3 was removed on 2026-09-28 so the
-API can be rebuilt from scratch for understanding (C24). The tool selections from
-those steps still stand; no step is currently implemented. This breaks
+Status: the API is being rebuilt step by step from 2026-09-28 (C24). Steps 0–5 and
+H1–H6 are done, identity (step 7) is done through 7e, and step 6 (tenancy) is next. This breaks
 the platform stage above into small increments, including the backend deployment
 proof, so there is a clear platform milestone before HRMS.
 
@@ -87,9 +86,8 @@ verified in isolation, but expose platform administration only when tenancy,
 authorization, and required audit capture are all enforced. Secure bootstrap must
 have explicit authority; it must not become an authentication bypass.
 
-The product decisions remain sequential: **D01 is the next product-model
-discussion.** Infrastructure increments 1–5 can be agreed independently without
-assuming tenant semantics. Provider/deployment constraints inform design early;
+The product decisions remain sequential: D01 is decided (C115), and D02's policy
+details are settled with the first tenancy tables. Provider/deployment constraints inform design early;
 their later implementation position does not postpone those design checks.
 
 ## Working one increment at a time
@@ -103,11 +101,10 @@ their later implementation position does not postpone those design checks.
 4. Run the relevant Docker-based checks from the [verification strategy](testing.md),
    update the component document, and record evidence before marking it done.
 
-**Next implementation increment: step 6 (tenancy), which needs the D01 decision first.** Identity comes before tenancy (C83): identities exist independently of tenants, and only custom-domain login (7f) waits for the tenancy domain registry. Request tracing (step 5) is
+**Next implementation increment: step 6 (tenancy)**, with each table's fields confirmed first (C121), starting with `legal_forms`. Identity comes before tenancy (C83): identities exist independently of tenants, and only custom-domain login (7f) waits for the tenancy domain registry. Request tracing (step 5) is
 complete, which completes the infrastructure increments (steps 1–5). Before domain work,
 H1–H6 (platform hardening) close gaps that need no product decision: every domain
-endpoint depends on them. Step 6 (tenancy) follows and needs the D01 tenant-model
-discussion, which is deferred until then. The Redis foundation (step 4) is complete; step 5 is split into 5a–5e. The HTTP foundation (step 2) is complete; step 3 is split into 3a–3c like step 2. Step 2 is split into
+endpoint depends on them. Step 6 (tenancy) follows; its tenant model is decided (C115, C116). The Redis foundation (step 4) is complete; step 5 is split into 5a–5e. The HTTP foundation (step 2) is complete; step 3 is split into 3a–3c like step 2. Step 2 is split into
 2a–2f so each HTTP concern is decided, built, and understood separately. Every
 sub-step uses `chi/middleware`, go-chi packages, or the standard library first. Each step should be small enough to run and
 understand before moving on. Application tables remain subject to individual approval.
@@ -128,8 +125,8 @@ understand before moving on. Application tables remain subject to individual app
 
 This is a backend platform milestone. The following milestone is D11 and the
 first complete employee operation, followed by an employee-specific cached read.
-Those steps prove the backbone against HRMS rules; frontend integration remains
-deferred. Broader business modules and a complete production rollout are outside
+Those steps prove the backbone against HRMS rules; frontend integration has started,
+with its standards still to set (C128). Broader business modules and a complete production rollout are outside
 this plan.
 
 The previous API is not a source of inherited implementation decisions, and its

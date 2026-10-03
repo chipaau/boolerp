@@ -16,8 +16,8 @@ Employee fields, concrete endpoints, and transaction interfaces are not approved
 5. The application defines the work that must succeed atomically. The proposed
    transaction port supplies transaction-bound persistence and audit dependencies.
 6. The PostgreSQL adapter persists the employee and required successful-change audit
-   record in the same transaction. If pooled RLS is chosen, its tenant settings are
-   transaction-local. Database constraints handle concurrent integrity races.
+   record in the same transaction. Its tenant settings (row-level security, C115, C116)
+   are transaction-local. Database constraints handle concurrent integrity races.
 7. A successful commit allows cache invalidation/update and the operation's success
    result. A rollback must not publish a cache entry for uncommitted data.
 8. The HTTP adapter maps application errors/results into the approved HTTP contract.

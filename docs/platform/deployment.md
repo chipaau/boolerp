@@ -11,10 +11,10 @@ Status: dual deployment and licensing requirements confirmed; implementation ope
 - Support default customer domains and verified custom domains.
 - Licensing discourages unauthorized resale; customer-controlled binaries are not tamper-proof.
 
-The current development Compose service set is exactly api, app, postgres, and redis.
-The API includes runtime configuration, structured logging, an HTTP foundation,
-and PostgreSQL pool/readiness/migration tooling. Frontend integration and a
-production release have not been implemented.
+Development runs the full stack in Compose (see [development](../development.md)): the
+API, the BFFs with their apps, Kratos, Hydra, the login service, PostgreSQL, and Redis.
+Each BFF's release image embeds its app (C99). No production release or deployment
+exists yet.
 
 ## Proposed direction
 
@@ -25,13 +25,15 @@ would remain outside distributed releases.
 
 Self-hosted authentication, operational dependencies, and telemetry export must be
 deliberately configured rather than rely on implicit SaaS infrastructure.
-Frontend embedding and distribution are deferred until frontend integration.
+Internal apps are embedded in their BFF's release image (C99); the public apps'
+distribution is not decided.
 File/object storage uses the S3 API; development uses `chipaau/minio`, while the
 production provider and SDK remain open. See [storage](storage.md).
 
 ## Open decisions
 
-- Tenant/customer/license relationship and enforceable entitlements.
+- Enforceable entitlements: what a licence allows (the tenant model and per-tenant
+  subscriptions are decided, C115, C116).
 - Disconnected operation, activation, renewal, grace, expiry, and continued data access.
 - Required services and dependency versions.
 - Secure first-run setup, configuration, migrations, upgrades, backup, and restore.
