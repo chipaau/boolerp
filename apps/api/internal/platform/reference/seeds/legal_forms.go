@@ -20,10 +20,11 @@ type LegalForm struct {
 	Country, Code, Name, Category, IdentityDocument string
 }
 
-// The same rules as the table's CHECK constraints.
+// The same rules as the tables' CHECK constraints: codeKey for the lowercase
+// codes of legal forms, sectors, and institution types.
 var (
-	legalFormCode = regexp.MustCompile(`^[a-z][a-z0-9_]{1,49}$`)
-	categories    = []string{"government", "private", "non_profit", "international"}
+	codeKey    = regexp.MustCompile(`^[a-z][a-z0-9_]{1,49}$`)
+	categories = []string{"government", "private", "non_profit", "international"}
 )
 
 // ParseLegalForms reads legal forms CSV: a header, then one form per line. It
@@ -41,7 +42,7 @@ func ParseLegalForms(data []byte) ([]LegalForm, error) {
 		switch {
 		case !codePattern.MatchString(f.Country):
 			return nil, fmt.Errorf("legal forms: country %q is not ISO alpha-2", f.Country)
-		case !legalFormCode.MatchString(f.Code):
+		case !codeKey.MatchString(f.Code):
 			return nil, fmt.Errorf("legal forms %s: code %q", f.Country, f.Code)
 		case strings.TrimSpace(f.Name) == "":
 			return nil, fmt.Errorf("legal forms %s: blank name", key)

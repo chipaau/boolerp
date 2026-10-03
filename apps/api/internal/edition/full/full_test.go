@@ -64,7 +64,7 @@ func TestDeploySeedersInOrder(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"reference.countries", "reference.legal_forms", "identity.team_accounts"}, names)
+	assert.Equal(t, []string{"reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "identity.team_accounts"}, names)
 }
 
 func TestDataSeedersAreTheSeedFiles(t *testing.T) {
@@ -73,5 +73,5 @@ func TestDataSeedersAreTheSeedFiles(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"reference.countries", "reference.legal_forms"}, names)
+	assert.Equal(t, []string{"reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types"}, names)
 }

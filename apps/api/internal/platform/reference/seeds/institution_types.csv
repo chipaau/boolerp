@@ -1,0 +1,51 @@
+# Institution types (C120, C136, C138; confirmed 2026-10-04): the specific kind of
+# organisation, each in one sector (sectors.csv). Global, with country-neutral names.
+code,sector,name
+ministry_office,government_administration,Ministry / central office
+government_department,government_administration,Government department
+regulatory_authority,government_administration,Regulatory authority
+council_secretariat,government_administration,Council secretariat
+hospital,health,Hospital
+health_centre,health,Health centre
+clinic,health,Clinic
+pharmacy,health,Pharmacy
+laboratory,health,Laboratory
+preschool,education,Preschool
+school,education,School
+college_university,education,College / university
+training_centre,education,Training centre
+power,utilities,Power
+water_sewerage,utilities,Water and sewerage
+waste_management,utilities,Waste management
+airport,transport,Airport
+airline,transport,Airline
+sea_transport,transport,Sea transport
+ports_logistics,transport,Ports and logistics
+resort,tourism,Resort
+hotel_guesthouse,tourism,Hotel / guesthouse
+liveaboard,tourism,Liveaboard
+dive_centre,tourism,Dive centre
+travel_agency,tourism,Travel agency
+bank,finance,Bank
+insurance,finance,Insurance
+pension_fund,finance,Pension / fund
+finance_company,finance,Finance company
+telecom_operator,telecom_media,Telecom operator
+media_broadcaster,telecom_media,Media / broadcaster
+retail,trade,Retail
+wholesale_import,trade,Wholesale / import
+distribution,trade,Distribution
+manufacturing,manufacturing,Manufacturing
+food_processing,manufacturing,Food processing
+construction,construction,Construction
+engineering_contractor,construction,Engineering contractor
+fisheries,agriculture_fisheries,Fisheries
+agriculture,agriculture_fisheries,Agriculture
+law_firm,professional_services,Law firm
+accounting_audit,professional_services,Accounting / audit
+consulting,professional_services,Consulting
+it_services,professional_services,IT services
+sports_club,community,Sports club / association
+religious_organisation,community,Religious organisation
+charity,community,Charity
+other,other,Other
