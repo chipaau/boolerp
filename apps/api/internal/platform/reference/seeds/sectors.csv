@@ -1,0 +1,18 @@
+# Sectors (C120, C136; confirmed 2026-10-04): the broad field an organisation works
+# in, following ISIC Rev. 4's sections. Global, with country-neutral names.
+code,name
+government_administration,Government administration
+health,Health
+education,Education
+utilities,Utilities
+transport,Transport
+tourism,Tourism
+finance,Finance
+telecom_media,Telecom and media
+trade,Wholesale and retail trade
+manufacturing,Manufacturing
+construction,Construction
+agriculture_fisheries,Agriculture and fisheries
+professional_services,Professional services
+community,Community
+other,Other

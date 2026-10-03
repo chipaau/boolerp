@@ -272,7 +272,7 @@ same seed files**; only the command differs:
 
 | Seeders | Listed in | Production: `cmd/deploy` | Development: `cmd/seed` | Role |
 | --- | --- | --- | --- | --- |
-| Seed files: countries, legal forms | `full.DataSeeders` | yes, after the migrations | yes, first | migration role (owns the tables) |
+| Seed files: countries, legal forms, sectors, institution types | `full.DataSeeders` | yes, after the migrations | yes, first | migration role (owns the tables) |
 | The team's accounts without passwords | `full.DeploySeeders` | yes | no (the demo seeder creates them) | migration role |
 | Demo data: team accounts with the dev password, gofakeit data | `full.Seeders` | never | yes, after the seed files | runtime role, through use cases |
 
@@ -296,7 +296,8 @@ ISO 3166-1 countries and territories from the public-domain
 noted at the top of the file. It adds new rows and corrects changed ones in one
 transaction, never deletes, and never touches `active_to`. `reference.legal_forms` does
 the same for `legal_forms.csv` (per country, keyed by country and code), after the
-countries it references.
+countries it references, `reference.sectors` for `sectors.csv`, and `reference.institution_types` for
+`institution_types.csv`, after the sectors.
 
 `identity.team_accounts` creates the team's accounts (`identity/seeds/team.go`) in
 Kratos, with a verified email and no password. For each account it creates, `deploy`

@@ -112,3 +112,45 @@ The migration holds the schema only; the rows come from
 by `cmd/deploy` and `cmd/seed` after the countries (C135, C137). Row-level security as for `countries`:
 everyone reads; only the migration role writes until the operator rule exists. The
 migration is `apps/api/internal/platform/reference/migrations/00002_legal_forms.sql`.
+
+### `sectors` (platform reference data, C120, C136)
+
+Fields and seed rows confirmed 2026-10-04 by the user, with "Trade and industry" split
+into trade, manufacturing, construction, and agriculture and fisheries, and professional
+services added, following ISIC's sections. The broad field an organisation works in;
+`institution_types` refine each. Global, not tenant-scoped.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `code` | `text` | Primary key; CHECK `^[a-z][a-z0-9_]{1,49}$` (`health`). A global, stable code, so no UUID. |
+| `name` | `text` | Not null, not blank. |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable: retired; null = in use; not before `active_from`. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger on every update. |
+
+The rows come from `apps/api/internal/platform/reference/seeds/sectors.csv` (15), loaded by
+`cmd/deploy` and `cmd/seed` (C135, C137). Row-level security as for `countries`. The
+migration is `apps/api/internal/platform/reference/migrations/00003_sectors.sql`.
+
+### `institution_types` (platform reference data, C120, C136, C138)
+
+Fields and the 48 seed rows confirmed 2026-10-04 by the user, with country-specific types
+generalised (regional and district hospitals as `hospital`, higher secondary school as
+`school`) and `dive_centre` added. The specific kind of organisation, each in one sector;
+a tenant has a primary type and any number of additional ones (C138). Global, not
+tenant-scoped.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `code` | `text` | Primary key; CHECK `^[a-z][a-z0-9_]{1,49}$` (`hospital`). |
+| `sector` | `text` | Not null; references `sectors.code`, `ON DELETE RESTRICT`; indexed. |
+| `name` | `text` | Not null, not blank. |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable: retired; null = in use; not before `active_from`. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger on every update. |
+
+The rows come from `apps/api/internal/platform/reference/seeds/institution_types.csv` (48),
+loaded by `cmd/deploy` and `cmd/seed` after the sectors (C135, C137). Row-level security
+as for `countries`. The migration is
+`apps/api/internal/platform/reference/migrations/00004_institution_types.sql`.
+

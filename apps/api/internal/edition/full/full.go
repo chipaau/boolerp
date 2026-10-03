@@ -61,6 +61,8 @@ func DataSeeders(db *pgxpool.Pool) []seed.Seeder {
 	return []seed.Seeder{
 		referenceseeds.NewCountries(db),
 		referenceseeds.NewLegalForms(db),
+		referenceseeds.NewSectors(db),
+		referenceseeds.NewInstitutionTypes(db),
 	}
 }
 

@@ -100,7 +100,8 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   `international`): rules that differ by kind of organisation attach to the category,
   never to one country's forms. A tenant's classification is required before it can
   become active. FindCare finds healthcare providers by sector and filters by
-  institution type and category.
+  institution type and category. A tenant has one primary institution type and any
+  number of additional ones (`tenant_institution_types`, C138), set by operators.
 - Two dimensions: what an organisation is in law (**legal form**) and what it does
   (**sector**, refined by **institution type**). A private and a government hospital
   share the institution type and differ in legal form.
@@ -125,18 +126,11 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
     proprietorship — business registration number; cooperative society — cooperative
     registration number; association / NGO — association registration number;
     international organisation / mission — none.
-  - **Sectors and institution types (global):** government administration (ministry office,
-    department, regulatory authority, council secretariat); health (regional hospital,
-    district hospital, health centre, clinic, pharmacy, laboratory); education (preschool,
-    school, higher secondary school, college / university, training centre); utilities
-    (power, water and sewerage, waste management); transport (airport, airline, sea
-    transport, ports and logistics); tourism (resort, hotel / guesthouse, liveaboard,
-    travel agency); finance (bank, insurance, pension / fund, finance company); telecom
-    and media (telecom operator, media / broadcaster); trade and industry (retail,
-    wholesale / import, fisheries, construction, manufacturing); community (sports club /
-    association, religious organisation, charity); other (other).
-- Whether classification is required at provisioning or before activation is settled
-  with the `tenants` migration.
+  - **Sectors and institution types (global; confirmed 2026-10-04):** the 15 sectors in
+    `reference/seeds/sectors.csv` and the 48 institution types in
+    `reference/seeds/institution_types.csv` (for example health: hospital, health centre,
+    clinic, pharmacy, laboratory).
+- Classification is required before a tenant becomes active, not at creation (C136).
 
 **`memberships`** (previously `tenant_users`)
 - `id`, `user_id`, `tenant_id`; unique `(tenant_id, id)` so tenant tables reference a
