@@ -16,9 +16,11 @@ effects on memberships and sessions elsewhere.
 
 ## Open decisions
 
-- Roles, permissions, record-level scope, and permission administration.
-- Policy engine versus an in-process implementation.
-- Sources of trusted principal/resource attributes.
+Decided: Cerbos as the policy engine (C21), and the role, capability, and assignment
+tables (C116). Still open:
+
+- The Cerbos policies, record-level scope, and permission administration.
+- The Cerbos SDK and the sources of trusted principal/resource attributes.
 - Operator/support access and whether elevated actions require additional approval.
 - Revocation timing and consistency if any access-related data is cached.
 - What evidence to audit for denied actions.

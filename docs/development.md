@@ -1,22 +1,21 @@
 # Development and repository layout
 
-Updated: 2026-09-27.
+Updated: 2026-10-03.
 
 The active checkout is `/Users/chipaau/code/bool/erp`, remote
-`git@github.com:boolmv/erp.git`. Do not run the rebuild from the sibling `go-erp`
+`git@github.com:boolmv/erp.git`. Do not work from the sibling `go-erp`
 checkout.
 
-The fresh API lives in `apps/api/` in this monorepo.
+The API lives in `apps/api/` in this monorepo.
 
-**Reset (C24, 2026-09-28):** the implementation of steps 0–3 was removed to rebuild
-the API from scratch. The commands, settings, and layout below describe the rebuild
-target and will not work until the corresponding roadmap step is rebuilt.
+The API is built step by step (C24); the commands and settings
+below work against the current code. The [roadmap](roadmap.md) has the status.
 
 ## Locations
 
 | Location | Purpose |
 | --- | --- |
-| apps/api/ | New Go API and directory scaffold |
+| apps/api/ | The Go API, the BFF, and their commands (`cmd/api`, `cmd/bff`, `cmd/migrate`, `cmd/seed`) |
 | apps/workspace/ | The workspace shell and its apps (C102, C108) |
 | docs/ | All product and engineering documentation |
 | .claude/ | Substantive agent instructions |
@@ -26,7 +25,7 @@ target and will not work until the corresponding roadmap step is rebuilt.
 
 ## Compose baseline
 
-[compose.yaml](../compose.yaml) started with `api`, `app`, `postgres`, and `redis` (C08) and adds services when a step needs them: `lgtm` (`grafana/otel-lgtm`) for viewing traces and metrics in Grafana at `http://grafana.bool.test` (C82, replacing Jaeger from C63); `kratos` and `kratos-migrate` for accounts at `http://identity.bool.test/kratos`, `identity` for the login pages at `http://identity.bool.test` (Next.js, C86, C87), `hydra`, `hydra-migrate`, and `hydra-clients` for OAuth2 and OpenID Connect with the issuer `http://identity.bool.test/` (C89), `mailpit` for development email and SMS at `http://mail.bool.test`, and `oidc` standing in for Google at `http://oidc.bool.test` (C85; see [identity](platform/identity.md)), `redis-sessions`, `bff-app`, and `bff-admin` for the backends-for-frontend, which serve `/auth/*` on tenant domains and on `admin.bool.test` (C90, C96, C97), and `admin`, the admin app's dev server at `http://admin.bool.test` (C97).
+[compose.yaml](../compose.yaml) started with `api`, `app` (now `workspace`, C108), `postgres`, and `redis` (C08) and adds services when a step needs them: `lgtm` (`grafana/otel-lgtm`) for viewing traces and metrics in Grafana at `http://grafana.bool.test` (C82, replacing Jaeger from C63); `kratos` and `kratos-migrate` for accounts at `http://identity.bool.test/kratos`, `identity` for the login pages at `http://identity.bool.test` (Next.js, C86, C87), `hydra`, `hydra-migrate`, and `hydra-clients` for OAuth2 and OpenID Connect with the issuer `http://identity.bool.test/` (C89), `mailpit` for development email and SMS at `http://mail.bool.test`, and `oidc` standing in for Google at `http://oidc.bool.test` (C85; see [identity](platform/identity.md)), `redis-sessions`, `bff-workspace`, and `bff-admin` for the backends-for-frontend, which serve `/auth/*` on tenant domains and on `admin.bool.test` (C90, C96, C97), and `admin`, the admin app's dev server at `http://admin.bool.test` (C97); and the `migrate` and `seed` tools (profile `tools`).
 PostgreSQL stores data in the `erp_pgdata` volume (C49). When it is empty, first
 start creates the `erp` database and `10-roles.sh` creates the runtime and migration
 roles, then applies `database-setup.psql` (grants and the `migrations` schema, C79), as
@@ -69,18 +68,20 @@ docker compose config --services
 The API command builds the new binary inside its development container and executes
 it directly so shutdown signals reach the server. Runtime settings are described
 below. The API creates its PostgreSQL pool at startup, checks the database through
-`/api/readyz`, and does not run migrations automatically. Redis remains for a later layer.
+`/api/readyz`, and does not run migrations automatically. Redis is connected as an
+optional cache (C52) with no application data yet; the BFFs keep sessions in their own
+Redis (`redis-sessions`).
 
-Do not reset existing volumes. The new
-`cmd/migrate` is an explicit migration command; `cmd/worker` remains a placeholder.
-A standalone migration service is not part of this Compose baseline.
+Migrations run explicitly with `docker compose run --rm migrate` (`cmd/migrate`), never
+at API startup; development data comes from `docker compose run --rm seed` (C50).
+Development volumes are disposable; reset them when needed.
 
 ## Runtime configuration
 
-**Layout (C44):** settings are grouped by concern in `internal/platform/config`: `app.go` (`APP_ENV`, `APP_PORT`, `APP_SHUTDOWN_TIMEOUT`), `log.go` (`APP_LOG_*`), `http.go` (`APP_HTTP_*`), and `database.go` (`APP_DB_*`), `redis.go` (`APP_REDIS_*`), `auth.go` (`APP_AUTH_*`), and `identity.go` (`APP_IDENTITY_*`); the BFF's are in `bff.go` (below). Add a setting to its group's file; a new concern gets its own file and `envPrefix`.
+**Layout (C44):** settings are grouped by concern in `internal/platform/kit/config`: `app.go` (`APP_ENV`, `APP_PORT`, `APP_SHUTDOWN_TIMEOUT`), `log.go` (`APP_LOG_*`), `http.go` (`APP_HTTP_*`), and `database.go` (`APP_DB_*`), `redis.go` (`APP_REDIS_*`), `auth.go` (`APP_AUTH_*`), and `identity.go` (`APP_IDENTITY_*`); the BFF's are in `bff.go` (below). Add a setting to its group's file; a new concern gets its own file and `envPrefix`.
 
-**Rebuild status (steps 1a–2b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
-`APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, `APP_HTTP_ALLOWED_ORIGINS`, the six `APP_DB_*` connection settings, `APP_DB_MAX_CONNS`, `APP_DB_PING_TIMEOUT`, and the seven `APP_REDIS_*` settings are implemented in `internal/platform/config` with `caarlos0/env`
+**Status (steps 1a–2b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
+`APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, `APP_HTTP_ALLOWED_ORIGINS`, the six `APP_DB_*` connection settings, `APP_DB_MAX_CONNS`, `APP_DB_PING_TIMEOUT`, and the seven `APP_REDIS_*` settings are implemented in `internal/platform/kit/config` with `caarlos0/env`
 (C26) and `go-playground/validator` (C27). Each remaining variable below is added
 with the step that uses it. `APP_LOG_LEVEL` is parsed by `slog.Level` itself, so it
 also accepts slog offsets such as `info+2`.
@@ -206,7 +207,7 @@ docker compose up --build api
 available without dependencies, while readiness reports PostgreSQL as unavailable.
 
 The full command above starts the API and its configured PostgreSQL/Redis dependencies, not the frontend.
-The API uses PostgreSQL readiness; Redis is not used yet. Stop the sibling `go-erp` API before
+The API's readiness checks PostgreSQL. Stop the sibling `go-erp` API before
 using this checkout so two wildcard routers do not compete. Through the existing local proxy,
 at the API's own host (app domains' `/api` goes through their BFF and needs a session, C98):
 
@@ -232,7 +233,7 @@ curl --fail http://127.0.0.1:8080/api/healthz
 ```
 
 The response is `200` with JSON `{"status":"ok"}` (C36). This is process liveness;
-`/api/readyz` checks PostgreSQL connectivity. There are no authenticated or employee endpoints yet;
+`/api/readyz` checks PostgreSQL connectivity. `GET /api/auth/me` needs a Bearer token (C91);
 unknown paths return a JSON `404` problem, and unsupported methods return `405`
 with `Allow`. Responses after the liveness check include a server-generated `X-Request-Id` (UUIDv7).
 See the [HTTP contract](platform/http.md) for input/error and browser policies.
@@ -267,7 +268,7 @@ Seeds work like Laravel's seeders. Each module keeps **one seeder per store** in
 `seeds` folder (`internal/platform/identity/seeds/users.go`), and the edition lists them
 in dependency order (`full.Seeders`), as it lists migrations: a store is seeded after
 the stores it references. `cmd/seed` runs the list. Seeders implement `seed.Seeder`
-(`internal/platform/seed`) and create data through their module's use cases, as the
+(`internal/platform/kit/seed`) and create data through their module's use cases, as the
 API's runtime role, so seeded data passes the same rules as real data. Each can run
 repeatedly without duplicating anything. Generated data comes from
 [gofakeit](https://github.com/brianvoe/gofakeit) (`env.Fake`), seeded with a fixed value
@@ -291,8 +292,8 @@ already exists is left as it is.
 
 ## Validate the runtime
 
-The module uses the Go 1.27 development baseline, pgx/v5, and Goose. No generated
-query code is included; sqlc remains deferred until an approved table needs queries.
+The module uses the Go 1.27 development baseline, pgx/v5, and Goose. sqlc is selected
+(C116) and arrives with the tenancy tables; no generated query code exists yet.
 The same checks CI runs, using the Debian-based Go image (the race detector needs cgo):
 
 ```sh
@@ -319,11 +320,9 @@ Use Docker for Go/Node/pnpm builds and application tests. Do not require matchin
 language runtimes on the host. Documentation checks can run without application
 services. Do not start/stop deployed services as part of document validation.
 
-Frontend builds, generated clients, and embedded assets are deferred.
-The existing frontend source is unchanged, but its login and API integration do not
-work against the health-only rebuild. The legacy E2E CI job is explicitly disabled;
-frontend typecheck/build jobs remain. The production API Dockerfile builds only
-the scaffold and does not embed frontend assets.
+The apps sign in through their BFFs, and each BFF's release image embeds its app (C99).
+Frontend integration has started; its standards are not set yet (C128). CI is described
+in [testing](testing.md).
 
 See [architecture](architecture/backend.md), [deployment](platform/deployment.md),
 and [testing](testing.md).

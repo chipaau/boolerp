@@ -1,16 +1,16 @@
 # Sequential roadmap
 
-Updated: 2026-09-28.
+Updated: 2026-10-03.
 
 This is an implementation sequence, not approval to implement all steps.
 Resolve one decision at a time using the [decision register](decisions/README.md).
 
 | Stage | Outcome | Current status |
 | --- | --- | --- |
-| 0. Documentation baseline | Fresh branch, current scope/decisions, archived history, centralized agent rules, four-service Compose | Documentation/configuration milestone; no new application implementation |
-| 0a. Executable scaffold | Start the rebuild with a simple chi server (platform step 0) | Done on 2026-09-28 (platform step 0) |
+| 0. Documentation baseline | Current scope/decisions, archived history, centralized agent rules, the starting Compose services | Documentation/configuration milestone; no new application implementation |
+| 0a. Executable scaffold | Start with a simple chi server (platform step 0) | Done on 2026-09-28 (platform step 0) |
 | 1. Tenant model | Agree what a tenant represents and its relationship to a licensed customer | Decided on 2026-10-02 (C115); isolation (D02) next |
-| 2. Platform implementation | Deliver the increments below; resolve D02–D12 as needed and approve tables individually | Reset on 2026-09-28 (C24); steps 0–5 and H1–H6 done; step 7 (identity) done through 7e, with 7f and 7g waiting on step 6 and object storage; security fixes under ASVS L2 (C111, C112) in progress; then step 6 (needs D01) |
+| 2. Platform implementation | Deliver the increments below; resolve D02–D12 as needed and approve tables individually | Steps 0–5 and H1–H6 done; step 7 (identity) done through 7e, with 7f and 7g waiting on step 6 and object storage; security fixes under ASVS L2 (C111, C112) in progress; then step 6 (needs D01) |
 | 3. Platform acceptance | Prove protected operations, audit, tracing, caching, domains, and same-release SaaS/self-host installation, licensing, upgrades, and restore | Not started |
 | 4. Employee operation | Resolve D11 and implement one approved employee operation through domain/application/adapters, including access, audit, and trace | Not started |
 | 5. Cache-backed employee read | Prove scoped Redis caching, invalidation, and failure behavior for a concrete employee read | Not started |
@@ -21,9 +21,8 @@ mean ignoring custom-domain or self-host requirements during identity design.
 
 ## Platform delivery plan
 
-Status: the earlier implementation of steps 0–3 was removed on 2026-09-28 so the
-API can be rebuilt from scratch for understanding (C24). The tool selections from
-those steps still stand; no step is currently implemented. This breaks
+Status: the API is built step by step (C24). Steps 0–5 and
+H1–H6 are done, identity (step 7) is done through 7e, and step 6 (tenancy) is next. This breaks
 the platform stage above into small increments, including the backend deployment
 proof, so there is a clear platform milestone before HRMS.
 
@@ -35,8 +34,8 @@ not just more directories.
 | Step | Add | Completion check | Decisions needed before implementation |
 | --- | --- | --- | --- |
 | 0 | **Simple chi server:** Go module, `cmd/api` entry point, a chi router, and `GET /api/healthz` liveness, built and run in Docker. | The server builds and runs in Docker and liveness responds. **Done** (2026-09-28): gofmt/vet pass in Docker; the Compose `api` service is healthy and `http://cyryx.bool.test/api/healthz` returns `200 .` through Traefik. | C14, C19, C24. |
-| 1a | **Runtime configuration:** typed configuration loaded from the environment, validation, safe error messages, and explicit dependency wiring. | Valid settings start the server; invalid settings fail at startup without disclosing values. **Done** (2026-09-28) for `APP_ENV` and `APP_PORT`: unit tests cover defaults, empty values, invalid values and non-disclosure; the Compose service is healthy and a bad `APP_PORT` stops startup with `APP_PORT: invalid int`. | C16 contract, rebuilt under C24; C26, C27. |
-| 1b | **Logging:** `slog` structured logging, startup/shutdown logs, format/level settings, and redaction of sensitive attributes. | Logs are structured and sensitive attributes are redacted. **Done** (2026-09-28): unit tests cover JSON/text output, level filtering, and redaction of keys, `With` attributes, and groups; the Compose service logs JSON, and invalid logging settings produce a JSON startup error and exit 1. | C16 contract, rebuilt under C24. C29. D07 remains open for tracing. |
+| 1a | **Runtime configuration:** typed configuration loaded from the environment, validation, safe error messages, and explicit dependency wiring. | Valid settings start the server; invalid settings fail at startup without disclosing values. **Done** (2026-09-28) for `APP_ENV` and `APP_PORT`: unit tests cover defaults, empty values, invalid values and non-disclosure; the Compose service is healthy and a bad `APP_PORT` stops startup with `APP_PORT: invalid int`. | C16 contract; C24; C26, C27. |
+| 1b | **Logging:** `slog` structured logging, startup/shutdown logs, format/level settings, and redaction of sensitive attributes. | Logs are structured and sensitive attributes are redacted. **Done** (2026-09-28): unit tests cover JSON/text output, level filtering, and redaction of keys, `With` attributes, and groups; the Compose service logs JSON, and invalid logging settings produce a JSON startup error and exit 1. | C16 contract; C24, C29. D07 remains open for tracing. |
 | 2a | **Graceful shutdown:** `http.Server` instead of `ListenAndServe`, `signal.NotifyContext` for SIGINT/SIGTERM, `Server.Shutdown` bounded by `APP_SHUTDOWN_TIMEOUT`, a second signal forces exit, and shutdown start/finish logs. | In-flight requests finish within the timeout; the process exits 0 after a clean shutdown and nonzero on failure; the Compose container stops promptly. **Done** (2026-09-28): unit tests cover clean stop, draining an in-flight request, the timeout closing a slow request, and serve failure; `docker compose stop` shuts down in under a second with exit 0; a second SIGTERM during a slow request exits 143. | Standard library only. Follows the earlier contract: the second signal uses Go's default action; exit 0 on clean shutdown, 1 on failure. |
 | 2b | **Server timeouts and limits:** `http.Server` read-header/read/write/idle timeouts and `MaxHeaderBytes`, `APP_HTTP_*` settings, `chi/middleware.RequestSize` for body limits, and server diagnostics through the step 1b logger (`slog.NewLogLogger`). | Real TCP checks prove slow headers/bodies, oversized headers/bodies, and idle connections are cut off. **Done** (2026-09-28): real TCP tests cover slow headers, a slow body, oversized headers (431), a slow response, idle keep-alive, and server diagnostics reaching the logger. Each test shortens only its own limit, and removing any single limit fails exactly its test; the suite passes under `-race`. A router test covers the body limit. | Standard library and `chi/middleware`. `middleware.Timeout` deferred to step 3, when handlers do database work. |
 | 2c | **Request IDs and request logging:** `chi/middleware.RequestID` and `go-chi/httplog` with the step 1b logger, one structured line per request including the request ID. | Every request is logged once with method, path, status, duration, and request ID; redaction still applies. **Done** (2026-09-28): tests cover UUIDv7 IDs, the response header, ignored client IDs, `request_id` on context-aware logs, one OTEL-named log line per request, and unlogged health checks; in Compose a client `X-Request-Id` is replaced and the response ID matches the log line. | C33 (own IDs, returned in `X-Request-Id`), C34 (`go-chi/traceid`, httplog OTEL schema). |
@@ -87,9 +86,8 @@ verified in isolation, but expose platform administration only when tenancy,
 authorization, and required audit capture are all enforced. Secure bootstrap must
 have explicit authority; it must not become an authentication bypass.
 
-The product decisions remain sequential: **D01 is the next product-model
-discussion.** Infrastructure increments 1–5 can be agreed independently without
-assuming tenant semantics. Provider/deployment constraints inform design early;
+The product decisions remain sequential: D01 is decided (C115), and D02's policy
+details are settled with the first tenancy tables. Provider/deployment constraints inform design early;
 their later implementation position does not postpone those design checks.
 
 ## Working one increment at a time
@@ -103,11 +101,10 @@ their later implementation position does not postpone those design checks.
 4. Run the relevant Docker-based checks from the [verification strategy](testing.md),
    update the component document, and record evidence before marking it done.
 
-**Next implementation increment: step 6 (tenancy), which needs the D01 decision first.** Identity comes before tenancy (C83): identities exist independently of tenants, and only custom-domain login (7f) waits for the tenancy domain registry. Request tracing (step 5) is
+**Next implementation increment: step 6 (tenancy)**, with each table's fields confirmed first (C121), starting with `legal_forms`. Identity comes before tenancy (C83): identities exist independently of tenants, and only custom-domain login (7f) waits for the tenancy domain registry. Request tracing (step 5) is
 complete, which completes the infrastructure increments (steps 1–5). Before domain work,
 H1–H6 (platform hardening) close gaps that need no product decision: every domain
-endpoint depends on them. Step 6 (tenancy) follows and needs the D01 tenant-model
-discussion, which is deferred until then. The Redis foundation (step 4) is complete; step 5 is split into 5a–5e. The HTTP foundation (step 2) is complete; step 3 is split into 3a–3c like step 2. Step 2 is split into
+endpoint depends on them. Step 6 (tenancy) follows; its tenant model is decided (C115, C116). The Redis foundation (step 4) is complete; step 5 is split into 5a–5e. The HTTP foundation (step 2) is complete; step 3 is split into 3a–3c like step 2. Step 2 is split into
 2a–2f so each HTTP concern is decided, built, and understood separately. Every
 sub-step uses `chi/middleware`, go-chi packages, or the standard library first. Each step should be small enough to run and
 understand before moving on. Application tables remain subject to individual approval.
@@ -128,8 +125,8 @@ understand before moving on. Application tables remain subject to individual app
 
 This is a backend platform milestone. The following milestone is D11 and the
 first complete employee operation, followed by an employee-specific cached read.
-Those steps prove the backbone against HRMS rules; frontend integration remains
-deferred. Broader business modules and a complete production rollout are outside
+Those steps prove the backbone against HRMS rules; frontend integration has started,
+with its standards still to set (C128). Broader business modules and a complete production rollout are outside
 this plan.
 
 The previous API is not a source of inherited implementation decisions, and its

@@ -1,11 +1,10 @@
 # HTTP foundation
 
-Status: target contract; the implementation was removed for the rebuild (C24).
+Status: implemented (steps 2a-2f, H1, H2, C114); this describes the current behaviour.
 
 Chi is the API HTTP framework (C19, [ADR 0002](../adr/0002-tool-and-provider-selection.md)).
-In the removed implementation, routes were registered on a `chi.NewRouter()`
-in `internal/bootstrap/routes.go` and the `httpserver` package accepted any
-`http.Handler`, remaining framework-agnostic.
+`internal/bootstrap/http.go` builds the router and its middleware; the edition mounts
+the modules' routes (C95); `internal/platform/kit/httpserver` serves any `http.Handler`.
 
 ## Routing and responses
 
@@ -18,7 +17,7 @@ normal route returning `200` `{"status":"ok"}`; `HEAD` is answered through
 `{"status":"ready"}` or a 503 problem response (C45). Successful health and readiness
 checks are not request-logged; failed readiness checks are.
 
-**Rebuild status (step 2d):** errors are RFC 9457 problem details (C37), written by
+**Status (step 2d):** errors are RFC 9457 problem details (C37), written by
 `problem.Error(w, r, status, detail)`:
 
 ```json
@@ -33,39 +32,18 @@ line. Unknown paths return 404; known paths with an unrouted method return 405 w
 nosniff`. Mapping `*http.MaxBytesError` to 413 (and other body errors to 400/415)
 is added with the first handler that reads a request body, together with its decoder.
 
-**Rebuild status (step 2e):** `problem.Recoverer` (C38) sits directly inside the
+**Status (step 2e):** `problem.Recoverer` (C38) sits directly inside the
 request logger. A panic before the response starts is logged once at ERROR
 (`panic recovered`, `request_id`, `stack`, and the panic described safely) and
 answered with a 500 problem response; the request line is then logged with status
 500. A panic after the response has started aborts the connection. Panics no longer
-reach net/http's `ErrorLog`, so they are always logged through the redacted logger. Routes are registered with chi's typed
-method helpers (`router.Get`, `router.Head`); path parameters use chi's URL
-parameter extraction, and chi populates `request.PathValue` for compatibility.
-`redirectCleanPath` issues a `307 Temporary Redirect` whenever `path.Clean`
-changes the path, including double slashes, dot segments, or a trailing slash.
-It preserves the request method, body, and query; this intentionally differs
-from the previous ServeMux canonical-path redirect behavior (C23).
+reach net/http's `ErrorLog`, so they are always logged through the redacted logger.
 
-Unknown routes return `404`. Unsupported methods return `405` with an `Allow`
-header computed by probing the router for each standard HTTP method.
-Application-level HTTP failures use
-[RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457.html):
-
-```json
-{
-  "type": "about:blank",
-  "title": "Not Found",
-  "status": 404,
-  "request_id": "server-generated-correlation-id"
-}
-```
-
-The media type is `application/problem+json`. Status matches the actual HTTP status;
-an optional `detail` contains a safe explanation. Responses include
-`Cache-Control: no-store`. Internal errors, input values, and private request URLs
-are not copied into problems. Successful JSON responses use `application/json`.
-`WriteJSON` encodes before committing a response and returns encoding/write errors
-to the adapter. Employee-specific error mapping and validation remain part of D11.
+Routes are registered with chi's typed method helpers (`r.Get`, `r.Post`); path
+parameters use chi's URL parameters. Successful JSON responses use `application/json`
+and problem responses `application/problem+json`; authenticated answers carry
+`Cache-Control: no-store` (chi's `middleware.NoCache`, C112). Internal errors, input
+values, and private request URLs are never copied into problems.
 
 ## JSON-only responses
 
@@ -76,7 +54,7 @@ handlers run (e.g. 431 for oversized headers) may not carry a JSON body.
 
 ## Correlation, logging, and recovery
 
-**Rebuild status (step 2c):** implemented with libraries rather than the custom
+**Status (step 2c):** implemented with libraries rather than the custom
 wrapper described in the target contract below.
 
 - `internal/platform/requestid` wraps `go-chi/traceid` (C33, C34). Every request
@@ -91,33 +69,8 @@ wrapper described in the target contract below.
   2xx/3xx log at INFO, 4xx at WARN (except 429), 5xx at ERROR. The liveness check
   is answered before the logger and is not logged. Panic recovery is left to step 2e
   (`RecoverPanics: false`).
-- Difference from the target contract below: request logs now include the full URL
-  (with query), host, client address, and user agent instead of only the route
-  pattern. The client address is the proxy's until step 2f decides which forwarded
-  header to trust.
-
-Target contract from the removed implementation:
-
-- Every request reaching the handler receives a fresh random `X-Request-ID`.
-  Incoming IDs are discarded. `RequestID(ctx)` makes the ID available to HTTP
-  adapters; problem responses and request logs use the same value.
-- A `captureRoutePattern` middleware stores chi's matched route pattern into a
-  context slot so the outer handler can log it without importing chi.
-- Request logs record the registered route pattern, a bounded method label,
-  status, bytes written, elapsed milliseconds, and whether the response was aborted.
-  Status is zero if a request was aborted before any final response status.
-  Raw paths, queries, hosts, headers, and bodies are omitted.
-- Responses include `X-Content-Type-Options: nosniff`.
-- A handler panic before response commitment becomes a generic `500`. Staged
-  headers, including cookies and redirects, are discarded. Panic logs include a
-  stack and correlation ID, but omit the panic value.
-- A panic after commitment aborts the connection/stream instead of appending an
-  error to a partial response. `http.ErrAbortHandler` retains its deliberate-abort
-  behavior and does not generate a second panic diagnostic.
-
-The wrapper supports `http.ResponseController` unwrapping and flush tracking.
-Streaming endpoints and connection hijacking have no application contract yet.
-Request IDs do not establish identity, tenant membership, or authorization.
+- Request logs include the full URL (with query, sensitive parameters redacted), host,
+  client address (from trusted proxy hops, C40), and user agent.
 
 ## Input limits and decoding
 
@@ -150,7 +103,7 @@ See [runtime settings](../development.md#runtime-configuration) for overrides.
 The server sets `MaxHeaderBytes` to 32 KiB; Go's parser applies this limit plus
 4096 bytes of slack, so headers up to about 36 KiB are accepted.
 
-**Rebuild status (step 2b):** `httpserver.NewServer` applies these deadlines and
+**Status (step 2b):** `httpserver.NewServer` applies these deadlines and
 `MaxHeaderBytes`, and routes the server's own diagnostics (for example handler
 panics or TLS handshake errors) to the application logger at warn level (C31) through
 `slog.NewLogLogger`. These arrive as one free-form `msg` string, so name-based
@@ -175,7 +128,7 @@ handling. See [Go's HTTP server documentation](https://pkg.go.dev/net/http#Serve
 
 ## Browser and proxy policy
 
-**Rebuild status (step 2f):**
+**Status (step 2f):**
 
 - Paths match exactly (C39): no cleaning, no redirects; non-canonical paths are 404.
 - Client IP (C40): `APP_HTTP_TRUSTED_PROXY_HOPS` selects chi's
@@ -188,20 +141,6 @@ handling. See [Go's HTTP server documentation](https://pkg.go.dev/net/http#Serve
   PATCH, and DELETE from any other origin with 403 problem details. CORS only controls
   what browsers let pages read; it does not stop non-browser clients, which are the
   job of authentication (D04).
-
-Target contract from the removed implementation:
-
-The API enables no cross-origin CORS access: it emits no allow-origin or
-allow-credentials headers, and preflight requests receive ordinary routing errors.
-Go's `CrossOriginProtection` rejects unsafe browser requests identified as
-cross-origin, using Fetch Metadata and Origin headers, with a JSON `403`.
-Safe methods and non-browser requests without those headers remain allowed.
-There are no trusted-origin exceptions or bypass patterns.
-
-`Forwarded`, `X-Forwarded-*`, `X-Real-IP`, and inbound `X-Request-ID` are removed
-before routing. They cannot replace `Host`, `RemoteAddr`, or TLS state. A reverse
-proxy must preserve the original Host for the current same-origin checks. The
-peer address remains the proxy address; no client-IP attribution is claimed.
 
 This baseline does not verify tenant domains or authorize access. D04 still owns
 session/cookie/CSRF and domain-login design; verified domain routing, trusted proxy

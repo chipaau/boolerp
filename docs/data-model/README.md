@@ -1,6 +1,6 @@
 # Data model status
 
-Updated: 2026-10-01.
+Updated: 2026-10-03.
 Status: open. Two tables are confirmed and implemented: `users` and `countries` (below). (A `sessions`
 table was approved for sessions in PostgreSQL and withdrawn when sessions moved to the
 BFF's Redis, C90.)
@@ -25,7 +25,7 @@ docker run --rm -v "$PWD/docs/data-model:/d" -w /d node:26-alpine \
 ```
 
 The previous foundation DDL and wider schemas are archived. They are not a starting
-schema, and their old approval labels do not apply to this rebuild.
+schema, and their old approval labels do not apply to the current design.
 
 Review each required table with its purpose, ownership, columns/types, keys,
 constraints, tenant scope, relationships, lifecycle, sensitive fields, and

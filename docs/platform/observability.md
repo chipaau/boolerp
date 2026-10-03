@@ -1,9 +1,9 @@
 # Tracing and logging
 
-Status: runtime logging and redaction are rebuilt in step 1b
-(`internal/platform/observability`, C29). Request IDs and HTTP request logging are
-rebuilt in step 2c (`internal/platform/requestid`, `go-chi/httplog`; C33, C34). Tracing is
-confirmed as required; its tooling and operational policy remain proposed.
+Status: implemented. Logging and redaction (step 1b, `internal/platform/kit/observability`,
+C29), request IDs and request logging (step 2c, `kit/requestid`, `go-chi/httplog`; C33,
+C34), OpenTelemetry tracing (C54-C63) and metrics (C82). Open: the production telemetry
+backend and retention (D07).
 
 Tracing explains the execution path and timing of a request or background operation.
 Structured logs explain operational events. Business audit separately records
@@ -149,17 +149,13 @@ the Prometheus data source; names are converted to Prometheus style
 - Optional external trace export for self-hosted installations.
 - Optional metrics for request latency/errors, database pools, and cache behavior.
 
-No collector or tracing backend is added to the four-service development Compose
-configuration by this documentation.
+Development views traces and metrics in Grafana (`lgtm`, `http://grafana.bool.test`, C82).
 
 ## Open decisions
 
-Choose instrumentation libraries, trace propagation, sampling, exporter/backend,
-retention, and default self-host behavior. Any future acceptance of upstream
-request IDs needs an explicit trust policy; step 2c always generates its own IDs (C33).
-The request ID (`request_id`) is for support and log correlation; OpenTelemetry trace
-IDs from step 5 will be a separate identifier unless a later decision merges them.
-Decide what limited identifiers are permitted as attributes without exposing personal data.
+The production telemetry backend, retention, and default self-host behaviour (D07).
+Request IDs and trace IDs stay separate identifiers (C59); upstream request IDs are not
+accepted (C33).
 
 Credentials, session tokens, employee payloads, and cache values must not be logged
 or placed into trace attributes by default. Instrumentation should not make a remote

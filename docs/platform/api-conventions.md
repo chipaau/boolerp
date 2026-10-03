@@ -134,7 +134,7 @@ submitted values:
 ## Contract and frontend types (C74)
 
 No OpenAPI contract is maintained yet (C70 was replaced): the Go request and response
-structs are the source of truth. When frontend integration starts, frontend TypeScript
+structs are the source of truth. When the frontend's API contract is standardised (C128), frontend TypeScript
 types and Zod schemas are generated from them; options include `hypersequent/zen` (Zod
 directly from validator tags) and OpenAPI with `orval` (typed client and TanStack Query
 hooks). The frontend's validation is for user feedback only; the API always validates.

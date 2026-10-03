@@ -17,4 +17,4 @@ Read [platform/tenancy.md](../../docs/platform/tenancy.md).
 - Apply the eventual tenant boundary to database operations, caches, jobs, and audit reads.
 - With row-level security, distinguish read visibility from insert/update/delete
   permissions and test as the restricted runtime role.
-- Do not copy historical visible-set policies, table DDL, or ltree conventions into the rebuild.
+- Do not copy historical visible-set policies, table DDL, or ltree conventions into the current design.
