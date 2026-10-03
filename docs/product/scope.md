@@ -23,8 +23,8 @@ Status: confirmed requirements and current scope, 2026-09-26.
 
 ## Current implementation scope
 
-Build the API from scratch. The previous API's schemas, libraries, providers,
-endpoints, and implementation status are not design constraints.
+Earlier implementations' schemas, libraries, providers, endpoints, and
+implementation status are not design constraints.
 
 Focus on the platform backbone: identity/authentication, tenancy and domains,
 authorization, audit, tracing/logging, caching, transactions, background-work
@@ -42,24 +42,9 @@ block backend progress.
 
 ## Current implementation boundary
 
-On 2026-09-26, the user authorized setting the previous API aside,
-creating the proposed directory structure, and adding a simple API entry point.
-The initial layer is a standard-library HTTP server with a liveness endpoint.
-
-The user subsequently authorized platform delivery step 1. Runtime environment
-configuration, validation, structured logging, redaction, and explicit dependency
-wiring are implemented; see [development](../development.md).
-
-On 2026-09-27, the user authorized platform step 2 on a new branch from `dev`.
-The [HTTP foundation](../platform/http.md) is implemented; liveness remains the
-only public operation.
-
-On 2026-09-28 the user removed that implementation to rebuild the API from
-scratch, starting with a simple chi server, then configuration, then logging (C24).
-
-Since then the API has been rebuilt layer by layer: the foundations, identity, and
-the first tables (`users`, `countries`); the [roadmap](../roadmap.md) has the status.
-Employee tables are not approved yet, and each table's fields are confirmed before it
-is created (C121).
+The API is built layer by layer (C24): the HTTP, configuration, logging, PostgreSQL,
+Redis, and observability foundations, identity, and the first tables (`users`,
+`countries`); the [roadmap](../roadmap.md) has the status. Employee tables are not
+approved yet, and each table's fields are confirmed before it is created (C121).
 
 See the [decision register](../decisions/README.md) and [roadmap](../roadmap.md).

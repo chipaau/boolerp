@@ -5,7 +5,7 @@ database; the confirmed tables are in the [data model](../data-model/README.md).
 
 ## Runtime pool and readiness
 
-**Rebuild status (step 3a):** `internal/platform/kit/postgres.NewPool` builds the pool
+**Status (step 3a):** `internal/platform/kit/postgres.NewPool` builds the pool
 from the separate `APP_DB_*` settings (C43) and `APP_DB_MAX_CONNS` (C42), building the
 connection URL with `net/url` so the password needs no escaping. It does not connect: pgxpool opens
 connections on first use, so the API starts and answers liveness while PostgreSQL
@@ -15,7 +15,7 @@ pgx's parse error is not wrapped because its password redaction is best effort.
 Other pool settings keep pgx defaults. TLS defaults to `verify-full`; Compose uses
 `disable` because the local server has no certificate.
 
-**Rebuild status (step 3b):** `GET /api/readyz` pings PostgreSQL through the pool
+**Status (step 3b):** `GET /api/readyz` pings PostgreSQL through the pool
 within `APP_DB_PING_TIMEOUT` and answers `{"status":"ready"}` or a 503 problem
 response (C45). The router receives only a check function, so other dependencies
 can join the check without changing the handler. The failure cause is logged, not
@@ -27,7 +27,7 @@ or unredacted driver errors in logs.
 
 ## Migration command
 
-**Rebuild status (step 3c):** `cmd/migrate` (C46, C47) loads only `MIGRATE_DB_*`,
+**Status (step 3c):** `cmd/migrate` (C46, C47) loads only `MIGRATE_DB_*`,
 pings PostgreSQL (so wrong credentials fail even with nothing to apply), takes a
 PostgreSQL advisory lock so concurrent runs apply each migration once, and applies
 pending migrations of each module in the build's edition (C95), in the edition's

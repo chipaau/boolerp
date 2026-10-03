@@ -5,7 +5,7 @@ Status: accepted for the component selections below; detailed integration contra
 
 ## Context
 
-The rebuild should use mature frameworks, libraries, and SDKs when they fit the
+The API should use mature frameworks, libraries, and SDKs when they fit the
 confirmed requirements. Reimplementing routing, authentication, authorization,
 database pooling, migrations, or object-storage protocols would add code and
 maintenance without a product need. At the same time, selecting a tool does not
@@ -13,7 +13,7 @@ decide every policy or operational contract around it.
 
 ## Decision
 
-- Use chi as the Go API HTTP framework. The pre-reset step 2a migrated the foundation to chi
+- Use chi as the Go API HTTP framework. Step 2a moved the foundation to chi
   before business routes were added. Keep domain and application code independent
   of chi.
 - Use PostgreSQL as the application database. The platform foundation uses

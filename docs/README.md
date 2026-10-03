@@ -2,12 +2,12 @@
 
 Updated: 2026-10-03.
 
-This is the current documentation for a fresh Go API in the GitHub `boolmv/erp`
+This is the current documentation for the Go API in the GitHub `boolmv/erp`
 monorepo at `/Users/chipaau/code/bool/erp`.
 The implementation scope is the platform backbone and HRMS employee records.
 Frontend integration has started; its standards are not set yet (C128).
 
-The API was rebuilt step by step from 2026-09-28 (C24). Its HTTP, configuration,
+The API's HTTP, configuration,
 logging, PostgreSQL, Redis, tracing, and metrics foundations are in place, with
 sign-in through Kratos and Hydra, the BFFs, users, and countries; tenancy,
 authorization, and audit are designed (C115-C120) and next. The
@@ -18,7 +18,7 @@ authorization, and audit are designed (C115-C120) and next. The
 
 1. [Product scope](product/scope.md)
 2. [Confirmed decisions and open questions](decisions/README.md)
-3. [API rebuild decision](adr/0001-api-rebuild.md)
+3. [API baseline](adr/0001-api-baseline.md)
 4. [Framework and provider decisions](adr/0002-tool-and-provider-selection.md)
 5. [Backend-for-frontend service](adr/0003-browser-bff-service.md)
 6. [Workspace apps as packages](adr/0004-frontend-apps-as-packages.md)
@@ -57,7 +57,7 @@ authorization, and audit are designed (C115-C120) and next. The
 - **Proposed:** recommendations and example contracts awaiting a decision.
 - **Open:** a question that has not been answered.
 - **Implemented:** built and validated in the new API; documentation alone never earns this status.
-- **Archived:** historical material with no authority over the rebuild.
+- **Archived:** historical material with no authority over the current design.
 
 The [decision register](decisions/README.md) records what is confirmed. Individual
 component documents develop proposals without silently approving them. Decisions

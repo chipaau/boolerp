@@ -3,12 +3,12 @@
 Updated: 2026-10-03.
 
 The active checkout is `/Users/chipaau/code/bool/erp`, remote
-`git@github.com:boolmv/erp.git`. Do not run the rebuild from the sibling `go-erp`
+`git@github.com:boolmv/erp.git`. Do not work from the sibling `go-erp`
 checkout.
 
-The fresh API lives in `apps/api/` in this monorepo.
+The API lives in `apps/api/` in this monorepo.
 
-The API has been rebuilt step by step since 2026-09-28 (C24); the commands and settings
+The API is built step by step (C24); the commands and settings
 below work against the current code. The [roadmap](roadmap.md) has the status.
 
 ## Locations
@@ -80,7 +80,7 @@ Development volumes are disposable; reset them when needed.
 
 **Layout (C44):** settings are grouped by concern in `internal/platform/kit/config`: `app.go` (`APP_ENV`, `APP_PORT`, `APP_SHUTDOWN_TIMEOUT`), `log.go` (`APP_LOG_*`), `http.go` (`APP_HTTP_*`), and `database.go` (`APP_DB_*`), `redis.go` (`APP_REDIS_*`), `auth.go` (`APP_AUTH_*`), and `identity.go` (`APP_IDENTITY_*`); the BFF's are in `bff.go` (below). Add a setting to its group's file; a new concern gets its own file and `envPrefix`.
 
-**Rebuild status (steps 1a–2b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
+**Status (steps 1a–2b):** `APP_ENV`, `APP_PORT`, `APP_LOG_FORMAT`,
 `APP_LOG_LEVEL`, `APP_SHUTDOWN_TIMEOUT`, the five `APP_HTTP_*` limits, `APP_HTTP_TRUSTED_PROXY_HOPS`, `APP_HTTP_ALLOWED_ORIGINS`, the six `APP_DB_*` connection settings, `APP_DB_MAX_CONNS`, `APP_DB_PING_TIMEOUT`, and the seven `APP_REDIS_*` settings are implemented in `internal/platform/kit/config` with `caarlos0/env`
 (C26) and `go-playground/validator` (C27). Each remaining variable below is added
 with the step that uses it. `APP_LOG_LEVEL` is parsed by `slog.Level` itself, so it

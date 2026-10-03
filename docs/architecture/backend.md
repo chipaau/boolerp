@@ -1,6 +1,6 @@
 # Backend architecture
 
-Status: hexagonal modular monolith, rebuilt step by step from 2026-09-28 (C24). The
+Status: hexagonal modular monolith, built step by step (C24). The
 current layout below is implemented; the target layout shows where later capabilities
 and business apps go. See [the decision register](../decisions/README.md).
 

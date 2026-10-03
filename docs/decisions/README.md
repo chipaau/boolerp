@@ -6,7 +6,7 @@ Updated: 2026-10-03. Decisions are made one at a time.
 
 | ID | Decision or requirement |
 | --- | --- |
-| C01 | Rebuild the Go API from scratch in the existing monorepo; previous implementation choices are not binding. |
+| C01 | Build the Go API in the existing monorepo; previous implementation choices are not binding. |
 | C02 | Use a modular monolith with hexagonal domain/application/adapter boundaries. |
 | C03 | PostgreSQL is the application database. Multi-database portability is not a goal. |
 | C04 | Redis is retained for caching; caching is a required backbone capability. |
@@ -19,22 +19,22 @@ Updated: 2026-10-03. Decisions are made one at a time.
 | C11 | Distribute binaries/containers with licensing controls that discourage unauthorized resale; binaries are not tamper-proof. |
 | C12 | Project documentation lives in docs/; substantive agent rules live in .claude/. AGENTS.md links to CLAUDE.md. |
 | C13 | Make the remaining decisions sequentially and confirm schemas table by table before implementation. |
-| C14 | Set the previous API aside, scaffold the proposed structure, and start with a simple API entry point; build subsequent layers incrementally. |
-| C15 | The canonical repository is the GitHub erp checkout; create api-rebuild from updated develop and preserve the newer frontend and security-review work. |
+| C14 | Scaffold the proposed structure and start with a simple API entry point; build subsequent layers incrementally. |
+| C15 | The canonical repository is the GitHub erp checkout; branch from updated develop and preserve the newer frontend and security-review work. |
 | C16 | Implement platform delivery step 1: runtime configuration, validation, structured logging, redaction, and explicit runtime wiring. |
 | C17 | After merging step 1 into the updated dev branch, implement step 2 (HTTP foundation) on a new branch. |
 | C18 | After step 2 merges, implement step 3 on a new branch using pgx/v5 pgxpool and Goose; defer sqlc until the first table is approved. |
-| C19 | Use chi as the Go API HTTP framework. The pre-reset step 2a migrated the HTTP foundation from `net/http` ServeMux to chi/v5; shared HTTP middleware behavior is preserved. Canonical redirect behavior is recorded in C23. |
+| C19 | Use chi as the Go API HTTP framework. Step 2a moved the HTTP foundation from `net/http` ServeMux to chi/v5; shared HTTP middleware behavior is preserved. Canonical redirect behavior is recorded in C23. |
 | C20 | Use Ory Kratos as the identity and authentication system; session, provisioning, domain, and account contracts remain open. |
 | C21 | Use Cerbos as the authorization policy engine; roles, resources, policy inputs, and revocation behavior remain open. |
 | C22 | Use the S3 API for file/object storage; use `chipaau/minio`, the project's exact MinIO fork, as the development server. Production provider and Go SDK remain open. |
 | C23 | Redirect paths changed by `path.Clean` with 307 Temporary Redirect, preserving the request method, body, and query. This intentionally differs from ServeMux's canonical-path redirect behavior. **Superseded by C39.** |
-| C24 | On 2026-09-28 the user removed the `apps/api` implementation (branch `chore/reset-api`) to rebuild it from scratch for understanding. Rebuild order: a simple chi server, then configuration, then logging, then the remaining platform steps. Tool selections and contracts from C14–C23 still stand; their earlier implementation status does not. |
+| C24 | Build the API in order: a simple chi server, then configuration, then logging, then the remaining platform steps (the roadmap). Tool selections and contracts from C14–C23 stand. |
 | C25 | Liveness uses chi's `middleware.Heartbeat("/api/healthz")`: `GET`/`HEAD` return `200` with `text/plain` body `.`. This replaces the earlier JSON `{"status":"ok"}` liveness response, following the framework-first rule. **Superseded by C36.** |
 | C26 | Load runtime configuration from the process environment with `github.com/caarlos0/env/v11` (v11.4.1). The binary does not read dotenv files; `joho/godotenv` was considered and rejected because Compose already supplies `.env` values and reading files from the working directory is a risk for self-hosted installs. |
 | C27 | Validate configuration with `github.com/go-playground/validator/v10` struct tags, chosen over a hand-written `Validate()` so one validation approach can later serve request input as well. Request-validation use remains to be confirmed when HTTP input is added. Confirmed for request bodies by C74. |
 | C28 | Use `github.com/stretchr/testify` (v1.12.1) for test assertions, limited to the `require` and `assert` packages; `mock` and `suite` are not adopted. Tests otherwise use the standard `testing` package. |
-| C29 | Redact sensitive log attributes with slog's built-in `HandlerOptions.ReplaceAttr` hook and the name-based word list in [observability](../platform/observability.md); the list extends the earlier rebuild's with `passwd`, `bearer`, `jwt`, `session`, and `encryptionkey` so session identifiers are never logged. `m-mizutani/masq` was considered and not adopted (pre-1.0, single maintainer; deep struct inspection is not required because call sites must log deliberate safe fields). HTTP request logging in step 2 uses `go-chi/httplog` with this logger rather than a custom request logger. |
+| C29 | Redact sensitive log attributes with slog's built-in `HandlerOptions.ReplaceAttr` hook and the name-based word list in [observability](../platform/observability.md); the list includes `passwd`, `bearer`, `jwt`, `session`, and `encryptionkey` so session identifiers are never logged. `m-mizutani/masq` was considered and not adopted (pre-1.0, single maintainer; deep struct inspection is not required because call sites must log deliberate safe fields). HTTP request logging in step 2 uses `go-chi/httplog` with this logger rather than a custom request logger. |
 | C30 | `APP_SHUTDOWN_TIMEOUT` must be at least `APP_HTTP_WRITE_TIMEOUT` (validator `gtefield`), so graceful shutdown can finish any request the server allows. Defaults: shutdown `35s` (maximum `10m`), Compose `stop_grace_period: 40s`. Trade-off: a deploy can wait up to 35s while a slow request finishes. |
 | C31 | `net/http` server diagnostics (`http.Server.ErrorLog`) are logged at WARN, not ERROR, because most are client-caused (TLS handshake failures, malformed requests). Application failures and recovered panics (step 2e) log at ERROR. |
 | C32 | CI runs `go test -race`. The Go dev and CI image (`docker/go.Dockerfile`) is the Debian-based `golang:1.27` because the race detector needs cgo; the production build image (`docker/api.Dockerfile`) is unchanged. |
@@ -175,4 +175,4 @@ Detailed documents describe requirements and proposals; only a recorded user
 decision changes a row from open to confirmed. Earlier archived approvals do not
 carry forward automatically.
 
-See [ADR 0001](../adr/0001-api-rebuild.md), [ADR 0002](../adr/0002-tool-and-provider-selection.md), and [product scope](../product/scope.md).
+See [ADR 0001](../adr/0001-api-baseline.md), [ADR 0002](../adr/0002-tool-and-provider-selection.md), and [product scope](../product/scope.md).

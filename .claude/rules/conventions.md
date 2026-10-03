@@ -26,8 +26,7 @@
 - Suggest established patterns when they solve a concrete problem; explain the
   benefit and cost, and leave the choice open until the user confirms it. Routine
   implementation details inside a confirmed decision do not require repeated approval.
-- Do not change unrelated files, remove existing data, or repair the previous API
-  merely to keep it running during the rebuild.
+- Do not change unrelated files or remove existing data.
 
 ## Data model: explicit field confirmation (important)
 

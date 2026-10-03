@@ -17,7 +17,7 @@ normal route returning `200` `{"status":"ok"}`; `HEAD` is answered through
 `{"status":"ready"}` or a 503 problem response (C45). Successful health and readiness
 checks are not request-logged; failed readiness checks are.
 
-**Rebuild status (step 2d):** errors are RFC 9457 problem details (C37), written by
+**Status (step 2d):** errors are RFC 9457 problem details (C37), written by
 `problem.Error(w, r, status, detail)`:
 
 ```json
@@ -32,7 +32,7 @@ line. Unknown paths return 404; known paths with an unrouted method return 405 w
 nosniff`. Mapping `*http.MaxBytesError` to 413 (and other body errors to 400/415)
 is added with the first handler that reads a request body, together with its decoder.
 
-**Rebuild status (step 2e):** `problem.Recoverer` (C38) sits directly inside the
+**Status (step 2e):** `problem.Recoverer` (C38) sits directly inside the
 request logger. A panic before the response starts is logged once at ERROR
 (`panic recovered`, `request_id`, `stack`, and the panic described safely) and
 answered with a 500 problem response; the request line is then logged with status
@@ -54,7 +54,7 @@ handlers run (e.g. 431 for oversized headers) may not carry a JSON body.
 
 ## Correlation, logging, and recovery
 
-**Rebuild status (step 2c):** implemented with libraries rather than the custom
+**Status (step 2c):** implemented with libraries rather than the custom
 wrapper described in the target contract below.
 
 - `internal/platform/requestid` wraps `go-chi/traceid` (C33, C34). Every request
@@ -103,7 +103,7 @@ See [runtime settings](../development.md#runtime-configuration) for overrides.
 The server sets `MaxHeaderBytes` to 32 KiB; Go's parser applies this limit plus
 4096 bytes of slack, so headers up to about 36 KiB are accepted.
 
-**Rebuild status (step 2b):** `httpserver.NewServer` applies these deadlines and
+**Status (step 2b):** `httpserver.NewServer` applies these deadlines and
 `MaxHeaderBytes`, and routes the server's own diagnostics (for example handler
 panics or TLS handshake errors) to the application logger at warn level (C31) through
 `slog.NewLogLogger`. These arrive as one free-form `msg` string, so name-based
@@ -128,7 +128,7 @@ handling. See [Go's HTTP server documentation](https://pkg.go.dev/net/http#Serve
 
 ## Browser and proxy policy
 
-**Rebuild status (step 2f):**
+**Status (step 2f):**
 
 - Paths match exactly (C39): no cleaning, no redirects; non-canonical paths are 404.
 - Client IP (C40): `APP_HTTP_TRUSTED_PROXY_HOPS` selects chi's

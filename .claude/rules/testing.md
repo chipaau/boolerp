@@ -16,5 +16,4 @@ Read [testing.md](../../docs/testing.md).
 - Keep the API's total coverage (unit and feature tests, `cmd/*` excluded) at or above
   the threshold in `apps/api/.testcoverage.yml` (85%, C119); CI fails below it. Add
   tests with each change; raise the threshold when coverage rises, never lower it.
-- Do not run previous API migrations, launch services, or alter persisted data just
-  to validate planning documents.
+- Do not launch services or alter persisted data just to validate planning documents.
