@@ -11,6 +11,9 @@ Read [testing.md](../../docs/testing.md).
 - Check that non-HTTP entry points receive the same access and tenant protections.
 - End-to-end tests cover the integrated flows (C109); extend them with each integrated
   feature. Their wider scope is one of the integration standards still to set (C128).
+- Tests never depend on seeded or migrated data: each test creates the rows it needs in
+  its rolled-back transaction (`testdb.Tx`, `testdb.OwnerTx`) with values that cannot
+  clash with real data (C135).
 - Do not require every use case to have redundant tests at every layer or claim a
   coverage percentage without measurement.
 - Keep the API's total coverage (unit and feature tests, `cmd/*` excluded) at or above

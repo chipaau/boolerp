@@ -68,6 +68,19 @@ func (m *Module) EnsureAccount(ctx context.Context, a domain.NewAccount) (u doma
 	return m.service.EnsureAccount(ctx, a)
 }
 
+// AddSignIn gives an existing account a password and a Google sign-in.
+func (m *Module) AddSignIn(ctx context.Context, kratosIdentityID, password, googleSubject string) error {
+	return m.service.AddSignIn(ctx, kratosIdentityID, password, googleSubject)
+}
+
+// Recover returns a one-time link and code to set the account's password.
+func (m *Module) Recover(ctx context.Context, kratosIdentityID string) (Recovery, error) {
+	return m.service.Recover(ctx, kratosIdentityID)
+}
+
+// Recovery is a one-time recovery link and code.
+type Recovery = domain.Recovery
+
 // NewAccount is an account EnsureAccount creates.
 type NewAccount = domain.NewAccount
 

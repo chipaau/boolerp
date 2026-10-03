@@ -5,6 +5,7 @@ package application
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/domain"
 )
@@ -26,6 +27,12 @@ type Accounts interface {
 	Create(ctx context.Context, a domain.NewAccount) (domain.Account, error)
 	// Deactivate stops the account signing in and ends its Kratos sessions.
 	Deactivate(ctx context.Context, kratosIdentityID string) error
+	// AddSignIn gives the account a password and a Google sign-in (either may be
+	// empty), keeping everything else about it.
+	AddSignIn(ctx context.Context, kratosIdentityID, password, googleSubject string) error
+	// Recover returns a one-time recovery link and code for the account, valid
+	// for ttl.
+	Recover(ctx context.Context, kratosIdentityID string, ttl time.Duration) (domain.Recovery, error)
 }
 
 // Logins are a person's logins at Hydra (adapters/hydra implements it).
@@ -125,4 +132,19 @@ func (s *Service) EnsureAccount(ctx context.Context, a domain.NewAccount) (u dom
 	}
 	u, err = s.Resolve(ctx, account.KratosIdentityID)
 	return u, created, err
+}
+
+// AddSignIn gives an existing account a password and a Google sign-in, such as
+// the development stand-in's (seeds, C50).
+func (s *Service) AddSignIn(ctx context.Context, kratosIdentityID, password, googleSubject string) error {
+	return s.accounts.AddSignIn(ctx, kratosIdentityID, password, googleSubject)
+}
+
+// RecoveryTTL is how long a recovery link and code stay valid.
+const RecoveryTTL = time.Hour
+
+// Recover returns a one-time link and code with which the account's owner sets a
+// password: how an account created without one is first used (C135).
+func (s *Service) Recover(ctx context.Context, kratosIdentityID string) (domain.Recovery, error) {
+	return s.accounts.Recover(ctx, kratosIdentityID, RecoveryTTL)
 }

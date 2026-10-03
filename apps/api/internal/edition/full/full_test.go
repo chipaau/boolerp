@@ -55,3 +55,14 @@ func TestSeedersInOrder(t *testing.T) {
 	}
 	assert.Equal(t, []string{"identity.users"}, names)
 }
+
+func TestDeploySeedersInOrder(t *testing.T) {
+	seeders := DeploySeeders(nil, SeedSettings{Identity: identity.Settings{
+		KratosAdminURL: "http://127.0.0.1:1", HydraAdminURL: "http://127.0.0.1:1",
+	}}, http.DefaultClient, slog.New(slog.DiscardHandler), nil)
+	names := make([]string, len(seeders))
+	for i, s := range seeders {
+		names[i] = s.Name()
+	}
+	assert.Equal(t, []string{"reference.countries", "identity.team_accounts"}, names)
+}

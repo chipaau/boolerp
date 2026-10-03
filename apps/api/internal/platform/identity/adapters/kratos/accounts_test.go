@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -152,6 +153,92 @@ func TestCreateFailureHidesThePassword(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	_, err := NewAccounts(srv.URL, srv.Client()).Create(t.Context(), domain.NewAccount{Email: "n@b.test", Phone: "+9607000001", Password: "s3cret-pw"})
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "s3cret")
+}
+
+func TestAddSignInSendsTheAccountBackWithCredentials(t *testing.T) {
+	var updated map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/admin/identities/k1":
+			_, _ = w.Write([]byte(`{"id":"k1","schema_id":"registration","schema_url":"x","state":"active",
+				"traits":{"email":"a@b.test","phone":"+9607770000","name":"Aisha"}}`))
+		case r.Method == http.MethodPut && r.URL.Path == "/admin/identities/k1":
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&updated))
+			_, _ = w.Write([]byte(`{"id":"k1","schema_id":"registration","schema_url":"x","state":"active","traits":{}}`))
+		case r.URL.Path == "/admin/identities/missing":
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":{"code":404,"message":"s3cret-detail"}}`))
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":{"code":400,"message":"s3cret-detail"}}`))
+		}
+	}))
+	t.Cleanup(srv.Close)
+	accounts := NewAccounts(srv.URL, srv.Client())
+
+	require.NoError(t, accounts.AddSignIn(t.Context(), "k1", "pw", "a@b.test"))
+	assert.Equal(t, "registration", updated["schema_id"])
+	assert.Equal(t, "active", updated["state"])
+	assert.Equal(t, map[string]any{"email": "a@b.test", "phone": "+9607770000", "name": "Aisha"}, updated["traits"])
+	credentials := updated["credentials"].(map[string]any)
+	assert.Contains(t, credentials, "password")
+	assert.Contains(t, credentials, "oidc")
+
+	assert.ErrorIs(t, accounts.AddSignIn(t.Context(), "missing", "s3cret-pw", ""), application.ErrNotFound)
+	err := accounts.AddSignIn(t.Context(), "other", "s3cret-pw", "")
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "s3cret")
+}
+
+func TestAddSignInHidesAnUpdateFailure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"id":"k1","schema_id":"registration","schema_url":"x","state":"active","traits":{}}`))
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":{"code":400,"message":"s3cret-detail"}}`))
+	}))
+	t.Cleanup(srv.Close)
+	err := NewAccounts(srv.URL, srv.Client()).AddSignIn(t.Context(), "k1", "s3cret-pw", "")
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "s3cret")
+}
+
+func TestRecoverReturnsTheLinkAndCode(t *testing.T) {
+	var asked map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&asked))
+		switch asked["identity_id"] {
+		case "k1":
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"recovery_link":"http://identity.test/recovery?flow=f1","recovery_code":"123456","expires_at":"2026-10-04T12:00:00Z"}`))
+		case "missing":
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":{"code":404,"message":"s3cret-detail"}}`))
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":{"code":400,"message":"s3cret-detail"}}`))
+		}
+	}))
+	t.Cleanup(srv.Close)
+	accounts := NewAccounts(srv.URL, srv.Client())
+
+	r, err := accounts.Recover(t.Context(), "k1", time.Hour)
+	require.NoError(t, err)
+	assert.Equal(t, "1h0m0s", asked["expires_in"])
+	assert.Equal(t, "http://identity.test/recovery?flow=f1", r.Link)
+	assert.Equal(t, "123456", r.Code)
+	assert.Equal(t, time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC), r.ExpiresAt)
+
+	_, err = accounts.Recover(t.Context(), "missing", time.Hour)
+	assert.ErrorIs(t, err, application.ErrNotFound)
+	_, err = accounts.Recover(t.Context(), "other", time.Hour)
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), "s3cret")
 }

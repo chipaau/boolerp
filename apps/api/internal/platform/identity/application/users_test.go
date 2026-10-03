@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,6 +34,7 @@ type fakeAccounts struct {
 	err         error
 	deactivated []string
 	created     []domain.NewAccount
+	signIns     []string
 }
 
 func (f *fakeAccounts) Deactivate(_ context.Context, id string) error {
@@ -89,6 +91,21 @@ func (f *fakeAccounts) Create(_ context.Context, n domain.NewAccount) (domain.Ac
 	a := domain.Account{KratosIdentityID: "new-" + n.Email, Email: n.Email, Phone: n.Phone, DisplayName: n.DisplayName, Active: true}
 	f.accounts[a.KratosIdentityID] = a
 	return a, nil
+}
+
+func (f *fakeAccounts) AddSignIn(_ context.Context, id, password, googleSubject string) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.signIns = append(f.signIns, id+"|"+password+"|"+googleSubject)
+	return nil
+}
+
+func (f *fakeAccounts) Recover(_ context.Context, id string, ttl time.Duration) (domain.Recovery, error) {
+	if f.err != nil {
+		return domain.Recovery{}, f.err
+	}
+	return domain.Recovery{Link: "link-" + id, Code: "123456", ExpiresAt: time.Unix(0, 0).Add(ttl)}, nil
 }
 
 func setup() (*Service, *fakeUsers, *fakeAccounts) {
@@ -206,4 +223,23 @@ func TestEnsureAccountNeedsEmailAndPhone(t *testing.T) {
 	s, _, _ := setup()
 	_, _, err := s.EnsureAccount(t.Context(), domain.NewAccount{Email: "x@b.test"})
 	assert.ErrorIs(t, err, ErrInvalidAccount)
+}
+
+func TestAddSignInPassesThrough(t *testing.T) {
+	s, _, accounts := setup()
+	require.NoError(t, s.AddSignIn(t.Context(), "k1", "pw", "a@b.test"))
+	assert.Equal(t, []string{"k1|pw|a@b.test"}, accounts.signIns)
+	accounts.err = errors.New("kratos down")
+	assert.Error(t, s.AddSignIn(t.Context(), "k1", "pw", ""))
+}
+
+func TestRecoverIsValidForAnHour(t *testing.T) {
+	s, _, accounts := setup()
+	r, err := s.Recover(t.Context(), "k1")
+	require.NoError(t, err)
+	assert.Equal(t, "link-k1", r.Link)
+	assert.Equal(t, time.Unix(0, 0).Add(time.Hour), r.ExpiresAt)
+	accounts.err = errors.New("kratos down")
+	_, err = s.Recover(t.Context(), "k1")
+	assert.Error(t, err)
 }

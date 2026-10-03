@@ -141,7 +141,7 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
 }
 ```
 
-Each edition has its own `main` packages (`cmd/api`, `cmd/migrate`, later for example
+Each edition has its own `main` packages (`cmd/api`, `cmd/migrate`, `cmd/deploy`, `cmd/seed`, later for example
 `cmd/api-hrms`) that import its edition package; modules an edition does not list are
 not compiled into its binaries, and a binary and its migrator always agree. There is
 no generic `Module` interface or container.

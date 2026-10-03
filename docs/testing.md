@@ -196,7 +196,15 @@ func TestFeatureSomething(t *testing.T) {
 ```
 
 `testdb.Tx` connects as the restricted runtime role, so a test gets the API's privileges,
-not the owner's. Application code therefore accepts either the pool or a transaction
+not the owner's. `testdb.OwnerTx` is the same as the migration role, which owns the
+tables: for rows the runtime role may not write, and for constraints.
+
+**Tests never depend on data in the database (C135).** The suite database has only the
+schema: no migration inserts rows, and neither `cmd/seed` nor `cmd/deploy` runs before
+the tests. Each test creates the rows it needs inside its own transaction, with values
+that cannot clash with real data, such as ISO's user-assigned country codes (`XA`,
+`XAA`). Seed files are tested the same way: the seeder runs inside `testdb.OwnerTx` with
+a small list, and a unit test checks the real file. Application code therefore accepts either the pool or a transaction
 (step 6). `testdb.Settings(t, role)` gives connection settings for the suite database.
 
 Tests that cannot run inside a rolled-back transaction, such as the migrator itself,

@@ -107,3 +107,21 @@ func Tx(t testing.TB) pgx.Tx {
 	})
 	return tx
 }
+
+// OwnerTx begins a transaction on the suite database as the migration role, which
+// owns the tables, and rolls it back when the test ends. Use it to create rows the
+// runtime role may not write and to test constraints; prefer Tx for everything else.
+func OwnerTx(t testing.TB) pgx.Tx {
+	t.Helper()
+	pool, err := postgres.NewPool(t.Context(), Settings(t, MigrationRole))
+	if err != nil {
+		t.Fatalf("owner pool: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	tx, err := pool.Begin(t.Context())
+	if err != nil {
+		t.Fatalf("begin owner transaction: %v", err)
+	}
+	t.Cleanup(func() { _ = tx.Rollback(context.Background()) })
+	return tx
+}

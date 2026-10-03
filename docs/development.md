@@ -15,7 +15,7 @@ below work against the current code. The [roadmap](roadmap.md) has the status.
 
 | Location | Purpose |
 | --- | --- |
-| apps/api/ | The Go API, the BFF, and their commands (`cmd/api`, `cmd/bff`, `cmd/migrate`, `cmd/seed`) |
+| apps/api/ | The Go API, the BFF, and their commands (`cmd/api`, `cmd/bff`, `cmd/migrate`, `cmd/deploy`, `cmd/seed`) |
 | apps/workspace/ | The workspace shell and its apps (C102, C108) |
 | docs/ | All product and engineering documentation |
 | .claude/ | Substantive agent instructions |
@@ -42,7 +42,8 @@ examples always used) under `/run/secrets`, the way Docker and Kubernetes secret
 mounted in production, so development exercises the same `_FILE` settings; there is
 no password in `.env` or any variable. Each container gets only the passwords it
 needs. The `migrate` service (profile `tools`) runs migrations on
-demand: `docker compose run --rm migrate`.
+demand: `docker compose run --rm migrate`; `deploy` runs them too, then loads
+production's starting data: `docker compose run --rm deploy` (C135).
 Keep Compose project name `erp` so volume names stay stable. Preserve the current `.env`; on a
 new checkout only, initialize it from `.env.example`. Removed service volumes are
 not deleted.
@@ -72,8 +73,11 @@ below. The API creates its PostgreSQL pool at startup, checks the database throu
 optional cache (C52) with no application data yet; the BFFs keep sessions in their own
 Redis (`redis-sessions`).
 
-Migrations run explicitly with `docker compose run --rm migrate` (`cmd/migrate`), never
-at API startup; development data comes from `docker compose run --rm seed` (C50).
+Migrations run explicitly, never at API startup: `docker compose run --rm deploy`
+(`cmd/deploy`) applies them and then production's starting data (the country list);
+`docker compose run --rm migrate` (`cmd/migrate`) applies the migrations alone. Demo data
+comes from
+`docker compose run --rm seed` (C50, C135). Migrations hold no data.
 Development volumes are disposable; reset them when needed.
 
 ## Runtime configuration
@@ -262,7 +266,40 @@ Without `--watch`, the container does not watch source changes. Restart it to re
 docker compose restart api
 ```
 
-## Seed data (C50, C118)
+## Seed data (C50, C118, C135)
+
+There are two kinds of seeders, both `seed.Seeder` and both idempotent:
+
+| Kind | Listed in | Run by | Role | Environments |
+| --- | --- | --- | --- | --- |
+| Production's starting data (the ISO country list, the team's accounts) | `full.DeploySeeders` | `cmd/deploy`, after it applies the migrations | migration role (owns the tables) | all, including production |
+| Demo data (team accounts, gofakeit data) | `full.Seeders` | `cmd/seed` | runtime role, through use cases | dev, test, staging; never production |
+
+A new database is prepared with:
+
+```sh
+docker compose run --rm deploy  # migrations, then production's starting data
+docker compose run --rm seed    # demo data, optional
+```
+
+`reference.countries` loads `internal/platform/reference/seeds/countries.csv`, the 249
+ISO 3166-1 countries and territories from the public-domain
+[datasets/country-codes](https://github.com/datasets/country-codes), with the cleaning
+noted at the top of the file. It adds new rows and corrects changed ones in one
+transaction, never deletes, and never touches `active_to`.
+
+`identity.team_accounts` creates the team's accounts (`identity/seeds/team.go`) in
+Kratos, with a verified email and no password. For each account it creates, `deploy`
+prints a one-time recovery link and code, valid for an hour, with which that person
+sets their own password; it prints them only to a terminal (never the log), so in CI
+or another non-interactive run the person uses "Forgot password" instead. An existing
+account is left as it is, so later deploys print nothing. `deploy` therefore needs
+Kratos's admin API (`APP_IDENTITY_KRATOS_ADMIN_URL`, and `APP_IDENTITY_HYDRA_ADMIN_URL`
+for the identity module).
+
+Tests never rely on any seeded data ([testing](testing.md)).
+
+The rest of this section is about demo data.
 
 Seeds work like Laravel's seeders. Each module keeps **one seeder per store** in its
 `seeds` folder (`internal/platform/identity/seeds/users.go`), and the edition lists them
@@ -282,13 +319,14 @@ need our own lists. Seeders log counts, never personal data.
 docker compose run --rm seed
 ```
 
-In `dev`, `identity.users` creates the team's development accounts, verified and
-active: `ibrahim@bool.mv`, `shifau@bool.mv`, and `mariyam@bool.mv`, with the password
+In `dev`, `identity.users` gives the team's accounts (the same people `deploy` creates,
+creating any that are missing) the development sign-ins: `ibrahim@bool.mv`,
+`shifau@bool.mv`, and `mariyam@bool.mv`, with the password
 `password` (set in the seeder: a public development value, not a secret, so not a file).
 They also sign in through the development Google stand-in (`oidc.bool.test`) with the
 email as the username and the claims `{"email": "<email>", "email_verified": true}`.
-The password is public, so these accounts are seeded only in `dev`. An account that
-already exists is left as it is.
+The password is public, so these sign-ins are added only in `dev`; an account that
+already exists keeps its details and gains the two sign-ins.
 
 ## Validate the runtime
 

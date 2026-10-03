@@ -1,8 +1,10 @@
 // Package seed runs seeders (C50), like Laravel's seeders: each module keeps
 // one seeder per store in its seeds folder, and the edition lists them in
-// order, as it lists migrations (C95). cmd/seed runs the list. Seeders create
-// data through their module's use cases, so seeded data passes the same rules
-// as real data, and every seeder can run repeatedly without duplicating.
+// order, as it lists migrations (C95). Every seeder can run repeatedly without
+// duplicating. There are two lists (C135): demo data, which cmd/seed runs
+// (never in production) through the module's use cases as the runtime role, and
+// production's starting data, which cmd/deploy runs after cmd/migrate as the
+// migration role. Migrations hold no data, and tests never rely on seeded data.
 package seed
 
 import (
@@ -23,7 +25,8 @@ type Seeder interface {
 
 // Env is what every seeder gets.
 type Env struct {
-	// Environment is dev, test, or staging (never prod, config.SeedApp).
+	// Environment is dev, test, or staging for demo seeders (never prod,
+	// config.SeedApp); deploy seeders may also get prod.
 	Environment string
 	// Fake generates data (github.com/brianvoe/gofakeit). It is seeded with a
 	// fixed value, so every run generates the same data.

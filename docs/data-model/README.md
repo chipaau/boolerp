@@ -41,9 +41,10 @@ automatically inherited.
 
 ### `countries` (platform reference data, C120, C122)
 
-Fields confirmed 2026-10-03 by the user, with alpha-3 added at their question. The
-countries Bool is offered in; legal forms and tenants will reference `code`. Global
-reference data, not tenant-scoped.
+Fields confirmed 2026-10-03 by the user, with alpha-3 added at their question; meaning
+changed 2026-10-04 (C135), columns unchanged. The ISO 3166-1 countries and territories;
+legal forms and tenants will reference `code`, and a country is offered when it has
+legal forms. Global reference data, not tenant-scoped.
 
 | Column | Type | Rule |
 | --- | --- | --- |
@@ -51,14 +52,16 @@ reference data, not tenant-scoped.
 | `alpha3` | `char(3)` | Not null, unique; ISO 3166-1 alpha-3 (`MDV`); CHECK `^[A-Z]{3}$`. |
 | `name` | `text` | Not null, not blank; English (`Maldives`). |
 | `phone_prefix` | `text` | Not null; CHECK `^\+[0-9]{1,4}$` (`+960`). |
-| `active_from` | `timestamptz` | Not null, `now()` default. |
-| `active_to` | `timestamptz` | Nullable: no longer offered; not before `active_from`. |
+| `active_from` | `timestamptz` | Not null, `now()` default: when the code entered the ISO list. |
+| `active_to` | `timestamptz` | Nullable: when ISO withdrew the code (null = current); not before `active_from`. |
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger on every update. |
 
-Only countries Bool is offered in; the migration inserts the Maldives and operators add
-others with their legal forms. Row-level security is enabled: everyone reads; there is
+The migration holds the schema only; the 249 rows come from the seed file
+`apps/api/internal/platform/reference/seeds/countries.csv` (public-domain
+[datasets/country-codes](https://github.com/datasets/country-codes)), loaded by
+`cmd/deploy` (C135). Row-level security is enabled: everyone reads; there is
 no write policy until the operator rule exists, so the runtime role cannot change
-countries and only migrations do. The migration is
+countries; only the migration role (migrations and `cmd/deploy`) does. The migration is
 `apps/api/internal/platform/reference/migrations/00001_countries.sql`.
 
 ### `users` (identity module, C94)

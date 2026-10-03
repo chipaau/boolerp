@@ -316,7 +316,7 @@ jobs:
       - name: Start the stack
         run: |
           docker compose up -d --build --wait postgres redis redis-sessions kratos hydra
-          docker compose run --rm migrate
+          docker compose run --rm deploy
           # run, not up: a failed client registration fails the step
           docker compose run --rm hydra-clients
           docker compose up -d --build --wait api bff-workspace bff-admin identity workspace admin
