@@ -50,3 +50,8 @@ updates:
     groups:
       frontend:
         update-types: [minor, patch]
+    ignore:
+      # @ory/elements-react pins its exact @ory/client-fetch version, and the login
+      # service passes Elements the flows it fetched, so the two must match (C86,
+      # C129). Move client-fetch by hand when Elements moves.
+      - dependency-name: "@ory/client-fetch"
