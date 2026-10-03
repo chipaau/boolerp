@@ -4,9 +4,12 @@ package postgres_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"io/fs"
 	"log/slog"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"testing/fstest"
@@ -151,10 +154,23 @@ func TestFeatureRuntimeRolePrivileges(t *testing.T) {
 func TestFeatureEditionMigrationsApply(t *testing.T) {
 	db, err := postgres.OpenDB(testdb.PlatformSettings(t, testdb.MigrationRole))
 	require.NoError(t, err)
+	// The platform database is never migrated: leave it as it was, removing every
+	// table and function the migrations create, so the test can run again.
+	before := schemaObjects(t.Context(), t, db)
 	t.Cleanup(func() {
-		// The platform database is never migrated; leave it as it was.
 		ctx := context.Background()
-		_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS users")
+		for _, o := range schemaObjects(ctx, t, db) {
+			if slices.Contains(before, o) {
+				continue
+			}
+			kind, name, _ := strings.Cut(o, " ")
+			// erp_lookup owns its functions (C131); the migration role may act as it.
+			stmt := "DROP " + kind + " IF EXISTS " + name + " CASCADE"
+			if strings.HasPrefix(name, "lookup.") {
+				stmt = "SET ROLE erp_lookup; " + stmt + "; RESET ROLE"
+			}
+			_, _ = db.ExecContext(ctx, stmt)
+		}
 		for _, m := range full.Migrations {
 			_, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+postgres.HistoryTable(m.Name))
 		}
@@ -211,4 +227,29 @@ func TestFeaturePoolConnects(t *testing.T) {
 
 	pool.Close()
 	assert.Zero(t, pool.Stat().TotalConns(), "Close releases every connection")
+}
+
+// schemaObjects lists the tables and functions in the public and lookup schemas,
+// as "TABLE name" or "FUNCTION name(args)", tables first. ctx is separate from
+// t.Context(), which is already cancelled when cleanups run.
+func schemaObjects(ctx context.Context, t *testing.T, db *sql.DB) []string {
+	t.Helper()
+	rows, err := db.QueryContext(ctx, `
+		SELECT 'TABLE ' || quote_ident(schemaname) || '.' || quote_ident(tablename)
+		  FROM pg_tables WHERE schemaname IN ('public', 'lookup')
+		UNION ALL
+		SELECT 'FUNCTION ' || p.oid::regprocedure::text
+		  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+		 WHERE n.nspname IN ('public', 'lookup')
+		ORDER BY 1 DESC`) // TABLE sorts after FUNCTION; DESC drops tables first
+	require.NoError(t, err)
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var o string
+		require.NoError(t, rows.Scan(&o))
+		out = append(out, o)
+	}
+	require.NoError(t, rows.Err())
+	return out
 }

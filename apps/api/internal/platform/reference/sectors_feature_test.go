@@ -25,29 +25,6 @@ func TestFeatureTheRuntimeRoleCannotAddSectors(t *testing.T) {
 	require.Error(t, err, "no write policy: row-level security refuses the insert")
 }
 
-func TestFeatureSectorPoliciesAllowOnlyReading(t *testing.T) {
-	for name, sql := range map[string]string{
-		"update": `UPDATE sectors SET name = 'Changed' WHERE code = 'x_test'`,
-		"delete": `DELETE FROM sectors WHERE code = 'x_test'`,
-	} {
-		t.Run(name, func(t *testing.T) {
-			tx := testdb.OwnerTx(t)
-			insertTestSector(t, tx)
-			_, err := tx.Exec(t.Context(), `ALTER TABLE sectors FORCE ROW LEVEL SECURITY`)
-			require.NoError(t, err)
-
-			var visible bool
-			require.NoError(t, tx.QueryRow(t.Context(),
-				`SELECT EXISTS (SELECT 1 FROM sectors WHERE code = 'x_test')`).Scan(&visible))
-			assert.True(t, visible, "everyone reads sectors")
-
-			tag, err := tx.Exec(t.Context(), sql)
-			require.NoError(t, err)
-			assert.Zero(t, tag.RowsAffected(), "no write policy: no row is visible to change")
-		})
-	}
-}
-
 func TestFeatureSectorConstraints(t *testing.T) {
 	for name, sql := range map[string]string{
 		"bad code":       `INSERT INTO sectors (code, name) VALUES ('X Test', 'Other')`,
@@ -68,19 +45,8 @@ func TestFeatureSectorConstraints(t *testing.T) {
 }
 
 func TestFeatureSectorUpdatedAtFollowsChanges(t *testing.T) {
-	tx := testdb.OwnerTx(t)
-	insertTestSector(t, tx)
-	for _, sql := range []string{
-		`ALTER TABLE sectors DISABLE TRIGGER sectors_updated_at`,
-		`UPDATE sectors SET updated_at = '2000-01-01' WHERE code = 'x_test'`,
-		`ALTER TABLE sectors ENABLE TRIGGER sectors_updated_at`,
+	assertUpdatedAtFollowsChanges(t, testdb.OwnerTx(t),
+		`INSERT INTO sectors (code, name, updated_at) VALUES ('x_test', 'Test sector', '2000-01-01')`,
 		`UPDATE sectors SET name = 'Test sector again' WHERE code = 'x_test'`,
-	} {
-		_, err := tx.Exec(t.Context(), sql)
-		require.NoError(t, err, sql)
-	}
-	var setToNow bool
-	require.NoError(t, tx.QueryRow(t.Context(),
-		`SELECT updated_at = now() FROM sectors WHERE code = 'x_test'`).Scan(&setToNow))
-	assert.True(t, setToNow, "the trigger sets updated_at on every change")
+		`SELECT updated_at = now() FROM sectors WHERE code = 'x_test'`)
 }

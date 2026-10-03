@@ -76,7 +76,8 @@ Redis (`redis-sessions`).
 Migrations run explicitly, never at API startup. In development:
 `docker compose run --rm migrate` (`cmd/migrate`), then `docker compose run --rm seed`
 (`cmd/seed`: the seed files, then demo data). In production, `cmd/deploy` does both
-steps for a release; it is not run in development (C137). Migrations hold no data.
+steps for a release; it is not run in development (C137). Migrations hold no data. Until the first production release, a table change edits
+its original migration and development databases are recreated (C140).
 Development volumes are disposable; reset them when needed.
 
 ## Runtime configuration

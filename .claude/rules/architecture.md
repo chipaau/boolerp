@@ -35,6 +35,9 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   the owning package's `seeds` folder, listed in the edition's `DataSeeders`: production
   loads it with `cmd/deploy` (migrations, then seeds; production only), development with
   `cmd/migrate` then `cmd/seed`. Other seeders are demo data, never in production (C135, C137).
+- Until the first production release, a confirmed table change edits the table's
+  original migration (development databases are recreated); after it, applied
+  migrations never change and every change is a new migration (C140).
 - Business modules may depend on platform modules; a module needing another business
   module defines the interface in its own `application` package. Platform modules never
   import business modules (C95).

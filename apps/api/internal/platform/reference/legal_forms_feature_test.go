@@ -28,29 +28,6 @@ func TestFeatureTheRuntimeRoleCannotAddLegalForms(t *testing.T) {
 	require.Error(t, err, "no write policy (and no XA country): the insert is refused")
 }
 
-func TestFeatureLegalFormPoliciesAllowOnlyReading(t *testing.T) {
-	for name, sql := range map[string]string{
-		"update": `UPDATE legal_forms SET name = 'Changed' WHERE code = 'test_company'`,
-		"delete": `DELETE FROM legal_forms WHERE code = 'test_company'`,
-	} {
-		t.Run(name, func(t *testing.T) {
-			tx := testdb.OwnerTx(t)
-			insertTestLegalForm(t, tx)
-			_, err := tx.Exec(t.Context(), `ALTER TABLE legal_forms FORCE ROW LEVEL SECURITY`)
-			require.NoError(t, err)
-
-			var visible bool
-			require.NoError(t, tx.QueryRow(t.Context(),
-				`SELECT EXISTS (SELECT 1 FROM legal_forms WHERE code = 'test_company')`).Scan(&visible))
-			assert.True(t, visible, "everyone reads legal forms")
-
-			tag, err := tx.Exec(t.Context(), sql)
-			require.NoError(t, err)
-			assert.Zero(t, tag.RowsAffected(), "no write policy: no row is visible to change")
-		})
-	}
-}
-
 func TestFeatureLegalFormConstraints(t *testing.T) {
 	const insert = `INSERT INTO legal_forms (country, code, name, category, identity_document) VALUES `
 	for name, sql := range map[string]string{
@@ -89,18 +66,9 @@ func TestFeatureTheSameCodeInAnotherCountry(t *testing.T) {
 
 func TestFeatureLegalFormUpdatedAtFollowsChanges(t *testing.T) {
 	tx := testdb.OwnerTx(t)
-	insertTestLegalForm(t, tx)
-	for _, sql := range []string{
-		`ALTER TABLE legal_forms DISABLE TRIGGER legal_forms_updated_at`,
-		`UPDATE legal_forms SET updated_at = '2000-01-01' WHERE code = 'test_company'`,
-		`ALTER TABLE legal_forms ENABLE TRIGGER legal_forms_updated_at`,
+	insertTestCountry(t, tx)
+	assertUpdatedAtFollowsChanges(t, tx,
+		`INSERT INTO legal_forms (country, code, name, category, updated_at) VALUES ('XA', 'test_company', 'Test company', 'private', '2000-01-01')`,
 		`UPDATE legal_forms SET name = 'Test company again' WHERE code = 'test_company'`,
-	} {
-		_, err := tx.Exec(t.Context(), sql)
-		require.NoError(t, err, sql)
-	}
-	var setToNow bool
-	require.NoError(t, tx.QueryRow(t.Context(),
-		`SELECT updated_at = now() FROM legal_forms WHERE code = 'test_company'`).Scan(&setToNow))
-	assert.True(t, setToNow, "the trigger sets updated_at on every change")
+		`SELECT updated_at = now() FROM legal_forms WHERE code = 'test_company'`)
 }

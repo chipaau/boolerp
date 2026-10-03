@@ -17,7 +17,10 @@ CREATE TABLE legal_forms (
     active_to         timestamptz CHECK (active_to >= active_from),  -- retired; null = offered
     created_at        timestamptz NOT NULL DEFAULT now(),
     updated_at        timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (country, code)
+    UNIQUE (country, code),
+    -- The target of a two-column foreign key (legal_form_id, country): tenants pick a
+    -- legal form of their own country (C136; added 2026-10-04).
+    UNIQUE (id, country)
 );
 
 CREATE TRIGGER legal_forms_updated_at BEFORE UPDATE ON legal_forms

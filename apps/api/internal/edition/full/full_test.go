@@ -21,9 +21,9 @@ func TestMigrationsListEveryModuleWithItsTables(t *testing.T) {
 	for i, m := range Migrations {
 		names[i] = m.Name
 	}
-	assert.Equal(t, []string{"reference", "identity"}, names, "in dependency order")
+	assert.Equal(t, []string{"reference", "identity", "tenancy"}, names, "in dependency order")
 
-	for name, file := range map[int]string{0: "00001_countries.sql", 1: "00001_users.sql"} {
+	for name, file := range map[int]string{0: "00001_countries.sql", 1: "00001_users.sql", 2: "00001_tenants.sql"} {
 		files, err := fs.Glob(Migrations[name].FS, "*.sql")
 		require.NoError(t, err)
 		assert.Contains(t, files, file)

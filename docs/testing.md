@@ -204,7 +204,18 @@ schema: no migration inserts rows, and neither `cmd/seed` nor `cmd/deploy` runs 
 the tests. Each test creates the rows it needs inside its own transaction, with values
 that cannot clash with real data, such as ISO's user-assigned country codes (`XA`,
 `XAA`). Seed files are tested the same way: the seeder runs inside `testdb.OwnerTx` with
-a small list, and a unit test checks the real file. Application code therefore accepts either the pool or a transaction
+a small list, and a unit test checks the real file.
+
+Test packages run at the same time against the same database, so (C139):
+- **Each package uses its own test values** (for example countries `XA`/`XB` in
+  `reference`, `XT`/`XU` in `tenancy`): two uncommitted inserts of the same key wait on
+  each other and can deadlock.
+- **No `ALTER TABLE` on a table other packages' tests use:** its lock blocks them. Check
+  a policy's definition in `pg_policies` instead, and test `updated_at` triggers by
+  inserting a backdated row. Forcing row-level security to test policies as the owner is
+  fine only on a table one package alone uses (`tenants`).
+- **A test that migrates the platform database removes everything it created**, so the
+  suite can run repeatedly against the same server. Application code therefore accepts either the pool or a transaction
 (step 6). `testdb.Settings(t, role)` gives connection settings for the suite database.
 
 Tests that cannot run inside a rolled-back transaction, such as the migrator itself,

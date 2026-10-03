@@ -71,7 +71,7 @@ confirmed fields: each table's fields are confirmed explicitly, one table at a t
 before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
 ([data model](../data-model/README.md)).
 
-**`tenants`**
+**`tenants`** (built, C139; fields in [the data model](../data-model/README.md))
 - `id` uuidv7; `slug` unique, a DNS label (lowercase, 3–63 characters), not a reserved
   name (`admin`, `api`, `identity`, `www`, `mail`, …), locked by a trigger once the tenant
   has been active; `code` unique, uppercase, 2–10 characters; `name` not blank; optional

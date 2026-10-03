@@ -21,6 +21,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 	"github.com/boolmv/erp/apps/api/internal/platform/reference"
 	referenceseeds "github.com/boolmv/erp/apps/api/internal/platform/reference/seeds"
+	"github.com/boolmv/erp/apps/api/internal/platform/tenancy"
 )
 
 // Migrations are the edition's tables, in dependency order: a package's tables come
@@ -29,6 +30,7 @@ import (
 var Migrations = []postgres.ModuleMigrations{
 	{Name: "reference", FS: reference.Migrations()},
 	{Name: "identity", FS: identity.Migrations()},
+	{Name: "tenancy", FS: tenancy.Migrations()},
 }
 
 // RegisterModules builds the edition's modules, connects them, and registers
