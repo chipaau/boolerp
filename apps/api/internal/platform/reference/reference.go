@@ -1,5 +1,5 @@
 // Package reference owns the platform's shared reference data (C122): so far the
-// ISO 3166-1 countries (C135). Platform capabilities (identity, tenancy) and
+// ISO 3166-1 countries (C135) and legal forms (C136). Platform capabilities (identity, tenancy) and
 // business modules (HRMS) reference it instead of keeping their own lists. Its
 // tables are in migrations (C48, C95).
 package reference

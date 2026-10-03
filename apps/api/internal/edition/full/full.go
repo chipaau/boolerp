@@ -53,22 +53,30 @@ type SeedSettings struct {
 	Identity identity.Settings
 }
 
-// DeploySeeders load production's starting data (C135), in dependency order like
-// Migrations. cmd/deploy runs them in every environment, after applying the
-// migrations, as the migration role (db), which owns the tables. terminal is
-// where one-time recovery codes for new accounts are shown, or nil for none.
-func DeploySeeders(db *pgxpool.Pool, s SeedSettings, client *http.Client, logger *slog.Logger, terminal io.Writer) []seed.Seeder {
-	users := identity.New(db, s.Identity, client, logger)
+// DataSeeders load the seed files every database needs (C135, C137): the
+// reference lists, in dependency order like Migrations. Both cmd/deploy (in
+// production) and cmd/seed (in development) run them, as the migration role (db),
+// which owns the tables, so production and development load the same files.
+func DataSeeders(db *pgxpool.Pool) []seed.Seeder {
 	return []seed.Seeder{
 		referenceseeds.NewCountries(db),
-		identityseeds.NewTeamAccounts(users, terminal),
+		referenceseeds.NewLegalForms(db),
 	}
+}
+
+// DeploySeeders load production's starting data (C135, C137): DataSeeders, then
+// the team's accounts without passwords. cmd/deploy runs them after applying the
+// migrations, as the migration role (db). terminal is where one-time recovery
+// codes for new accounts are shown, or nil for none.
+func DeploySeeders(db *pgxpool.Pool, s SeedSettings, client *http.Client, logger *slog.Logger, terminal io.Writer) []seed.Seeder {
+	users := identity.New(db, s.Identity, client, logger)
+	return append(DataSeeders(db), identityseeds.NewTeamAccounts(users, terminal))
 }
 
 // Seeders are the edition's demo data seeders (C135), one per store, in
 // dependency order like Migrations: a store is seeded after the stores it
-// references. cmd/seed runs them (C50), never in production; tests never rely
-// on them.
+// references. cmd/seed runs them after DataSeeders (C50, C137), as the runtime
+// role (db), never in production; tests never rely on them.
 func Seeders(db *pgxpool.Pool, s SeedSettings, client *http.Client, logger *slog.Logger) []seed.Seeder {
 	users := identity.New(db, s.Identity, client, logger)
 	return []seed.Seeder{
