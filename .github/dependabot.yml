@@ -33,7 +33,7 @@ updates:
       dockerfiles:
         update-types: [minor, patch]
 
-  # Service images in compose.yaml (PostgreSQL, Redis, Jaeger).
+  # Service images in compose.yaml (PostgreSQL, Redis, Kratos, Hydra, …), tag and digest.
   - package-ecosystem: docker-compose
     directory: /
     schedule:

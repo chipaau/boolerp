@@ -16,12 +16,23 @@ if (!/^[a-z][a-z0-9-]*$/.test(edition) || !existsSync(editionFile)) {
 }
 const apps: readonly string[] = (await import(editionFile.href)).default
 
+// App journeys start signed in, from the state signed-in.setup.ts saves.
+const signedInState = new URL('./.auth/state.json', import.meta.url).pathname
 const appProjects: Project[] = apps
-  .map((slug) => ({ name: slug, testDir: `../packages/app-${slug}/e2e` }))
+  .map((slug) => ({
+    name: slug,
+    testDir: `../packages/app-${slug}/e2e`,
+    dependencies: ['signed-in'],
+    use: { storageState: signedInState },
+  }))
   .filter((p) => existsSync(new URL(p.testDir, import.meta.url)))
 
 export default defineConfig({
-  projects: [{ name: 'platform', testDir: './tests' }, ...appProjects],
+  projects: [
+    { name: 'platform', testDir: './tests', testIgnore: '*.setup.ts' },
+    { name: 'signed-in', testDir: './tests', testMatch: 'signed-in.setup.ts' },
+    ...appProjects,
+  ],
   globalSetup: './tests/global-setup.ts',
   workers: 1, // one account; sign-out ends its sessions
   retries: 0,
