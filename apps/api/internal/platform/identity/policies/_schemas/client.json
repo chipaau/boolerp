@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "identity:client (C154)",
+  "description": "An OAuth2 client, identified by its client ID. The policy needs no attributes, so none are accepted.",
+  "type": "object",
+  "additionalProperties": false
+}

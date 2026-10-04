@@ -1,0 +1,40 @@
+# Tests for identity:client (C154), run by cerbos compile in CI.
+name: IdentityClient
+principals:
+  sync_client:
+    id: hrms-sync
+    roles: ["client"]
+  sync_client_in_tenant:
+    id: hrms-sync
+    roles: ["client"]
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000aa, in_operator_tenant: false }
+  # A person whose ID happens to equal a client's ID.
+  person_with_client_id:
+    id: hrms-sync
+    roles: ["user"]
+resources:
+  sync:
+    kind: "identity:client"
+    id: hrms-sync
+  other:
+    kind: "identity:client"
+    id: payroll-export
+tests:
+  - name: A client views itself, within a tenant or not, and no other client
+    input:
+      principals: [sync_client, sync_client_in_tenant]
+      resources: [sync, other]
+      actions: [view, update]
+    expected:
+      - { principal: sync_client, resource: sync, actions: { view: EFFECT_ALLOW, update: EFFECT_DENY } }
+      - { principal: sync_client, resource: other, actions: { view: EFFECT_DENY, update: EFFECT_DENY } }
+      - { principal: sync_client_in_tenant, resource: sync, actions: { view: EFFECT_ALLOW, update: EFFECT_DENY } }
+      - { principal: sync_client_in_tenant, resource: other, actions: { view: EFFECT_DENY, update: EFFECT_DENY } }
+
+  - name: A person is never a client, even with the same ID
+    input:
+      principals: [person_with_client_id]
+      resources: [sync]
+      actions: [view]
+    expected:
+      - { principal: person_with_client_id, resource: sync, actions: { view: EFFECT_DENY } }

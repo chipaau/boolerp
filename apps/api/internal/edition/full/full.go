@@ -41,6 +41,7 @@ var Migrations = []postgres.ModuleMigrations{
 // modules' policies.
 var Policies = []authorization.ModulePolicies{
 	{Name: "authorization", FS: authorization.Policies()},
+	{Name: "identity", FS: identity.Policies()},
 	{Name: "tenancy", FS: tenancy.Policies()},
 }
 
