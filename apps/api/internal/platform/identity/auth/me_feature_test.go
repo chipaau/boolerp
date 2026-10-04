@@ -58,7 +58,7 @@ func fakeKratos(t *testing.T) *httptest.Server {
 			return
 		}
 		_, _ = w.Write([]byte(`{"id":"` + newPerson + `","schema_id":"registration","schema_url":"x","state":"active",
-			"traits":{"email":"aisha@example.test","phone":"+9607770000","name":"Aisha"}}`))
+			"traits":{"email":"aisha@example.test","phone":"+9607770000","name":"Aisha","picture":"https://lh3.googleusercontent.com/a/aisha"}}`))
 	}))
 	t.Cleanup(srv.Close)
 	return srv
@@ -99,18 +99,20 @@ func TestFeatureMeCreatesAPersonsUserOnFirstUseOnly(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	var body struct {
 		User struct {
-			ID, Email, Phone, DisplayName string
+			ID, Email, Phone, DisplayName, AvatarURL string
 		}
 		ClientID string
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	assert.Equal(t, "aisha@example.test", body.User.Email)
+	assert.Equal(t, "https://lh3.googleusercontent.com/a/aisha", body.User.AvatarURL)
 	assert.Equal(t, "bff-workspace", body.ClientID)
 
 	// The user row was stored from the Kratos account, with the ID /me returned.
 	testdb.AssertHas(t, tx, "users", map[string]any{
 		"id": body.User.ID, "kratos_identity_id": newPerson,
 		"email": "aisha@example.test", "phone": "+9607770000", "display_name": "Aisha",
+		"avatar_url": "https://lh3.googleusercontent.com/a/aisha",
 	})
 	assert.Equal(t, []authorization.Resource{{Kind: "identity:user", ID: body.User.ID}}, authz.asked,
 		"Cerbos is asked about the caller's own user")

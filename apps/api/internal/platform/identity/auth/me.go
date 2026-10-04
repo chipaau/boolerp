@@ -29,13 +29,14 @@ func (m *Module) me(w http.ResponseWriter, r *http.Request) {
 		Email       string `json:"email"`
 		Phone       string `json:"phone"`
 		DisplayName string `json:"displayName,omitempty"`
+		AvatarURL   string `json:"avatarUrl,omitempty"`
 	}
 	body := struct {
 		User     *user  `json:"user"`
 		ClientID string `json:"clientId"`
 	}{ClientID: caller.Token.ClientID}
 	if u := caller.User; u != nil {
-		body.User = &user{ID: u.ID, Email: u.Email, Phone: u.Phone, DisplayName: u.DisplayName}
+		body.User = &user{ID: u.ID, Email: u.Email, Phone: u.Phone, DisplayName: u.DisplayName, AvatarURL: u.AvatarURL}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(body)

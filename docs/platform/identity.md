@@ -198,8 +198,10 @@ config is `docker/kratos/kratos.yml`, merged with `docker/secrets/dev/kratos.yml
 Compose secret. Browsers reach its public API at `http://identity.bool.test/kratos`;
 the admin API (`http://kratos:4434`) is only on the internal network.
 
-- **Accounts:** a new account has one email (`traits.email`), a contact phone, and an optional
-  name (`registration.schema.json`). Extra emails are added through the admin API as
+- **Accounts:** a new account has one email (`traits.email`), a contact phone, an optional
+  name, and an optional picture (`traits.picture`, an `http(s)` address filled only from
+  Google's `picture` claim; the login service sends it as a hidden field, never typed)
+  (`registration.schema.json`). Extra emails are added through the admin API as
   verified, into `traits.additional_emails`, switching the account to
   `account.schema.json`; self-service settings can change the password and link
   Google, not account fields.

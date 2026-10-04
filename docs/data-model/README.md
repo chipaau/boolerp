@@ -1,6 +1,6 @@
 # Data model status
 
-Updated: 2026-10-03.
+Updated: 2026-10-05.
 Status: open. Two tables are confirmed and implemented: `users` and `countries` (below). (A `sessions`
 table was approved for sessions in PostgreSQL and withdrawn when sessions moved to the
 BFF's Redis, C90.)
@@ -66,7 +66,8 @@ countries; only the migration role (migrations, `cmd/deploy`, `cmd/seed`) does. 
 
 ### `users` (identity module, C94)
 
-Approved 2026-10-01 by the user, with `phone`. One row per person who has a Kratos
+Approved 2026-10-01 by the user, with `phone`; `avatar_url` confirmed 2026-10-05 by the
+user, with the Kratos `picture` trait it copies. One row per person who has a Kratos
 identity and has used the platform; it is the API's own key for a person, so other
 tables reference `users.id`, never the Kratos identity ID. It is not tenant-scoped:
 tenant membership and employee records are separate tables (identity rules), and some users
@@ -79,11 +80,12 @@ tenant membership and employee records are separate tables (identity rules), and
 | `email` | `text` | Not null; a copy of the identity's login email trait. |
 | `phone` | `text` | Not null; a copy of the identity's phone trait. |
 | `display_name` | `text` | Nullable; a copy of the identity's name trait. |
+| `avatar_url` | `text` | Nullable; a copy of the identity's picture trait (filled from Google's `picture` claim). Check: starts with `http://` or `https://` and is not blank. |
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set on every sync. |
 
 Kratos stays the authority for the copied traits; the identity module writes the row
-on a person's first authenticated request (C94). `email`, `phone`, and `display_name`
-are personal data: never logged, cached, or traced. The migration is
+on a person's first authenticated request (C94). `email`, `phone`, `display_name`, and
+`avatar_url` are personal data: never logged, cached, or traced. The migration is
 `apps/api/internal/platform/identity/migrations/00001_users.sql`.
 
 See [tenancy](../platform/tenancy.md), [HRMS employees](../hrms/employees.md),
