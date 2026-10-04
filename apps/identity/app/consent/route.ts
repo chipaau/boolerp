@@ -1,11 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { idTokenClaims } from '@/lib/claims'
 import { goneChallengeRedirect, hydraAdmin } from '@/lib/hydra'
 import { publicUrl } from '@/lib/kratos'
 
 // Hydra's consent step (C87, C89). Kratos handles only Hydra's login step, so this
 // route answers the consent step through Hydra's admin API. First-party clients
 // (skip_consent) are approved at once with what they asked for; anyone else is
-// refused with access_denied, since there is no consent screen yet.
+// refused with access_denied, since there is no consent screen yet. The account's
+// details go into the ID token (and /userinfo) for the granted email, phone, and
+// profile scopes, never into the access token.
 export async function GET(request: NextRequest) {
   const challenge = request.nextUrl.searchParams.get('consent_challenge')
   if (!challenge) return new NextResponse('Missing consent_challenge.', { status: 400 })
@@ -36,11 +39,14 @@ async function consent(challenge: string): Promise<NextResponse> {
     return NextResponse.redirect(rejected.redirect_to)
   }
 
+  const scopes = consent.requested_scope ?? []
+  if (!consent.subject) throw new Error('the consent request has no subject')
   const accepted = await hydra.acceptOAuth2ConsentRequest({
     consentChallenge: challenge,
     acceptOAuth2ConsentRequest: {
-      grant_scope: consent.requested_scope,
+      grant_scope: scopes,
       grant_access_token_audience: consent.requested_access_token_audience,
+      session: { id_token: await idTokenClaims(consent.subject, scopes) },
       // Nothing is asked of the user, so there is nothing to remember.
       remember: false,
     },

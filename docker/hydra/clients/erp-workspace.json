@@ -2,7 +2,7 @@
   "client_name": "Bool ERP workspace (bff-workspace)",
   "grant_types": ["authorization_code", "refresh_token"],
   "response_types": ["code"],
-  "scope": "openid offline_access",
+  "scope": "openid offline_access email phone profile",
   "audience": ["erp-api"],
   "redirect_uris": [
     "http://demo.bool.test/auth/callback",

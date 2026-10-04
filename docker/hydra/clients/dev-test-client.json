@@ -2,7 +2,7 @@
   "client_name": "Development test client",
   "grant_types": ["authorization_code", "refresh_token"],
   "response_types": ["code"],
-  "scope": "openid offline",
+  "scope": "openid offline email phone profile",
   "audience": ["erp-api"],
   "redirect_uris": ["http://127.0.0.1:5555/callback"],
   "token_endpoint_auth_method": "client_secret_basic",

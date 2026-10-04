@@ -43,6 +43,17 @@ the login service passes the challenge to Kratos, which accepts Hydra's login re
 after sign-in. Hydra then calls `/consent`, a route of the login service that approves
 first-party clients (`skip_consent`) and refuses others with `access_denied`.
 
+**Claims (C157).** On approving, `/consent` reads the account from Kratos's admin API
+(`KRATOS_ADMIN_URL`, internal network, the consent route only) by the consent request's
+subject and puts the OpenID Connect standard claims for the granted scopes into Hydra's
+ID-token session: `email` gives `email` and `email_verified` (from Kratos's verified
+addresses), `phone` gives `phone_number` (no `phone_number_verified`: Kratos does not
+verify phones, C85), and `profile` gives `name` and `picture`, each only when the account
+has it. Hydra returns them in the ID token and from `/userinfo`; the access token never
+carries them, so the API learns a person's details only by asking `/userinfo`. The
+first-party clients and the BFFs request `openid offline_access email phone profile`, and
+Hydra's discovery advertises those scopes and claims.
+
 First-party clients are defined in `docker/hydra/clients/<client-id>.json` and
 registered by the `hydra-clients` service (`docker compose up hydra-clients` re-runs
 it); each client's secret is the Compose secret `hydra_client_<client-id>`. Hydra
