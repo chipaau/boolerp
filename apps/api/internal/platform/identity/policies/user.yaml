@@ -1,0 +1,19 @@
+# identity:user (C154): a person's own user record, as GET /api/auth/me shows it.
+# Users are global, not tenant data, so there is no tenant check (C150 applies to
+# tenant resources); the rule is attribute-based: the record is the caller's own.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: default
+  resource: "identity:user"
+  schemas:
+    principalSchema:
+      ref: cerbos:///authorization/caller.json
+    resourceSchema:
+      ref: cerbos:///identity/user.json
+  rules:
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      condition:
+        match:
+          expr: R.id == P.id

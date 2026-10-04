@@ -23,9 +23,22 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
+//go:embed all:policies
+var policies embed.FS
+
 // Migrations returns the module's tables, applied by cmd/migrate as "identity".
 func Migrations() fs.FS {
 	sub, err := fs.Sub(migrations, "migrations")
+	if err != nil {
+		panic(err) // the directory is embedded above, so this cannot fail
+	}
+	return sub
+}
+
+// Policies returns the module's Cerbos policies, their tests, and their schemas
+// (C151, C154), assembled as "identity".
+func Policies() fs.FS {
+	sub, err := fs.Sub(policies, "policies")
 	if err != nil {
 		panic(err) // the directory is embedded above, so this cannot fail
 	}

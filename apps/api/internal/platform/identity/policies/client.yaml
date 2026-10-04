@@ -1,0 +1,19 @@
+# identity:client (C154): a machine client's own record, as GET /api/auth/me shows it
+# to a client acting for itself. Clients are global, not tenant data, so there is no
+# tenant check; the rule is attribute-based: the client is the caller itself.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: default
+  resource: "identity:client"
+  schemas:
+    principalSchema:
+      ref: cerbos:///authorization/caller.json
+    resourceSchema:
+      ref: cerbos:///identity/client.json
+  rules:
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles: ["client"]
+      condition:
+        match:
+          expr: R.id == P.id

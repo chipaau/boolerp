@@ -1,0 +1,40 @@
+# Tests for identity:user (C154), run by cerbos compile in CI.
+name: IdentityUser
+principals:
+  shifau:
+    id: 0192f6a0-0000-7000-8000-00000000a001
+    roles: ["user"]
+  shifau_in_a_workspace:
+    id: 0192f6a0-0000-7000-8000-00000000a001
+    roles: ["user"]
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000aa, in_operator_tenant: false }
+  # A machine client whose ID happens to equal a user's ID.
+  client_with_user_id:
+    id: 0192f6a0-0000-7000-8000-00000000a001
+    roles: ["client"]
+resources:
+  shifau_user:
+    kind: "identity:user"
+    id: 0192f6a0-0000-7000-8000-00000000a001
+  mariyam_user:
+    kind: "identity:user"
+    id: 0192f6a0-0000-7000-8000-00000000a002
+tests:
+  - name: A person views their own user, inside a workspace or not, and no one else's
+    input:
+      principals: [shifau, shifau_in_a_workspace]
+      resources: [shifau_user, mariyam_user]
+      actions: [view, update]
+    expected:
+      - { principal: shifau, resource: shifau_user, actions: { view: EFFECT_ALLOW, update: EFFECT_DENY } }
+      - { principal: shifau, resource: mariyam_user, actions: { view: EFFECT_DENY, update: EFFECT_DENY } }
+      - { principal: shifau_in_a_workspace, resource: shifau_user, actions: { view: EFFECT_ALLOW, update: EFFECT_DENY } }
+      - { principal: shifau_in_a_workspace, resource: mariyam_user, actions: { view: EFFECT_DENY, update: EFFECT_DENY } }
+
+  - name: A client is never a user, even with the same ID
+    input:
+      principals: [client_with_user_id]
+      resources: [shifau_user]
+      actions: [view]
+    expected:
+      - { principal: client_with_user_id, resource: shifau_user, actions: { view: EFFECT_DENY } }
