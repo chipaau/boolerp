@@ -1,6 +1,7 @@
 // Package auth is the identity capability's authentication (C88, C91, C125): it
-// accepts callers by Hydra access token and answers who is calling, resolving a
-// person's token to their user through the identity module. It registers its
+// accepts callers by Hydra access token and answers who is calling, finding a
+// person's user through the identity module; a person registers their user with
+// POST /me (C157). It registers its
 // own routes relative to its prefix (Routes); the edition mounts it at
 // /api/auth. The default middleware (request ID, logging, recovery, origin
 // checks) comes from the router it is mounted on; this package applies
@@ -34,11 +35,13 @@ type tokenVerifier interface {
 	Verify(ctx context.Context, raw string) (Token, error)
 }
 
-// Users resolves a token's subject (a Kratos account) to its user, creating it
-// on first use; the identity module implements it. A deleted or disabled
-// account gets identity.ErrNoAccount, which Authenticate answers with 401.
+// Users are the identity module's users (C157). User only reads: an account
+// without a user gets identity.ErrNotFound, which Authenticate answers with 401.
+// Register creates or updates the user from Hydra's /userinfo with the person's
+// access token.
 type Users interface {
-	Resolve(ctx context.Context, kratosIdentityID string) (identity.User, error)
+	User(ctx context.Context, kratosIdentityID string) (identity.User, error)
+	Register(ctx context.Context, subject, accessToken string) (identity.User, error)
 }
 
 // Caller is who a request is from: the verified token and, when the token is
@@ -68,5 +71,10 @@ func (m *Module) Routes(r chi.Router) {
 		// Every route here asks Cerbos before it answers (C155).
 		r.Use(m.Authenticate, authorization.Enforce(m.logger))
 		r.Get("/me", m.me)
+	})
+	r.Group(func(r chi.Router) {
+		// Registering is the one route a person may call before they have a user.
+		r.Use(m.authenticateToken, authorization.Enforce(m.logger))
+		r.Post("/me", m.register)
 	})
 }

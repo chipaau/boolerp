@@ -1,0 +1,21 @@
+# identity:account (C157): a person's Kratos account, identified by its ID (a
+# token's sub). register creates or updates the person's user from the account's
+# details (POST /api/auth/me). It is allowed before the person has a user (role
+# account) and after (role user), only for their own account. Not tenant data,
+# so there is no tenant check (C150 applies to tenant resources).
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: default
+  resource: "identity:account"
+  schemas:
+    principalSchema:
+      ref: cerbos:///authorization/caller.json
+    resourceSchema:
+      ref: cerbos:///identity/account.json
+  rules:
+    - actions: ["register"]
+      effect: EFFECT_ALLOW
+      roles: ["account", "user"]
+      condition:
+        match:
+          expr: has(P.attr.account_id) && R.id == P.attr.account_id

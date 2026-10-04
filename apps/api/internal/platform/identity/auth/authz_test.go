@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 )
 
 // allowOwn stands in for Cerbos with the identity policies' rule: a caller may
@@ -104,4 +106,69 @@ func TestMeRefusesWithoutTheData(t *testing.T) {
 			assert.Contains(t, rec.Header().Get("Content-Type"), "application/problem+json")
 		})
 	}
+}
+
+// registering is a Users whose Register answers with err (or user).
+type registering struct {
+	user identity.User
+	err  error
+}
+
+func (registering) User(context.Context, string) (identity.User, error) {
+	return identity.User{}, identity.ErrNotFound
+}
+
+func (r registering) Register(context.Context, string, string) (identity.User, error) {
+	return r.user, r.err
+}
+
+func postMe(t *testing.T, iss *issuer, users Users, authz authorization.Authorizer, c claims) *httptest.ResponseRecorder {
+	t.Helper()
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), users, authz, slog.New(slog.DiscardHandler))
+	r := chi.NewRouter()
+	r.Route("/api/auth", m.Routes)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer "+sign(t, c))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestRegisterAnswersEachFailure(t *testing.T) {
+	iss := newIssuer(t)
+	for name, c := range map[string]struct {
+		err    error
+		status int
+	}{
+		"missing scopes":         {identity.ErrInvalidAccount, http.StatusForbidden},
+		"token refused":          {identity.ErrTokenRefused, http.StatusUnauthorized},
+		"another account":        {identity.ErrWrongAccount, http.StatusUnauthorized},
+		"database or Hydra down": {errors.New("s3cret-cause"), http.StatusServiceUnavailable},
+	} {
+		t.Run(name, func(t *testing.T) {
+			rec := postMe(t, iss, registering{err: c.err}, &recordingAuthz{}, iss.valid())
+			assert.Equal(t, c.status, rec.Code)
+			assert.NotContains(t, rec.Body.String(), "s3cret-cause")
+		})
+	}
+}
+
+func TestRegisterAnswersWithTheUser(t *testing.T) {
+	iss := newIssuer(t)
+	authz := &recordingAuthz{}
+	rec := postMe(t, iss, registering{user: identity.User{ID: "user-1", Email: "a@b.test"}}, authz, iss.valid())
+	require.Equal(t, http.StatusOK, rec.Code)
+	var body struct{ User struct{ ID string } }
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Equal(t, "user-1", body.User.ID)
+	assert.Equal(t, []authorization.Resource{{Kind: "identity:account", ID: "account-1"}}, authz.asked)
+}
+
+func TestRegisterAsAClientIsAskedAboutTheClient(t *testing.T) {
+	iss := newIssuer(t)
+	authz := failWith{authorization.ErrDenied}
+	c := iss.valid()
+	c.clientID = "account-1" // a client acting for itself
+	rec := postMe(t, iss, registering{err: errors.New("must not register")}, authz, c)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
 }

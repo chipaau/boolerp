@@ -52,13 +52,19 @@ func RunBFF(ctx context.Context, cfg config.BFF, logger *slog.Logger) error {
 		CookieSecure: cfg.Session.CookieSecure,
 	}, sessionError(logger))
 
+	api, err := url.Parse(cfg.API.URL)
+	if err != nil {
+		return fmt.Errorf("api url: %w", err)
+	}
 	logins := login.New(login.Settings{
 		Issuer:       cfg.OIDC.Issuer,
 		ClientID:     cfg.OIDC.ClientID,
 		ClientSecret: cfg.OIDC.ClientSecret,
 		Audience:     cfg.OIDC.Audience,
 		HTTPS:        cfg.Session.CookieSecure,
-	}, sessions, &http.Client{Timeout: 10 * time.Second}, logger)
+		RegisterURL:  api.JoinPath("/api/auth/me").String(),
+	}, sessions, &http.Client{Timeout: 10 * time.Second},
+		&http.Client{Transport: apiTransport(tr, mt), Timeout: 10 * time.Second}, logger)
 
 	router, err := newRouter(logger, routerConfig{
 		MaxBodyBytes:     cfg.HTTP.MaxBodyBytes,
@@ -76,10 +82,6 @@ func RunBFF(ctx context.Context, cfg config.BFF, logger *slog.Logger) error {
 		r.Use(sessions.LoadAndSave)
 		logins.Routes(r)
 	})
-	api, err := url.Parse(cfg.API.URL)
-	if err != nil {
-		return fmt.Errorf("api url: %w", err)
-	}
 	forward := proxy.New(api, apiTransport(tr, mt), sessions, logins.Refresh, login.ErrRefreshRefused, logger)
 	router.Route("/api", func(r chi.Router) {
 		r.Use(sessions.LoadAndSave)

@@ -1,0 +1,52 @@
+# Tests for identity:account (C157), run by cerbos compile in CI.
+name: IdentityAccount
+principals:
+  # A person signed in for the first time: no user yet.
+  newcomer:
+    id: 0192f6a0-0000-7000-8000-0000000ac001
+    roles: ["account"]
+    attr: { account_id: 0192f6a0-0000-7000-8000-0000000ac001 }
+  # A person who has a user (the principal's ID is users.id).
+  shifau:
+    id: 0192f6a0-0000-7000-8000-00000000a001
+    roles: ["user"]
+    attr: { account_id: 0192f6a0-0000-7000-8000-0000000ac002 }
+  shifau_in_a_workspace:
+    id: 0192f6a0-0000-7000-8000-00000000a001
+    roles: ["user"]
+    attr:
+      account_id: 0192f6a0-0000-7000-8000-0000000ac002
+      tenant_id: 0192f6a0-0000-7000-8000-0000000000aa
+      in_operator_tenant: false
+  # A machine client whose ID happens to equal an account's ID.
+  client_with_account_id:
+    id: 0192f6a0-0000-7000-8000-0000000ac001
+    roles: ["client"]
+resources:
+  newcomer_account:
+    kind: "identity:account"
+    id: 0192f6a0-0000-7000-8000-0000000ac001
+  shifau_account:
+    kind: "identity:account"
+    id: 0192f6a0-0000-7000-8000-0000000ac002
+tests:
+  - name: A person registers their own account, before and after they have a user, and no one else's
+    input:
+      principals: [newcomer, shifau, shifau_in_a_workspace]
+      resources: [newcomer_account, shifau_account]
+      actions: [register, view]
+    expected:
+      - { principal: newcomer, resource: newcomer_account, actions: { register: EFFECT_ALLOW, view: EFFECT_DENY } }
+      - { principal: newcomer, resource: shifau_account, actions: { register: EFFECT_DENY, view: EFFECT_DENY } }
+      - { principal: shifau, resource: shifau_account, actions: { register: EFFECT_ALLOW, view: EFFECT_DENY } }
+      - { principal: shifau, resource: newcomer_account, actions: { register: EFFECT_DENY, view: EFFECT_DENY } }
+      - { principal: shifau_in_a_workspace, resource: shifau_account, actions: { register: EFFECT_ALLOW, view: EFFECT_DENY } }
+      - { principal: shifau_in_a_workspace, resource: newcomer_account, actions: { register: EFFECT_DENY, view: EFFECT_DENY } }
+
+  - name: A client never registers an account, even with the same ID
+    input:
+      principals: [client_with_account_id]
+      resources: [newcomer_account]
+      actions: [register]
+    expected:
+      - { principal: client_with_account_id, resource: newcomer_account, actions: { register: EFFECT_DENY } }

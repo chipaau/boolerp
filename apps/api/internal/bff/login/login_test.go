@@ -36,6 +36,11 @@ type provider struct {
 	refresh string // the refresh token the next exchange returns
 	revoked []string
 
+	// The API's POST /api/auth/me: the access tokens it was called with, and the
+	// status it answers (200 unless set).
+	registered     []string
+	registerStatus atomic.Int32
+
 	discoveries  atomic.Int32 // requests for the discovery document
 	discoveryLag atomic.Int64 // nanoseconds the discovery document takes
 	discoveryOff atomic.Bool  // the discovery document fails (Hydra down)
@@ -69,6 +74,12 @@ func newProvider(t *testing.T) *provider {
 	mux.HandleFunc("/oauth2/revoke", func(w http.ResponseWriter, r *http.Request) {
 		if id, secret, ok := r.BasicAuth(); ok && id == "erp-workspace" && secret == "client-s3cret" {
 			p.revoked = append(p.revoked, r.FormValue("token"))
+		}
+	})
+	mux.HandleFunc("POST /api/auth/me", func(w http.ResponseWriter, r *http.Request) {
+		p.registered = append(p.registered, strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		if status := p.registerStatus.Load(); status != 0 {
+			w.WriteHeader(int(status))
 		}
 	})
 	mux.HandleFunc("/jwks", func(w http.ResponseWriter, _ *http.Request) {
@@ -134,8 +145,10 @@ func appWithHandler(t *testing.T, p *provider) (http.Handler, *Handler) {
 	client := goredis.NewClient(&goredis.Options{Addr: miniredis.RunT(t).Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	sessions := session.New(client, sealer, session.Settings{KeyPrefix: "bff:test:", IdleTimeout: time.Hour, Lifetime: 2 * time.Hour}, nil)
-	h := New(Settings{Issuer: p.URL, ClientID: "erp-workspace", ClientSecret: "client-s3cret", Audience: "erp-api"},
-		sessions, p.Client(), slog.New(slog.DiscardHandler))
+	h := New(Settings{
+		Issuer: p.URL, ClientID: "erp-workspace", ClientSecret: "client-s3cret", Audience: "erp-api",
+		RegisterURL: p.URL + "/api/auth/me",
+	}, sessions, p.Client(), p.Client(), slog.New(slog.DiscardHandler))
 	r := chi.NewRouter()
 	r.Route(Prefix, func(r chi.Router) {
 		r.Use(sessions.LoadAndSave)
@@ -244,6 +257,37 @@ func TestCallbackSignsInWithANewSessionToken(t *testing.T) {
 	assert.Equal(t, "refresh-s3cret", in.Tokens.Refresh)
 	assert.NotEmpty(t, in.Tokens.IDToken)
 	assert.WithinDuration(t, time.Now().Add(10*time.Minute), in.Tokens.Expiry, time.Minute)
+	assert.Equal(t, []string{"access-s3cret"}, p.registered, "the user is registered with the new access token")
+}
+
+func TestCallbackWithoutRegisteringMakesNoSession(t *testing.T) {
+	for _, status := range []int32{http.StatusForbidden, http.StatusServiceUnavailable} {
+		p := newProvider(t)
+		p.registerStatus.Store(status)
+		b := &browser{t: t, handler: app(t, p)}
+		q := startLogin(t, b, "/")
+		p.nonce = q.Get("nonce")
+
+		rec := b.get("/auth/callback?code=c1&state=" + q.Get("state"))
+
+		assert.Equal(t, http.StatusBadGateway, rec.Code, "the API answered %d", status)
+		_, ok := b.whoami()
+		assert.False(t, ok, "not signed in")
+		assert.Equal(t, []string{"refresh-s3cret"}, p.revoked, "the new refresh token is revoked")
+	}
+}
+
+func TestCallbackWhileTheAPIIsUnreachable(t *testing.T) {
+	p := newProvider(t)
+	r, h := appWithHandler(t, p)
+	h.settings.RegisterURL = "http://127.0.0.1:1/api/auth/me"
+	b := &browser{t: t, handler: r}
+	q := startLogin(t, b, "/")
+	p.nonce = q.Get("nonce")
+
+	assert.Equal(t, http.StatusBadGateway, b.get("/auth/callback?code=c1&state="+q.Get("state")).Code)
+	_, ok := b.whoami()
+	assert.False(t, ok)
 }
 
 func TestCallbackRefusesAWrongState(t *testing.T) {

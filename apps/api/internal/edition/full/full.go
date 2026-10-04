@@ -56,6 +56,7 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 	users := identity.New(d.Pool, identity.Settings{
 		KratosAdminURL: cfg.Identity.KratosAdminURL,
 		HydraAdminURL:  cfg.Identity.HydraAdminURL,
+		HydraPublicURL: cfg.Auth.Issuer,
 	}, d.HTTPClient, d.Logger)
 
 	// Authorization asks Cerbos (C152, C155). The connection lives as long as the
@@ -68,7 +69,7 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 	}
 	authz := authorization.NewCerbos(cerbosClient, Principal, cfg.Cerbos.Timeout)
 
-	// Authentication resolves a token's subject to its user through identity.
+	// Authentication finds a token's user through identity, and registers it (C157).
 	authModule := auth.New(ctx, auth.Settings{Issuer: cfg.Auth.Issuer, Audience: cfg.Auth.Audience},
 		d.HTTPClient, users, authz, d.Logger)
 
@@ -76,21 +77,32 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 	return nil
 }
 
-// Principal builds who is asking for every authorization check (C154, C155): the
-// authenticated person (role user) or machine client (role client), and the tenant
-// the request acts in, when there is one. Inside a tenant, member and the caller's
+// Principal builds who is asking for every authorization check (C154, C155,
+// C157): the authenticated person (role user), a person who has not registered
+// yet (role account, ID their account), or a machine client (role client); a
+// person's account ID (the token's sub) as account_id; and the tenant the
+// request acts in, when there is one. Inside a tenant, member and the caller's
 // capabilities there are added once memberships and roles exist.
 func Principal(ctx context.Context) (authorization.Principal, error) {
 	caller, ok := auth.FromContext(ctx)
 	if !ok {
 		return authorization.Principal{}, errors.New("no authenticated caller")
 	}
+	attrs := map[string]any{}
 	p := authorization.Principal{ID: caller.Token.ClientID, Roles: []string{"client"}}
-	if caller.User != nil {
-		p = authorization.Principal{ID: caller.User.ID, Roles: []string{"user"}}
+	if account := caller.Token.Subject; account != "" {
+		attrs["account_id"] = account
+		p = authorization.Principal{ID: account, Roles: []string{"account"}}
+		if caller.User != nil {
+			p = authorization.Principal{ID: caller.User.ID, Roles: []string{"user"}}
+		}
 	}
 	if t, ok := tenant.From(ctx); ok {
-		p.Attributes = map[string]any{"tenant_id": t.ID, "in_operator_tenant": t.IsOperator}
+		attrs["tenant_id"] = t.ID
+		attrs["in_operator_tenant"] = t.IsOperator
+	}
+	if len(attrs) > 0 {
+		p.Attributes = attrs
 	}
 	return p, nil
 }

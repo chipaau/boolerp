@@ -1,6 +1,6 @@
 // Package identity is the identity module (C94): our users, a projection of the
-// accounts in Kratos, created on a person's first authenticated request and
-// refreshed from Kratos whenever it is synced.
+// accounts in Kratos, created and updated when the person registers with their
+// access token (POST /api/auth/me, from Hydra's /userinfo, C157).
 // It is the integration point with Ory's admin APIs. Its tables are in
 // migrations (C48, C95); its use cases in application; its stores and
 // providers in adapters.
@@ -49,6 +49,7 @@ func Policies() fs.FS {
 type Settings struct {
 	KratosAdminURL string // Kratos's admin API, internal network only
 	HydraAdminURL  string // Hydra's admin API, internal network only
+	HydraPublicURL string // Hydra's issuer, for /userinfo (C157); unused by seeds
 }
 
 // Module is the identity module.
@@ -62,17 +63,32 @@ func New(db store.DB, s Settings, client *http.Client, logger *slog.Logger) *Mod
 		store.NewUsers(db),
 		kratos.NewAccounts(s.KratosAdminURL, client),
 		hydra.NewLogins(s.HydraAdminURL, client, logger),
+		hydra.NewProfiles(s.HydraPublicURL, client),
 	)}
 }
 
-// ErrNoAccount is returned by Resolve for a deleted or disabled account that
-// has no user yet.
-var ErrNoAccount = application.ErrNoAccount
+// Errors of User and Register.
+var (
+	// ErrNotFound: the account has no user; the person has not registered yet.
+	ErrNotFound = application.ErrNotFound
+	// ErrInvalidAccount: the token's profile lacks the email or phone (scopes).
+	ErrInvalidAccount = application.ErrInvalidAccount
+	// ErrTokenRefused: Hydra no longer accepts the access token.
+	ErrTokenRefused = application.ErrTokenRefused
+	// ErrWrongAccount: /userinfo named someone other than the token's subject.
+	ErrWrongAccount = application.ErrWrongAccount
+)
 
-// Resolve returns the user for a Kratos account (a token's sub), creating it on
-// first use; a deleted or disabled account gets ErrNoAccount.
-func (m *Module) Resolve(ctx context.Context, kratosIdentityID string) (domain.User, error) {
-	return m.service.Resolve(ctx, kratosIdentityID)
+// User returns the user for a Kratos account (a token's sub), or ErrNotFound. It
+// only reads (C157).
+func (m *Module) User(ctx context.Context, kratosIdentityID string) (domain.User, error) {
+	return m.service.User(ctx, kratosIdentityID)
+}
+
+// Register creates or updates the user of the person accessToken is for, from
+// Hydra's /userinfo; subject is the verified token's sub (C157).
+func (m *Module) Register(ctx context.Context, subject, accessToken string) (domain.User, error) {
+	return m.service.Register(ctx, subject, accessToken)
 }
 
 // EnsureAccount returns the user for the account that signs in with a.Email,

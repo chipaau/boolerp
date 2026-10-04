@@ -2,7 +2,11 @@
 // HTTP, the database, and Kratos.
 package domain
 
-import "time"
+import (
+	"net/url"
+	"strings"
+	"time"
+)
 
 // User is our record of a person who can sign in (C94).
 type User struct {
@@ -41,4 +45,16 @@ type Recovery struct {
 	Link      string
 	Code      string
 	ExpiresAt time.Time
+}
+
+// ValidAvatarURL reports whether s can be stored as a user's avatar_url: empty
+// (no picture), or an absolute http:// or https:// address with a host (the
+// users table's check matches the lowercase scheme only).
+func ValidAvatarURL(s string) bool {
+	if s == "" {
+		return true
+	}
+	u, err := url.Parse(s)
+	scheme := strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
+	return err == nil && scheme && u.Host != ""
 }

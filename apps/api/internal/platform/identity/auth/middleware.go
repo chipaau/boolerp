@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -17,11 +16,22 @@ import (
 // the caller (the token and, for a person, their user) in the request context
 // (FromContext). Otherwise it answers 401 with WWW-Authenticate: Bearer (RFC
 // 6750) and problem details; the token and the reason it failed are not echoed.
-// If the user cannot be loaded (Kratos or the database unavailable on a first
-// request), it answers 503. Every answer is marked not to be cached (chi's
-// middleware.NoCache), since it is about the caller. Modules apply it to their
-// own routes.
+// A person who has not registered (POST /api/auth/me, C157) gets 401 too. It
+// only reads: no request creates a user as a side effect. If the user cannot be
+// loaded (the database unavailable), it answers 503. Every answer is marked not
+// to be cached (chi's middleware.NoCache), since it is about the caller. Modules
+// apply it to their own routes.
 func (m *Module) Authenticate(next http.Handler) http.Handler {
+	return m.authenticate(true, next)
+}
+
+// authenticateToken is Authenticate for POST /api/auth/me: a person without a
+// user yet is let through (caller.User is nil), so they can register.
+func (m *Module) authenticateToken(next http.Handler) http.Handler {
+	return m.authenticate(false, next)
+}
+
+func (m *Module) authenticate(requireUser bool, next http.Handler) http.Handler {
 	return middleware.NoCache(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, ok := fromHeader(r.Header.Get("Authorization"))
 		if !ok {
@@ -37,20 +47,23 @@ func (m *Module) Authenticate(next http.Handler) http.Handler {
 		}
 		caller := Caller{Token: token}
 		if token.Subject != "" {
-			user, err := m.users.Resolve(r.Context(), token.Subject)
-			if errors.Is(err, identity.ErrNoAccount) {
-				w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
-				problem.Error(w, r, http.StatusUnauthorized, "The account is not available.")
-				return
-			}
-			if err != nil {
+			user, err := m.users.User(r.Context(), token.Subject)
+			switch {
+			case err == nil:
+				caller.User = &user
+			case errors.Is(err, identity.ErrNotFound):
+				if requireUser {
+					w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
+					problem.Error(w, r, http.StatusUnauthorized, "Register first: POST /api/auth/me.")
+					return
+				}
+			default:
 				m.logger.ErrorContext(r.Context(), "loading the caller's user failed", "error", err)
 				problem.Error(w, r, http.StatusServiceUnavailable, "Your account could not be loaded. Try again shortly.")
 				return
 			}
-			caller.User = &user
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextKey{}, caller)))
+		next.ServeHTTP(w, r.WithContext(NewContext(r.Context(), caller)))
 	}))
 }
 

@@ -76,9 +76,12 @@ services), and keeps no sessions. Every request becomes the same caller context 
 
 `bff-workspace` (`apps/api/cmd/bff`, Hydra client `erp-workspace`) serves its login on tenant
 domains at `/auth/*`; `/api/*` belongs to the API. `GET /auth/login?return_to=/path`
-sends the browser to Hydra (PKCE, state, nonce, scopes `openid offline_access`,
-audience `erp-api`); Hydra returns it to `https://<domain>/auth/callback`, where the BFF
-exchanges the code, verifies the ID token, starts a new session, and redirects to the
+sends the browser to Hydra (PKCE, state, nonce, scopes `openid offline_access email phone
+profile`, audience `erp-api`); Hydra returns it to `https://<domain>/auth/callback`, where
+the BFF exchanges the code, verifies the ID token, registers the person with the API
+(`POST /api/auth/me` with the new access token, C157; if that fails, the refresh token
+is revoked, no session is made, and the browser gets 502), starts a new session, and
+redirects to the
 local `return_to` path: a path on the same site, parsed by `url.Parse` (which refuses
 control characters, which browsers would strip, turning `/\t/evil` into `//evil`), with
 no scheme, host, `//` prefix, or backslash; anything else returns to `/` (C112). The callback must be registered on the client
@@ -184,21 +187,30 @@ get a token with an OAuth2 client that sends PKCE (above) and call
 
 The `identity` module (`apps/api/internal/platform/identity`, C122) owns the `users` table:
 the API's own ID for a person and copies of the Kratos identity's email, phone, and
-name ([data model](../data-model/README.md)). Other tables reference `users.id`, never
-the Kratos identity ID. A user is created **on first use**: when a request carries a
-person's token and no row exists for its subject, the module reads the identity from
-Kratos's admin API (`ory/client-go`, `APP_IDENTITY_KRATOS_ADMIN_URL`) and inserts the
-row. A person who registers but never uses an app has no row until their first login.
-A deleted or disabled Kratos account gets no row: the request gets 401 (`invalid_token`,
-C114). A token whose `sub` is its own `client_id` (Hydra's `client_credentials`) is a
-client acting for itself, with no user.
+name, and picture ([data model](../data-model/README.md)). Other tables reference
+`users.id`, never the Kratos identity ID.
 
-The `Authenticate` middleware (`internal/platform/identity/auth`, C125) resolves the
-token's subject to the user through the identity module, and keeps the caller (token and
-user) in the request context (`auth.FromContext`). If the user cannot be loaded (Kratos
-or the database unavailable), the request gets 503 without the cause. The copy is not refreshed after creation yet:
-self-service settings cannot change account fields (C85), so traits change only through
-the admin API, and the code that does that will refresh the user.
+**Registering (C157).** A user is created or updated only by **`POST /api/auth/me`**,
+called with the person's own access token: the API asks Cerbos (`identity:account`
+`register`, their own account), then reads Hydra's public `/userinfo` with that token
+(`ory/client-go`, the issuer's URL) and saves the email, phone, name, and picture the
+consent granted; `/userinfo` must name the token's subject. Calling it again refreshes
+the user. The BFFs call it in their sign-in callback; mobile and other clients call it
+right after sign-in too. A token without the `email` and `phone` scopes gets 403
+(`insufficient_scope`); a token Hydra no longer accepts (revoked, as for a disabled
+account, C101) gets 401; a picture that is not an `http(s)` address is dropped. A
+token whose `sub` is its own `client_id` (Hydra's `client_credentials`) is a client
+acting for itself, with no account: Cerbos denies it.
+
+**Reads never write (C157).** The `Authenticate` middleware
+(`internal/platform/identity/auth`, C125) verifies the token, looks up the subject's
+user, and keeps the caller (token and user) in the request context (`auth.FromContext`,
+`auth.NewContext` for other entry points); it never creates one. A person who has not
+registered gets 401 ("Register first: POST /api/auth/me."). If the user cannot be loaded
+(the database unavailable), the request gets 503 without the cause. `GET /api/auth/me`
+and every other GET only read. The authorization principal of a person carries their
+account as `account_id`; before they register they are the role `account` (ID their
+account), afterwards `user` (ID `users.id`).
 
 ## Accounts and development services (7a-1, C85)
 
