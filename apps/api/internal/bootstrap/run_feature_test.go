@@ -96,13 +96,15 @@ func TestFeatureRunServesUntilCancelled(t *testing.T) {
 		"APP_REDIS_HOST=" + redisHost(t), "APP_REDIS_TLS=false",
 		"APP_AUTH_ISSUER=http://127.0.0.1:1/",
 		"APP_IDENTITY_KRATOS_ADMIN_URL=http://127.0.0.1:1", "APP_IDENTITY_HYDRA_ADMIN_URL=http://127.0.0.1:1",
+		"APP_CERBOS_ADDR=127.0.0.1:1",
 	})
 	require.NoError(t, err)
 
 	var registered bool
-	register := func(_ context.Context, r chi.Router, d Deps) {
-		registered = d.Pool != nil && d.Cache != nil && d.HTTPClient != nil
+	register := func(_ context.Context, r chi.Router, d Deps) error {
+		registered = d.Pool != nil && d.Cache != nil && d.HTTPClient != nil && d.TracerProvider != nil
 		r.Get("/api/test", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+		return nil
 	}
 	stop := serve(t, func(ctx context.Context) error {
 		return Run(ctx, cfg, slog.New(slog.DiscardHandler), register)
@@ -129,10 +131,11 @@ func TestFeatureRunFailsOnABusyPort(t *testing.T) {
 		"APP_REDIS_HOST=" + redisHost(t), "APP_REDIS_TLS=false",
 		"APP_AUTH_ISSUER=http://127.0.0.1:1/",
 		"APP_IDENTITY_KRATOS_ADMIN_URL=http://127.0.0.1:1", "APP_IDENTITY_HYDRA_ADMIN_URL=http://127.0.0.1:1",
+		"APP_CERBOS_ADDR=127.0.0.1:1",
 	})
 	require.NoError(t, err)
 
-	err = Run(t.Context(), cfg, slog.New(slog.DiscardHandler), func(context.Context, chi.Router, Deps) {})
+	err = Run(t.Context(), cfg, slog.New(slog.DiscardHandler), func(context.Context, chi.Router, Deps) error { return nil })
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "listen")
 }

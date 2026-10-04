@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -36,9 +37,10 @@ func TestRegisterModulesMountsAuthBehindAuthentication(t *testing.T) {
 		Auth:     config.Auth{Issuer: "http://127.0.0.1:1/", Audience: "erp-api"},
 		Identity: config.Identity{KratosAdminURL: "http://127.0.0.1:1", HydraAdminURL: "http://127.0.0.1:1"},
 	}
-	RegisterModules(t.Context(), r, bootstrap.Deps{
+	cfg.Cerbos = config.Cerbos{Addr: "127.0.0.1:1", Timeout: time.Second} // connected lazily
+	require.NoError(t, RegisterModules(t.Context(), r, bootstrap.Deps{
 		Config: cfg, Logger: slog.New(slog.DiscardHandler), HTTPClient: http.DefaultClient,
-	})
+	}))
 
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/auth/me", nil))

@@ -22,6 +22,7 @@ func withDB(t *testing.T, environ []string) []string {
 		"APP_AUTH_ISSUER=http://identity.bool.test/",
 		"APP_IDENTITY_KRATOS_ADMIN_URL=http://kratos:4434",
 		"APP_IDENTITY_HYDRA_ADMIN_URL=http://hydra:4445",
+		"APP_CERBOS_ADDR=cerbos:3593",
 	}
 	return append(required, environ...)
 }
@@ -56,6 +57,7 @@ func defaults() Config {
 		Identity: Identity{
 			KratosAdminURL: "http://kratos:4434", HydraAdminURL: "http://hydra:4445",
 		},
+		Cerbos: Cerbos{Addr: "cerbos:3593", Timeout: 2 * time.Second},
 	}
 }
 
@@ -90,6 +92,7 @@ func TestLoadValues(t *testing.T) {
 		"APP_DB_PING_TIMEOUT=500ms",
 		"APP_REDIS_HOST=10.0.0.6", "APP_REDIS_PORT=6380", "APP_REDIS_USERNAME=cache",
 		"APP_REDIS_PASSWORD_FILE=" + secretFile(t, "s3cret-redis"), "APP_REDIS_DB=2", "APP_REDIS_TLS=false", "APP_REDIS_TIMEOUT=250ms",
+		"APP_CERBOS_TLS_CA_FILE=/run/secrets/cerbos_ca.pem",
 	}))
 	require.NoError(t, err)
 	assert.Equal(t, Config{
@@ -117,6 +120,7 @@ func TestLoadValues(t *testing.T) {
 		Identity: Identity{
 			KratosAdminURL: "http://kratos:4434", HydraAdminURL: "http://hydra:4445",
 		},
+		Cerbos: Cerbos{Addr: "cerbos:3593", TLSCAFile: "/run/secrets/cerbos_ca.pem", Timeout: 2 * time.Second},
 	}, cfg)
 }
 
@@ -278,7 +282,7 @@ func TestEveryFieldHasAVariable(t *testing.T) {
 	for path, variable := range api.byPath {
 		assert.Regexp(t, `^APP_[A-Z_]+$`, variable, path)
 	}
-	assert.Len(t, api.byPath, 32, "update this count when adding a setting")
+	assert.Len(t, api.byPath, 35, "update this count when adding a setting")
 
 	migrate := variables(reflect.TypeFor[Migrate]())
 	for path, variable := range migrate.byPath {
@@ -314,4 +318,27 @@ func TestLoadMigrateErrors(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "MIGRATE_DB_PORT: invalid int")
 	assert.NotContains(t, err.Error(), "s3cret")
+}
+
+func TestCerbos(t *testing.T) {
+	cfg, err := Load(withDB(t, nil))
+	require.NoError(t, err)
+	assert.Equal(t, Cerbos{Addr: "cerbos:3593", Timeout: 2 * time.Second}, cfg.Cerbos, "dev may use plaintext")
+
+	for _, env := range []string{"staging", "prod"} {
+		_, err = Load(withDB(t, []string{"APP_ENV=" + env}))
+		require.Error(t, err, "plaintext only in development and tests")
+		assert.ErrorContains(t, err, "APP_CERBOS_TLS_CA_FILE")
+	}
+	_, err = Load(withDB(t, []string{"APP_ENV=test"}))
+	require.NoError(t, err, "automated tests run on an internal network")
+
+	cfg, err = Load(withDB(t, []string{"APP_ENV=prod", "APP_CERBOS_TLS_CA_FILE=/run/secrets/cerbos_ca.pem"}))
+	require.NoError(t, err)
+	assert.Equal(t, "/run/secrets/cerbos_ca.pem", cfg.Cerbos.TLSCAFile)
+
+	for _, bad := range []string{"APP_CERBOS_ADDR=cerbos", "APP_CERBOS_TIMEOUT=10ms", "APP_CERBOS_TIMEOUT=1m"} {
+		_, err := Load(withDB(t, []string{bad}))
+		assert.Error(t, err, bad)
+	}
 }

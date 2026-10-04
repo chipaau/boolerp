@@ -34,6 +34,7 @@ type Config struct {
 	Redis    Redis    `envPrefix:"APP_REDIS_"`
 	Auth     Auth     `envPrefix:"APP_AUTH_"`
 	Identity Identity `envPrefix:"APP_IDENTITY_"`
+	Cerbos   Cerbos   `envPrefix:"APP_CERBOS_"`
 }
 
 // Load reads the API's settings from environ, which uses the os.Environ
@@ -50,6 +51,11 @@ func validateAcrossGroups(sl validator.StructLevel) {
 	// Graceful shutdown must let any request the server allows finish (C30).
 	if cfg.App.ShutdownTimeout < cfg.HTTP.WriteTimeout {
 		sl.ReportError(cfg.App.ShutdownTimeout, "ShutdownTimeout", "App.ShutdownTimeout", "gtefield", "HTTP.WriteTimeout")
+	}
+	// Authorization traffic is encrypted in staging and production; development and
+	// automated tests run on an internal network (C152, C155).
+	if cfg.Cerbos.TLSCAFile == "" && cfg.App.Environment != "dev" && cfg.App.Environment != "test" {
+		sl.ReportError(cfg.Cerbos.TLSCAFile, "TLSCAFile", "Cerbos.TLSCAFile", "required_outside_dev_and_test", "")
 	}
 }
 

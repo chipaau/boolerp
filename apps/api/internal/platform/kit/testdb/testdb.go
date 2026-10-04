@@ -17,6 +17,7 @@ import (
 	"cmp"
 	"context"
 	"os"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -124,4 +125,55 @@ func OwnerTx(t testing.TB) pgx.Tx {
 	}
 	t.Cleanup(func() { _ = tx.Rollback(context.Background()) })
 	return tx
+}
+
+// Querier runs a query: a test's transaction (Tx, OwnerTx) or a pool.
+type Querier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// Count returns how many rows of table match every column = value in where, like
+// Laravel's assertDatabaseCount. Table and column names are quoted; values are
+// bound parameters.
+func Count(t testing.TB, q Querier, table string, where map[string]any) int {
+	t.Helper()
+	sql := "SELECT count(*) FROM " + pgx.Identifier{table}.Sanitize()
+	args := make([]any, 0, len(where))
+	cols := make([]string, 0, len(where))
+	for col := range where {
+		cols = append(cols, col)
+	}
+	slices.Sort(cols) // a stable statement, for readable failures
+	for i, col := range cols {
+		if i == 0 {
+			sql += " WHERE "
+		} else {
+			sql += " AND "
+		}
+		args = append(args, where[col])
+		sql += pgx.Identifier{col}.Sanitize() + " = $" + strconv.Itoa(len(args))
+	}
+	var n int
+	if err := q.QueryRow(context.Background(), sql, args...).Scan(&n); err != nil {
+		t.Fatalf("count %s: %v", table, err)
+	}
+	return n
+}
+
+// AssertHas fails the test unless table has a row matching where, like Laravel's
+// assertDatabaseHas: after a create or update, the record is stored as expected.
+func AssertHas(t testing.TB, q Querier, table string, where map[string]any) {
+	t.Helper()
+	if Count(t, q, table, where) == 0 {
+		t.Errorf("%s has no row matching %v", table, where)
+	}
+}
+
+// AssertMissing fails the test if table has a row matching where, like Laravel's
+// assertDatabaseMissing: after a delete, or when nothing should have been written.
+func AssertMissing(t testing.TB, q Querier, table string, where map[string]any) {
+	t.Helper()
+	if n := Count(t, q, table, where); n > 0 {
+		t.Errorf("%s has %d row(s) matching %v", table, n, where)
+	}
 }
