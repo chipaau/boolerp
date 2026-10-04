@@ -53,6 +53,7 @@ func account(identity *ory.Identity) domain.Account {
 		Email:            text(traits["email"]),
 		Phone:            text(traits["phone"]),
 		DisplayName:      text(traits["name"]),
+		AvatarURL:        text(traits["picture"]),
 		Active:           identity.GetState() == "active",
 	}
 }

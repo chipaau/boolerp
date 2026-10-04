@@ -39,6 +39,14 @@
           "type": "string",
           "maxLength": 100
         },
+        "picture": {
+          "title": "Picture",
+          "description": "An optional address of the person's picture, filled from Google's picture claim (oidc.google.jsonnet).",
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://",
+          "maxLength": 2048
+        },
         "additional_emails": {
           "title": "Additional emails",
           "description": "Further addresses, added only through the admin API and already verified (C85).",

@@ -38,6 +38,14 @@
           "title": "Display name",
           "type": "string",
           "maxLength": 100
+        },
+        "picture": {
+          "title": "Picture",
+          "description": "An optional address of the person's picture, filled from Google's picture claim (oidc.google.jsonnet).",
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://",
+          "maxLength": 2048
         }
       },
       "required": [

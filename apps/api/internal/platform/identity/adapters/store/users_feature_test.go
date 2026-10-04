@@ -27,11 +27,16 @@ func TestFeatureSaveCreatesThenUpdatesTheSameUser(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, created.ID, 36, "a UUID")
 	assert.Empty(t, created.DisplayName)
+	assert.Empty(t, created.AvatarURL)
 
-	updated, err := users.Save(ctx, domain.Account{KratosIdentityID: kratosID, Email: "a@b.test", Phone: "+9607771111", DisplayName: "Aisha"})
+	updated, err := users.Save(ctx, domain.Account{
+		KratosIdentityID: kratosID, Email: "a@b.test", Phone: "+9607771111", DisplayName: "Aisha",
+		AvatarURL: "https://example.test/aisha.png",
+	})
 	require.NoError(t, err)
 	assert.Equal(t, created.ID, updated.ID, "one user per Kratos account")
 	assert.Equal(t, "+9607771111", updated.Phone)
+	assert.Equal(t, "https://example.test/aisha.png", updated.AvatarURL)
 
 	found, err := users.ByKratosID(ctx, kratosID)
 	require.NoError(t, err)
@@ -56,4 +61,16 @@ func TestFeatureTheRuntimeRoleCannotDeleteUsers(t *testing.T) {
 	assert.Zero(t, tag.RowsAffected(), "no delete policy: the row is not deleted")
 	_, err = users.ByKratosID(t.Context(), "00000000-0000-0000-0000-0000000000d1")
 	assert.NoError(t, err, "the user is still there")
+}
+
+func TestFeatureAvatarURLMustBeAnHTTPAddress(t *testing.T) {
+	for _, avatar := range []string{"javascript:alert(1)", "ftp://example.test/a.png", "data:image/png;base64,AA"} {
+		t.Run(avatar, func(t *testing.T) {
+			_, err := store.NewUsers(testdb.Tx(t)).Save(t.Context(), domain.Account{
+				KratosIdentityID: "00000000-0000-0000-0000-0000000000a1", Email: "v@b.test", Phone: "+9607000000",
+				AvatarURL: avatar,
+			})
+			assert.Error(t, err, "the check constraint refuses it")
+		})
+	}
 }

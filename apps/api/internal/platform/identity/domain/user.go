@@ -11,6 +11,7 @@ type User struct {
 	Email            string // the account's registration email
 	Phone            string // the account's phone; unverified for now (C85)
 	DisplayName      string // optional
+	AvatarURL        string // optional: the address of the person's picture
 }
 
 // Account is what Kratos holds about an account, as the module needs it.
@@ -19,7 +20,8 @@ type Account struct {
 	Email            string
 	Phone            string
 	DisplayName      string
-	Active           bool // false once the account is disabled (C101)
+	AvatarURL        string // the picture trait
+	Active           bool   // false once the account is disabled (C101)
 }
 
 // NewAccount is an account to create in Kratos: verified email, contact phone,

@@ -1,8 +1,10 @@
 -- Users (C94): our record of each account, a projection of the Kratos account it
 -- maps to. Kratos stays the source of truth for credentials, emails, and
 -- verification; this keeps what joins, display, and search need. Global, not
--- tenant-scoped: a user exists without any membership. email, phone, and
--- display_name are personal data (never logged, cached by, or traced).
+-- tenant-scoped: a user exists without any membership. email, phone,
+-- display_name, and avatar_url are personal data (never logged, cached by, or
+-- traced). avatar_url is the address of the person's picture (the Kratos picture
+-- trait): http(s) only, never blank.
 
 -- +goose Up
 CREATE TABLE users (
@@ -11,6 +13,7 @@ CREATE TABLE users (
     email              text        NOT NULL,
     phone              text        NOT NULL,
     display_name       text,
+    avatar_url         text        CHECK (avatar_url ~ '^https?://' AND btrim(avatar_url) <> ''),
     created_at         timestamptz NOT NULL DEFAULT now(),
     updated_at         timestamptz NOT NULL DEFAULT now()
 );

@@ -188,6 +188,11 @@ function Divider() {
   )
 }
 
+// The picture trait is filled only from Google's profile (oidc.google.jsonnet), never
+// typed: it is sent as a hidden field so Google's value survives the step that asks
+// for the phone.
+const PICTURE = 'traits.picture'
+
 // A password's Show/Hide sits in its label but changes its input's type.
 const RevealContext = createContext<{ reveal: boolean; toggle: () => void } | null>(null)
 
@@ -198,7 +203,7 @@ function Label({ node, attributes, children }: OryNodeLabelProps) {
   // only (C85).
   const label = attributes.name === 'identifier' ? 'Email' : node.meta.label?.text
   const isPassword = attributes.type === 'password'
-  if (attributes.type === 'hidden') return <>{children}</>
+  if (attributes.type === 'hidden' || attributes.name === PICTURE) return <>{children}</>
   return (
     <RevealContext.Provider value={{ reveal, toggle: () => setReveal((r) => !r) }}>
       <label className="block">
@@ -235,6 +240,7 @@ function FieldInput({ node, inputProps }: OryNodeInputProps) {
   const reveal = useContext(RevealContext)
   const hasError = node.messages?.some((m) => m.type === 'error')
   if (inputProps.type === 'hidden') return <input {...inputProps} />
+  if (inputProps.name === PICTURE) return <input {...inputProps} type="hidden" />
   const type = inputProps.type === 'password' && reveal?.reveal ? 'text' : inputProps.type
   return (
     <Input

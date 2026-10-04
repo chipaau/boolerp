@@ -27,7 +27,7 @@ type Users struct {
 // NewUsers returns the users store over db.
 func NewUsers(db DB) *Users { return &Users{db: db} }
 
-const columns = `id::text, kratos_identity_id::text, email, phone, coalesce(display_name, '')`
+const columns = `id::text, kratos_identity_id::text, email, phone, coalesce(display_name, ''), coalesce(avatar_url, '')`
 
 // ByKratosID implements application.Users.
 func (s *Users) ByKratosID(ctx context.Context, kratosIdentityID string) (domain.User, error) {
@@ -43,17 +43,18 @@ func (s *Users) ByKratosID(ctx context.Context, kratosIdentityID string) (domain
 // the same account at once cannot create two users.
 func (s *Users) Save(ctx context.Context, a domain.Account) (domain.User, error) {
 	return scan(s.db.QueryRow(ctx, `
-		INSERT INTO users (kratos_identity_id, email, phone, display_name)
-		VALUES ($1, $2, $3, nullif($4, ''))
+		INSERT INTO users (kratos_identity_id, email, phone, display_name, avatar_url)
+		VALUES ($1, $2, $3, nullif($4, ''), nullif($5, ''))
 		ON CONFLICT (kratos_identity_id) DO UPDATE
 		SET email = excluded.email, phone = excluded.phone,
-		    display_name = excluded.display_name, updated_at = now()
+		    display_name = excluded.display_name, avatar_url = excluded.avatar_url,
+		    updated_at = now()
 		RETURNING `+columns,
-		a.KratosIdentityID, a.Email, a.Phone, a.DisplayName))
+		a.KratosIdentityID, a.Email, a.Phone, a.DisplayName, a.AvatarURL))
 }
 
 func scan(row pgx.Row) (domain.User, error) {
 	var u domain.User
-	err := row.Scan(&u.ID, &u.KratosIdentityID, &u.Email, &u.Phone, &u.DisplayName)
+	err := row.Scan(&u.ID, &u.KratosIdentityID, &u.Email, &u.Phone, &u.DisplayName, &u.AvatarURL)
 	return u, err
 }
