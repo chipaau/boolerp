@@ -34,6 +34,13 @@ oidc:
   subject_identifiers:
     supported_types: [public]
 
+# What discovery advertises: the consent route puts these claims into the ID token
+# (and /userinfo) for the granted email, phone, and profile scopes.
+webfinger:
+  oidc_discovery:
+    supported_scope: [email, phone, profile, offline_access]
+    supported_claims: [email, email_verified, phone_number, name, picture]
+
 # Access tokens are JWTs that the API verifies locally against Hydra's published
 # keys (C91), valid for 10 minutes; the BFF refreshes them. Refresh tokens last
 # 12 hours, as Kratos sessions and BFF sessions do (C96), instead of Hydra's 30

@@ -212,7 +212,7 @@ func TestLoginRedirectsWithPKCENonceAndAudience(t *testing.T) {
 
 	assert.Equal(t, "erp-workspace", q.Get("client_id"))
 	assert.Equal(t, "code", q.Get("response_type"))
-	assert.Equal(t, "openid offline_access", q.Get("scope"))
+	assert.Equal(t, "openid offline_access email phone profile", q.Get("scope"))
 	assert.Equal(t, "erp-api", q.Get("audience"), "so the API accepts the access token")
 	// The callback is on the domain the browser is on; plain HTTP here.
 	assert.Equal(t, "http://demo.bool.test/auth/callback", q.Get("redirect_uri"))

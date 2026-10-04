@@ -96,6 +96,9 @@ services:
       KRATOS_INTERNAL_URL: http://kratos:4433
       # Hydra's admin API, for the consent route only (C87, C89).
       HYDRA_ADMIN_URL: http://hydra:4445
+      # Kratos's admin API, for the consent route only: it reads the account's details
+      # for the ID token.
+      KRATOS_ADMIN_URL: http://kratos:4434
     depends_on:
       kratos:
         condition: service_healthy

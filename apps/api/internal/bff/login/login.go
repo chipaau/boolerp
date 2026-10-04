@@ -157,8 +157,9 @@ func (h *Handler) oauth2Config(p *oidc.Provider, callback string) *oauth2.Config
 		Endpoint:     endpoint,
 		RedirectURL:  callback,
 		// offline: Hydra issues a refresh token, so the session outlives the
-		// 10-minute access token.
-		Scopes: []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess},
+		// 10-minute access token. email, phone, and profile: the person's details
+		// in the ID token and from /userinfo, never in the access token.
+		Scopes: []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "email", "phone", "profile"},
 	}
 }
 
