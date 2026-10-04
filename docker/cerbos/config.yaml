@@ -1,0 +1,41 @@
+# Cerbos, the authorization policy engine (C21, C149-C152). The API calls it over
+# gRPC with cerbos-sdk-go (C152); the HTTP listener is for the container healthcheck
+# and debugging with curl. Both listen only on the internal Compose network.
+server:
+  grpcListenAddr: ":3593"
+  httpListenAddr: ":3592"
+  # The Admin API stays off: policies come from the release, never edited at runtime.
+  adminAPI:
+    enabled: false
+
+# Policies are YAML from the modules, assembled per edition by cmd/policies into the
+# directory below (C151); Cerbos reloads them when they change.
+storage:
+  driver: disk
+  disk:
+    directory: /policies
+    watchForChanges: true
+
+engine:
+  # An error in a condition denies, instead of counting as "not satisfied", which
+  # could silently skip a deny rule (C150).
+  strictEvaluation: true
+
+# A request missing a required principal or resource attribute is rejected and
+# denied, never evaluated without it (C151).
+schema:
+  enforcement: reject
+
+# Development: decisions go to the container's output. Where they are kept durably
+# is decided separately (C146).
+audit:
+  enabled: true
+  accessLogsEnabled: false
+  decisionLogsEnabled: true
+  backend: file
+  file:
+    path: stdout
+
+# No anonymous usage reports to Cerbos, in development or tests (as for Kratos, C110).
+telemetry:
+  disabled: true

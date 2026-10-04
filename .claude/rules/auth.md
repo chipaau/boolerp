@@ -15,3 +15,10 @@ Read [identity](../../docs/platform/identity.md) and
 - Never replace removed providers with an allow-all policy or an authentication bypass.
 - Keep credentials, tokens, and private employee content out of logs, traces, and cache keys.
 - Do not confuse global account disablement with tenant-specific access removal.
+- Authorization (C150): Cerbos policies are static YAML; the caller's tenant capabilities
+  are sent as Cerbos roles and record facts as attributes. Default to attribute-based
+  rules (a derived role or condition on the caller's relationship to the record); add a
+  capability only for grants with no relationship to key on, and ask the user before
+  adding one. Every tenant resource policy checks the tenant; no code path bypasses
+  Cerbos, the operator included; any Cerbos or adapter failure denies.
+

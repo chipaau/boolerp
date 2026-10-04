@@ -306,6 +306,27 @@ services:
       - traefik.http.middlewares.erp-api-ratelimit.ratelimit.burst=100
       - "traefik.http.services.erp-api.loadbalancer.server.port=${APP_PORT:-8080}"
 
+  # Cerbos, the authorization policy engine (C149-C152): reachable only on the internal
+  # network, gRPC on 3593 for the API, HTTP on 3592 for the healthcheck and curl. It
+  # reads the policies cmd/policies assembles into the cerbos-policies volume (C151);
+  # empty until then, which denies everything.
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:0.56.0@sha256:540643bc67ba628011a150ad1d3370f285daa38995be5cd7a4be181da902bec1
+    command: ["server", "--config=/etc/cerbos/config.yaml"]
+    # The image runs as root by default; Cerbos needs no privileges or writable files.
+    user: "65532:65532"
+    read_only: true
+    volumes:
+      - ./docker/cerbos/config.yaml:/etc/cerbos/config.yaml:ro
+      - cerbos-policies:/policies:ro
+    healthcheck:
+      test: ["CMD", "/cerbos", "healthcheck", "--config=/etc/cerbos/config.yaml"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    networks:
+      - internal
+
   # One-off migrations as the migration role (C47): `docker compose run --rm migrate`.
   # The "tools" profile keeps it out of `docker compose up`. It and seed are the
   # only services given the migration role's password (C80).
@@ -692,6 +713,7 @@ networks:
 
 volumes:
   pgdata:
+  cerbos-policies:
   redis-sessions:
   gocache:
   gomod:

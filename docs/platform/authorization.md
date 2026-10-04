@@ -16,8 +16,11 @@ effects on memberships and sessions elsewhere.
 
 ## Open decisions
 
-Decided: Cerbos as the policy engine (C21), and the role, capability, and assignment
-tables (C116). Still open:
+Decided: Cerbos as the policy engine (C21); the role, capability, and assignment
+tables (C116); Cerbos as its own service with YAML policies tested in CI (C149); static
+policies with tenant capabilities sent as Cerbos roles and record facts as attributes,
+attribute-based rules by default, no bypass for the operator, and a tenant check in every
+tenant resource policy (C150); policies inside each module with tests and attribute schemas, missing attributes denied (C151); gRPC through `cerbos-sdk-go`, and the `cerbos` Compose service (C152). Still open:
 
 - The Cerbos policies, record-level scope, and permission administration.
 - The Cerbos SDK and the sources of trusted principal/resource attributes.
