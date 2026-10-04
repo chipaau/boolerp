@@ -187,7 +187,12 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   applicants, and patients sign in with ordinary accounts that the app's own records
   link to, and never become members or seats.
 
-**Resolving a request's tenant**
+**Resolving a request's tenant** (code shape: C144)
+- The tenant travels in `context.Context`, set by the `ResolveTenant` middleware (HTTP), a
+  `--tenant` / `--all-tenants` flag (CLI), or a job's stored tenant (workers); each
+  transaction applies it with `SET LOCAL`. Guards run in order: `Authenticate`,
+  `RequireUser` or `RequireClient`, `ResolveTenant`, `RequireMember`,
+  `RequireActiveTenant`; modules use the named chains in `platform.Services`.
 - Browser requests: the BFF passes the browser's host, looked up in `domains`. Direct
   API clients (mobile, integrations) name the tenant in a header. Neither proves access:
   an active membership does, checked with the tenant's status in one call through the
