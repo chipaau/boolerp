@@ -17,9 +17,10 @@ import (
 
 // Tenant is the tenant a request, command, or job acts in.
 type Tenant struct {
-	ID     string // tenants.id
-	Code   string // tenants.code, for logs and messages
-	Status string // tenants.status when it was resolved
+	ID         string // tenants.id
+	Code       string // tenants.code, for logs and messages
+	Status     string // tenants.status when it was resolved
+	IsOperator bool   // tenants.is_operator: the request acts in the operator tenant
 }
 
 type (

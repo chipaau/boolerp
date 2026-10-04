@@ -259,6 +259,9 @@ services:
       APP_IDENTITY_KRATOS_ADMIN_URL: http://kratos:4434
       # Disabling an account ends its Hydra logins and tokens (C101).
       APP_IDENTITY_HYDRA_ADMIN_URL: http://hydra:4445
+      # Every protected operation asks Cerbos, over gRPC on the internal network
+      # (C152, C155); plaintext is allowed only in development and tests.
+      APP_CERBOS_ADDR: cerbos:3593
     # Only the runtime role's password; never the owner's or the migration role's (C47).
     secrets: [db_app_password]
     # The API fetches Hydra's keys from the issuer's address, through Traefik on the host.
@@ -283,6 +286,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      cerbos:
         condition: service_healthy
     networks:
       - proxy

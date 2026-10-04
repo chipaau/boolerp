@@ -403,7 +403,7 @@ func TestModulesInheritDefaultsAndApplyTheirOwnAuth(t *testing.T) {
 	// Mounted as main mounts it.
 	router.Route("/api/auth", auth.New(t.Context(),
 		auth.Settings{Issuer: "http://127.0.0.1:1/", Audience: "erp-api"}, &http.Client{Timeout: time.Second},
-		noUsers{}, slog.New(slog.DiscardHandler)).Routes)
+		noUsers{}, nil, slog.New(slog.DiscardHandler)).Routes)
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/auth/me", nil))

@@ -15,14 +15,23 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 )
 
 // Module is the authentication module.
 type Module struct {
-	verifier *Verifier
+	verifier tokenVerifier
 	users    Users
+	authz    authorization.Authorizer
 	logger   *slog.Logger
+}
+
+// tokenVerifier checks an access token and returns what it says; *Verifier is the
+// real one, and endpoint tests substitute their own (authentication is faked in
+// endpoint tests, docs/testing.md).
+type tokenVerifier interface {
+	Verify(ctx context.Context, raw string) (Token, error)
 }
 
 // Users resolves a token's subject (a Kratos account) to its user, creating it
@@ -49,14 +58,15 @@ type Settings struct {
 // fetches, so pass the application's lifetime context. Keys are fetched on first
 // use, so the API starts and is ready while Hydra is down. users turns a
 // token's subject into the user.
-func New(ctx context.Context, s Settings, client *http.Client, users Users, logger *slog.Logger) *Module {
-	return &Module{verifier: NewVerifier(ctx, s.Issuer, s.Audience, client), users: users, logger: logger}
+func New(ctx context.Context, s Settings, client *http.Client, users Users, authz authorization.Authorizer, logger *slog.Logger) *Module {
+	return &Module{verifier: NewVerifier(ctx, s.Issuer, s.Audience, client), users: users, authz: authz, logger: logger}
 }
 
 // Routes registers the module's routes, relative to where it is mounted.
 func (m *Module) Routes(r chi.Router) {
 	r.Group(func(r chi.Router) {
-		r.Use(m.Authenticate)
+		// Every route here asks Cerbos before it answers (C155).
+		r.Use(m.Authenticate, authorization.Enforce(m.logger))
 		r.Get("/me", m.me)
 	})
 }

@@ -6,12 +6,14 @@ package full
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
@@ -24,6 +26,7 @@ import (
 	referenceseeds "github.com/boolmv/erp/apps/api/internal/platform/reference/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy"
 	tenancyseeds "github.com/boolmv/erp/apps/api/internal/platform/tenancy/seeds"
+	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
 )
 
 // Migrations are the edition's tables, in dependency order: a package's tables come
@@ -47,7 +50,7 @@ var Policies = []authorization.ModulePolicies{
 
 // RegisterModules builds the edition's modules, connects them, and registers
 // their routes (bootstrap.RegisterModules).
-func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
+func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error {
 	cfg := d.Config
 
 	users := identity.New(d.Pool, identity.Settings{
@@ -55,11 +58,41 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) {
 		HydraAdminURL:  cfg.Identity.HydraAdminURL,
 	}, d.HTTPClient, d.Logger)
 
+	// Authorization asks Cerbos (C152, C155). The connection lives as long as the
+	// process: requests still being answered during shutdown keep using it.
+	cerbosClient, err := authorization.Dial(authorization.Settings{
+		Addr: cfg.Cerbos.Addr, TLSCAFile: cfg.Cerbos.TLSCAFile, Timeout: cfg.Cerbos.Timeout,
+	}, grpcTelemetry(d)...)
+	if err != nil {
+		return err
+	}
+	authz := authorization.NewCerbos(cerbosClient, Principal, cfg.Cerbos.Timeout)
+
 	// Authentication resolves a token's subject to its user through identity.
 	authModule := auth.New(ctx, auth.Settings{Issuer: cfg.Auth.Issuer, Audience: cfg.Auth.Audience},
-		d.HTTPClient, users, d.Logger)
+		d.HTTPClient, users, authz, d.Logger)
 
 	r.Route("/api/auth", authModule.Routes)
+	return nil
+}
+
+// Principal builds who is asking for every authorization check (C154, C155): the
+// authenticated person (role user) or machine client (role client), and the tenant
+// the request acts in, when there is one. Inside a tenant, member and the caller's
+// capabilities there are added once memberships and roles exist.
+func Principal(ctx context.Context) (authorization.Principal, error) {
+	caller, ok := auth.FromContext(ctx)
+	if !ok {
+		return authorization.Principal{}, errors.New("no authenticated caller")
+	}
+	p := authorization.Principal{ID: caller.Token.ClientID, Roles: []string{"client"}}
+	if caller.User != nil {
+		p = authorization.Principal{ID: caller.User.ID, Roles: []string{"user"}}
+	}
+	if t, ok := tenant.From(ctx); ok {
+		p.Attributes = map[string]any{"tenant_id": t.ID, "in_operator_tenant": t.IsOperator}
+	}
+	return p, nil
 }
 
 // SeedSettings configure the seeders (from config.Seed and config.Deploy).
@@ -109,4 +142,20 @@ func Seeders(db *pgxpool.Pool, s SeedSettings, client *http.Client, logger *slog
 	return []seed.Seeder{
 		identityseeds.NewUsers(users),
 	}
+}
+
+// grpcTelemetry instruments gRPC clients with the API's tracing and metrics, when
+// bootstrap provides them.
+func grpcTelemetry(d bootstrap.Deps) []otelgrpc.Option {
+	var opts []otelgrpc.Option
+	if d.TracerProvider != nil {
+		opts = append(opts, otelgrpc.WithTracerProvider(d.TracerProvider))
+	}
+	if d.MeterProvider != nil {
+		opts = append(opts, otelgrpc.WithMeterProvider(d.MeterProvider))
+	}
+	if d.Propagator != nil {
+		opts = append(opts, otelgrpc.WithPropagators(d.Propagator))
+	}
+	return opts
 }

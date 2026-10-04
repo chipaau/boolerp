@@ -3,12 +3,27 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 )
 
 // me answers who is calling (GET /api/auth/me): the signed-in user and the
-// client the token was issued to. A client acting for itself has no user.
+// client the token was issued to. A client acting for itself has no user. Cerbos
+// decides first: identity:user view of their own user, or identity:client view of
+// itself (C154, C155).
 func (m *Module) me(w http.ResponseWriter, r *http.Request) {
 	caller, _ := FromContext(r.Context())
+
+	// A person may see their own user; a machine client only itself (C154).
+	res := authorization.Resource{Kind: "identity:client", ID: caller.Token.ClientID}
+	if caller.User != nil {
+		res = authorization.Resource{Kind: "identity:user", ID: caller.User.ID}
+	}
+	if err := m.authz.Check(r.Context(), "view", res); err != nil {
+		authorization.WriteError(w, r, err)
+		return
+	}
+
 	type user struct {
 		ID          string `json:"id"`
 		Email       string `json:"email"`

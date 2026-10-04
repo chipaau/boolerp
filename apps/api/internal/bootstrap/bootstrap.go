@@ -23,6 +23,9 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpserver"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // telemetryFlushTimeout bounds exporting the last spans or metric readings on
@@ -38,6 +41,11 @@ type Deps struct {
 	// HTTPClient makes outbound requests, such as fetching Hydra's keys; it has a
 	// timeout, so a slow dependency cannot hold a request open.
 	HTTPClient *http.Client
+	// Telemetry lets modules instrument their own clients, such as Cerbos's gRPC
+	// connection, with the API's tracing and metrics.
+	TracerProvider trace.TracerProvider
+	MeterProvider  metric.MeterProvider
+	Propagator     propagation.TextMapPropagator
 }
 
 // RegisterModules constructs the modules of this build, connects them, and
@@ -45,7 +53,7 @@ type Deps struct {
 // authModule.Routes)). Each edition package supplies it (C95). The router
 // already carries the default middleware, which the modules inherit. ctx lives
 // as long as the API.
-type RegisterModules func(ctx context.Context, r chi.Router, d Deps)
+type RegisterModules func(ctx context.Context, r chi.Router, d Deps) error
 
 // Run builds the API from cfg and serves until ctx is cancelled, then shuts
 // the HTTP server down gracefully. Dependencies are closed by deferred calls
@@ -83,13 +91,19 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger, registerMo
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}
-	registerModules(ctx, router, Deps{
-		Config:     cfg,
-		Pool:       pool,
-		Cache:      cache,
-		Logger:     logger,
-		HTTPClient: &http.Client{Timeout: 10 * time.Second},
+	err = registerModules(ctx, router, Deps{
+		Config:         cfg,
+		Pool:           pool,
+		Cache:          cache,
+		Logger:         logger,
+		HTTPClient:     &http.Client{Timeout: 10 * time.Second},
+		TracerProvider: tr.provider,
+		MeterProvider:  mt.provider,
+		Propagator:     tr.propagator,
 	})
+	if err != nil {
+		return fmt.Errorf("modules: %w", err)
+	}
 
 	// Listening separately from serving makes a busy port a startup error,
 	// and "api listening" is logged only once the port is actually bound.

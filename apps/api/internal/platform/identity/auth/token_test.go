@@ -100,7 +100,7 @@ func sign(t *testing.T, c claims) string {
 // a handler that echoes the verified token.
 func call(t *testing.T, iss *issuer, authorization string) *httptest.ResponseRecorder {
 	t.Helper()
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(knownUser), slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(knownUser), allowOwn{}, slog.New(slog.DiscardHandler))
 	handler := m.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		caller, ok := FromContext(r.Context())
 		require.True(t, ok)
@@ -169,7 +169,7 @@ func TestForgedTokensDoNotDownloadTheKeysEachTime(t *testing.T) {
 	iss := newIssuer(t)
 	forger, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(knownUser), slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(knownUser), allowOwn{}, slog.New(slog.DiscardHandler))
 	handler := m.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
 	send := func(token string) int {
 		req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
@@ -198,7 +198,7 @@ func TestRecentlyExpiredTokenIsWithinTheAllowance(t *testing.T) {
 
 func TestRoutesProtectMe(t *testing.T) {
 	iss := newIssuer(t)
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(knownUser), slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(knownUser), allowOwn{}, slog.New(slog.DiscardHandler))
 	r := chi.NewRouter()
 	r.Route("/api/auth", m.Routes) // as bootstrap mounts it
 
@@ -221,7 +221,7 @@ func TestCallerIsTheResolvedUser(t *testing.T) {
 		resolved = append(resolved, subject)
 		return knownUser(ctx, subject)
 	}
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(resolve), slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(resolve), allowOwn{}, slog.New(slog.DiscardHandler))
 	var caller Caller
 	handler := m.Authenticate(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		caller, _ = FromContext(r.Context())
@@ -241,7 +241,7 @@ func TestUnavailableUserIsA503WithoutTheCause(t *testing.T) {
 	failing := func(context.Context, string) (identity.User, error) {
 		return identity.User{}, errors.New("s3cret-cause")
 	}
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(failing), slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(failing), allowOwn{}, slog.New(slog.DiscardHandler))
 	handler := m.Authenticate(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("must not be reached") }))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer "+sign(t, iss.valid()))
@@ -255,7 +255,7 @@ func TestUnavailableUserIsA503WithoutTheCause(t *testing.T) {
 func TestADeletedOrDisabledAccountIsA401(t *testing.T) {
 	iss := newIssuer(t)
 	gone := func(context.Context, string) (identity.User, error) { return identity.User{}, identity.ErrNoAccount }
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(gone), slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(gone), allowOwn{}, slog.New(slog.DiscardHandler))
 	handler := m.Authenticate(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("must not be reached") }))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer "+sign(t, iss.valid()))
@@ -272,7 +272,7 @@ func TestAClientActingForItselfHasNoUser(t *testing.T) {
 		t.Error("a client's own token is not resolved to a user")
 		return identity.User{}, nil
 	}
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(resolve), slog.New(slog.DiscardHandler))
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(resolve), allowOwn{}, slog.New(slog.DiscardHandler))
 	var caller Caller
 	handler := m.Authenticate(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		caller, _ = FromContext(r.Context())

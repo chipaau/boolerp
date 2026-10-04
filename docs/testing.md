@@ -114,7 +114,7 @@ count as successful.
 | Job | Runs | Needs |
 | --- | --- | --- |
 | API lint | `golangci-lint fmt --diff` (formatting) and `golangci-lint run` (C75) | nothing |
-| API feature tests and coverage | `run-feature-tests.sh`: `cmd/migrate` once, then the whole suite, unit and feature tests, `go test -race -tags feature -coverpkg=./... -coverprofile=cover.out ./...` (C77, C79, C143); then go-test-coverage fails the job below the threshold in `apps/api/.testcoverage.yml` (C119) | PostgreSQL (roles script) and Redis |
+| API feature tests and coverage | `run-feature-tests.sh`: `cmd/migrate` once, then the whole suite, unit and feature tests, `go test -race -tags feature -coverpkg=./... -coverprofile=cover.out ./...` (C77, C79, C143); then go-test-coverage fails the job below the threshold in `apps/api/.testcoverage.yml` (C119) | PostgreSQL (roles script), Redis, and Cerbos with the edition's policies (`start-cerbos.sh`) |
 | API vulnerabilities | `govulncheck` (C113): known vulnerabilities in Go code the API calls | nothing |
 | API image | builds the production image, runs its `migrate`, and scans it with Grype (C113) | PostgreSQL |
 | workspace / admin / identity / website | frontend typecheck (where the app has one) and build | nothing |
@@ -149,6 +149,27 @@ does (above) and then:
 docker run --rm -v "$PWD/apps/api:/src" -w /src golang:1.27 \
   go run github.com/vladopajic/go-test-coverage/v2@v2.19.0 --config=.testcoverage.yml
 ```
+
+### Endpoint tests (C156)
+
+An endpoint test calls an API route through the real router and middleware, against the
+real PostgreSQL (the test's rolled-back transaction as the runtime role), like Laravel's
+feature tests:
+
+- **Authentication is faked**, like `actingAs`: the test swaps the token check for known
+  test tokens (`fakeTokens` in `identity/auth`), never real Hydra tokens.
+- **Authorization is faked**: an `authorization.Authorizer` that allows or denies as the
+  test states, and notes its decisions (`authorization.NoteDecision`) so the
+  record-or-deny backstop sees them.
+- **Every other outside service is faked**: Kratos, Hydra, Cerbos, mail, object storage
+  (`httptest` servers or fakes behind the module's port).
+- **The database state is asserted after every write**: `testdb.AssertHas` after a create
+  or update (the row with the expected values), `testdb.AssertMissing` after a delete or
+  when nothing may be written, `testdb.Count` for duplicates.
+
+Only **adapter tests** talk to a real outside service, to prove the integration itself:
+`authorization/cerbos_feature_test.go` asks the real Cerbos with the edition's policies.
+Example: `identity/auth/me_feature_test.go`.
 
 ### Authorization policies (C151)
 
@@ -190,7 +211,7 @@ docker run --rm -v erp_cerbos-policies:/policies:ro ghcr.io/cerbos/cerbos:0.56.0
 
 - **Unit tests** need no external services: configuration, handlers, validation, logging,
   problem responses, and anything using fakes or `httptest`.
-- **Feature tests** run against real PostgreSQL and Redis: the pool, migrations, role
+- **Feature tests** run against real PostgreSQL, Redis, and Cerbos (C155): the pool, migrations, role
   privileges, database and cache tracing, and later full HTTP requests through the app
   with a database (like Laravel's feature tests). They live in `*_feature_test.go` files
   that start with `//go:build feature`, and their names start with `TestFeature`. They
@@ -248,11 +269,13 @@ docker run --rm -v "$PWD/apps/api:/src" -w /src golangci/golangci-lint:v2.14.0 \
 # Unit tests (no services)
 docker run --rm -v "$PWD/apps/api:/src" -w /src golang:1.27 go test -race ./...
 
-# Feature tests: a throwaway PostgreSQL (with erp_platform) and Redis on the "ci" network
+# Feature tests: a throwaway PostgreSQL (with erp_platform), Redis, and Cerbos (loaded with
+# the edition's policies) on the "ci" network
 .github/scripts/start-postgres.sh
 docker run -d --name redis --network ci redis:8-alpine
+.github/scripts/start-cerbos.sh
 .github/scripts/run-feature-tests.sh
-docker rm -f postgres redis && docker network rm ci
+docker rm -f postgres redis cerbos && docker network rm ci
 ```
 
 Never point feature tests at a database with data you want to keep.
