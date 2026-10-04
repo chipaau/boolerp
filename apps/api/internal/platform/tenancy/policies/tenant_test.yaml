@@ -1,0 +1,83 @@
+# Tests for tenancy:tenant (C151, C153), run by cerbos compile in CI.
+name: TenancyTenant
+principals:
+  member_of_a:
+    id: 0192f6a0-0000-7000-8000-00000000a001
+    roles: ["member"]
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000aa, in_operator_tenant: false }
+  operator_viewer:
+    id: 0192f6a0-0000-7000-8000-00000000b001
+    roles: ["member", "tenancy:tenant:view"]
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000bb, in_operator_tenant: true }
+  operator_manager:
+    id: 0192f6a0-0000-7000-8000-00000000b002
+    roles: ["member", "tenancy:tenant:manage"]
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000bb, in_operator_tenant: true }
+  # A customer admin who somehow holds the capability in their own tenant.
+  customer_with_manage:
+    id: 0192f6a0-0000-7000-8000-00000000a002
+    roles: ["member", "tenancy:tenant:manage"]
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000aa, in_operator_tenant: false }
+resources:
+  tenant_a:
+    kind: "tenancy:tenant"
+    id: 0192f6a0-0000-7000-8000-0000000000aa
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000aa, status: active }
+  tenant_c:
+    kind: "tenancy:tenant"
+    id: 0192f6a0-0000-7000-8000-0000000000cc
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000cc, status: suspended }
+tests:
+  - name: A member sees only their own tenant and changes nothing
+    input:
+      principals: [member_of_a]
+      resources: [tenant_a, tenant_c]
+      actions: [view, list, update, suspend, archive]
+    expected:
+      - principal: member_of_a
+        resource: tenant_a
+        actions: { view: EFFECT_ALLOW, list: EFFECT_DENY, update: EFFECT_DENY, suspend: EFFECT_DENY, archive: EFFECT_DENY }
+      - principal: member_of_a
+        resource: tenant_c
+        actions: { view: EFFECT_DENY, list: EFFECT_DENY, update: EFFECT_DENY, suspend: EFFECT_DENY, archive: EFFECT_DENY }
+
+  - name: Operator staff with view list and see every tenant but change none
+    input:
+      principals: [operator_viewer]
+      resources: [tenant_a, tenant_c]
+      actions: [view, list, update, reactivate]
+    expected:
+      - principal: operator_viewer
+        resource: tenant_a
+        actions: { view: EFFECT_ALLOW, list: EFFECT_ALLOW, update: EFFECT_DENY, reactivate: EFFECT_DENY }
+      - principal: operator_viewer
+        resource: tenant_c
+        actions: { view: EFFECT_ALLOW, list: EFFECT_ALLOW, update: EFFECT_DENY, reactivate: EFFECT_DENY }
+
+  - name: Operator staff with manage do everything, and manage implies view
+    input:
+      principals: [operator_manager]
+      resources: [tenant_c]
+      actions: [view, list, create, update, suspend, reactivate, archive, delete]
+    expected:
+      - principal: operator_manager
+        resource: tenant_c
+        actions:
+          view: EFFECT_ALLOW
+          list: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          suspend: EFFECT_ALLOW
+          reactivate: EFFECT_ALLOW
+          archive: EFFECT_ALLOW
+          delete: EFFECT_DENY
+
+  - name: The capability does nothing outside the operator tenant
+    input:
+      principals: [customer_with_manage]
+      resources: [tenant_c]
+      actions: [view, list, update, suspend]
+    expected:
+      - principal: customer_with_manage
+        resource: tenant_c
+        actions: { view: EFFECT_DENY, list: EFFECT_DENY, update: EFFECT_DENY, suspend: EFFECT_DENY }

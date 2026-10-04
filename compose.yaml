@@ -308,8 +308,24 @@ services:
 
   # Cerbos, the authorization policy engine (C149-C152): reachable only on the internal
   # network, gRPC on 3593 for the API, HTTP on 3592 for the healthcheck and curl. It
-  # reads the policies cmd/policies assembles into the cerbos-policies volume (C151);
-  # empty until then, which denies everything.
+  # reads the policies the policies service assembles into the cerbos-policies volume
+  # (C151).
+  # Assembles the edition's policies into the cerbos-policies volume (C151) before
+  # Cerbos starts. After editing a policy: docker compose run --rm policies (Cerbos
+  # watches the volume and reloads).
+  policies:
+    build:
+      context: .
+      dockerfile: docker/go.Dockerfile
+    working_dir: /w/apps/api
+    command: ["go", "run", "./cmd/policies", "-out", "/policies"]
+    volumes:
+      - .:/w
+      - gocache:/root/.cache/go-build
+      - gomod:/go/pkg/mod
+      - cerbos-policies:/policies
+    network_mode: none
+
   cerbos:
     image: ghcr.io/cerbos/cerbos:0.56.0@sha256:540643bc67ba628011a150ad1d3370f285daa38995be5cd7a4be181da902bec1
     command: ["server", "--config=/etc/cerbos/config.yaml"]
@@ -324,6 +340,9 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+    depends_on:
+      policies:
+        condition: service_completed_successfully
     networks:
       - internal
 

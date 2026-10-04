@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
 	identityseeds "github.com/boolmv/erp/apps/api/internal/platform/identity/seeds"
@@ -32,6 +33,15 @@ var Migrations = []postgres.ModuleMigrations{
 	{Name: "reference", FS: reference.Migrations()},
 	{Name: "identity", FS: identity.Migrations()},
 	{Name: "tenancy", FS: tenancy.Migrations()},
+}
+
+// Policies are the edition's Cerbos policies, tests, and schemas, one entry per
+// module (C151): the shared authorization pieces, then each module's. cmd/policies
+// assembles them into the directory Cerbos reads, so an edition ships only its own
+// modules' policies.
+var Policies = []authorization.ModulePolicies{
+	{Name: "authorization", FS: authorization.Policies()},
+	{Name: "tenancy", FS: tenancy.Policies()},
 }
 
 // RegisterModules builds the edition's modules, connects them, and registers

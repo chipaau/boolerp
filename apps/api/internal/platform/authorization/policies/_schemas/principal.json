@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Principal in a tenant (C153)",
+  "description": "What the API sends about the caller with every tenant check: the tenant the request is in, and whether it is the operator tenant. Roles carry member and the caller's capabilities there.",
+  "type": "object",
+  "required": ["tenant_id", "in_operator_tenant"],
+  "properties": {
+    "tenant_id": { "type": "string", "format": "uuid" },
+    "in_operator_tenant": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

@@ -150,6 +150,20 @@ docker run --rm -v "$PWD/apps/api:/src" -w /src golang:1.27 \
   go run github.com/vladopajic/go-test-coverage/v2@v2.19.0 --config=.testcoverage.yml
 ```
 
+### Authorization policies (C151)
+
+Each module keeps its Cerbos policies in `policies/`, with a `_test.yaml` suite beside each
+policy and JSON Schemas for the attributes it uses under `policies/_schemas/`. CI's
+`api-policies` job assembles the edition's policies (`cmd/policies`) and runs
+`cerbos compile` on them, which validates every policy and runs every suite. A Go test
+(`TestEveryPolicyHasTestsAndSchemas`) fails when a policy has no suite beside it, declares
+no principal or resource schema, or references a schema no module provides. Locally:
+
+```sh
+docker compose run --rm policies
+docker run --rm -v erp_cerbos-policies:/policies:ro ghcr.io/cerbos/cerbos:0.56.0 compile /policies
+```
+
 ### Supply chain (C113)
 
 - **Scans:** a finding fails its job. Grype fails on high or critical vulnerabilities that

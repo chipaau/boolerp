@@ -1,0 +1,39 @@
+# tenancy:tenant (C153): the tenant registry. A member sees their own tenant; only
+# staff acting in the operator tenant list, see, and change tenants. The registry is
+# the one place an operator check stands in for the tenant check every other tenant
+# resource policy makes (C150).
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: default
+  resource: "tenancy:tenant"
+  schemas:
+    principalSchema:
+      ref: cerbos:///authorization/principal.json
+    resourceSchema:
+      ref: cerbos:///tenancy/tenant.json
+      # A tenant being created has no ID or status yet, and a list has no record.
+      ignoreWhen:
+        actions: ["create", "list"]
+  rules:
+    # Attribute-based: a member sees their own tenant, no capability needed.
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles: ["member"]
+      condition:
+        match:
+          expr: R.attr.tenant_id == P.attr.tenant_id
+
+    # The operator's staff: view implies list; manage implies view.
+    - actions: ["list", "view"]
+      effect: EFFECT_ALLOW
+      roles: ["tenancy:tenant:view", "tenancy:tenant:manage"]
+      condition:
+        match:
+          expr: P.attr.in_operator_tenant == true
+
+    - actions: ["create", "update", "suspend", "reactivate", "archive"]
+      effect: EFFECT_ALLOW
+      roles: ["tenancy:tenant:manage"]
+      condition:
+        match:
+          expr: P.attr.in_operator_tenant == true
