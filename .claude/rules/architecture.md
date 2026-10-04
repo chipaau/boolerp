@@ -22,6 +22,10 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   and tested as the runtime role; never join another module's tables. No transaction
   spans modules: effects in another module go through an outbox event written in the
   same transaction and handled idempotently.
+- Business modules receive the platform as one `platform.Services` bundle from the
+  edition and protect routes with its named chains (`TenantUser`, `TenantClient(scopes…)`,
+  `Operator`), built from single-purpose middlewares; the tenant travels in `context.Context`,
+  never a global, and every transaction applies it with `SET LOCAL` (C144).
 - A module keeps all of its code in its own folder and registers its routes relative to
   its prefix (`Routes(r chi.Router)`). Only the edition package
   (`internal/edition/<name>`, C95) constructs, wires, and mounts modules, through the
