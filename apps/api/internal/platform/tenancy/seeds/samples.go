@@ -1,0 +1,147 @@
+package seeds
+
+import (
+	"bytes"
+	"context"
+	_ "embed"
+	"encoding/csv"
+	"errors"
+	"fmt"
+	"io"
+	"strings"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
+)
+
+//go:embed sample_tenants.csv
+var sampleTenantsCSV []byte
+
+// Sample is one row of sample_tenants.csv: a tenant, its legal form by code in its
+// country, its parent by slug, and its types, the primary first. No legal form
+// means still provisioning.
+type Sample struct {
+	Slug, Code, Name, Country, LegalForm, IdentityNumber, Parent string
+	Types                                                        []string
+}
+
+// ParseSamples reads sample tenants CSV. It rejects a malformed row, a repeated
+// slug, a parent that is not an earlier row, and a classified tenant without types
+// or an unclassified one with them.
+func ParseSamples(data []byte) ([]Sample, error) {
+	r := csv.NewReader(bytes.NewReader(data))
+	r.Comment = '#'
+	r.FieldsPerRecord = 8
+	header, err := r.Read()
+	if err != nil {
+		return nil, fmt.Errorf("sample tenants header: %w", err)
+	}
+	if strings.Join(header, ",") != "slug,code,name,country,legal_form,identity_number,parent,types" {
+		return nil, fmt.Errorf("sample tenants header: got %q", header)
+	}
+	var samples []Sample
+	seen := map[string]bool{}
+	for {
+		rec, err := r.Read()
+		if errors.Is(err, io.EOF) {
+			return samples, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("sample tenants: %w", err)
+		}
+		s := Sample{Slug: rec[0], Code: rec[1], Name: rec[2], Country: rec[3], LegalForm: rec[4],
+			IdentityNumber: rec[5], Parent: rec[6]}
+		if rec[7] != "" {
+			s.Types = strings.Split(rec[7], "|")
+		}
+		switch {
+		case s.Slug == "" || s.Code == "" || strings.TrimSpace(s.Name) == "" || s.Country == "":
+			return nil, fmt.Errorf("sample tenants: a row without slug, code, name, or country")
+		case seen[s.Slug]:
+			return nil, fmt.Errorf("sample tenants: duplicate %s", s.Slug)
+		case s.Parent != "" && !seen[s.Parent]:
+			return nil, fmt.Errorf("sample tenants %s: parent %s is not an earlier row", s.Slug, s.Parent)
+		case (s.LegalForm == "") != (len(s.Types) == 0):
+			return nil, fmt.Errorf("sample tenants %s: a legal form and types go together", s.Slug)
+		}
+		seen[s.Slug] = true
+		samples = append(samples, s)
+	}
+}
+
+// Samples creates the sample tenants, in development only (C143). It writes as
+// the table owner, like Operator: tenancy has no create-tenant operation yet, so
+// this is a recorded exception to seeding through use cases (C50) until it does.
+// A tenant whose slug exists is left as it is.
+type Samples struct {
+	db   DB
+	data []byte
+}
+
+// NewSamples returns the seeder over db, with the embedded list.
+func NewSamples(db DB) *Samples { return NewSamplesFrom(db, sampleTenantsCSV) }
+
+// NewSamplesFrom returns the seeder over db with another list in the same format
+// (tests use their own test country and types).
+func NewSamplesFrom(db DB, data []byte) *Samples { return &Samples{db: db, data: data} }
+
+// Name implements seed.Seeder.
+func (*Samples) Name() string { return "tenancy.sample_tenants" }
+
+// Run implements seed.Seeder, in one transaction: the rule that an active tenant
+// has a primary type is checked at its commit.
+func (s *Samples) Run(ctx context.Context, env seed.Env) error {
+	if env.Environment != "dev" {
+		env.Logger.InfoContext(ctx, "sample tenants are seeded only in dev; skipped")
+		return nil
+	}
+	samples, err := ParseSamples(s.data)
+	if err != nil {
+		return err
+	}
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
+
+	var created, existing int
+	for _, sm := range samples {
+		var exists bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM tenants WHERE slug = $1)`, sm.Slug).Scan(&exists); err != nil {
+			return fmt.Errorf("sample %s: %w", sm.Slug, err)
+		}
+		if exists {
+			existing++
+			continue
+		}
+		var id string
+		err := tx.QueryRow(ctx, `
+			INSERT INTO tenants (slug, code, name, country, parent_id, legal_form_id, identity_number,
+			                     timezone, status, activated_at)
+			SELECT $1, $2, $3, $7, (SELECT p.id FROM tenants p WHERE p.slug = nullif($4, '')),
+			       lf.id, nullif($6, ''),
+			       CASE WHEN $5 = '' THEN NULL ELSE 'Indian/Maldives' END,
+			       CASE WHEN $5 = '' THEN 'provisioning' ELSE 'active' END,
+			       CASE WHEN $5 = '' THEN NULL ELSE now() END
+			  FROM (SELECT 1) one
+			  LEFT JOIN legal_forms lf ON lf.country = $7 AND lf.code = $5
+			 WHERE $5 = '' OR lf.id IS NOT NULL
+			RETURNING id`,
+			sm.Slug, sm.Code, sm.Name, sm.Parent, sm.LegalForm, sm.IdentityNumber, sm.Country).Scan(&id)
+		if err != nil {
+			return fmt.Errorf("sample %s (legal form %q): %w", sm.Slug, sm.LegalForm, err)
+		}
+		for i, typ := range sm.Types {
+			if _, err := tx.Exec(ctx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
+				VALUES ($1, $2, $3)`, id, typ, i == 0); err != nil {
+				return fmt.Errorf("sample %s type %s: %w", sm.Slug, typ, err)
+			}
+		}
+		created++
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	env.Logger.InfoContext(ctx, "sample tenants seeded", "created", created, "existing", existing)
+	return nil
+}

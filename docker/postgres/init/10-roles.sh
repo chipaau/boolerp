@@ -37,6 +37,17 @@ SELECT format(
 WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'migration_role')
 \gexec
 
+-- erp_lookup (C131) owns the narrow functions that must read past row-level
+-- security, such as which tenant owns a host or whether a tenant is the operator.
+-- No one can log in as it; creating a BYPASSRLS role needs a superuser, which is
+-- why it is made here and not in a migration. The migration role is a member only
+-- so its migrations can create those functions as erp_lookup.
+SELECT 'CREATE ROLE erp_lookup NOLOGIN NOINHERIT BYPASSRLS'
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'erp_lookup')
+\gexec
+SELECT format('GRANT erp_lookup TO %I', :'migration_role')
+\gexec
+
 SQL
 
 # Grants, the private migrations schema, and default privileges are per database;

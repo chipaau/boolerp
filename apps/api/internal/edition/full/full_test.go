@@ -21,9 +21,9 @@ func TestMigrationsListEveryModuleWithItsTables(t *testing.T) {
 	for i, m := range Migrations {
 		names[i] = m.Name
 	}
-	assert.Equal(t, []string{"reference", "identity"}, names, "in dependency order")
+	assert.Equal(t, []string{"reference", "identity", "tenancy"}, names, "in dependency order")
 
-	for name, file := range map[int]string{0: "00001_countries.sql", 1: "00001_users.sql"} {
+	for name, file := range map[int]string{0: "00001_countries.sql", 1: "00001_users.sql", 2: "00001_tenants.sql"} {
 		files, err := fs.Glob(Migrations[name].FS, "*.sql")
 		require.NoError(t, err)
 		assert.Contains(t, files, file)
@@ -64,7 +64,7 @@ func TestDeploySeedersInOrder(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "identity.team_accounts"}, names)
+	assert.Equal(t, []string{"reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.operator", "identity.team_accounts"}, names)
 }
 
 func TestDataSeedersAreTheSeedFiles(t *testing.T) {
@@ -73,5 +73,14 @@ func TestDataSeedersAreTheSeedFiles(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types"}, names)
+	assert.Equal(t, []string{"reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.operator"}, names)
+}
+
+func TestSampleSeeders(t *testing.T) {
+	seeders := SampleSeeders(nil)
+	names := make([]string, len(seeders))
+	for i, s := range seeders {
+		names[i] = s.Name()
+	}
+	assert.Equal(t, []string{"tenancy.sample_tenants"}, names)
 }

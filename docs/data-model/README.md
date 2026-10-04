@@ -109,7 +109,9 @@ reference data, not tenant-scoped.
 
 The migration holds the schema only; the rows come from
 `apps/api/internal/platform/reference/seeds/legal_forms.csv` (the Maldives' 12), loaded
-by `cmd/deploy` and `cmd/seed` after the countries (C135, C137). Row-level security as for `countries`:
+by `cmd/deploy` and `cmd/seed` after the countries (C135, C137).
+Change confirmed 2026-10-04: a unique constraint on `(id, country)`
+(in `00002_legal_forms.sql`), the target of `tenants`' two-column foreign key. Row-level security as for `countries`:
 everyone reads; only the migration role writes until the operator rule exists. The
 migration is `apps/api/internal/platform/reference/migrations/00002_legal_forms.sql`.
 
@@ -153,4 +155,57 @@ The rows come from `apps/api/internal/platform/reference/seeds/institution_types
 loaded by `cmd/deploy` and `cmd/seed` after the sectors (C135, C137). Row-level security
 as for `countries`. The migration is
 `apps/api/internal/platform/reference/migrations/00004_institution_types.sql`.
+
+### `tenants` (tenancy module, C115, C136, C139, C141)
+
+Fields confirmed 2026-10-04 by the user, after checking the admin console's New tenant
+wizard. `code` is Bool's own identifier for every tenant; `identity_number` is only the
+official registry's number. The registry of customer organisations and the single
+operator tenant.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default. |
+| `slug` | `text` | Not null, unique; a DNS label of 3–63 lowercase letters, digits, and inner hyphens; not reserved (`admin`, `api`, `identity`, `www`, …); locked by a trigger once the tenant has been active. |
+| `code` | `text` | Not null, unique; CHECK `^[A-Z0-9]{2,10}$`. |
+| `name` | `text` | Not null, not blank. |
+| `parent_id` | `uuid` | Nullable (standalone); references `tenants.id`, `ON DELETE RESTRICT`; never itself, never a cycle, never the operator (trigger). |
+| `is_operator` | `boolean` | Not null, default false; at most one true; the runtime role can never set or change it (policies). |
+| `country` | `char(2)` | Not null; references `countries.code`, `ON DELETE RESTRICT`. |
+| `legal_form_id` | `uuid` | Nullable until activation; with `country`, references `legal_forms (id, country)`, so the form is of the tenant's own country. |
+| `identity_number` | `text` | Nullable, not blank; unique per country, case-insensitive. Required at activation when the legal form names a document, refused when it names none (application). |
+| `registered_on` | `date` | Nullable. |
+| `timezone` | `text` | IANA name, checked by the application; nullable until activation; no default. |
+| `email` | `text` | Nullable contact, not blank. |
+| `phone` | `text` | Nullable contact; CHECK `^\+[0-9]{6,15}$`. |
+| `status` | `text` | `provisioning` (default), `active`, `suspended`, `archived`. |
+| `activated_at`, `suspended_at`, `archived_at` | `timestamptz` | Set with the status; CHECKs keep them consistent. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+Before a tenant leaves `provisioning`, `legal_form_id` and `timezone` are required (CHECK),
+and it must have a primary institution type in `tenant_institution_types`. Changed
+2026-10-04 (C141, confirmed): the `institution_type` column was removed. The operator is never suspended or archived and has no parent.
+Row-level security is enabled (not forced; the registry has no `tenant_id`): a tenant reads
+its own row; the operator tenant reads every row and alone creates and changes them; nothing
+deletes a tenant. No migration creates a tenant. The migration is
+`apps/api/internal/platform/tenancy/migrations/00001_tenants.sql`.
+
+### `tenant_institution_types` (tenancy module, C141)
+
+Fields confirmed 2026-10-04 by the user, who chose one table with `is_primary` over a
+primary column on `tenants`. Every institution type of a tenant (C138), the primary one
+flagged.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `tenant_id` | `uuid` | Not null; references `tenants.id`, `ON DELETE RESTRICT`. |
+| `institution_type` | `text` | Not null; references `institution_types.code`, `ON DELETE RESTRICT`; indexed. |
+| `is_primary` | `boolean` | Not null, default false; at most one true per tenant. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+Primary key `(tenant_id, institution_type)`. A tenant outside `provisioning` has exactly one
+primary: a constraint trigger on both tables, deferred to commit. To change the primary,
+unflag the old row before flagging the new one. Row-level security as for `tenants`, but the
+operator may delete rows. The migration is
+`apps/api/internal/platform/tenancy/migrations/00002_tenant_institution_types.sql`.
 

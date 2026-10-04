@@ -38,3 +38,20 @@ SELECT format(
     :'migration_role', :'app_role'
 )
 \gexec
+
+-- The lookup schema holds erp_lookup's functions (C131): it alone creates them;
+-- the runtime and migration roles may only call them. Functions are not callable
+-- by PUBLIC, whatever a migration forgets.
+SELECT 'CREATE SCHEMA lookup AUTHORIZATION erp_lookup'
+WHERE NOT EXISTS (SELECT FROM pg_namespace WHERE nspname = 'lookup')
+\gexec
+REVOKE ALL ON SCHEMA lookup FROM PUBLIC;
+GRANT USAGE ON SCHEMA public TO erp_lookup;
+SELECT format('GRANT USAGE ON SCHEMA lookup TO %I, %I', :'app_role', :'migration_role')
+\gexec
+ALTER DEFAULT PRIVILEGES FOR ROLE erp_lookup IN SCHEMA lookup REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+SELECT format(
+    'ALTER DEFAULT PRIVILEGES FOR ROLE erp_lookup IN SCHEMA lookup GRANT EXECUTE ON FUNCTIONS TO %I, %I',
+    :'app_role', :'migration_role'
+)
+\gexec

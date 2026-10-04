@@ -71,7 +71,7 @@ confirmed fields: each table's fields are confirmed explicitly, one table at a t
 before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
 ([data model](../data-model/README.md)).
 
-**`tenants`**
+**`tenants`** (built, C139; fields in [the data model](../data-model/README.md))
 - `id` uuidv7; `slug` unique, a DNS label (lowercase, 3–63 characters), not a reserved
   name (`admin`, `api`, `identity`, `www`, `mail`, …), locked by a trigger once the tenant
   has been active; `code` unique, uppercase, 2–10 characters; `name` not blank; optional
@@ -90,9 +90,20 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   `created_at`, `updated_at` (trigger).
 - Row-level security: a tenant reads its own row; the operator tenant reads all rows and
   alone inserts and updates them.
-- Classification (C120): `legal_form` and `institution_type` (its sector follows), and
+- Classification (C120, C141): `legal_form`, institution types in
+  `tenant_institution_types` (one primary; sectors follow), and
   `identity_number`, whose kind the legal form decides. Deferred: the local-script
   name. The subscription (plan, seats, apps) lives in its own tables.
+
+**The operator tenant** (C142)
+- Bool, created by the `tenancy.operator` seed file (`tenancy/seeds/operator.go`) in every
+  database: `cmd/deploy` in production, `cmd/seed` in development, as the table owner, the
+  only role that can create an operator. Slug `workspace` (its staff use
+  `workspace.bool.mv` like any workspace), code `BOOL`, active, primary type `it_services`.
+- An existing operator is left as it is, so changes made later stay. The registration
+  number is a placeholder (`C-1024/2026`) until Bool's real one is set.
+
+**Sample tenants** (C143): development only, from `tenancy/seeds/sample_tenants.csv`.
 
 **Classification reference tables** (C120, structure C136)
 - Owned by the `reference` module; loaded from seed files by `cmd/deploy` and `cmd/seed` (C135, C137). Each legal form also
@@ -101,7 +112,8 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   never to one country's forms. A tenant's classification is required before it can
   become active. FindCare finds healthcare providers by sector and filters by
   institution type and category. A tenant has one primary institution type and any
-  number of additional ones (`tenant_institution_types`, C138), set by operators.
+  number of additional ones, all in `tenant_institution_types` with the primary
+  flagged (C138, C141), set by operators.
 - Two dimensions: what an organisation is in law (**legal form**) and what it does
   (**sector**, refined by **institution type**). A private and a government hospital
   share the institution type and differ in legal form.
@@ -157,7 +169,8 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   record is gone (built with step 7f).
 - Row-level security: a tenant sees its own domains, the operator tenant all; the
   request lookup uses a narrow function owned by the `erp_lookup` role (C131, below).
-  The admin console's domain is the operator tenant's. Product domains such as
+  The admin console (`admin.bool.mv`) is a separate operator-only domain, not a
+  workspace, configured like a product domain (C142). Product domains such as
   `findcare.mv` are not tenants' domains and are not in this table (C131).
 - Each domain serves either the tenant's workspace or one of its portals (C132), so
   `workspace.cyryx.edu.mv` and `portal.cyryx.edu.mv` both belong to Cyryx but open
