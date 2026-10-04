@@ -193,6 +193,10 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   transaction applies it with `SET LOCAL`. Guards run in order: `Authenticate`,
   `RequireUser` or `RequireClient`, `ResolveTenant`, `RequireMember`,
   `RequireActiveTenant`; modules use the named chains in `platform.Services`.
+- Built: `tenancy/tenant` (`With`/`From`, `Tx`/`ReadTx` with `ErrNoTenant` and `ErrNested`,
+  C145). The guards and `platform.Services` come next. No maintained Go library provides
+  tenant context with PostgreSQL row-level security, so this is our own code (a recorded
+  gap, C144): `context.Context`, chi middleware, and pgx's `BeginTxFunc`.
 - Browser requests: the BFF passes the browser's host, looked up in `domains`. Direct
   API clients (mobile, integrations) name the tenant in a header. Neither proves access:
   an active membership does, checked with the tenant's status in one call through the
