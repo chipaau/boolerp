@@ -33,6 +33,10 @@ An update use case loads an employee through its persistence port, invokes a dom
 method, and persists the authorized change under the agreed concurrency policy.
 The HTTP adapter does not mutate database models directly.
 
+Reads never write (C157): a GET, and authentication on any request, only reads; state
+changes only through POST, PUT, PATCH, or DELETE use cases. A user, for example, is
+created by `POST /api/auth/me`, not by the first request that needs it.
+
 A list/read use case can return an application read model without constructing a rich
 domain entity for every row. Cached results must be scoped to the tenant, query, and
 applicable visibility. A cache hit is not authorization.

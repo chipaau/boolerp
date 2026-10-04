@@ -14,6 +14,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -55,6 +56,9 @@ type Settings struct {
 	Audience     string // requested for access tokens, so the API accepts them
 	// HTTPS selects the callback scheme: https unless plain-HTTP development.
 	HTTPS bool
+	// RegisterURL is the API's POST /api/auth/me, called right after sign-in to
+	// create or update the person's user (C157).
+	RegisterURL string
 }
 
 // Handler serves /auth/login, /auth/callback, /auth/logout, and
@@ -63,7 +67,8 @@ type Handler struct {
 	settings Settings
 	sessions *session.Sessions
 	logger   *slog.Logger
-	client   *http.Client
+	client   *http.Client // Hydra
+	api      *http.Client // the API, for RegisterURL
 
 	// Hydra's discovery is read on the first login, not at startup, so the BFF
 	// starts while Hydra is down. mu guards provider and keys only briefly;
@@ -76,8 +81,8 @@ type Handler struct {
 
 // New returns the login handler. client makes the requests to Hydra (discovery,
 // keys, token exchange).
-func New(s Settings, sessions *session.Sessions, client *http.Client, logger *slog.Logger) *Handler {
-	return &Handler{settings: s, sessions: sessions, logger: logger, client: client}
+func New(s Settings, sessions *session.Sessions, client, api *http.Client, logger *slog.Logger) *Handler {
+	return &Handler{settings: s, sessions: sessions, logger: logger, client: client, api: api}
 }
 
 // Routes registers the handlers relative to Prefix; they need the session
@@ -255,6 +260,16 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The person's user is created or updated before the session exists, so the
+	// app's first API request finds it (C157). Without it the tokens are useless
+	// to this app, so the new refresh token is revoked and no session is made.
+	if err := h.register(ctx, token.AccessToken); err != nil {
+		h.logger.ErrorContext(ctx, "login failed: registering the user with the API", "error", err)
+		h.revoke(ctx, token.RefreshToken)
+		problem.Error(w, r, http.StatusBadGateway, "Sign-in could not be completed. Try again shortly.")
+		return
+	}
+
 	// Signing in again over a live session: its refresh token is revoked here,
 	// and SignIn deletes its tokens, so nothing of the old login stays usable.
 	if prev, ok, err := h.sessions.Current(ctx); err == nil && ok {
@@ -276,6 +291,26 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	h.logger.InfoContext(ctx, "signed in", "account", idToken.Subject)
 	http.Redirect(w, r, returnTo, http.StatusFound)
+}
+
+// register calls the API's POST /api/auth/me with the new access token, which
+// creates or updates the person's user from Hydra's /userinfo (C157).
+func (h *Handler) register(ctx context.Context, accessToken string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, h.settings.RegisterURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	resp, err := h.api.Do(req)
+	if err != nil {
+		return fmt.Errorf("calling the API: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<16))
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("the API answered %d", resp.StatusCode)
+	}
+	return nil
 }
 
 // ErrRefreshRefused means Hydra refused the refresh token (invalid_grant): it

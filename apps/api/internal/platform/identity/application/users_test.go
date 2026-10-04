@@ -23,7 +23,10 @@ func (f *fakeUsers) ByKratosID(_ context.Context, id string) (domain.User, error
 }
 
 func (f *fakeUsers) Save(_ context.Context, a domain.Account) (domain.User, error) {
-	u := domain.User{ID: "user-" + a.KratosIdentityID, KratosIdentityID: a.KratosIdentityID, Email: a.Email, Phone: a.Phone, DisplayName: a.DisplayName}
+	u := domain.User{
+		ID: "user-" + a.KratosIdentityID, KratosIdentityID: a.KratosIdentityID,
+		Email: a.Email, Phone: a.Phone, DisplayName: a.DisplayName, AvatarURL: a.AvatarURL,
+	}
 	f.byKratos[a.KratosIdentityID] = u
 	return u, nil
 }
@@ -46,6 +49,23 @@ func (f *fakeAccounts) Deactivate(_ context.Context, id string) error {
 	}
 	f.deactivated = append(f.deactivated, id)
 	return nil
+}
+
+// fakeProfiles answers /userinfo for known access tokens.
+type fakeProfiles struct {
+	byToken map[string]domain.Account
+	err     error
+}
+
+func (f *fakeProfiles) Account(_ context.Context, accessToken string) (domain.Account, error) {
+	if f.err != nil {
+		return domain.Account{}, f.err
+	}
+	a, ok := f.byToken[accessToken]
+	if !ok {
+		return domain.Account{}, ErrTokenRefused
+	}
+	return a, nil
 }
 
 // fakeLogins records revoked subjects.
@@ -109,50 +129,91 @@ func (f *fakeAccounts) Recover(_ context.Context, id string, ttl time.Duration) 
 }
 
 func setup() (*Service, *fakeUsers, *fakeAccounts) {
+	s, users, accounts, _ := setupWithProfiles()
+	return s, users, accounts
+}
+
+func setupWithProfiles() (*Service, *fakeUsers, *fakeAccounts, *fakeProfiles) {
 	users := &fakeUsers{byKratos: map[string]domain.User{}}
 	accounts := &fakeAccounts{accounts: map[string]domain.Account{
 		"k1":       {KratosIdentityID: "k1", Email: "a@b.test", Phone: "+9607770000", DisplayName: "Aisha", Active: true},
-		"disabled": {KratosIdentityID: "disabled", Email: "d@b.test", Active: false},
+		"disabled": {KratosIdentityID: "disabled", Email: "d@b.test", Phone: "+9607770001", Active: false},
 	}}
-	return NewService(users, accounts, &fakeLogins{}), users, accounts
+	profiles := &fakeProfiles{byToken: map[string]domain.Account{
+		"aisha-token": {
+			KratosIdentityID: "k1", Email: "a@b.test", Phone: "+9607770000", DisplayName: "Aisha",
+			AvatarURL: "https://example.test/aisha.png", Active: true,
+		},
+		"no-phone-token":    {KratosIdentityID: "k1", Email: "a@b.test", Active: true},
+		"bad-picture-token": {KratosIdentityID: "k1", Email: "a@b.test", Phone: "+9607770000", AvatarURL: "javascript:alert(1)"},
+	}}
+	return NewService(users, accounts, &fakeLogins{}, profiles), users, accounts, profiles
 }
 
-func TestResolveCreatesTheUserOnFirstUse(t *testing.T) {
+func TestUserOnlyReads(t *testing.T) {
 	s, users, accounts := setup()
-	u, err := s.Resolve(t.Context(), "k1")
+	_, err := s.User(t.Context(), "k1")
+	require.ErrorIs(t, err, ErrNotFound, "an account that has not registered has no user")
+	assert.Empty(t, users.byKratos, "and none is created")
+	assert.Zero(t, accounts.calls, "Kratos is not asked")
+
+	users.byKratos["k1"] = domain.User{ID: "u1", KratosIdentityID: "k1"}
+	u, err := s.User(t.Context(), "k1")
+	require.NoError(t, err)
+	assert.Equal(t, "u1", u.ID)
+}
+
+func TestRegisterCreatesThenUpdatesFromTheProfile(t *testing.T) {
+	s, users, _, profiles := setupWithProfiles()
+	u, err := s.Register(t.Context(), "k1", "aisha-token")
 	require.NoError(t, err)
 	assert.Equal(t, "a@b.test", u.Email)
-	assert.Equal(t, 1, accounts.calls)
-	assert.Contains(t, users.byKratos, "k1")
+	assert.Equal(t, "https://example.test/aisha.png", u.AvatarURL)
+	assert.Equal(t, u, users.byKratos["k1"])
+
+	a := profiles.byToken["aisha-token"]
+	a.Phone = "+9607771111"
+	profiles.byToken["aisha-token"] = a
+	u, err = s.Register(t.Context(), "k1", "aisha-token")
+	require.NoError(t, err)
+	assert.Equal(t, "+9607771111", u.Phone, "registering again refreshes the user")
+	assert.Len(t, users.byKratos, 1)
 }
 
-func TestResolveUsesTheStoredUser(t *testing.T) {
-	s, _, accounts := setup()
-	_, err := s.Resolve(t.Context(), "k1")
-	require.NoError(t, err)
-	_, err = s.Resolve(t.Context(), "k1")
-	require.NoError(t, err)
-	assert.Equal(t, 1, accounts.calls, "Kratos is read only for an unknown user")
-}
-
-func TestResolveUnknownAccount(t *testing.T) {
-	s, users, _ := setup()
-	_, err := s.Resolve(t.Context(), "nobody")
-	assert.ErrorIs(t, err, ErrNoAccount)
+func TestRegisterRefusesAnotherAccountsProfile(t *testing.T) {
+	s, users, _, _ := setupWithProfiles()
+	_, err := s.Register(t.Context(), "someone-else", "aisha-token")
+	require.ErrorIs(t, err, ErrWrongAccount)
 	assert.Empty(t, users.byKratos)
 }
 
-func TestResolveDoesNotCreateADisabledAccountsUser(t *testing.T) {
-	s, users, _ := setup()
-	_, err := s.Resolve(t.Context(), "disabled")
-	assert.ErrorIs(t, err, ErrNoAccount)
-	assert.NotContains(t, users.byKratos, "disabled")
+func TestRegisterNeedsEmailAndPhone(t *testing.T) {
+	s, users, _, _ := setupWithProfiles()
+	_, err := s.Register(t.Context(), "k1", "no-phone-token")
+	require.ErrorIs(t, err, ErrInvalidAccount)
+	assert.Empty(t, users.byKratos)
+}
+
+func TestRegisterDropsAPictureThatIsNotAWebAddress(t *testing.T) {
+	s, _, _, _ := setupWithProfiles()
+	u, err := s.Register(t.Context(), "k1", "bad-picture-token")
+	require.NoError(t, err)
+	assert.Empty(t, u.AvatarURL)
+}
+
+func TestRegisterPassesOnAProfileFailure(t *testing.T) {
+	s, users, _, profiles := setupWithProfiles()
+	_, err := s.Register(t.Context(), "k1", "unknown-token")
+	require.ErrorIs(t, err, ErrTokenRefused)
+
+	profiles.err = errors.New("hydra down")
+	_, err = s.Register(t.Context(), "k1", "aisha-token")
+	require.Error(t, err)
+	assert.Empty(t, users.byKratos)
 }
 
 func TestSyncUpdatesFromKratos(t *testing.T) {
 	s, users, accounts := setup()
-	_, err := s.Resolve(t.Context(), "k1")
-	require.NoError(t, err)
 	accounts.accounts["k1"] = domain.Account{KratosIdentityID: "k1", Email: "a@b.test", Phone: "+9607771111", DisplayName: "Aisha A.", Active: true}
 
 	u, err := s.Sync(t.Context(), "k1")
@@ -161,17 +222,17 @@ func TestSyncUpdatesFromKratos(t *testing.T) {
 	assert.Equal(t, "Aisha A.", users.byKratos["k1"].DisplayName)
 }
 
-func TestKratosFailurePropagates(t *testing.T) {
+func TestSyncPassesOnAKratosFailure(t *testing.T) {
 	s, _, accounts := setup()
 	accounts.err = errors.New("unavailable")
-	_, err := s.Resolve(t.Context(), "k1")
+	_, err := s.Sync(t.Context(), "k1")
 	assert.Error(t, err)
 }
 
 func TestDisableDeactivatesThenRevokesLogins(t *testing.T) {
 	accounts := &fakeAccounts{accounts: map[string]domain.Account{"k1": {KratosIdentityID: "k1"}}}
 	logins := &fakeLogins{}
-	s := NewService(&fakeUsers{byKratos: map[string]domain.User{}}, accounts, logins)
+	s := NewService(&fakeUsers{byKratos: map[string]domain.User{}}, accounts, logins, &fakeProfiles{})
 
 	require.NoError(t, s.Disable(t.Context(), "k1"))
 	assert.Equal(t, []string{"k1"}, accounts.deactivated)
@@ -181,7 +242,7 @@ func TestDisableDeactivatesThenRevokesLogins(t *testing.T) {
 func TestDisableStopsWhenKratosFails(t *testing.T) {
 	accounts := &fakeAccounts{accounts: map[string]domain.Account{}}
 	logins := &fakeLogins{}
-	s := NewService(&fakeUsers{byKratos: map[string]domain.User{}}, accounts, logins)
+	s := NewService(&fakeUsers{byKratos: map[string]domain.User{}}, accounts, logins, &fakeProfiles{})
 
 	assert.ErrorIs(t, s.Disable(t.Context(), "unknown"), ErrNotFound)
 	assert.Empty(t, logins.revoked, "nothing at Hydra for an account Kratos does not know")
@@ -189,7 +250,7 @@ func TestDisableStopsWhenKratosFails(t *testing.T) {
 
 func TestDisableReportsAHydraFailure(t *testing.T) {
 	accounts := &fakeAccounts{accounts: map[string]domain.Account{"k1": {KratosIdentityID: "k1"}}}
-	s := NewService(&fakeUsers{byKratos: map[string]domain.User{}}, accounts, &fakeLogins{err: errors.New("hydra down")})
+	s := NewService(&fakeUsers{byKratos: map[string]domain.User{}}, accounts, &fakeLogins{err: errors.New("hydra down")}, &fakeProfiles{})
 	assert.Error(t, s.Disable(t.Context(), "k1"))
 	assert.Equal(t, []string{"k1"}, accounts.deactivated, "no one can sign in again meanwhile; retrying finishes the job")
 }
@@ -217,6 +278,13 @@ func TestEnsureAccountUsesAnExistingAccount(t *testing.T) {
 	assert.False(t, created)
 	assert.Equal(t, "+9607770000", u.Phone, "an existing account is left as it is")
 	assert.Empty(t, accounts.created)
+}
+
+func TestEnsureAccountRefusesADisabledAccount(t *testing.T) {
+	s, users, _ := setup()
+	_, _, err := s.EnsureAccount(t.Context(), domain.NewAccount{Email: "d@b.test", Phone: "+9607770001"})
+	require.ErrorIs(t, err, ErrNoAccount)
+	assert.NotContains(t, users.byKratos, "disabled")
 }
 
 func TestEnsureAccountNeedsEmailAndPhone(t *testing.T) {

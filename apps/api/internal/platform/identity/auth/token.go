@@ -81,6 +81,12 @@ const errNotAccessToken = tokenError("auth: not an access token (no client_id)")
 
 type contextKey struct{}
 
+// NewContext returns ctx carrying caller, as Authenticate sets it for a request;
+// entry points other than HTTP (jobs, commands) use it to act as a caller.
+func NewContext(ctx context.Context, caller Caller) context.Context {
+	return context.WithValue(ctx, contextKey{}, caller)
+}
+
 // FromContext returns the request's caller, if authenticated (set by
 // Module.Authenticate).
 func FromContext(ctx context.Context) (Caller, bool) {

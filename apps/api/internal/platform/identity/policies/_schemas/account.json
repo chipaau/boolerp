@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "identity:account (C157)",
+  "description": "A Kratos account, identified by its ID (a token's sub). The policy needs no attributes, so none are accepted: personal data never reaches Cerbos or its logs.",
+  "type": "object",
+  "additionalProperties": false
+}

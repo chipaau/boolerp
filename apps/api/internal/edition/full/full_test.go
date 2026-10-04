@@ -13,8 +13,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
 )
 
 func TestMigrationsListEveryModuleWithItsTables(t *testing.T) {
@@ -85,4 +88,45 @@ func TestSampleSeeders(t *testing.T) {
 		names[i] = s.Name()
 	}
 	assert.Equal(t, []string{"tenancy.sample_tenants"}, names)
+}
+
+func TestPrincipalForEachKindOfCaller(t *testing.T) {
+	const account = "0192f6a0-0000-7000-8000-0000000ac001"
+	user := &identity.User{ID: "0192f6a0-0000-7000-8000-00000000a001", KratosIdentityID: account}
+	for name, c := range map[string]struct {
+		caller auth.Caller
+		want   authorization.Principal
+	}{
+		"a registered person": {
+			auth.Caller{Token: auth.Token{Subject: account, ClientID: "bff-workspace"}, User: user},
+			authorization.Principal{ID: user.ID, Roles: []string{"user"}, Attributes: map[string]any{"account_id": account}},
+		},
+		"a person who has not registered": {
+			auth.Caller{Token: auth.Token{Subject: account, ClientID: "bff-workspace"}},
+			authorization.Principal{ID: account, Roles: []string{"account"}, Attributes: map[string]any{"account_id": account}},
+		},
+		"a machine client": {
+			auth.Caller{Token: auth.Token{ClientID: "hrms-sync"}},
+			authorization.Principal{ID: "hrms-sync", Roles: []string{"client"}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			p, err := Principal(auth.NewContext(t.Context(), c.caller))
+			require.NoError(t, err)
+			assert.Equal(t, c.want, p)
+		})
+	}
+}
+
+func TestPrincipalInATenant(t *testing.T) {
+	ctx := auth.NewContext(t.Context(), auth.Caller{Token: auth.Token{ClientID: "hrms-sync"}})
+	ctx = tenant.With(ctx, tenant.Tenant{ID: "0192f6a0-0000-7000-8000-0000000000aa", IsOperator: true})
+	p, err := Principal(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]any{"tenant_id": "0192f6a0-0000-7000-8000-0000000000aa", "in_operator_tenant": true}, p.Attributes)
+}
+
+func TestPrincipalNeedsACaller(t *testing.T) {
+	_, err := Principal(t.Context())
+	assert.Error(t, err)
 }

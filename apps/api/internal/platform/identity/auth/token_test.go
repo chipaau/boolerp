@@ -23,14 +23,18 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 )
 
-// usersFunc adapts a function to Users.
+// usersFunc adapts a lookup function to Users; registering is not expected.
 type usersFunc func(ctx context.Context, subject string) (identity.User, error)
 
-func (f usersFunc) Resolve(ctx context.Context, subject string) (identity.User, error) {
+func (f usersFunc) User(ctx context.Context, subject string) (identity.User, error) {
 	return f(ctx, subject)
 }
 
-// knownUser resolves every subject to the same user.
+func (usersFunc) Register(context.Context, string, string) (identity.User, error) {
+	return identity.User{}, errors.New("unexpected register")
+}
+
+// knownUser finds the same user for account-1.
 func knownUser(_ context.Context, subject string) (identity.User, error) {
 	if subject != "account-1" {
 		return identity.User{}, errors.New("unexpected subject " + subject)
@@ -252,10 +256,10 @@ func TestUnavailableUserIsA503WithoutTheCause(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), "s3cret-cause")
 }
 
-func TestADeletedOrDisabledAccountIsA401(t *testing.T) {
+func TestAPersonWhoHasNotRegisteredIsA401(t *testing.T) {
 	iss := newIssuer(t)
-	gone := func(context.Context, string) (identity.User, error) { return identity.User{}, identity.ErrNoAccount }
-	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(gone), allowOwn{}, slog.New(slog.DiscardHandler))
+	unregistered := func(context.Context, string) (identity.User, error) { return identity.User{}, identity.ErrNotFound }
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(unregistered), allowOwn{}, slog.New(slog.DiscardHandler))
 	handler := m.Authenticate(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("must not be reached") }))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer "+sign(t, iss.valid()))
@@ -264,12 +268,31 @@ func TestADeletedOrDisabledAccountIsA401(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	assert.Equal(t, `Bearer error="invalid_token"`, rec.Header().Get("WWW-Authenticate"))
+	assert.Contains(t, rec.Body.String(), "POST /api/auth/me")
+}
+
+func TestRegisteringLetsAPersonWithoutAUserThrough(t *testing.T) {
+	iss := newIssuer(t)
+	unregistered := func(context.Context, string) (identity.User, error) { return identity.User{}, identity.ErrNotFound }
+	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(unregistered), allowOwn{}, slog.New(slog.DiscardHandler))
+	var caller Caller
+	handler := m.authenticateToken(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		caller, _ = FromContext(r.Context())
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+sign(t, iss.valid()))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Nil(t, caller.User)
+	assert.Equal(t, "account-1", caller.Token.Subject)
 }
 
 func TestAClientActingForItselfHasNoUser(t *testing.T) {
 	iss := newIssuer(t)
 	resolve := func(context.Context, string) (identity.User, error) {
-		t.Error("a client's own token is not resolved to a user")
+		t.Error("a client's own token has no user to look up")
 		return identity.User{}, nil
 	}
 	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(resolve), allowOwn{}, slog.New(slog.DiscardHandler))

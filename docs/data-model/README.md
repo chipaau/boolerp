@@ -81,10 +81,11 @@ tenant membership and employee records are separate tables (identity rules), and
 | `phone` | `text` | Not null; a copy of the identity's phone trait. |
 | `display_name` | `text` | Nullable; a copy of the identity's name trait. |
 | `avatar_url` | `text` | Nullable; a copy of the identity's picture trait (filled from Google's `picture` claim). Check: starts with `http://` or `https://` and is not blank. |
-| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set on every sync. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set on every registration. |
 
 Kratos stays the authority for the copied traits; the identity module writes the row
-on a person's first authenticated request (C94). `email`, `phone`, `display_name`, and
+only when the person registers (`POST /api/auth/me` with their access token, from
+Hydra's `/userinfo`, C157), never as a side effect of another request. `email`, `phone`, `display_name`, and
 `avatar_url` are personal data: never logged, cached, or traced. The migration is
 `apps/api/internal/platform/identity/migrations/00001_users.sql`.
 

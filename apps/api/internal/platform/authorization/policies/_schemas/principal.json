@@ -6,7 +6,12 @@
   "required": ["tenant_id", "in_operator_tenant"],
   "properties": {
     "tenant_id": { "type": "string", "format": "uuid" },
-    "in_operator_tenant": { "type": "boolean" }
+    "in_operator_tenant": { "type": "boolean" },
+    "account_id": {
+      "description": "A signed-in person's Kratos account (their token's sub, C157); absent for a machine client.",
+      "type": "string",
+      "format": "uuid"
+    }
   },
   "additionalProperties": false
 }

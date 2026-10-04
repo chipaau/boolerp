@@ -1,6 +1,6 @@
 # Development and repository layout
 
-Updated: 2026-10-03.
+Updated: 2026-10-05.
 
 The active checkout is `/Users/chipaau/code/bool/erp`, remote
 `git@github.com:boolmv/erp.git`. Do not work from the sibling `go-erp`
@@ -137,7 +137,7 @@ silently removed.
 | `APP_CERBOS_ADDR` | none (required) | Cerbos's gRPC listener, `host:port` (Compose: `cerbos:3593`), on the internal network (C152, C155) |
 | `APP_CERBOS_TLS_CA_FILE` | empty (plaintext) | CA certificate Cerbos's TLS certificate is checked against; required unless `APP_ENV` is `dev` or `test` |
 | `APP_CERBOS_TIMEOUT` | `2s` | longest an authorization check may take (100ms–30s); a slower Cerbos means the request is refused (503) |
-| `APP_IDENTITY_KRATOS_ADMIN_URL` | none (required) | Kratos's admin API (Compose: `http://kratos:4434`), reachable only on the internal network; users are read from it on first use (C94) |
+| `APP_IDENTITY_KRATOS_ADMIN_URL` | none (required) | Kratos's admin API (Compose: `http://kratos:4434`), reachable only on the internal network; seeds and provisioning create accounts there (C94, C135) |
 
 Passwords are read only from files (C80), as Docker and Kubernetes mount secrets
 (`/run/secrets/...`): the `_FILE` variable names the file, and its contents are the

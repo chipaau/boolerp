@@ -1,11 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Caller, outside a tenant check (C154)",
-  "description": "A signed-in person (role user) or a machine client acting for itself (role client), checked on something that is not tenant data, such as their own user. A tenant is optional: a client may act within one, and a person may call from inside a workspace. If either tenant attribute is sent, both must be.",
+  "description": "A signed-in person (role user; role account before they have a user, C157) or a machine client acting for itself (role client), checked on something that is not tenant data, such as their own user. A tenant is optional: a client may act within one, and a person may call from inside a workspace. If either tenant attribute is sent, both must be.",
   "type": "object",
   "properties": {
     "tenant_id": { "type": "string", "format": "uuid" },
-    "in_operator_tenant": { "type": "boolean" }
+    "in_operator_tenant": { "type": "boolean" },
+    "account_id": {
+      "description": "A signed-in person's Kratos account (their token's sub, C157); absent for a machine client.",
+      "type": "string",
+      "format": "uuid"
+    }
   },
   "dependentRequired": {
     "tenant_id": ["in_operator_tenant"],

@@ -34,13 +34,13 @@ apps/api/
       full/              every module: RegisterModules, Migrations, and Seeders (C95, C118)
     platform/            platform capabilities: tables or policy (C122, C125)
       identity/          users and authentication (C94)
-        identity.go      New, Resolve, EnsureAccount, Migrations
-        auth/            access tokens, Authenticate, the caller, GET /api/auth/me (C91)
+        identity.go      New, User, Register, EnsureAccount, Migrations
+        auth/            access tokens, Authenticate, the caller, GET and POST /api/auth/me (C91, C157)
         domain/          User, Account, NewAccount
-        application/     Service (Resolve, Sync, EnsureAccount) and its ports
+        application/     Service (User, Register, Sync, EnsureAccount) and its ports
         adapters/
           kratos/        Kratos admin API through ory/client-go
-          hydra/         Hydra admin API: ending logins (C101)
+          hydra/         Hydra admin API: ending logins (C101); public /userinfo (C157)
           store/         users in PostgreSQL
         migrations/      embedded Goose SQL, history migrations.identity_version
         seeds/           one seeder per store: users.go (C50, C118)

@@ -391,10 +391,14 @@ func TestRequestInputThroughTheRouter(t *testing.T) {
 	assert.Equal(t, problem.ContentType, tooLarge.Header().Get("Content-Type"))
 }
 
-// noUsers is a Users for requests that never get as far as resolving a user.
+// noUsers is a Users for requests that never get as far as loading a user.
 type noUsers struct{}
 
-func (noUsers) Resolve(context.Context, string) (identity.User, error) { return identity.User{}, nil }
+func (noUsers) User(context.Context, string) (identity.User, error) { return identity.User{}, nil }
+
+func (noUsers) Register(context.Context, string, string) (identity.User, error) {
+	return identity.User{}, nil
+}
 
 func TestModulesInheritDefaultsAndApplyTheirOwnAuth(t *testing.T) {
 	// No issuer is reachable: a request without a token is refused before any
