@@ -24,6 +24,8 @@ permissions:
 env:
   GO_IMAGE: golang:1.27@sha256:e0174e51e81218523251d85d248a90d24c3d5e81543b4f07a5d66229397db190
   LINT_IMAGE: golangci/golangci-lint:v2.14.0@sha256:ad862ba6b3798cbe0fd9fd7408d498fd74fbd2623a92406b2fd3898faf0bf98f
+  # The same Cerbos as compose.yaml, to compile and test the policies (C151).
+  CERBOS_IMAGE: ghcr.io/cerbos/cerbos:0.56.0@sha256:540643bc67ba628011a150ad1d3370f285daa38995be5cd7a4be181da902bec1
   REDIS_IMAGE: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
   TRAEFIK_IMAGE: traefik:v3.6@sha256:31267173a15b4944e797a76ffd9c419707c8d8b32fe5b610f80cd0cfa05f372d
   GRYPE_IMAGE: anchore/grype:v0.119.0@sha256:8c2c9234a345577a6d321a4753aa3ee1276d8975c8452d2344a56b57733ecad3
@@ -107,6 +109,28 @@ jobs:
         run: |
           docker run --rm -v "$PWD/apps/api:/src" -v "$HOME/go-mod:/go/pkg/mod" -w /src "$LINT_IMAGE" \
             sh -ec 'golangci-lint fmt --diff ./... && golangci-lint run ./...'
+
+  # The edition's Cerbos policies, assembled as Cerbos reads them, compiled and run
+  # against their test suites (C151): a broken or failing policy cannot merge.
+  api-policies:
+    name: API policies
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go-mod
+          key: go-mod-${{ hashFiles('apps/api/go.sum') }}
+      - name: Assemble
+        run: |
+          docker run --rm -v "$PWD/apps/api:/src" -v "$HOME/go-mod:/go/pkg/mod" -v "$RUNNER_TEMP:/out" -w /src "$GO_IMAGE" \
+            go run ./cmd/policies -out /out/policies
+      - name: Compile and test
+        run: docker run --rm -v "$RUNNER_TEMP/policies:/policies:ro" "$CERBOS_IMAGE" compile /policies
 
   # Known vulnerabilities in the Go modules that the API's code calls (C113).
   api-vulns:

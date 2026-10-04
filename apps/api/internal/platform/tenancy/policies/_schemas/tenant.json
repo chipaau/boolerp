@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tenancy:tenant (C153)",
+  "description": "A tenant as the policy sees it: its own ID and its status.",
+  "type": "object",
+  "required": ["tenant_id", "status"],
+  "properties": {
+    "tenant_id": { "type": "string", "format": "uuid" },
+    "status": { "enum": ["provisioning", "active", "suspended", "archived"] }
+  },
+  "additionalProperties": false
+}
