@@ -17,7 +17,10 @@ fi
 docker network create ci >/dev/null 2>&1 || true
 docker run --rm -v "$PWD/apps/api:/src" ${cache[@]+"${cache[@]}"} -v "$policies:/out" -w /src "$go_image" \
   go run ./cmd/policies -out /out/policies
-chmod -R a+rX "$policies"
+# The files are written by the container's root user and are already readable by
+# others (cmd/policies writes 0644/0755); only the temporary folder around them,
+# owned by this user, needs opening. Changing the files themselves fails on Linux.
+chmod a+rx "$policies"
 
 docker run -d --name cerbos --network ci --user 65532:65532 --read-only \
   -v "$PWD/docker/cerbos/config.yaml:/etc/cerbos/config.yaml:ro" \
