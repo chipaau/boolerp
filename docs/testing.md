@@ -64,10 +64,11 @@ covering what is integrated: sign-in through each app's BFF, Hydra, and the logi
 the API through the BFF; sign-out everywhere; and each app package's own journeys.
 
 - **`e2e/`** is the harness and the cross-cutting suite: `playwright.config.ts`, `run.sh`,
-  `tests/global-setup.ts` (creates a Kratos identity with a verified email and a generated
-  password through Kratos's admin API, and deletes it afterwards), `tests/helpers.ts`
-  (URLs, `openSignedIn`, and `test`/`expect` for app specs), and the `platform` specs
-  (`sign-in`, `sign-out`).
+  `tests/helpers.ts` (URLs, the account, `openSignedIn`, and `test`/`expect` for app specs),
+  and the `platform` specs (`sign-in`, `sign-out`).
+- **The account** is `e2e@bool.test` with the public development password, an active member
+  of male-city (the suite's workspace). `docker compose run --rm seed` creates it, in `dev`
+  only (C161), so the stack must be seeded before the suite runs; CI seeds it.
 - **App packages keep their own journeys** in `packages/app-<slug>/e2e/*.spec.ts`, importing
   `test` and `expect` from the harness's helpers. The config runs a project per app in the
   edition that has an `e2e/` folder (`EDITION`, default `full`, C107).
@@ -80,9 +81,8 @@ e2e/run.sh --project control-centre # one app
 EDITION=full e2e/run.sh
 ```
 
-`run.sh` runs Playwright's image on the `proxy` network (the `*.bool.test` hosts mapped to
-Traefik) and Compose's internal network (Kratos's admin API), with its dependencies in the
-`erp-e2e-node-modules` volume. The suite uses one worker and one account, and runs in CI
+`run.sh` runs Playwright's image on the `proxy` network only (the `*.bool.test` hosts mapped
+to Traefik), with its dependencies in the `erp-e2e-node-modules` volume. The suite uses one worker and one account, and runs in CI
 (C109). Before the tests, `e2e/warm.sh` opens the pages the suite reaches first, so the
 development servers have compiled them before a test is timed. App journeys (the app
 projects) start signed in: a `signed-in` setup project signs in once and saves the browser

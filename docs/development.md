@@ -277,9 +277,10 @@ same seed files**; only the command differs:
 | Seeders | Listed in | Production: `cmd/deploy` | Development: `cmd/seed` | Role |
 | --- | --- | --- | --- | --- |
 | Seed files: countries, legal forms, sectors, institution types; the operator tenant | `full.DataSeeders` | yes, after the migrations | yes, first | migration role (owns the tables) |
-| The team's accounts without passwords | `full.DeploySeeders` | yes | no (the demo seeder creates them) | migration role |
+| The team's accounts without passwords, then their memberships of the operator tenant (C161) | `full.DeploySeeders` | yes | no (the demo seeder creates the accounts) | migration role |
 | Sample tenants (C143) | `full.SampleSeeders` | never | yes, in `dev`, after the seed files | migration role, until tenancy has a create-tenant operation |
-| Demo data: team accounts with the dev password, gofakeit data | `full.Seeders` | never | yes, after the seed files | runtime role, through use cases |
+| Demo data: team accounts and the e2e account with the dev password, gofakeit data | `full.Seeders` | never | yes, after the seed files | runtime role, through use cases |
+| Memberships (C161): the team in the operator tenant; in `dev`, the team in every sample tenant and the e2e account in male-city | `full.MembershipSeeders` | the operator's only, through `full.DeploySeeders` | yes, last (they need the accounts) | migration role, until tenancy has an invite operation |
 
 A development database is prepared with:
 

@@ -159,6 +159,13 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   `lookup.memberships_of` the switcher (with each tenant's primary workspace host).
 - Seats are the tenant's active and invited memberships. Inviting someone without an
   account creates their Kratos account and user first and sends a set-password link.
+- Seeded memberships (C161), written as the table owner until tenancy has an invite
+  operation, each active, joined at seeding, and invited by nobody; a person with a live
+  membership is left as they are, and the owner flag is set only on a tenant without one:
+  - `tenancy.operator_members`, in every database (`cmd/deploy` after the team's
+    accounts, `cmd/seed` last): the team in the operator tenant, Ahmed Shifau its owner.
+  - `tenancy.sample_members`, in `dev` only: the team in every sample tenant, Ahmed Shifau
+    the owner of each, and the end-to-end account (`e2e@bool.test`) a member of male-city.
 
 **`domains`** (C158, confirmed 2026-10-05; [data model](../data-model/README.md))
 - Every host that opens a tenant's workspace or one of its portals: `platform` hosts under
