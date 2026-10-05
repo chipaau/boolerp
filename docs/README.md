@@ -43,7 +43,8 @@ authorization, and audit are designed (C115-C120) and next. The
 | Tracing and logging | [Observability](platform/observability.md) |
 | Redis caching | [Caching](platform/caching.md) |
 | Transactions and background work | [Execution](platform/execution.md) |
-| SaaS, self-hosting, and licensing | [Deployment](platform/deployment.md) |
+| Releases, proxies, and migrations | [Deployment](platform/deployment.md) |
+| Self-hosting and licensing | [Self-hosting](platform/self-hosting.md) |
 | Employee business behavior | [HRMS employees](hrms/employees.md) |
 | Schema approval status | [Data model](data-model/README.md) |
 | Repository and tooling | [Development](development.md) |

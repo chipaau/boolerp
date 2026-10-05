@@ -337,4 +337,5 @@ DELETE operations. Aggregate-only access must not expose unrestricted detail rea
 See [PostgreSQL policy semantics](https://www.postgresql.org/docs/18/sql-createpolicy.html).
 
 No historical schema-per-tenant, hierarchy, or visible-set design is inherited.
-See [identity](identity.md), [authorization](authorization.md), and [deployment](deployment.md).
+See [identity](identity.md), [authorization](authorization.md), [deployment](deployment.md), and
+[self-hosting](self-hosting.md).
