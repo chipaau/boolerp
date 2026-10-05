@@ -289,7 +289,8 @@ docker compose run --rm seed
 ```
 
 In production, one command per release (it refuses `APP_ENV` other than `staging` or
-`prod`):
+`prod`). It is for Bool's SaaS only until first-run setup exists: it creates Bool's operator
+tenant and team accounts ([self-hosting](platform/self-hosting.md)).
 
 ```sh
 APP_ENV=prod APP_PLATFORM_DOMAIN=bool.mv MIGRATE_DB_HOST=… APP_IDENTITY_KRATOS_ADMIN_URL=… deploy

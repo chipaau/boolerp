@@ -1,46 +1,39 @@
-# Deployment and licensing
+# Deployment
 
-Status: dual deployment and licensing requirements confirmed; implementation open.
+Status: dual deployment requirements confirmed (C09); implementation open.
+
+How the backend is released and run, for both Bool's SaaS and customers' own servers.
+What only self-hosting adds (first-run setup, what the customer provides, licensing) is
+in [self-hosting](self-hosting.md).
 
 ## Requirements
 
-- SaaS and customer self-hosting use the same backend codebase and release.
+- SaaS and customer self-hosting use the same backend codebase and release (C09).
 - Distribute the Go backend as binaries or containers.
-- A self-hosted installation normally serves one licensed customer.
-  Its allowed tenant count/hierarchy is still open.
-- Support default customer domains and verified custom domains.
-- Licensing discourages unauthorized resale; customer-controlled binaries are not tamper-proof.
+- Support default customer domains and verified custom domains (C158).
+- Use configuration and entitlements to select deployment behavior instead of
+  customer-specific forks.
 
 Development runs the full stack in Compose (see [development](../development.md)): the
 API, the BFFs with their apps, Kratos, Hydra, the login service, PostgreSQL, and Redis.
-Each BFF's release image embeds its app (C99). No production release or deployment
-exists yet.
+Each BFF's release image embeds its app (C99); the public apps' distribution is not
+decided. File/object storage uses the S3 API; development uses `chipaau/minio`, while
+the production provider and SDK remain open. See [storage](storage.md). No production
+release or deployment exists yet.
 
-## Proposed direction
-
-Use configuration and entitlements to select deployment behavior instead of
-customer-specific forks. Signed license claims verified by the backend are a
-candidate, not a selected license format or algorithm. Private signing material
-would remain outside distributed releases.
-
-Self-hosted authentication, operational dependencies, and telemetry export must be
-deliberately configured rather than rely on implicit SaaS infrastructure.
-Internal apps are embedded in their BFF's release image (C99); the public apps'
-distribution is not decided.
-File/object storage uses the S3 API; development uses `chipaau/minio`, while the
-production provider and SDK remain open. See [storage](storage.md).
+`cmd/deploy` (C135, C137) seeds Bool's operator tenant and team accounts, so it is for
+Bool's SaaS only until first-run setup exists ([self-hosting](self-hosting.md)).
 
 ## Open decisions
 
-- Enforceable entitlements: what a licence allows (the tenant model and per-tenant
-  subscriptions are decided, C115, C116).
-- Disconnected operation, activation, renewal, grace, expiry, and continued data access.
 - Required services and dependency versions.
 - Secure first-run setup, configuration, migrations, upgrades, backup, and restore.
-- Domain verification, certificate provisioning/renewal, and installation instructions.
+- The Hydra clients' production bootstrap; custom-domain callbacks, verification, and
+  certificate provisioning and renewal (step 7f).
 - Background-worker packaging and optional operational backends.
 
-See [development](../development.md), [tenancy](tenancy.md), and [identity](identity.md).
+Licensing and the rest of self-hosting are in [self-hosting](self-hosting.md). See
+[development](../development.md), [tenancy](tenancy.md), and [identity](identity.md).
 
 ## Reverse proxy requirements (C40)
 
