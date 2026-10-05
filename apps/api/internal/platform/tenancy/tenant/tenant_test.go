@@ -38,3 +38,14 @@ func TestTxRefusesBeforeBeginning(t *testing.T) {
 		assert.ErrorIs(t, run(inside, begins{t}, noop), ErrNested)
 	}
 }
+
+func TestMembershipTravelsInTheContext(t *testing.T) {
+	_, ok := MembershipFrom(context.Background())
+	assert.False(t, ok)
+	_, ok = MembershipFrom(WithMembership(context.Background(), Membership{}))
+	assert.False(t, ok, "a membership without an ID is none")
+
+	m, ok := MembershipFrom(WithMembership(context.Background(), Membership{ID: "m", IsOwner: true}))
+	assert.True(t, ok)
+	assert.Equal(t, Membership{ID: "m", IsOwner: true}, m)
+}

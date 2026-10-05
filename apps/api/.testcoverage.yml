@@ -5,7 +5,7 @@
 # coverage rises; never lower it to make a check pass.
 profile: cover.out
 threshold:
-  total: 87
+  total: 90
 exclude:
   paths:
     # The process entry points only read settings, wire the build, and start a

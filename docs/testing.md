@@ -1,7 +1,7 @@
 # Verification strategy
 
 Status: in use. CI runs the checks below on every pull request (and weekly); the API's
-coverage must stay at or above 87% (C119, raised by C143).
+coverage must stay at or above 90% (C119, raised by C143 and C163).
 
 ## Documentation and configuration
 
@@ -43,7 +43,7 @@ database drivers, generated SQL models, Redis clients, or provider implementatio
 Generated persistence packages remain behind adapters.
 
 Do not impose redundant unit/integration/browser suites on every low-level operation.
-The one coverage rule is the API's 87% threshold (C119, C143), measured, never assumed.
+The one coverage rule is the API's 90% threshold (C119, C143, C163), measured, never assumed.
 
 ## Telemetry, tracing, and audit in tests (C110)
 
@@ -135,7 +135,7 @@ update pull requests go through the same jobs.
 ### Coverage (C119)
 
 The API's total statement coverage, from the unit and feature tests together, must stay
-at or above the threshold in `apps/api/.testcoverage.yml` (87%); every test counts towards
+at or above the threshold in `apps/api/.testcoverage.yml` (90%); every test counts towards
 the code it runs, in any package (`go test -coverpkg=./...`, C143); the API feature-test
 job fails otherwise. The process entry points (`cmd/*`) are excluded: they only read
 settings, wire the build, and start a process, and the end-to-end suite runs them,

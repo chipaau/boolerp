@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
+	"github.com/boolmv/erp/apps/api/internal/platform/tenancy"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
 )
 
@@ -145,7 +148,89 @@ func TestPrincipalInATenant(t *testing.T) {
 	assert.Equal(t, map[string]any{"tenant_id": "0192f6a0-0000-7000-8000-0000000000aa", "in_operator_tenant": true}, p.Attributes)
 }
 
+func TestPrincipalOfAMemberHasTheMemberRole(t *testing.T) {
+	const account = "0192f6a0-0000-7000-8000-0000000ac001"
+	user := &identity.User{ID: "0192f6a0-0000-7000-8000-00000000a001", KratosIdentityID: account}
+	ctx := auth.NewContext(t.Context(), auth.Caller{Token: auth.Token{Subject: account}, User: user})
+	ctx = tenant.With(ctx, tenant.Tenant{ID: "0192f6a0-0000-7000-8000-0000000000aa"})
+
+	p, err := Principal(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"user"}, p.Roles, "in a tenant but not a member")
+
+	p, err = Principal(tenant.WithMembership(ctx, tenant.Membership{ID: "0192f6a0-0000-7000-8000-0000000000m1"}))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"user", "member"}, p.Roles)
+
+	// A membership without a tenant (never set by the chain) adds nothing.
+	p, err = Principal(tenant.WithMembership(auth.NewContext(t.Context(), auth.Caller{Token: auth.Token{Subject: account}, User: user}),
+		tenant.Membership{ID: "0192f6a0-0000-7000-8000-0000000000m1"}))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"user"}, p.Roles)
+}
+
+func TestRegisterModulesMountsTheTenantBehindTheTenantChain(t *testing.T) {
+	r := chi.NewRouter()
+	cfg := config.Config{
+		Auth:     config.Auth{Issuer: "http://127.0.0.1:1/", Audience: "erp-api"},
+		Identity: config.Identity{KratosAdminURL: "http://127.0.0.1:1", HydraAdminURL: "http://127.0.0.1:1"},
+	}
+	cfg.Cerbos = config.Cerbos{Addr: "127.0.0.1:1", Timeout: time.Second}
+	require.NoError(t, RegisterModules(t.Context(), r, bootstrap.Deps{
+		Config: cfg, Logger: slog.New(slog.DiscardHandler), HTTPClient: http.DefaultClient,
+	}))
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/tenant", nil))
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "mounted, and authentication comes first")
+}
+
 func TestPrincipalNeedsACaller(t *testing.T) {
 	_, err := Principal(t.Context())
 	assert.Error(t, err)
+}
+
+// The route walk C144 asks for: every route outside /api/auth (whose /me routes
+// use the authentication pieces on their own, C157) has Authenticate and a
+// caller-kind guard, and any route that resolves a tenant also requires
+// membership. Middlewares are compared by their function's code pointer, which a
+// method value shares across receivers.
+func TestEveryRouteIsProtected(t *testing.T) {
+	r := chi.NewRouter()
+	cfg := config.Config{
+		Auth:     config.Auth{Issuer: "http://127.0.0.1:1/", Audience: "erp-api"},
+		Identity: config.Identity{KratosAdminURL: "http://127.0.0.1:1", HydraAdminURL: "http://127.0.0.1:1"},
+	}
+	cfg.Cerbos = config.Cerbos{Addr: "127.0.0.1:1", Timeout: time.Second}
+	require.NoError(t, RegisterModules(t.Context(), r, bootstrap.Deps{
+		Config: cfg, Logger: slog.New(slog.DiscardHandler), HTTPClient: http.DefaultClient,
+	}))
+
+	code := func(mw func(http.Handler) http.Handler) uintptr { return reflect.ValueOf(mw).Pointer() }
+	var (
+		authenticate  = code((&auth.Module{}).Authenticate)
+		requireUser   = code(auth.RequireUser)
+		resolveTenant = code((&tenancy.Module{}).ResolveTenant)
+		requireMember = code((&tenancy.Module{}).RequireMember)
+		requireActive = code((&tenancy.Module{}).RequireActiveTenant)
+	)
+	routes := 0
+	require.NoError(t, chi.Walk(r, func(method, route string, _ http.Handler, mws ...func(http.Handler) http.Handler) error {
+		if strings.HasPrefix(route, "/api/auth/") {
+			return nil
+		}
+		routes++
+		has := map[uintptr]bool{}
+		for _, mw := range mws {
+			has[code(mw)] = true
+		}
+		assert.True(t, has[authenticate], "%s %s: Authenticate", method, route)
+		assert.True(t, has[requireUser], "%s %s: a caller-kind guard", method, route)
+		if has[resolveTenant] {
+			assert.True(t, has[requireMember], "%s %s: ResolveTenant without RequireMember", method, route)
+			assert.True(t, has[requireActive], "%s %s: RequireActiveTenant", method, route)
+		}
+		return nil
+	}))
+	assert.Positive(t, routes, "the walk saw the tenant route")
 }

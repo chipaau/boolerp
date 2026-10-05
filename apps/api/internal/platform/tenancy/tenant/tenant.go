@@ -23,10 +23,29 @@ type Tenant struct {
 	IsOperator bool   // tenants.is_operator: the request acts in the operator tenant
 }
 
+// Membership is the caller's active membership in the request's tenant, put in
+// ctx by tenancy's RequireMember middleware (C144, C160).
+type Membership struct {
+	ID      string // memberships.id
+	IsOwner bool   // memberships.is_owner
+}
+
 type (
-	tenantKey struct{}
-	insideKey struct{}
+	tenantKey     struct{}
+	insideKey     struct{}
+	membershipKey struct{}
 )
+
+// WithMembership returns a copy of ctx that carries m.
+func WithMembership(ctx context.Context, m Membership) context.Context {
+	return context.WithValue(ctx, membershipKey{}, m)
+}
+
+// MembershipFrom returns the membership ctx carries, if any.
+func MembershipFrom(ctx context.Context) (Membership, bool) {
+	m, ok := ctx.Value(membershipKey{}).(Membership)
+	return m, ok && m.ID != ""
+}
 
 // With returns a copy of ctx that carries t.
 func With(ctx context.Context, t Tenant) context.Context {

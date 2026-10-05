@@ -10,7 +10,7 @@ Resolve one decision at a time using the [decision register](decisions/README.md
 | 0. Documentation baseline | Current scope/decisions, archived history, centralized agent rules, the starting Compose services | Documentation/configuration milestone; no new application implementation |
 | 0a. Executable scaffold | Start with a simple chi server (platform step 0) | Done on 2026-09-28 (platform step 0) |
 | 1. Tenant model | Agree what a tenant represents and its relationship to a licensed customer | Decided on 2026-10-02 (C115); isolation (D02) next |
-| 2. Platform implementation | Deliver the increments below; resolve D02–D12 as needed and approve tables individually | Steps 0–5 and H1–H6 done; step 7 (identity) done through 7e, with 7f and 7g waiting on step 6 and object storage; security fixes under ASVS L2 (C111, C112) in progress; step 6 (tenancy) in progress: `tenants`, its classification, `domains`, and `memberships` built, memberships seeded (C136–C139, C158, C160, C161) |
+| 2. Platform implementation | Deliver the increments below; resolve D02–D12 as needed and approve tables individually | Steps 0–5 and H1–H6 done; step 7 (identity) done through 7e, with 7f and 7g waiting on step 6 and object storage; security fixes under ASVS L2 (C111, C112) in progress; step 6 (tenancy) in progress: `tenants`, its classification, `domains`, and `memberships` built, memberships seeded, tenant guards and `GET /api/v1/tenant` built (C136–C139, C158, C160–C162) |
 | 3. Platform acceptance | Prove protected operations, audit, tracing, caching, domains, and same-release SaaS/self-host installation, licensing, upgrades, and restore | Not started |
 | 4. Employee operation | Resolve D11 and implement one approved employee operation through domain/application/adapters, including access, audit, and trace | Not started |
 | 5. Cache-backed employee read | Prove scoped Redis caching, invalidation, and failure behavior for a concrete employee read | Not started |
@@ -24,8 +24,9 @@ mean ignoring custom-domain or self-host requirements during identity design.
 Status: the API is built step by step (C24). Steps 0–5 and
 H1–H6 are done, identity (step 7) is done through 7e, and step 6 (tenancy) is in progress:
 the classification lists, `tenants`, `tenant_institution_types`, `domains`, and
-`memberships` are built (C136–C141, C158, C160), with seeded memberships (C161);
-`RequireMember` and the transaction boundary come next. This breaks
+`memberships` are built (C136–C141, C158, C160), with seeded memberships (C161), and the
+tenant guards with the `TenantUser` chain and `GET /api/v1/tenant` (C162); the
+`TenantClient` and `Operator` chains come with their first routes. This breaks
 the platform stage above into small increments, including the backend deployment
 proof, so there is a clear platform milestone before HRMS.
 
