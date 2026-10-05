@@ -12,7 +12,7 @@ pages=(
   identity.bool.test/
   identity.bool.test/settings
   "identity.bool.test/logout/confirm?logout_challenge=warm-up"
-  demo.bool.test/
+  male-city.bool.test/
   admin.bool.test/
 )
 

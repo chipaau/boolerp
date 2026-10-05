@@ -5,14 +5,16 @@
   "scope": "openid offline_access email phone profile",
   "audience": ["erp-api"],
   "redirect_uris": [
-    "http://demo.bool.test/auth/callback",
-    "http://cyryx.bool.test/auth/callback"
+    "http://male-city.bool.test/auth/callback",
+    "http://cyryx.bool.test/auth/callback",
+    "http://workspace.male-city.test/auth/callback"
   ],
   "token_endpoint_auth_method": "client_secret_basic",
   "skip_consent": true,
   "post_logout_redirect_uris": [
-    "http://demo.bool.test/",
-    "http://cyryx.bool.test/"
+    "http://male-city.bool.test/",
+    "http://cyryx.bool.test/",
+    "http://workspace.male-city.test/"
   ],
   "backchannel_logout_uri": "http://bff-workspace:8080/auth/backchannel-logout",
   "backchannel_logout_session_required": true

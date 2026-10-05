@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { defineConfig, type Project } from '@playwright/test'
 
 // End-to-end tests against the running Compose stack (docker compose up), through Traefik, by
-// run.sh. Tests use explicit URLs: the flows cross the workspace (demo.bool.test), the admin
+// run.sh. Tests use explicit URLs: the flows cross the workspace (male-city.bool.test), the admin
 // console (admin.bool.test), and the login service (identity.bool.test). global-setup creates the
 // account the suite signs in with, and deletes it afterwards.
 //

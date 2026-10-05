@@ -315,6 +315,17 @@ councils, schools, colleges), as the table owner, until tenancy has a create-ten
 operation, and gives each one without a platform workspace host `<slug>.<APP_PLATFORM_DOMAIN>`
 (`cyryx.bool.test`), active, and primary unless the tenant already has a primary.
 
+`tenancy.sample_domains` then adds the hosts in `tenancy/seeds/sample_domains.csv` (dev
+only): `workspace.male-city.test`, a custom domain standing in for Malé City Council's own
+(active, verified, its primary), and Cyryx's student portal (active) and lecturer portal
+(pending). `*.test` resolves to this machine, and Traefik and the workspace dev server
+accept any `*.test` host, so a new sample workspace host only needs its callback on the
+Hydra client (`docker/hydra/clients/erp-workspace.json`). Hydra matches callbacks exactly
+(no wildcards, RFC 9700); step 7f adds and removes them through Hydra's admin API as
+domains are activated and revoked. Sign in at `http://workspace.male-city.test/` or `http://male-city.bool.test/`:
+both open the same tenant's workspace (no redirect, C158). The e2e suite uses
+`male-city.bool.test`.
+
 `APP_PLATFORM_DOMAIN` (C159) is the deployment's own domain, required by `cmd/seed` and
 `cmd/deploy`: `bool.mv` in production, `bool.test` in Compose, and a self-hosted
 installation's own. It is a bare lowercase domain (no scheme, port, or trailing dot).

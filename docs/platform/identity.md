@@ -59,7 +59,7 @@ registered by the `hydra-clients` service (`docker compose up hydra-clients` re-
 it); each client's secret is the Compose secret `hydra_client_<client-id>`. Hydra
 requires PKCE on every authorization code flow (C111), which `hydra perform
 authorization-code` does not send, so `dev-test-client` no longer completes a login
-with it; sign in through an app (`http://demo.bool.test/`) or with an OAuth2 client
+with it; sign in through an app (`http://male-city.bool.test/`) or with an OAuth2 client
 that sends PKCE.
 
 ## Authentication model (C88, C90, ADR 0003)
@@ -85,8 +85,9 @@ redirects to the
 local `return_to` path: a path on the same site, parsed by `url.Parse` (which refuses
 control characters, which browsers would strip, turning `/\t/evil` into `//evil`), with
 no scheme, host, `//` prefix, or backslash; anything else returns to `/` (C112). The callback must be registered on the client
-(`docker/hydra/clients/erp-workspace.json`); development registers `demo.bool.test` and
-`cyryx.bool.test`.
+(`docker/hydra/clients/erp-workspace.json`); development registers `male-city.bool.test`
+(the e2e suite's workspace) and `cyryx.bool.test`, sample tenants' platform hosts (C158).
+Every workspace host needs its callback here until step 7f drives the list from `domains`.
 
 - **Session:** in `redis-sessions` (no eviction, AOF), keyed by the SHA-256 hash of the
   cookie's token; ends 30 minutes after the last request or 12 hours after login.
@@ -106,7 +107,7 @@ session key. Both BFFs share `redis-sessions` under separate key prefixes
 Hydra's tokens are not in the `scs` session but in their own key,
 `bff:<client-id>:tokens:<id>`, written only at login and by a refresh (C98).
 
-To try it: open `http://demo.bool.test/auth/login?return_to=/` or
+To try it: open `http://male-city.bool.test/auth/login?return_to=/` or
 `http://admin.bool.test/auth/login?return_to=/` and sign in. The apps themselves do not
 use the BFF yet (7c-4).
 

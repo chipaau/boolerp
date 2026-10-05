@@ -131,11 +131,12 @@ func DataSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 
 // SampleSeeders load development's sample data that must be written as the
 // migration role (db), because its module has no operation to create it through
-// yet (C143): the sample tenants. cmd/seed runs them after DataSeeders; each skips
+// yet (C143): the sample tenants, then their extra hosts. cmd/seed runs them after DataSeeders; each skips
 // itself outside dev.
 func SampleSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 	return []seed.Seeder{
 		tenancyseeds.NewSamples(db, s.PlatformDomain),
+		tenancyseeds.NewSampleDomains(db),
 	}
 }
 
