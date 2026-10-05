@@ -12,11 +12,11 @@
     "@workspace/assets": "workspace:*",
     "@workspace/org": "workspace:*",
     "@workspace/ui": "workspace:*",
-    "lucide-react": "^1.49.0"
+    "lucide-react": "^1.50.0"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.3"
   },
   "peerDependencies": {
     "@tanstack/react-query": "*",
