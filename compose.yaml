@@ -143,9 +143,10 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      # Workspace hosts: every *.bool.test platform host, and the sample custom domains
-      # (tenancy/seeds/sample_domains.csv), which stand in for a customer's own domain.
-      - "traefik.http.routers.erp-workspace.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) || Host(`workspace.male-city.test`)"
+      # Workspace hosts: any *.test host, so every platform host (<slug>.bool.test) and every
+      # sample custom domain (tenancy/seeds/sample_domains.csv) works without a route of its
+      # own. The login service, admin console, and API have higher-priority routes.
+      - "traefik.http.routers.erp-workspace.rule=HostRegexp(`^[a-z0-9.-]+\\.test$`)"
       - traefik.http.routers.erp-workspace.entrypoints=web
       - traefik.http.routers.erp-workspace.priority=1
       - traefik.http.routers.erp-workspace.service=erp-workspace
@@ -470,11 +471,14 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      # /auth/* and /api/* on every tenant subdomain -> the BFF (above the app's
-      # catch-all), with the API's per-IP rate limit (C81).
-      - "traefik.http.routers.erp-bff-workspace.rule=(HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) || Host(`workspace.male-city.test`)) && (PathPrefix(`/auth`) || PathPrefix(`/api`))"
+      # /auth/* and /api/* on every workspace host (any *.test) -> the BFF, with the API's
+      # per-IP rate limit (C81). Priority 3: above the app (1) and the admin app (2), and
+      # below every other router, including other local projects' on the shared proxy
+      # network (Traefik's default priority is the rule's length), so this catch-all never
+      # takes their hosts.
+      - "traefik.http.routers.erp-bff-workspace.rule=HostRegexp(`^[a-z0-9.-]+\\.test$`) && (PathPrefix(`/auth`) || PathPrefix(`/api`))"
       - traefik.http.routers.erp-bff-workspace.entrypoints=web
-      - traefik.http.routers.erp-bff-workspace.priority=20
+      - traefik.http.routers.erp-bff-workspace.priority=3
       - traefik.http.routers.erp-bff-workspace.middlewares=erp-api-ratelimit
       - traefik.http.routers.erp-bff-workspace.service=erp-bff-workspace
       - traefik.http.services.erp-bff-workspace.loadbalancer.server.port=8080
@@ -693,7 +697,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      # Higher priority than the app's wildcard *.bool.test router.
+      # Higher priority than the workspace's catch-all *.test routers.
       - "traefik.http.routers.erp-grafana.rule=Host(`grafana.bool.test`)"
       - traefik.http.routers.erp-grafana.entrypoints=web
       - traefik.http.routers.erp-grafana.priority=30
