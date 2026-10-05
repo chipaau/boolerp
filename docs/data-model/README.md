@@ -1,7 +1,8 @@
 # Data model status
 
 Updated: 2026-10-05.
-Status: open. Two tables are confirmed and implemented: `users` and `countries` (below). (A `sessions`
+Status: open. Confirmed and implemented: `users`, `countries`, `legal_forms`, `sectors`,
+`institution_types`, `tenants`, `tenant_institution_types`, and `domains` (below). (A `sessions`
 table was approved for sessions in PostgreSQL and withdrawn when sessions moved to the
 BFF's Redis, C90.)
 
@@ -212,3 +213,36 @@ unflag the old row before flagging the new one. Row-level security as for `tenan
 operator may delete rows. The migration is
 `apps/api/internal/platform/tenancy/migrations/00002_tenant_institution_types.sql`.
 
+### `domains` (tenancy module, C158)
+
+Fields confirmed 2026-10-05 by the user, after example rows, keeping `is_primary` with no
+redirect between a tenant's hosts. Every host that opens a tenant's workspace or one of its
+portals (C132): platform hosts under Bool's own domain (`cyryx.bool.mv`, active at once) and
+custom hosts the customer proves with DNS (`workspace.cyryx.edu.mv`). A host routes a request
+to its tenant; it never proves access.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default. |
+| `tenant_id` | `uuid` | Not null; references `tenants.id`, `ON DELETE RESTRICT`; indexed. |
+| `host` | `text` | Not null; normalised by the application (lowercase, ASCII/punycode, no port, no trailing dot), checked by a pattern; unique among rows not revoked. |
+| `kind` | `text` | Not null; `platform` or `custom`. |
+| `serves` | `text` | Not null, default `workspace`; `workspace` or a portal key an app defines in code (format check; the application checks it exists). |
+| `status` | `text` | Not null, default `pending`; `pending`, `active`, or `revoked`. |
+| `verification_token` | `text` | Present exactly for `custom` (check); 32+ URL-safe characters, published as a TXT record at `_bool-verify.<host>`. |
+| `verified_at` | `timestamptz` | Required for an active custom host. |
+| `activated_at` | `timestamptz` | Required when active. |
+| `revoked_at` | `timestamptz` | Required when revoked. |
+| `is_primary` | `boolean` | Not null, default false; only on active rows; at most one per `(tenant_id, serves)`. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+Every active host serves the tenant directly; there is no redirect. The primary is the
+address emails, jobs, and generated links use; the application keeps exactly one per tenant
+and thing served while it has an active host for it, and revoking the primary makes the
+platform host primary in the same transaction. A host, its kind, and its tenant never change
+(a trigger); a new host is a new row, and a revoked host can be claimed again. Row-level
+security as for `tenants`: a tenant reads its own domains, the operator reads all and alone
+adds and changes them, and nothing deletes one. The request lookup is
+`lookup.tenant_by_host(host)`, owned by `erp_lookup` (C131): for an active host it returns
+the tenant's id, code, status, operator flag, and what the host serves; otherwise nothing.
+The migration is `apps/api/internal/platform/tenancy/migrations/00003_domains.sql`.
