@@ -11,6 +11,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 )
 
@@ -102,6 +103,10 @@ func (s *SampleDomains) Run(ctx context.Context, env seed.Env) error {
 		return fmt.Errorf("begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
+	// Attributed to the seeder in the audit (C164).
+	if err := actor.Apply(ctx, tx, ""); err != nil {
+		return fmt.Errorf("audit context: %w", err)
+	}
 
 	var created, existing int
 	for _, d := range domains {

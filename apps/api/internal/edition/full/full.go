@@ -17,6 +17,8 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
 	"github.com/boolmv/erp/apps/api/internal/platform"
+	"github.com/boolmv/erp/apps/api/internal/platform/audit"
+	auditseeds "github.com/boolmv/erp/apps/api/internal/platform/audit/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
@@ -34,6 +36,7 @@ import (
 // after those of the packages they reference. Platform capabilities come first,
 // business modules after them (C122).
 var Migrations = []postgres.ModuleMigrations{
+	{Name: "audit", FS: audit.Migrations()}, // first: every table's migration enables auditing (C164)
 	{Name: "reference", FS: reference.Migrations()},
 	{Name: "identity", FS: identity.Migrations()},
 	{Name: "tenancy", FS: tenancy.Migrations()},
@@ -81,7 +84,7 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 	tenancyModule := tenancy.New(d.Pool, d.Logger)
 	services := platform.Services{
 		Pool: d.Pool, Authz: authz, Logger: d.Logger,
-		TenantUser: chi.Chain(authModule.Authenticate, auth.RequireUser,
+		TenantUser: chi.Chain(authModule.Authenticate, auth.RequireUser, auth.Actor,
 			tenancyModule.ResolveTenant, tenancyModule.RequireMember, tenancyModule.RequireActiveTenant,
 			authorization.Enforce(d.Logger)),
 	}
@@ -133,12 +136,14 @@ type SeedSettings struct {
 	PlatformDomain string
 }
 
-// DataSeeders load the seed files every database needs (C135, C137): the
-// reference lists and the operator tenant (C142), in dependency order like Migrations. Both cmd/deploy (in
+// DataSeeders load the seed files every database needs (C135, C137): audit_log's
+// monthly partitions (C146), the reference lists, and the operator tenant (C142), in
+// dependency order like Migrations. Both cmd/deploy (in
 // production) and cmd/seed (in development) run them, as the migration role (db),
 // which owns the tables, so production and development load the same files.
 func DataSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 	return []seed.Seeder{
+		auditseeds.NewPartitions(db),
 		referenceseeds.NewCountries(db),
 		referenceseeds.NewLegalForms(db),
 		referenceseeds.NewSectors(db),

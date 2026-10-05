@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 )
 
 // DB is what the seeders need: a pool, or a transaction in tests (C79).
@@ -32,6 +34,10 @@ func upsertAll(ctx context.Context, db DB, sql string, rows []row) (counts, erro
 		return n, fmt.Errorf("begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
+	// Attributed to the seeder in the audit (C164).
+	if err := actor.Apply(ctx, tx, ""); err != nil {
+		return counts{}, fmt.Errorf("audit context: %w", err)
+	}
 
 	for _, r := range rows {
 		var isNew bool

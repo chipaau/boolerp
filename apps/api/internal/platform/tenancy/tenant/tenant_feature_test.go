@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
 )
@@ -95,4 +96,21 @@ func TestFeatureATenantTransactionCannotNest(t *testing.T) {
 		})
 	})
 	assert.ErrorIs(t, err, tenant.ErrNested)
+}
+
+func TestFeatureTxAppliesTheActorForItsTransactionOnly(t *testing.T) {
+	c := conn(t)
+	ctx := actor.With(inTenant(), actor.Actor{UserID: "0192f6a0-0000-7000-8000-00000000a001", ClientID: "bff-workspace",
+		Operation: "PATCH /api/v1/things/{id}", RequestID: "req-1", IP: "203.0.113.7"})
+	err := tenant.Tx(ctx, c, func(_ context.Context, tx pgx.Tx) error {
+		assert.Equal(t, "0192f6a0-0000-7000-8000-00000000a001", setting(t, tx, "app.actor_user_id"))
+		assert.Equal(t, "bff-workspace", setting(t, tx, "app.actor_client_id"))
+		assert.Equal(t, id, setting(t, tx, "app.actor_tenant_id"), "the actor acts in the transaction's tenant")
+		assert.Equal(t, "PATCH /api/v1/things/{id}", setting(t, tx, "app.operation"))
+		assert.Equal(t, "req-1", setting(t, tx, "app.request_id"))
+		assert.Equal(t, "203.0.113.7", setting(t, tx, "app.ip"))
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Empty(t, setting(t, c, "app.actor_user_id"), "nothing survives on the pooled connection")
 }

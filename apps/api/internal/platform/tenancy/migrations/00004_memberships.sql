@@ -126,3 +126,6 @@ CREATE POLICY memberships_update ON memberships FOR UPDATE
            OR (is_owner AND lookup.is_operator_tenant(current_tenant_id())))
     WITH CHECK (tenant_id = current_tenant_id()
                 OR (is_owner AND lookup.is_operator_tenant(current_tenant_id())));
+
+-- Every change is audited (C164).
+SELECT audit.enable('memberships');

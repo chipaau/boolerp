@@ -31,3 +31,6 @@ CREATE TRIGGER legal_forms_updated_at BEFORE UPDATE ON legal_forms
 -- (deny by default); the owning migration role maintains them (migrations, deploy).
 ALTER TABLE legal_forms ENABLE ROW LEVEL SECURITY;
 CREATE POLICY legal_forms_read ON legal_forms FOR SELECT USING (true);
+
+-- Every change is audited (C164).
+SELECT audit.enable('legal_forms');

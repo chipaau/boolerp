@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 )
 
@@ -66,6 +67,10 @@ func (o *Operator) Run(ctx context.Context, env seed.Env) error {
 		return fmt.Errorf("begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
+	// Attributed to the seeder in the audit (C164).
+	if err := actor.Apply(ctx, tx, ""); err != nil {
+		return fmt.Errorf("audit context: %w", err)
+	}
 
 	var id, slug string
 	err = tx.QueryRow(ctx, `SELECT id, slug FROM tenants WHERE is_operator`).Scan(&id, &slug)

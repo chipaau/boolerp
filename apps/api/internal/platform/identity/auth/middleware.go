@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 )
@@ -78,6 +79,22 @@ func RequireUser(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+// Actor puts the request's actor in its context for the audit (C147, C164): the
+// person's user and the token's client, with the operation, request ID, and IP. It
+// comes right after authentication; every transaction the request opens applies it.
+func Actor(next http.Handler) http.Handler { return recordActor(next) }
+
+var recordActor = actor.Middleware(func(r *http.Request) (userID, clientID string) {
+	caller, ok := FromContext(r.Context())
+	if !ok {
+		return "", ""
+	}
+	if caller.User != nil {
+		userID = caller.User.ID
+	}
+	return userID, caller.Token.ClientID
+})
 
 // fromHeader reads "Bearer <token>"; the scheme is case-insensitive (RFC 9110).
 func fromHeader(h string) (string, bool) {

@@ -77,7 +77,9 @@ Migrations run explicitly, never at API startup. In development:
 `docker compose run --rm migrate` (`cmd/migrate`), then `docker compose run --rm seed`
 (`cmd/seed`: the seed files, then demo data). In production, `cmd/deploy` does both
 steps for a release; it is not run in development (C137). Migrations hold no data. Until the first production release, a table change edits
-its original migration and development databases are recreated (C140).
+its original migration and development databases are recreated (C140). A database created
+before the audit role and schema (C164) also needs recreating: `docker compose down`,
+`docker volume rm erp_pgdata`, then `migrate` and `seed`.
 Development volumes are disposable; reset them when needed.
 
 ## Runtime configuration
@@ -276,7 +278,7 @@ same seed files**; only the command differs:
 
 | Seeders | Listed in | Production: `cmd/deploy` | Development: `cmd/seed` | Role |
 | --- | --- | --- | --- | --- |
-| Seed files: countries, legal forms, sectors, institution types; the operator tenant | `full.DataSeeders` | yes, after the migrations | yes, first | migration role (owns the tables) |
+| Seed files: audit_log's monthly partitions (C164); countries, legal forms, sectors, institution types; the operator tenant | `full.DataSeeders` | yes, after the migrations | yes, first | migration role (owns the tables) |
 | The team's accounts without passwords, then their memberships of the operator tenant (C161) | `full.DeploySeeders` | yes | no (the demo seeder creates the accounts) | migration role |
 | Sample tenants (C143) | `full.SampleSeeders` | never | yes, in `dev`, after the seed files | migration role, until tenancy has a create-tenant operation |
 | Demo data: team accounts and the e2e account with the dev password, gofakeit data | `full.Seeders` | never | yes, after the seed files | runtime role, through use cases |

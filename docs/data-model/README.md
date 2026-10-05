@@ -279,3 +279,37 @@ lookups owned by `erp_lookup` (C131): `lookup.active_membership(tenant, user)` f
 `lookup.memberships_of(user)` for the switcher (active memberships with each tenant's
 primary workspace host). The migration is
 `apps/api/internal/platform/tenancy/migrations/00004_memberships.sql`.
+
+### `audit_log` (audit module, C146, C147, C164)
+
+Fields confirmed 2026-10-06 by the user, without `support_grant_id` (added when support
+grants exist) and with no index beyond the primary key (indexes are proposed with the first
+audit read). One append-only table of every change to every table, written only by the
+capture trigger, in the same transaction as the change. Partitioned by month on
+`occurred_at`; owned by `erp_audit`.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Not null, `uuidv7()` default; primary key `(occurred_at, id)` (a partitioned table's key includes the partition column). |
+| `occurred_at` | `timestamptz` | Not null, `now()` default: the transaction's time. |
+| `tenant_id` | `uuid` | Nullable: the row's tenant (`tenants`: its own id; global tables: null). No foreign key. |
+| `action` | `text` | Not null; `insert`, `update`, `delete`, or `read` (C148). |
+| `entity` | `text` | Not null, not blank: the table, or a read event's name. |
+| `record_id` | `text` | Not null: the row's primary key (key columns joined with `/`). |
+| `old_values` | `jsonb` | Nullable: delete, the old row; update, old values of changed columns. |
+| `new_values` | `jsonb` | Nullable: insert, the new row; update, new values of changed columns. |
+| `changed_columns` | `text[]` | Nullable: update only; excluded columns listed, never their values. |
+| `actor_user_id` | `uuid` | Nullable: the person. |
+| `actor_client_id` | `text` | Nullable: the OAuth client the token was issued to. |
+| `actor_tenant_id` | `uuid` | Nullable: the tenant the actor acted in. |
+| `operation` | `text` | Nullable: route pattern, `cli: …`, `job: …`, or `seed: …`. |
+| `request_id` | `text` | Nullable. |
+| `ip` | `inet` | Nullable: the client as the trusted proxy reported it. |
+| `db_role` | `text` | Not null, `session_user` default: the login role, so manual fixes are attributed. |
+
+Append-only: triggers refuse update, delete, and truncate (of the table and each
+partition), the owner included; old months are detached and dropped. The runtime role only
+reads, through row-level security (its own tenant's rows; the operator tenant every row);
+partitions live in the `audit` schema, which it cannot use. Partitions are created ahead by
+`audit.create_partitions` (the `audit.partitions` seed file); a default partition keeps any
+other row. The migration is `apps/api/internal/platform/audit/migrations/00001_audit_log.sql`.

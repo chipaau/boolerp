@@ -214,7 +214,7 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
 - Built: `tenancy/tenant` (`With`/`From`, `WithMembership`/`MembershipFrom`, `Tx`/`ReadTx`
   with `ErrNoTenant` and `ErrNested`, C145); `auth.RequireUser`; the tenancy guards
   (`tenancy/middleware.go`) and `platform.Services` with the **`TenantUser`** chain
-  (C162). `TenantClient` and `Operator` come with their first routes. No maintained Go
+  (C162), which also records the actor for the audit (`auth.Actor`, C164). `TenantClient` and `Operator` come with their first routes. No maintained Go
   library provides tenant context with PostgreSQL row-level security, so this is our own
   code (a recorded gap, C144): `context.Context`, chi middleware, and pgx's `BeginTxFunc`.
 - `ResolveTenant`: the request's host, normalised (lowercase, no port or trailing dot),

@@ -21,3 +21,6 @@ CREATE TRIGGER sectors_updated_at BEFORE UPDATE ON sectors
 -- by default); the owning migration role maintains them (migrations, deploy, seed).
 ALTER TABLE sectors ENABLE ROW LEVEL SECURITY;
 CREATE POLICY sectors_read ON sectors FOR SELECT USING (true);
+
+-- Every change is audited (C164).
+SELECT audit.enable('sectors');

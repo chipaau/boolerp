@@ -69,12 +69,12 @@ func New(ctx context.Context, s Settings, client *http.Client, users Users, auth
 func (m *Module) Routes(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		// Every route here asks Cerbos before it answers (C155).
-		r.Use(m.Authenticate, authorization.Enforce(m.logger))
+		r.Use(m.Authenticate, Actor, authorization.Enforce(m.logger))
 		r.Get("/me", m.me)
 	})
 	r.Group(func(r chi.Router) {
 		// Registering is the one route a person may call before they have a user.
-		r.Use(m.authenticateToken, authorization.Enforce(m.logger))
+		r.Use(m.authenticateToken, Actor, authorization.Enforce(m.logger))
 		r.Post("/me", m.register)
 	})
 }

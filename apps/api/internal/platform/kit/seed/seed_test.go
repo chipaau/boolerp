@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 )
 
 type recorder struct {
@@ -41,4 +43,24 @@ func TestFakeDataIsTheSameOnEveryRun(t *testing.T) {
 	b := NewEnv("dev", slog.New(slog.DiscardHandler)).Fake
 	assert.Equal(t, a.Name(), b.Name())
 	assert.Equal(t, a.Email(), b.Email())
+}
+
+// operations records the audit operation each seeder runs under.
+type operations struct {
+	name string
+	seen *[]string
+}
+
+func (o operations) Name() string { return o.name }
+
+func (o operations) Run(ctx context.Context, _ Env) error {
+	*o.seen = append(*o.seen, actor.From(ctx).Operation)
+	return nil
+}
+
+func TestEachSeederIsTheAuditedOperation(t *testing.T) {
+	var seen []string
+	require.NoError(t, Run(t.Context(), []Seeder{operations{"tenancy.operator", &seen}, operations{"reference.countries", &seen}},
+		NewEnv("dev", slog.New(slog.DiscardHandler))))
+	assert.Equal(t, []string{"seed: tenancy.operator", "seed: reference.countries"}, seen)
 }

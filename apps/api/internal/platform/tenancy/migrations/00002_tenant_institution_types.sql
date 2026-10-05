@@ -81,3 +81,6 @@ CREATE POLICY tenant_institution_types_update ON tenant_institution_types FOR UP
     WITH CHECK (lookup.is_operator_tenant(current_tenant_id()));
 CREATE POLICY tenant_institution_types_delete ON tenant_institution_types FOR DELETE
     USING (lookup.is_operator_tenant(current_tenant_id()));
+
+-- Every change is audited (C164).
+SELECT audit.enable('tenant_institution_types');
