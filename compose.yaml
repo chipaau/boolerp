@@ -143,7 +143,9 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      - "traefik.http.routers.erp-workspace.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`)"
+      # Workspace hosts: every *.bool.test platform host, and the sample custom domains
+      # (tenancy/seeds/sample_domains.csv), which stand in for a customer's own domain.
+      - "traefik.http.routers.erp-workspace.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) || Host(`workspace.male-city.test`)"
       - traefik.http.routers.erp-workspace.entrypoints=web
       - traefik.http.routers.erp-workspace.priority=1
       - traefik.http.routers.erp-workspace.service=erp-workspace
@@ -470,7 +472,7 @@ services:
       - traefik.docker.network=proxy
       # /auth/* and /api/* on every tenant subdomain -> the BFF (above the app's
       # catch-all), with the API's per-IP rate limit (C81).
-      - "traefik.http.routers.erp-bff-workspace.rule=HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) && (PathPrefix(`/auth`) || PathPrefix(`/api`))"
+      - "traefik.http.routers.erp-bff-workspace.rule=(HostRegexp(`^[a-z0-9-]+\\.bool\\.test$`) || Host(`workspace.male-city.test`)) && (PathPrefix(`/auth`) || PathPrefix(`/api`))"
       - traefik.http.routers.erp-bff-workspace.entrypoints=web
       - traefik.http.routers.erp-bff-workspace.priority=20
       - traefik.http.routers.erp-bff-workspace.middlewares=erp-api-ratelimit

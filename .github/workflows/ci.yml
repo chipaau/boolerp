@@ -351,7 +351,7 @@ jobs:
       # login flow). Traefik answers 404 (no route yet) or 502/504 (service not up) until then.
       - name: Wait until every site answers through Traefik
         run: |
-          for host in identity.bool.test demo.bool.test admin.bool.test; do
+          for host in identity.bool.test male-city.bool.test admin.bool.test; do
             for i in $(seq 1 120); do
               code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $host" http://localhost/ || true)
               case "$code" in 2??|3??) break ;; esac

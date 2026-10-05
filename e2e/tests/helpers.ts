@@ -5,7 +5,7 @@ import { expect, type Page } from '@playwright/test'
 // runs on the harness's one Playwright.
 export { expect, test } from '@playwright/test'
 
-export const WORKSPACE = 'http://demo.bool.test'
+export const WORKSPACE = 'http://male-city.bool.test'
 export const ADMIN = 'http://admin.bool.test'
 export const IDENTITY = 'http://identity.bool.test'
 

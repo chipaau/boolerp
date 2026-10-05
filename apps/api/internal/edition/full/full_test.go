@@ -87,7 +87,7 @@ func TestSampleSeeders(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"tenancy.sample_tenants"}, names)
+	assert.Equal(t, []string{"tenancy.sample_tenants", "tenancy.sample_domains"}, names)
 }
 
 func TestPrincipalForEachKindOfCaller(t *testing.T) {

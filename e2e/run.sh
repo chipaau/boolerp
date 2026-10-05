@@ -17,7 +17,7 @@ if [ -z "$TRAEFIK_IP" ]; then
 fi
 
 hosts=()
-for host in demo.bool.test admin.bool.test identity.bool.test; do
+for host in male-city.bool.test admin.bool.test identity.bool.test; do
   hosts+=(--add-host="${host}:${TRAEFIK_IP}")
 done
 

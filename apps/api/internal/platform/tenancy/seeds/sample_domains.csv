@@ -1,0 +1,12 @@
+# Sample domains for development only (C158): hosts beyond each sample tenant's platform
+# host (<slug>.<APP_PLATFORM_DOMAIN>, which the sample tenant seeder adds). Custom ones
+# stand in for a customer's verified domain (the seeder gives them a token and marks them
+# verified when active). Every workspace host here needs a Traefik route (compose.yaml) and
+# its callback on the Hydra client (docker/hydra/clients/erp-workspace.json) until step 7f
+# drives both from the domains table. tenant is a sample tenant's slug; serves is workspace or a portal key (C132);
+# status is active or pending; primary (yes or no) makes an active host the tenant's
+# primary for what it serves, replacing the one before.
+tenant,host,kind,serves,status,primary
+male-city,workspace.male-city.test,custom,workspace,active,yes
+cyryx,cyryx-portal.bool.test,custom,academics.student,active,yes
+cyryx,cyryx-lecturer.bool.test,custom,academics.lecturer,pending,no

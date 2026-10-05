@@ -47,7 +47,9 @@ const config = defineConfig({
   server: {
     host: true,
     port: 3000,
-    allowedHosts: ['.bool.test'], // served behind Traefik at <tenant>.bool.test
+    // Served behind Traefik at <tenant>.bool.test, and at the sample custom domain
+    // (tenancy/seeds/sample_domains.csv) that stands in for a customer's own.
+    allowedHosts: ['.bool.test', 'workspace.male-city.test'],
     // Docker Desktop bind mounts on Windows do not forward file events; poll so HMR works.
     watch: { usePolling: true, interval: 800 },
   },

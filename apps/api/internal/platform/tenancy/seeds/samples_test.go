@@ -37,3 +37,39 @@ func TestParseSamplesRejectsBadRows(t *testing.T) {
 		})
 	}
 }
+
+func TestTheEmbeddedSampleDomains(t *testing.T) {
+	domains, err := ParseSampleDomains(sampleDomainsCSV)
+	require.NoError(t, err)
+	assert.Contains(t, domains, SampleDomain{Tenant: "cyryx", Host: "cyryx-portal.bool.test", Kind: "custom",
+		Serves: "academics.student", Status: "active", Primary: true})
+
+	samples, err := ParseSamples(sampleTenantsCSV)
+	require.NoError(t, err)
+	slugs := map[string]bool{}
+	for _, s := range samples {
+		slugs[s.Slug] = true
+	}
+	for _, d := range domains {
+		assert.True(t, slugs[d.Tenant], "%s belongs to a sample tenant", d.Host)
+	}
+}
+
+func TestParseSampleDomainsRejectsBadRows(t *testing.T) {
+	const header = "tenant,host,kind,serves,status,primary\n"
+	for name, data := range map[string]string{
+		"wrong header":    "tenant,host\nx,y\n",
+		"missing column":  header + "x,a.test,custom,workspace,active\n",
+		"no host":         header + "x,,custom,workspace,active,no\n",
+		"duplicate":       header + "x,a.test,custom,workspace,active,no\ny,a.test,custom,workspace,active,no\n",
+		"unknown kind":    header + "x,a.test,other,workspace,active,no\n",
+		"revoked":         header + "x,a.test,custom,workspace,revoked,no\n",
+		"bad primary":     header + "x,a.test,custom,workspace,active,maybe\n",
+		"pending primary": header + "x,a.test,custom,workspace,pending,yes\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := ParseSampleDomains([]byte(data))
+			assert.Error(t, err)
+		})
+	}
+}

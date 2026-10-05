@@ -83,3 +83,43 @@ func TestFeatureTheSampleSeederNeedsItsLegalForm(t *testing.T) {
 	bad := "slug,code,name,country,legal_form,identity_number,parent,types\nx-a,XTA,A,XT,x_none,,,x_tenancy_type\n"
 	require.Error(t, seeds.NewSamplesFrom(w.tx, []byte(bad), "x-tenancy.test").Run(t.Context(), seedEnvFor("dev")))
 }
+
+// Hosts for the sample domain tests, of the tenants in testSamples.
+const testSampleDomains = `tenant,host,kind,serves,status,primary
+x-company,own.x-tenancy.test,custom,workspace,active,yes
+x-company,portal.x-tenancy.test,custom,academics.student,pending,no
+`
+
+func TestFeatureTheSampleDomainSeederAddsHostsInDev(t *testing.T) {
+	w := newWorld(t)
+	w.addTypes(t)
+	require.NoError(t, seeds.NewSamplesFrom(w.tx, []byte(testSamples), "x-tenancy.test").Run(t.Context(), seedEnvFor("dev")))
+	s := seeds.NewSampleDomainsFrom(w.tx, []byte(testSampleDomains))
+	assert.Equal(t, "tenancy.sample_domains", s.Name())
+	require.NoError(t, s.Run(t.Context(), seedEnvFor("dev")))
+	require.NoError(t, s.Run(t.Context(), seedEnvFor("dev")), "running again is fine")
+
+	testdb.AssertHas(t, w.tx, "domains", map[string]any{
+		"host": "own.x-tenancy.test", "kind": "custom", "status": "active", "is_primary": true,
+	})
+	testdb.AssertHas(t, w.tx, "domains", map[string]any{"host": "x-company.x-tenancy.test", "is_primary": false})
+	testdb.AssertHas(t, w.tx, "domains", map[string]any{
+		"host": "portal.x-tenancy.test", "serves": "academics.student", "status": "pending", "is_primary": false,
+	})
+	assert.Equal(t, 1, testdb.Count(t, w.tx, "domains", map[string]any{"host": "own.x-tenancy.test"}))
+	var verified bool
+	require.NoError(t, w.tx.QueryRow(t.Context(), `SELECT verified_at IS NOT NULL AND verification_token IS NOT NULL
+		FROM domains WHERE host = 'own.x-tenancy.test'`).Scan(&verified))
+	assert.True(t, verified, "an active custom host stands in for a verified one")
+}
+
+func TestFeatureTheSampleDomainSeederRunsOnlyInDev(t *testing.T) {
+	w := newWorld(t)
+	require.NoError(t, seeds.NewSampleDomainsFrom(w.tx, []byte(testSampleDomains)).Run(t.Context(), seedEnvFor("staging")))
+	testdb.AssertMissing(t, w.tx, "domains", map[string]any{"host": "own.x-tenancy.test"})
+}
+
+func TestFeatureTheSampleDomainSeederNeedsItsTenant(t *testing.T) {
+	w := newWorld(t)
+	require.Error(t, seeds.NewSampleDomainsFrom(w.tx, []byte(testSampleDomains)).Run(t.Context(), seedEnvFor("dev")))
+}
