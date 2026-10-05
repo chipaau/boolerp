@@ -144,18 +144,21 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
     clinic, pharmacy, laboratory).
 - Classification is required before a tenant becomes active, not at creation (C136).
 
-**`memberships`** (previously `tenant_users`)
-- `id`, `user_id`, `tenant_id`; unique `(tenant_id, id)` so tenant tables reference a
+**`memberships`** (C160, confirmed 2026-10-05; [data model](../data-model/README.md))
+- `id`, `tenant_id`, `user_id`; unique `(tenant_id, id)` so tenant tables reference a
   membership with a foreign key that includes `tenant_id`.
-- `status` invited / active / disabled (reversible); `joined_at`, `ended_at` (an ended
-  membership is history and never reused); `is_owner` (one per tenant, transferred only
-  by a dedicated action); `invited_by`; `invite_expires_at`.
-- One live membership per person and tenant; indexes by tenant and by user.
-- Row-level security: members see their tenant's memberships, changes subject to
-  authorization; a narrow function returns the caller's own active memberships across
-  tenants (the switcher); operators see and create only owner memberships.
+- `status` invited / active / disabled (reversible) / ended (final history, never
+  reused: rejoining is a new row), with `invite_expires_at`, `joined_at`, `disabled_at`,
+  and `ended_at` following it; an expired invitation is an invited row past its expiry.
+  `is_owner` (one per tenant, invited or active, transferred only by a dedicated action);
+  `invited_by`.
+- One live membership per person and tenant; tenant and user never change.
+- Row-level security: members read and change their tenant's memberships (Cerbos decides
+  who); operators read, create, and change only owner memberships of other tenants; none
+  are deleted. `lookup.active_membership` answers `RequireMember` and
+  `lookup.memberships_of` the switcher (with each tenant's primary workspace host).
 - Seats are the tenant's active and invited memberships. Inviting someone without an
-  account creates their Kratos account and sends a set-password link.
+  account creates their Kratos account and user first and sends a set-password link.
 
 **`domains`** (C158, confirmed 2026-10-05; [data model](../data-model/README.md))
 - Every host that opens a tenant's workspace or one of its portals: `platform` hosts under
