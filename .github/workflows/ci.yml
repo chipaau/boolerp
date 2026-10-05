@@ -343,6 +343,8 @@ jobs:
         run: |
           docker compose up -d --build --wait postgres redis redis-sessions kratos hydra
           docker compose run --rm migrate
+          # the development data, with the e2e account and its membership (C160)
+          docker compose run --rm seed
           # run, not up: a failed client registration fails the step
           docker compose run --rm hydra-clients
           docker compose up -d --build --wait api bff-workspace bff-admin identity workspace admin

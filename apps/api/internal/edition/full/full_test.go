@@ -69,7 +69,7 @@ func TestDeploySeedersInOrder(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.operator", "identity.team_accounts"}, names)
+	assert.Equal(t, []string{"reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.operator", "identity.team_accounts", "tenancy.operator_members"}, names)
 }
 
 func TestDataSeedersAreTheSeedFiles(t *testing.T) {
@@ -88,6 +88,25 @@ func TestSampleSeeders(t *testing.T) {
 		names[i] = s.Name()
 	}
 	assert.Equal(t, []string{"tenancy.sample_tenants", "tenancy.sample_domains"}, names)
+}
+
+func TestMembershipSeeders(t *testing.T) {
+	seeders := MembershipSeeders(nil)
+	names := make([]string, len(seeders))
+	for i, s := range seeders {
+		names[i] = s.Name()
+	}
+	assert.Equal(t, []string{"tenancy.operator_members", "tenancy.sample_members"}, names)
+}
+
+func TestTheTeamOwnerIsOneOfTheTeam(t *testing.T) {
+	var owners []string
+	for _, m := range teamMembers() {
+		if m.Owner {
+			owners = append(owners, m.Email)
+		}
+	}
+	assert.Equal(t, []string{"shifau@bool.mv"}, owners)
 }
 
 func TestPrincipalForEachKindOfCaller(t *testing.T) {

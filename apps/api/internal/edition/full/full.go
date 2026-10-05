@@ -140,13 +140,41 @@ func SampleSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 	}
 }
 
+// MembershipSeeders give people their memberships (C160), as the migration role
+// (db), because tenancy has no invite operation yet: the team in the operator
+// tenant, then, in dev only, the team in every sample tenant and the end-to-end
+// account in male-city, the suite's workspace. They need the accounts, so cmd/seed
+// runs them after Seeders.
+func MembershipSeeders(db *pgxpool.Pool) []seed.Seeder {
+	team := teamMembers()
+	return []seed.Seeder{
+		tenancyseeds.NewOperatorMembers(db, team),
+		tenancyseeds.NewSampleMembers(db, team, tenancyseeds.Grant{
+			Tenant: "male-city", Member: tenancyseeds.Member{Email: identityseeds.E2EEmail},
+		}),
+	}
+}
+
+// teamMembers are the team's accounts as members, tenancyseeds.TeamOwner the owner.
+func teamMembers() []tenancyseeds.Member {
+	emails := identityseeds.TeamEmails()
+	members := make([]tenancyseeds.Member, len(emails))
+	for i, e := range emails {
+		members[i] = tenancyseeds.Member{Email: e, Owner: e == tenancyseeds.TeamOwner}
+	}
+	return members
+}
+
 // DeploySeeders load production's starting data (C135, C137): DataSeeders, then
-// the team's accounts without passwords. cmd/deploy runs them after applying the
-// migrations, as the migration role (db). terminal is where one-time recovery
-// codes for new accounts are shown, or nil for none.
+// the team's accounts without passwords and their memberships of the operator
+// tenant (C160). cmd/deploy runs them after applying the migrations, as the
+// migration role (db). terminal is where one-time recovery codes for new accounts
+// are shown, or nil for none.
 func DeploySeeders(db *pgxpool.Pool, s SeedSettings, client *http.Client, logger *slog.Logger, terminal io.Writer) []seed.Seeder {
 	users := identity.New(db, s.Identity, client, logger)
-	return append(DataSeeders(db, s), identityseeds.NewTeamAccounts(users, terminal))
+	return append(DataSeeders(db, s),
+		identityseeds.NewTeamAccounts(users, terminal),
+		tenancyseeds.NewOperatorMembers(db, teamMembers()))
 }
 
 // Seeders are the edition's demo data seeders (C135), one per store, in

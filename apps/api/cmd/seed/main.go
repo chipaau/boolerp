@@ -1,7 +1,8 @@
 // Command seed fills a development database after cmd/migrate (C50, C137): first
 // the seed files every database needs (the reference lists, the same files
-// cmd/deploy loads in production) as the migration role, then the demo data as
-// the runtime role. Seeders are one per store, kept in each module's seeds folder
+// cmd/deploy loads in production) and the sample tenants as the migration role,
+// then the demo data as the runtime role, then the memberships (C160) as the
+// migration role again. Seeders are one per store, kept in each module's seeds folder
 // and listed in order by the edition, like Laravel's seeders. It refuses to run
 // unless APP_ENV is set explicitly to dev, test, or staging, and it is not built
 // into the production image.
@@ -71,9 +72,8 @@ func run() int {
 		},
 		PlatformDomain: cfg.Platform.Domain,
 	}
-	err = seed.Run(ctx, append(full.DataSeeders(owner, settings), full.SampleSeeders(owner, settings)...), env)
-	owner.Close()
-	if err != nil {
+	defer owner.Close()
+	if err := seed.Run(ctx, append(full.DataSeeders(owner, settings), full.SampleSeeders(owner, settings)...), env); err != nil {
 		logger.Error("seed failed", "error", err)
 		return 1
 	}
@@ -97,6 +97,12 @@ func run() int {
 	seeders := full.Seeders(pool, settings, &http.Client{Timeout: 10 * time.Second}, logger)
 
 	if err := seed.Run(ctx, seeders, env); err != nil {
+		logger.Error("seed failed", "error", err)
+		return 1
+	}
+
+	// Last, the memberships, as the owner again: they need the accounts (C160).
+	if err := seed.Run(ctx, full.MembershipSeeders(owner), env); err != nil {
 		logger.Error("seed failed", "error", err)
 		return 1
 	}

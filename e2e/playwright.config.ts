@@ -3,8 +3,8 @@ import { defineConfig, type Project } from '@playwright/test'
 
 // End-to-end tests against the running Compose stack (docker compose up), through Traefik, by
 // run.sh. Tests use explicit URLs: the flows cross the workspace (male-city.bool.test), the admin
-// console (admin.bool.test), and the login service (identity.bool.test). global-setup creates the
-// account the suite signs in with, and deletes it afterwards.
+// console (admin.bool.test), and the login service (identity.bool.test). The suite signs in with
+// the development e2e account, which `docker compose run --rm seed` creates (helpers.ts, C160).
 //
 // Projects: `platform` (this package's tests: sign-in, the BFF, sign-out) and one per app the
 // edition ships that has end-to-end specs (packages/app-<slug>/e2e), from the same edition files
@@ -33,7 +33,6 @@ export default defineConfig({
     { name: 'signed-in', testDir: './tests', testMatch: 'signed-in.setup.ts' },
     ...appProjects,
   ],
-  globalSetup: './tests/global-setup.ts',
   workers: 1, // one account; sign-out ends its sessions
   retries: 0,
   reporter: 'list',

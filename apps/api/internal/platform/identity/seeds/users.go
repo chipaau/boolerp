@@ -22,7 +22,7 @@ type SignIns interface {
 
 // Users is a demo seeder (C135): in dev it gives the team's accounts (team.go)
 // the development password and the Google stand-in sign-in, creating any that
-// deploy has not.
+// deploy has not, and creates the end-to-end suite's account the same way.
 type Users struct {
 	accounts SignIns
 }
@@ -48,7 +48,7 @@ func (u *Users) Run(ctx context.Context, env seed.Env) error {
 		return nil
 	}
 	var created, existing int
-	for _, m := range team {
+	for _, m := range append(team[:len(team):len(team)], e2e) {
 		// The development Google stand-in signs in with the email as username.
 		user, isNew, err := u.accounts.EnsureAccount(ctx, identity.NewAccount{
 			Email: m.email, Phone: m.phone, DisplayName: m.name,

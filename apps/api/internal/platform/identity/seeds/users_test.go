@@ -59,8 +59,8 @@ func TestTeamAccountsInDev(t *testing.T) {
 	accounts := newFake()
 	users := NewUsers(accounts)
 	require.NoError(t, users.Run(t.Context(), env("dev")))
-	assert.Len(t, accounts.seen, 3)
-	for _, email := range teamEmails {
+	assert.Len(t, accounts.seen, 4, "the team and the end-to-end account")
+	for _, email := range append(teamEmails, "e2e@bool.test") {
 		a := accounts.seen[email]
 		assert.Equal(t, "password", a.Password, email)
 		assert.Equal(t, email, a.GoogleSubject, email)
@@ -70,7 +70,8 @@ func TestTeamAccountsInDev(t *testing.T) {
 	assert.Empty(t, accounts.signIns, "new accounts get their sign-ins when created")
 
 	require.NoError(t, users.Run(t.Context(), env("dev")), "running again is fine")
-	for _, email := range teamEmails {
+	assert.Len(t, accounts.seen, 4)
+	for _, email := range append(teamEmails, "e2e@bool.test") {
 		assert.Equal(t, "password|"+email, accounts.signIns["k-"+email], "existing accounts get the sign-ins")
 	}
 }
@@ -130,4 +131,14 @@ func TestSeederFailuresNameTheMember(t *testing.T) {
 	err := NewTeamAccounts(accounts, nil).Run(t.Context(), env("prod"))
 	require.ErrorContains(t, err, "Ahmed Shifau")
 	require.Error(t, NewUsers(accounts).Run(t.Context(), env("dev")))
+}
+
+func TestTeamEmailsAreTheTeamInOrder(t *testing.T) {
+	assert.Equal(t, teamEmails, TeamEmails())
+}
+
+func TestDeployCreatesNoEndToEndAccount(t *testing.T) {
+	accounts := newFake()
+	require.NoError(t, NewTeamAccounts(accounts, nil).Run(t.Context(), env("prod")))
+	assert.NotContains(t, accounts.seen, E2EEmail)
 }

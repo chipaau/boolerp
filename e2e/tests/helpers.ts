@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs'
 import { expect, type Page } from '@playwright/test'
 
 // App packages' specs (packages/app-<slug>/e2e) import test and expect from here, so every spec
@@ -9,9 +8,11 @@ export const WORKSPACE = 'http://male-city.bool.test'
 export const ADMIN = 'http://admin.bool.test'
 export const IDENTITY = 'http://identity.bool.test'
 
-/** The account global-setup created. */
-export const user = (): { email: string; password: string } =>
-  JSON.parse(readFileSync(new URL('../.auth/user.json', import.meta.url), 'utf8'))
+/**
+ * The account the suite signs in with: seeded by `docker compose run --rm seed` in development
+ * only, with the team's public development password, as an active member of male-city (C160).
+ */
+export const user = (): { email: string; password: string } => ({ email: 'e2e@bool.test', password: 'password' })
 
 /** Fills the login service's password form and submits it. */
 export async function submitLogin(page: Page) {
