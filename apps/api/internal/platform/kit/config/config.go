@@ -2,7 +2,8 @@
 //
 // Settings are grouped by concern, one file per group: app.go (APP_*), log.go
 // (APP_LOG_*), http.go (APP_HTTP_*), database.go (APP_DB_*), redis.go
-// (APP_REDIS_*), auth.go (APP_AUTH_*), and identity.go (APP_IDENTITY_*). Each group is a
+// (APP_REDIS_*), auth.go (APP_AUTH_*), identity.go (APP_IDENTITY_*), and
+// platform.go (APP_PLATFORM_*, used by cmd/seed and cmd/deploy). Each group is a
 // struct whose env tags are joined to its envPrefix, so DB.Host reads APP_DB_HOST.
 // cmd/migrate has its own settings (migrate.go, MIGRATE_*), loaded by LoadMigrate,
 // and cmd/bff its own (bff.go, BFF_*), loaded by LoadBFF.

@@ -64,7 +64,14 @@ func run() int {
 		return 1
 	}
 	// Then development's samples that must also be written as the owner (C143).
-	err = seed.Run(ctx, append(full.DataSeeders(owner), full.SampleSeeders(owner)...), env)
+	settings := full.SeedSettings{
+		Identity: identity.Settings{
+			KratosAdminURL: cfg.Identity.KratosAdminURL,
+			HydraAdminURL:  cfg.Identity.HydraAdminURL,
+		},
+		PlatformDomain: cfg.Platform.Domain,
+	}
+	err = seed.Run(ctx, append(full.DataSeeders(owner, settings), full.SampleSeeders(owner, settings)...), env)
 	owner.Close()
 	if err != nil {
 		logger.Error("seed failed", "error", err)
@@ -87,12 +94,7 @@ func run() int {
 	}
 	defer pool.Close()
 
-	seeders := full.Seeders(pool, full.SeedSettings{
-		Identity: identity.Settings{
-			KratosAdminURL: cfg.Identity.KratosAdminURL,
-			HydraAdminURL:  cfg.Identity.HydraAdminURL,
-		},
-	}, &http.Client{Timeout: 10 * time.Second}, logger)
+	seeders := full.Seeders(pool, settings, &http.Client{Timeout: 10 * time.Second}, logger)
 
 	if err := seed.Run(ctx, seeders, env); err != nil {
 		logger.Error("seed failed", "error", err)

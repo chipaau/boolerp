@@ -83,6 +83,7 @@ func run() int {
 			KratosAdminURL: cfg.Identity.KratosAdminURL,
 			HydraAdminURL:  cfg.Identity.HydraAdminURL,
 		},
+		PlatformDomain: cfg.Platform.Domain,
 	}, &http.Client{Timeout: 10 * time.Second}, logger, terminal())
 	if err := seed.Run(ctx, seeders, seed.NewEnv(cfg.App.Environment, logger)); err != nil {
 		logger.Error("deploy failed", "error", err)

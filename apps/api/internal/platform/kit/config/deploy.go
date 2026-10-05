@@ -9,6 +9,8 @@ type Deploy struct {
 	DB  MigrateDB `envPrefix:"MIGRATE_DB_"`
 	// Identity reaches Kratos's admin API to create the team's accounts.
 	Identity Identity `envPrefix:"APP_IDENTITY_"`
+	// Platform names the deployment's domain, for the operator's workspace host.
+	Platform Platform `envPrefix:"APP_PLATFORM_"`
 }
 
 // DeployApp names the environment; it must be set explicitly, and only to a
