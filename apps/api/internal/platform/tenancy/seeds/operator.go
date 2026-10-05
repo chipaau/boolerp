@@ -62,41 +62,31 @@ func (*Operator) Name() string { return "tenancy.operator" }
 // transaction, so the rule that an active tenant has a primary type (checked at
 // commit) holds.
 func (o *Operator) Run(ctx context.Context, env seed.Env) error {
-	tx, err := o.db.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
-	// Attributed to the seeder in the audit (C164).
-	if err := actor.Apply(ctx, tx, ""); err != nil {
-		return fmt.Errorf("audit context: %w", err)
-	}
-
-	var id, slug string
-	err = tx.QueryRow(ctx, `SELECT id, slug FROM tenants WHERE is_operator`).Scan(&id, &slug)
-	switch {
-	case err == nil:
-		env.Logger.InfoContext(ctx, "operator tenant exists; left as it is")
-	case errors.Is(err, pgx.ErrNoRows):
-		if id, err = o.create(ctx, tx); err != nil {
+	// One transaction, attributed to the seeder in the audit (C164).
+	return actor.Tx(ctx, o.db, func(ctx context.Context, tx pgx.Tx) error {
+		var id, slug string
+		err := tx.QueryRow(ctx, `SELECT id, slug FROM tenants WHERE is_operator`).Scan(&id, &slug)
+		switch {
+		case err == nil:
+			env.Logger.InfoContext(ctx, "operator tenant exists; left as it is")
+		case errors.Is(err, pgx.ErrNoRows):
+			if id, err = o.create(ctx, tx); err != nil {
+				return err
+			}
+			slug = o.tenant.Slug
+			env.Logger.InfoContext(ctx, "operator tenant created")
+		default:
+			return fmt.Errorf("find the operator: %w", err)
+		}
+		added, err := ensurePlatformDomain(ctx, tx, id, slug, o.platformDomain)
+		if err != nil {
 			return err
 		}
-		slug = o.tenant.Slug
-		env.Logger.InfoContext(ctx, "operator tenant created")
-	default:
-		return fmt.Errorf("find the operator: %w", err)
-	}
-	added, err := ensurePlatformDomain(ctx, tx, id, slug, o.platformDomain)
-	if err != nil {
-		return err
-	}
-	if added {
-		env.Logger.InfoContext(ctx, "operator workspace domain created", "host", slug+"."+o.platformDomain)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit: %w", err)
-	}
-	return nil
+		if added {
+			env.Logger.InfoContext(ctx, "operator workspace domain created", "host", slug+"."+o.platformDomain)
+		}
+		return nil
+	})
 }
 
 // create inserts the operator tenant and its primary type, returning its id.

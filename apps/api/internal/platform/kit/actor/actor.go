@@ -1,5 +1,5 @@
 // Package actor carries who is acting, and through which operation, in a
-// context.Context, and applies it to a transaction as the app.* settings the audit
+// context.Context, and opens transactions that carry it as the app.* settings the audit
 // trigger records (C147, C164). Every entry point sets it: the HTTP middleware for
 // requests, seed.Run for seeders, and later CLI commands and jobs. It writes nothing
 // itself.
@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/requestid"
@@ -38,15 +39,49 @@ func From(ctx context.Context) Actor {
 	return a
 }
 
-// Execer runs a statement: a transaction.
-type Execer interface {
+// Beginner begins a transaction: a pool, or a transaction (a savepoint) in tests.
+type Beginner interface {
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
+
+// Tx runs fn in a transaction on db for a write outside any tenant (users, seed
+// files), with ctx's actor applied first: it commits when fn returns nil and rolls back
+// on an error or a panic (pgx.BeginFunc). Writes inside a tenant use tenant.Tx, which
+// applies the actor too. These two are the only ways code opens a writing transaction,
+// so no write misses its actor (C164).
+func Tx(ctx context.Context, db Beginner, fn func(ctx context.Context, tx pgx.Tx) error) error {
+	return pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
+		if err := apply(ctx, tx, ""); err != nil {
+			return err
+		}
+		return fn(ctx, tx)
+	})
+}
+
+// TxBeginner begins a transaction with options: a pool or a connection.
+type TxBeginner interface {
+	BeginTx(ctx context.Context, opts pgx.TxOptions) (pgx.Tx, error)
+}
+
+// TxIn is Tx with transaction options and the tenant the actor acts in, for tenant.Tx.
+func TxIn(ctx context.Context, db TxBeginner, opts pgx.TxOptions, actingTenant string, fn func(tx pgx.Tx) error) error {
+	return pgx.BeginTxFunc(ctx, db, opts, func(tx pgx.Tx) error {
+		if err := apply(ctx, tx, actingTenant); err != nil {
+			return err
+		}
+		return fn(tx)
+	})
+}
+
+// execer runs a statement: a transaction.
+type execer interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
 
-// Apply sets ctx's actor, and the tenant it acts in ("" for none), as settings local to
-// tx (they end with it, so nothing survives on a pooled connection). Call it first in
-// every transaction that writes.
-func Apply(ctx context.Context, tx Execer, actingTenant string) error {
+// apply sets ctx's actor, and the tenant it acts in ("" for none), as settings local to
+// tx (they end with it, so nothing survives on a pooled connection), which the audit
+// trigger records.
+func apply(ctx context.Context, tx execer, actingTenant string) error {
 	a := From(ctx)
 	_, err := tx.Exec(ctx, `SELECT set_config('app.actor_user_id', $1, true),
 		set_config('app.actor_client_id', $2, true), set_config('app.actor_tenant_id', $3, true),

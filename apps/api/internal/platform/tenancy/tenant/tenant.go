@@ -97,14 +97,11 @@ func run(ctx context.Context, db Beginner, opts pgx.TxOptions, fn func(ctx conte
 		return ErrNested
 	}
 	inner := context.WithValue(ctx, insideKey{}, true)
-	return pgx.BeginTxFunc(ctx, db, opts, func(tx pgx.Tx) error {
+	// The actor acts in this tenant, for the audit trigger (C147, C164).
+	return actor.TxIn(ctx, db, opts, t.ID, func(tx pgx.Tx) error {
 		// is_local = true: the setting ends with the transaction, so nothing
 		// survives on the pooled connection (C115).
 		if _, err := tx.Exec(ctx, `SELECT set_config('app.tenant_id', $1, true)`, t.ID); err != nil {
-			return err
-		}
-		// Who acts, and through what, for the audit trigger (C147, C164).
-		if err := actor.Apply(ctx, tx, t.ID); err != nil {
 			return err
 		}
 		return fn(inner, tx)

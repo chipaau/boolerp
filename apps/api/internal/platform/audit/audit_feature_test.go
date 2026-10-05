@@ -18,6 +18,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
+	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
 )
 
 // Feature tests (C79) for the audit trigger, audit_log's guards and row-level
@@ -130,8 +131,12 @@ func TestFeatureTheTriggerRecordsTheActor(t *testing.T) {
 	tx := things(t)
 	ctx := actor.With(t.Context(), actor.Actor{UserID: userID, ClientID: "bff-workspace",
 		Operation: "PATCH /api/v1/things/{id}", RequestID: "req-1", IP: "203.0.113.7"})
-	require.NoError(t, actor.Apply(ctx, tx, tenantB))
-	exec(t, tx, `INSERT INTO x_audit_things (id, name) VALUES ($1, 'global')`, thingID)
+	// Through tenant.Tx, as the API writes: the actor acts in tenant B.
+	require.NoError(t, tenant.Tx(tenant.With(ctx, tenant.Tenant{ID: tenantB}), savepoints{tx},
+		func(ctx context.Context, tx pgx.Tx) error {
+			_, err := tx.Exec(ctx, `INSERT INTO x_audit_things (id, name) VALUES ($1, 'global')`, thingID)
+			return err
+		}))
 
 	got := entries(t, tx, "x_audit_things")
 	require.Len(t, got, 1)
@@ -263,6 +268,13 @@ func TestFeatureThePartitionsSeederOnlyTouchesAuditTables(t *testing.T) {
 	exec(t, tx, `CREATE TABLE x_audit_mine (occurred_at timestamptz NOT NULL) PARTITION BY RANGE (occurred_at)`)
 	err := seeds.NewPartitionsOf(tx, "x_audit_mine", 1).Run(t.Context(), seed.NewEnv("test", slog.New(slog.DiscardHandler)))
 	assert.ErrorContains(t, err, "not an audit table")
+}
+
+// savepoints lets tenant.Tx begin its transaction inside the test's.
+type savepoints struct{ pgx.Tx }
+
+func (s savepoints) BeginTx(ctx context.Context, _ pgx.TxOptions) (pgx.Tx, error) {
+	return s.Begin(ctx)
 }
 
 func sessionUser(t *testing.T, tx pgx.Tx) string {

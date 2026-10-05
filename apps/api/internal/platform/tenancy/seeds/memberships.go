@@ -49,7 +49,7 @@ func (*OperatorMembers) Name() string { return "tenancy.operator_members" }
 
 // Run implements seed.Seeder, in one transaction.
 func (s *OperatorMembers) Run(ctx context.Context, env seed.Env) error {
-	return inTx(ctx, s.db, func(tx pgx.Tx) error {
+	return actor.Tx(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
 		var tenantID string
 		if err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE is_operator`).Scan(&tenantID); err != nil {
 			// tenancy.operator, a seed file, runs first.
@@ -111,7 +111,7 @@ func (s *SampleMembers) Run(ctx context.Context, env seed.Env) error {
 	}
 	grants = append(grants, s.extra...)
 
-	return inTx(ctx, s.db, func(tx pgx.Tx) error {
+	return actor.Tx(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
 		var created, existing int
 		for _, g := range grants {
 			var tenantID string
@@ -166,24 +166,4 @@ func count(added bool, created, existing *int) {
 	} else {
 		*existing++
 	}
-}
-
-// inTx runs fn in a transaction on db and commits it if fn succeeds.
-func inTx(ctx context.Context, db DB, fn func(pgx.Tx) error) error {
-	tx, err := db.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
-	// Attributed to the seeder in the audit (C164).
-	if err := actor.Apply(ctx, tx, ""); err != nil {
-		return fmt.Errorf("audit context: %w", err)
-	}
-	if err := fn(tx); err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit: %w", err)
-	}
-	return nil
 }

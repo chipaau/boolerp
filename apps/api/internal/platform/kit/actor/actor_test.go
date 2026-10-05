@@ -36,14 +36,14 @@ func (r *recorder) Exec(_ context.Context, _ string, args ...any) (pgconn.Comman
 func TestApplySetsEveryField(t *testing.T) {
 	var tx recorder
 	ctx := With(context.Background(), Actor{UserID: "u", ClientID: "c", Operation: "op", RequestID: "r", IP: "203.0.113.7"})
-	require.NoError(t, Apply(ctx, &tx, "t"))
+	require.NoError(t, apply(ctx, &tx, "t"))
 	assert.Equal(t, []any{"u", "c", "t", "op", "r", "203.0.113.7"}, tx.args)
 
-	require.NoError(t, Apply(context.Background(), &tx, ""))
+	require.NoError(t, apply(context.Background(), &tx, ""))
 	assert.Equal(t, []any{"", "", "", "", "", ""}, tx.args, "no actor: every setting cleared")
 
 	tx.err = errors.New("connection lost")
-	assert.Error(t, Apply(ctx, &tx, ""))
+	assert.Error(t, apply(ctx, &tx, ""))
 }
 
 func TestMiddlewareRecordsTheRequest(t *testing.T) {

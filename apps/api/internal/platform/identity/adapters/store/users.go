@@ -45,27 +45,22 @@ func (s *Users) ByKratosID(ctx context.Context, kratosIdentityID string) (domain
 // the same account at once cannot create two users. Its transaction carries the
 // actor for the audit (C164).
 func (s *Users) Save(ctx context.Context, a domain.Account) (u domain.User, err error) {
-	tx, err := s.db.Begin(ctx)
+	err = actor.Tx(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
+		u, err = scan(tx.QueryRow(ctx, `
+			INSERT INTO users (kratos_identity_id, email, phone, display_name, avatar_url)
+			VALUES ($1, $2, $3, nullif($4, ''), nullif($5, ''))
+			ON CONFLICT (kratos_identity_id) DO UPDATE
+			SET email = excluded.email, phone = excluded.phone,
+			    display_name = excluded.display_name, avatar_url = excluded.avatar_url,
+			    updated_at = now()
+			RETURNING `+columns,
+			a.KratosIdentityID, a.Email, a.Phone, a.DisplayName, a.AvatarURL))
+		return err
+	})
 	if err != nil {
 		return domain.User{}, err
 	}
-	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
-	if err := actor.Apply(ctx, tx, ""); err != nil {
-		return domain.User{}, err
-	}
-	u, err = scan(tx.QueryRow(ctx, `
-		INSERT INTO users (kratos_identity_id, email, phone, display_name, avatar_url)
-		VALUES ($1, $2, $3, nullif($4, ''), nullif($5, ''))
-		ON CONFLICT (kratos_identity_id) DO UPDATE
-		SET email = excluded.email, phone = excluded.phone,
-		    display_name = excluded.display_name, avatar_url = excluded.avatar_url,
-		    updated_at = now()
-		RETURNING `+columns,
-		a.KratosIdentityID, a.Email, a.Phone, a.DisplayName, a.AvatarURL))
-	if err != nil {
-		return domain.User{}, err
-	}
-	return u, tx.Commit(ctx)
+	return u, nil
 }
 
 func scan(row pgx.Row) (domain.User, error) {

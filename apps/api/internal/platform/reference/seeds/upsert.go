@@ -29,32 +29,26 @@ type counts struct{ inserted, updated, unchanged int }
 // `xmax = 0` (true for a new row) only when it wrote; no row back means unchanged.
 func upsertAll(ctx context.Context, db DB, sql string, rows []row) (counts, error) {
 	var n counts
-	tx, err := db.Begin(ctx)
-	if err != nil {
-		return n, fmt.Errorf("begin: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
-	// Attributed to the seeder in the audit (C164).
-	if err := actor.Apply(ctx, tx, ""); err != nil {
-		return counts{}, fmt.Errorf("audit context: %w", err)
-	}
-
-	for _, r := range rows {
-		var isNew bool
-		err := tx.QueryRow(ctx, sql, r.args...).Scan(&isNew)
-		switch {
-		case errors.Is(err, pgx.ErrNoRows):
-			n.unchanged++
-		case err != nil:
-			return counts{}, fmt.Errorf("%s: %w", r.key, err)
-		case isNew:
-			n.inserted++
-		default:
-			n.updated++
+	// One transaction, attributed to the seeder in the audit (C164).
+	err := actor.Tx(ctx, db, func(ctx context.Context, tx pgx.Tx) error {
+		for _, r := range rows {
+			var isNew bool
+			err := tx.QueryRow(ctx, sql, r.args...).Scan(&isNew)
+			switch {
+			case errors.Is(err, pgx.ErrNoRows):
+				n.unchanged++
+			case err != nil:
+				return fmt.Errorf("%s: %w", r.key, err)
+			case isNew:
+				n.inserted++
+			default:
+				n.updated++
+			}
 		}
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return counts{}, fmt.Errorf("commit: %w", err)
+		return nil
+	})
+	if err != nil {
+		return counts{}, err
 	}
 	return n, nil
 }

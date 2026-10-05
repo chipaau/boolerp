@@ -55,13 +55,15 @@ are not a replacement, and Redis is not the durable audit store.
 
 ## The audit context (C147, C164)
 
-- `kit/actor` carries the actor in `ctx` and `actor.Apply` sets the `app.*` settings local to
-  a transaction. `auth.Actor` (in the auth routes and the `TenantUser` chain; later
+- `kit/actor` carries the actor in `ctx`. A writing transaction is opened only by
+  `tenant.Tx` (inside a tenant) or `actor.Tx` (outside one: users, seed files); both set the
+  actor as `app.*` settings local to the transaction first, so no write can miss it.
+  `auth.Actor` (in the auth routes and the `TenantUser` chain; later
   `TenantClient` and `Operator`) records the person, the client, the operation (chi's route
   pattern such as `PATCH /api/hrms/employees/{id}`), the request ID, and the trusted-proxy IP.
   It writes nothing.
-- `tenant.Tx` applies it with the acting tenant; identity's user writes and every seeder
-  transaction apply it too, and `seed.Run` names the seeder (`seed: tenancy.operator`). CLI
+- `tenant.Tx` adds the acting tenant; identity's user writes and every seeder transaction
+  use `actor.Tx`, and `seed.Run` names the seeder (`seed: tenancy.operator`). CLI
   commands (`cli: …`) and background jobs (`job: …`, the original actor stored with the job)
   set the same context when they exist.
 
