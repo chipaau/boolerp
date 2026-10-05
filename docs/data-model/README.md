@@ -2,7 +2,8 @@
 
 Updated: 2026-10-05.
 Status: open. Confirmed and implemented: `users`, `countries`, `legal_forms`, `sectors`,
-`institution_types`, `tenants`, `tenant_institution_types`, and `domains` (below). (A `sessions`
+`institution_types`, `tenants`, `tenant_institution_types`, `domains`, and `memberships`
+(below). (A `sessions`
 table was approved for sessions in PostgreSQL and withdrawn when sessions moved to the
 BFF's Redis, C90.)
 
@@ -246,3 +247,35 @@ adds and changes them, and nothing deletes one. The request lookup is
 `lookup.tenant_by_host(host)`, owned by `erp_lookup` (C131): for an active host it returns
 the tenant's id, code, status, operator flag, and what the host serves; otherwise nothing.
 The migration is `apps/api/internal/platform/tenancy/migrations/00003_domains.sql`.
+
+### `memberships` (tenancy module, C160)
+
+Fields confirmed 2026-10-05 by the user. A person's access to a tenant they work in: one
+account, many memberships (C115). Not employment (the employee record is HRMS's); portal
+users never become members (C133).
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default; also unique `(tenant_id, id)` for tenant-aware foreign keys. |
+| `tenant_id` | `uuid` | Not null; references `tenants.id`, `ON DELETE RESTRICT`. |
+| `user_id` | `uuid` | Not null; references `users.id`, `ON DELETE RESTRICT` (a cross-module key, C134); indexed. |
+| `status` | `text` | Not null, default `invited`; `invited`, `active`, `disabled` (reversible), or `ended` (final). |
+| `is_owner` | `boolean` | Not null, default false; only when invited or active; at most one per tenant. |
+| `invited_by` | `uuid` | Nullable; references `users.id`; null when provisioning or a seed created it. |
+| `invite_expires_at` | `timestamptz` | Required when invited; an invited row past it is an expired invitation. |
+| `joined_at` | `timestamptz` | Required when active or disabled. |
+| `disabled_at` | `timestamptz` | Required when disabled. |
+| `ended_at` | `timestamptz` | Required when ended. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+One live membership per person and tenant (unique while not ended); an ended membership is
+frozen history and rejoining is a new row. Tenant and user never change (a trigger). Seats
+are the tenant's invited and active memberships. To transfer ownership, unflag the old owner
+before flagging the new one. Row-level security: members read and change their tenant's
+memberships (Cerbos decides who); the operator also reads, creates, and changes owner
+memberships of any tenant, and nothing else outside its own; nothing deletes one. Two
+lookups owned by `erp_lookup` (C131): `lookup.active_membership(tenant, user)` for
+`RequireMember` (the active membership and the tenant's status, in one call) and
+`lookup.memberships_of(user)` for the switcher (active memberships with each tenant's
+primary workspace host). The migration is
+`apps/api/internal/platform/tenancy/migrations/00004_memberships.sql`.
