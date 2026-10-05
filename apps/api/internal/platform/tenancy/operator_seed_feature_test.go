@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/seeds"
 )
 
@@ -33,7 +34,7 @@ func seedEnvFor(environment string) seed.Env {
 
 func TestFeatureTheOperatorSeederCreatesAnActiveOperator(t *testing.T) {
 	w := newWorld(t)
-	s := seeds.NewOperator(w.tx, testOperator)
+	s := seeds.NewOperator(w.tx, testOperator, "x-tenancy.test")
 	assert.Equal(t, "tenancy.operator", s.Name())
 	require.NoError(t, s.Run(t.Context(), seedEnv()))
 	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`) // an active tenant has its primary type
@@ -51,11 +52,27 @@ func TestFeatureTheOperatorSeederCreatesAnActiveOperator(t *testing.T) {
 	assert.True(t, isOperator)
 	assert.Equal(t, "x_tenancy_type", primary)
 	assert.Equal(t, "test_company", form)
+	testdb.AssertHas(t, w.tx, "domains", map[string]any{
+		"host": "x-operator.x-tenancy.test", "kind": "platform", "serves": "workspace",
+		"status": "active", "is_primary": true,
+	})
+}
+
+func TestFeatureTheOperatorSeederGivesAnExistingOperatorItsDomain(t *testing.T) {
+	w := newWorld(t)
+	w.operator(t) // created before domains existed: no host yet
+	s := seeds.NewOperator(w.tx, testOperator, "x-tenancy.test")
+	require.NoError(t, s.Run(t.Context(), seedEnv()))
+	require.NoError(t, s.Run(t.Context(), seedEnv()))
+
+	testdb.AssertHas(t, w.tx, "domains", map[string]any{"host": "x-operator.x-tenancy.test", "is_primary": true})
+	assert.Equal(t, 1, testdb.Count(t, w.tx, "domains", map[string]any{"host": "x-operator.x-tenancy.test"}),
+		"running again adds nothing")
 }
 
 func TestFeatureTheOperatorSeederLeavesAnExistingOperator(t *testing.T) {
 	w := newWorld(t)
-	s := seeds.NewOperator(w.tx, testOperator)
+	s := seeds.NewOperator(w.tx, testOperator, "x-tenancy.test")
 	require.NoError(t, s.Run(t.Context(), seedEnv()))
 	exec(t, w.tx, `UPDATE tenants SET name = 'Renamed in the admin console' WHERE is_operator`)
 	require.NoError(t, s.Run(t.Context(), seedEnv()))
@@ -72,7 +89,7 @@ func TestFeatureTheOperatorSeederNeedsItsLegalForm(t *testing.T) {
 	w := newWorld(t)
 	missing := testOperator
 	missing.LegalForm = "x_none"
-	require.Error(t, seeds.NewOperator(w.tx, missing).Run(t.Context(), seedEnv()))
+	require.Error(t, seeds.NewOperator(w.tx, missing, "x-tenancy.test").Run(t.Context(), seedEnv()))
 }
 
 func TestBoolIsAValidOperator(t *testing.T) {

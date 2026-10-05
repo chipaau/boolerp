@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/seeds"
 )
 
@@ -22,7 +23,7 @@ x-new,XNEW,Test New,XT,,,,
 func TestFeatureTheSampleSeederCreatesTenantsInDev(t *testing.T) {
 	w := newWorld(t)
 	w.addTypes(t)
-	s := seeds.NewSamplesFrom(w.tx, []byte(testSamples))
+	s := seeds.NewSamplesFrom(w.tx, []byte(testSamples), "x-tenancy.test")
 	assert.Equal(t, "tenancy.sample_tenants", s.Name())
 	require.NoError(t, s.Run(t.Context(), seedEnvFor("dev")))
 	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`) // every active sample has its primary type
@@ -47,11 +48,31 @@ func TestFeatureTheSampleSeederCreatesTenantsInDev(t *testing.T) {
 		`SELECT max(status) FILTER (WHERE slug = 'x-new'), count(*) FROM tenants WHERE slug LIKE 'x-%'`).Scan(&newStatus, &count))
 	assert.Equal(t, "provisioning", newStatus)
 	assert.Equal(t, 4, count, "running again never duplicates")
+
+	for _, slug := range []string{"x-ministry", "x-hospital", "x-company", "x-new"} {
+		testdb.AssertHas(t, w.tx, "domains", map[string]any{
+			"host": slug + ".x-tenancy.test", "kind": "platform", "status": "active", "is_primary": true,
+		})
+		assert.Equal(t, 1, testdb.Count(t, w.tx, "domains", map[string]any{"host": slug + ".x-tenancy.test"}))
+	}
+}
+
+func TestFeatureTheSampleSeederKeepsAnotherPrimary(t *testing.T) {
+	w := newWorld(t)
+	w.addTypes(t)
+	a := w.tenant(t, "x-company", "XCOM")
+	// A verified custom host is already the primary.
+	exec(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, verification_token, status, verified_at, activated_at, is_primary)
+		VALUES ($1, 'own.x-tenancy.test', 'custom', $2, 'active', now(), now(), true)`, a, token)
+	require.NoError(t, seeds.NewSamplesFrom(w.tx, []byte(testSamples), "x-tenancy.test").Run(t.Context(), seedEnvFor("dev")))
+
+	testdb.AssertHas(t, w.tx, "domains", map[string]any{"host": "own.x-tenancy.test", "is_primary": true})
+	testdb.AssertHas(t, w.tx, "domains", map[string]any{"host": "x-company.x-tenancy.test", "is_primary": false})
 }
 
 func TestFeatureTheSampleSeederRunsOnlyInDev(t *testing.T) {
 	w := newWorld(t)
-	require.NoError(t, seeds.NewSamplesFrom(w.tx, []byte(testSamples)).Run(t.Context(), seedEnvFor("staging")))
+	require.NoError(t, seeds.NewSamplesFrom(w.tx, []byte(testSamples), "x-tenancy.test").Run(t.Context(), seedEnvFor("staging")))
 	var count int
 	require.NoError(t, w.tx.QueryRow(t.Context(), `SELECT count(*) FROM tenants WHERE slug LIKE 'x-%'`).Scan(&count))
 	assert.Zero(t, count)
@@ -60,5 +81,5 @@ func TestFeatureTheSampleSeederRunsOnlyInDev(t *testing.T) {
 func TestFeatureTheSampleSeederNeedsItsLegalForm(t *testing.T) {
 	w := newWorld(t)
 	bad := "slug,code,name,country,legal_form,identity_number,parent,types\nx-a,XTA,A,XT,x_none,,,x_tenancy_type\n"
-	require.Error(t, seeds.NewSamplesFrom(w.tx, []byte(bad)).Run(t.Context(), seedEnvFor("dev")))
+	require.Error(t, seeds.NewSamplesFrom(w.tx, []byte(bad), "x-tenancy.test").Run(t.Context(), seedEnvFor("dev")))
 }

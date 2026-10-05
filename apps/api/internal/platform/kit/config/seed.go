@@ -9,6 +9,7 @@ type Seed struct {
 	DB       DB        `envPrefix:"APP_DB_"`
 	Migrate  MigrateDB `envPrefix:"MIGRATE_DB_"`
 	Identity Identity  `envPrefix:"APP_IDENTITY_"`
+	Platform Platform  `envPrefix:"APP_PLATFORM_"`
 }
 
 // SeedApp is the seed guard: APP_ENV must be set explicitly (the API's dev

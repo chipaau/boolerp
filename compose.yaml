@@ -410,6 +410,8 @@ services:
       MIGRATE_DB_SSLMODE: disable
       APP_IDENTITY_KRATOS_ADMIN_URL: http://kratos:4434
       APP_IDENTITY_HYDRA_ADMIN_URL: http://hydra:4445
+      # Tenants' platform workspace hosts are <slug>.bool.test (C158, C159).
+      APP_PLATFORM_DOMAIN: bool.test
     secrets: [db_app_password, db_migrate_password]
     volumes:
       - .:/w

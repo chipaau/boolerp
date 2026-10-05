@@ -10,6 +10,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 )
 
@@ -72,17 +74,24 @@ func ParseSamples(data []byte) ([]Sample, error) {
 // the table owner, like Operator: tenancy has no create-tenant operation yet, so
 // this is a recorded exception to seeding through use cases (C50) until it does.
 // A tenant whose slug exists is left as it is.
+// Each sample, new or existing, gets its platform workspace host,
+// <slug>.<platform domain>, if it has none (C158, C159).
 type Samples struct {
-	db   DB
-	data []byte
+	db             DB
+	data           []byte
+	platformDomain string
 }
 
 // NewSamples returns the seeder over db, with the embedded list.
-func NewSamples(db DB) *Samples { return NewSamplesFrom(db, sampleTenantsCSV) }
+func NewSamples(db DB, platformDomain string) *Samples {
+	return NewSamplesFrom(db, sampleTenantsCSV, platformDomain)
+}
 
 // NewSamplesFrom returns the seeder over db with another list in the same format
 // (tests use their own test country and types).
-func NewSamplesFrom(db DB, data []byte) *Samples { return &Samples{db: db, data: data} }
+func NewSamplesFrom(db DB, data []byte, platformDomain string) *Samples {
+	return &Samples{db: db, data: data, platformDomain: platformDomain}
+}
 
 // Name implements seed.Seeder.
 func (*Samples) Name() string { return "tenancy.sample_tenants" }
@@ -104,44 +113,60 @@ func (s *Samples) Run(ctx context.Context, env seed.Env) error {
 	}
 	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
 
-	var created, existing int
+	var created, existing, domains int
 	for _, sm := range samples {
-		var exists bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM tenants WHERE slug = $1)`, sm.Slug).Scan(&exists); err != nil {
+		var id string
+		err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, sm.Slug).Scan(&id)
+		switch {
+		case err == nil:
+			existing++
+		case errors.Is(err, pgx.ErrNoRows):
+			if id, err = createSample(ctx, tx, sm); err != nil {
+				return err
+			}
+			created++
+		default:
 			return fmt.Errorf("sample %s: %w", sm.Slug, err)
 		}
-		if exists {
-			existing++
-			continue
-		}
-		var id string
-		err := tx.QueryRow(ctx, `
-			INSERT INTO tenants (slug, code, name, country, parent_id, legal_form_id, identity_number,
-			                     timezone, status, activated_at)
-			SELECT $1, $2, $3, $7, (SELECT p.id FROM tenants p WHERE p.slug = nullif($4, '')),
-			       lf.id, nullif($6, ''),
-			       CASE WHEN $5 = '' THEN NULL ELSE 'Indian/Maldives' END,
-			       CASE WHEN $5 = '' THEN 'provisioning' ELSE 'active' END,
-			       CASE WHEN $5 = '' THEN NULL ELSE now() END
-			  FROM (SELECT 1) one
-			  LEFT JOIN legal_forms lf ON lf.country = $7 AND lf.code = $5
-			 WHERE $5 = '' OR lf.id IS NOT NULL
-			RETURNING id`,
-			sm.Slug, sm.Code, sm.Name, sm.Parent, sm.LegalForm, sm.IdentityNumber, sm.Country).Scan(&id)
+		added, err := ensurePlatformDomain(ctx, tx, id, sm.Slug, s.platformDomain)
 		if err != nil {
-			return fmt.Errorf("sample %s (legal form %q): %w", sm.Slug, sm.LegalForm, err)
+			return err
 		}
-		for i, typ := range sm.Types {
-			if _, err := tx.Exec(ctx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
-				VALUES ($1, $2, $3)`, id, typ, i == 0); err != nil {
-				return fmt.Errorf("sample %s type %s: %w", sm.Slug, typ, err)
-			}
+		if added {
+			domains++
 		}
-		created++
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
-	env.Logger.InfoContext(ctx, "sample tenants seeded", "created", created, "existing", existing)
+	env.Logger.InfoContext(ctx, "sample tenants seeded", "created", created, "existing", existing, "domains", domains)
 	return nil
+}
+
+// createSample inserts a sample tenant and its institution types, returning its id.
+func createSample(ctx context.Context, tx pgx.Tx, sm Sample) (string, error) {
+	var id string
+	err := tx.QueryRow(ctx, `
+		INSERT INTO tenants (slug, code, name, country, parent_id, legal_form_id, identity_number,
+		                     timezone, status, activated_at)
+		SELECT $1, $2, $3, $7, (SELECT p.id FROM tenants p WHERE p.slug = nullif($4, '')),
+		       lf.id, nullif($6, ''),
+		       CASE WHEN $5 = '' THEN NULL ELSE 'Indian/Maldives' END,
+		       CASE WHEN $5 = '' THEN 'provisioning' ELSE 'active' END,
+		       CASE WHEN $5 = '' THEN NULL ELSE now() END
+		  FROM (SELECT 1) one
+		  LEFT JOIN legal_forms lf ON lf.country = $7 AND lf.code = $5
+		 WHERE $5 = '' OR lf.id IS NOT NULL
+		RETURNING id`,
+		sm.Slug, sm.Code, sm.Name, sm.Parent, sm.LegalForm, sm.IdentityNumber, sm.Country).Scan(&id)
+	if err != nil {
+		return "", fmt.Errorf("sample %s (legal form %q): %w", sm.Slug, sm.LegalForm, err)
+	}
+	for i, typ := range sm.Types {
+		if _, err := tx.Exec(ctx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
+			VALUES ($1, $2, $3)`, id, typ, i == 0); err != nil {
+			return "", fmt.Errorf("sample %s type %s: %w", sm.Slug, typ, err)
+		}
+	}
+	return id, nil
 }

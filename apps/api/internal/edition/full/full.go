@@ -110,19 +110,22 @@ func Principal(ctx context.Context) (authorization.Principal, error) {
 // SeedSettings configure the seeders (from config.Seed and config.Deploy).
 type SeedSettings struct {
 	Identity identity.Settings
+	// PlatformDomain is the deployment's domain (APP_PLATFORM_DOMAIN, C159):
+	// tenants' platform workspace hosts are <slug>.<PlatformDomain>.
+	PlatformDomain string
 }
 
 // DataSeeders load the seed files every database needs (C135, C137): the
 // reference lists and the operator tenant (C142), in dependency order like Migrations. Both cmd/deploy (in
 // production) and cmd/seed (in development) run them, as the migration role (db),
 // which owns the tables, so production and development load the same files.
-func DataSeeders(db *pgxpool.Pool) []seed.Seeder {
+func DataSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 	return []seed.Seeder{
 		referenceseeds.NewCountries(db),
 		referenceseeds.NewLegalForms(db),
 		referenceseeds.NewSectors(db),
 		referenceseeds.NewInstitutionTypes(db),
-		tenancyseeds.NewOperator(db, tenancyseeds.Bool),
+		tenancyseeds.NewOperator(db, tenancyseeds.Bool, s.PlatformDomain),
 	}
 }
 
@@ -130,9 +133,9 @@ func DataSeeders(db *pgxpool.Pool) []seed.Seeder {
 // migration role (db), because its module has no operation to create it through
 // yet (C143): the sample tenants. cmd/seed runs them after DataSeeders; each skips
 // itself outside dev.
-func SampleSeeders(db *pgxpool.Pool) []seed.Seeder {
+func SampleSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 	return []seed.Seeder{
-		tenancyseeds.NewSamples(db),
+		tenancyseeds.NewSamples(db, s.PlatformDomain),
 	}
 }
 
@@ -142,7 +145,7 @@ func SampleSeeders(db *pgxpool.Pool) []seed.Seeder {
 // codes for new accounts are shown, or nil for none.
 func DeploySeeders(db *pgxpool.Pool, s SeedSettings, client *http.Client, logger *slog.Logger, terminal io.Writer) []seed.Seeder {
 	users := identity.New(db, s.Identity, client, logger)
-	return append(DataSeeders(db), identityseeds.NewTeamAccounts(users, terminal))
+	return append(DataSeeders(db, s), identityseeds.NewTeamAccounts(users, terminal))
 }
 
 // Seeders are the edition's demo data seeders (C135), one per store, in

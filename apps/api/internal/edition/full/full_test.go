@@ -73,7 +73,7 @@ func TestDeploySeedersInOrder(t *testing.T) {
 }
 
 func TestDataSeedersAreTheSeedFiles(t *testing.T) {
-	seeders := DataSeeders(nil)
+	seeders := DataSeeders(nil, SeedSettings{PlatformDomain: "bool.test"})
 	names := make([]string, len(seeders))
 	for i, s := range seeders {
 		names[i] = s.Name()
@@ -82,7 +82,7 @@ func TestDataSeedersAreTheSeedFiles(t *testing.T) {
 }
 
 func TestSampleSeeders(t *testing.T) {
-	seeders := SampleSeeders(nil)
+	seeders := SampleSeeders(nil, SeedSettings{PlatformDomain: "bool.test"})
 	names := make([]string, len(seeders))
 	for i, s := range seeders {
 		names[i] = s.Name()

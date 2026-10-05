@@ -292,7 +292,7 @@ In production, one command per release (it refuses `APP_ENV` other than `staging
 `prod`):
 
 ```sh
-APP_ENV=prod MIGRATE_DB_HOST=… APP_IDENTITY_KRATOS_ADMIN_URL=… deploy
+APP_ENV=prod APP_PLATFORM_DOMAIN=bool.mv MIGRATE_DB_HOST=… APP_IDENTITY_KRATOS_ADMIN_URL=… deploy
 ```
 
 `reference.countries` loads `internal/platform/reference/seeds/countries.csv`, the 249
@@ -305,11 +305,19 @@ countries it references, `reference.sectors` for `sectors.csv`, and `reference.i
 `institution_types.csv`, after the sectors.
 
 `tenancy.operator` creates Bool's operator tenant (`workspace`, C142) if none exists, after
-the reference lists; an existing operator is left as it is.
+the reference lists; an existing operator is left as it is. It then gives the operator its
+platform workspace host, `workspace.<APP_PLATFORM_DOMAIN>` (C158, C159), active and
+primary, if it has none.
 
 In development, `tenancy.sample_tenants` (C143) then adds the sample tenants in
 `tenancy/seeds/sample_tenants.csv` (ministries, atoll hospitals, health centres, clinics,
-councils, schools, colleges), as the table owner, until tenancy has a create-tenant operation.
+councils, schools, colleges), as the table owner, until tenancy has a create-tenant
+operation, and gives each one without a platform workspace host `<slug>.<APP_PLATFORM_DOMAIN>`
+(`cyryx.bool.test`), active, and primary unless the tenant already has a primary.
+
+`APP_PLATFORM_DOMAIN` (C159) is the deployment's own domain, required by `cmd/seed` and
+`cmd/deploy`: `bool.mv` in production, `bool.test` in Compose, and a self-hosted
+installation's own. It is a bare lowercase domain (no scheme, port, or trailing dot).
 
 `identity.team_accounts` creates the team's accounts (`identity/seeds/team.go`) in
 Kratos, with a verified email and no password. For each account it creates, `deploy`
