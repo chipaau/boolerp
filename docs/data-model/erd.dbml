@@ -173,6 +173,37 @@ Table tenant_institution_types {
   '''
 }
 
+Table domains {
+  id uuid [pk, default: `uuidv7()`]
+  tenant_id uuid [not null, ref: > tenants.id, note: 'ON DELETE RESTRICT']
+  host text [not null, note: 'normalised: lowercase, ASCII (punycode), no port, no trailing dot; unique while not revoked']
+  kind text [not null, note: 'platform | custom']
+  serves text [not null, default: 'workspace', note: 'workspace or an app-defined portal key (C132)']
+  status text [not null, default: 'pending', note: 'pending | active | revoked']
+  verification_token text [note: 'custom only (check); TXT record at _bool-verify.<host>']
+  verified_at timestamptz [note: 'required for an active custom host']
+  activated_at timestamptz [note: 'required when active']
+  revoked_at timestamptz [note: 'required when revoked']
+  is_primary boolean [not null, default: false, note: 'active only; at most one per (tenant_id, serves)']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  indexes {
+    host [unique, note: 'partial: WHERE status <> revoked']
+    (tenant_id, serves) [unique, note: 'partial: WHERE is_primary']
+    tenant_id
+  }
+
+  Note: '''
+  Confirmed 2026-10-05 (C158); migration platform/tenancy/migrations/00003_domains.sql.
+  Every host that opens a tenant's workspace or one of its portals. Every active host serves
+  directly (no redirect); the primary is the address emails, jobs, and links use. host, kind,
+  and tenant_id never change (trigger). RLS enabled: a tenant reads its own domains; the
+  operator reads all and alone adds and changes them; none are deleted (revoked instead).
+  lookup.tenant_by_host (erp_lookup, C131) finds an active host's tenant before any tenant is known.
+  '''
+}
+
 TableGroup identity {
   users
 }
@@ -180,6 +211,7 @@ TableGroup identity {
 TableGroup tenancy {
   tenants
   tenant_institution_types
+  domains
 }
 
 TableGroup reference {

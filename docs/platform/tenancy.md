@@ -157,25 +157,33 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
 - Seats are the tenant's active and invited memberships. Inviting someone without an
   account creates their Kratos account and sends a set-password link.
 
-**`domains`** (new; the previous implementation had none)
-- `id`, `tenant_id`; `host` normalised (lowercase, no port, internationalised names in
-  ASCII form), unique across tenants while not revoked; `kind` default
-  (`<slug>.bool.mv`, created at provisioning and active at once) or custom; `status`
-  pending / active / revoked; `verification_token` (published by the customer as a DNS TXT
-  record at `_bool-verify.<host>`); `verified_at`, `activated_at`, `revoked_at`;
-  `is_primary` (one per tenant: the address others redirect to and emails use).
+**`domains`** (C158, confirmed 2026-10-05; [data model](../data-model/README.md))
+- Every host that opens a tenant's workspace or one of its portals: `platform` hosts under
+  Bool's own domain (`cyryx.bool.mv`, created at provisioning and active at once) and
+  `custom` hosts the customer proves with a TXT record at `_bool-verify.<host>`
+  (`workspace.cyryx.edu.mv`). `host` is stored normalised (lowercase, ASCII/punycode, no
+  port, no trailing dot) and is unique while not revoked; `serves` is `workspace` or a
+  portal key an app defines (C132), so `workspace.cyryx.edu.mv` and `portal.cyryx.edu.mv`
+  both belong to Cyryx but open different applications.
+- **No redirect:** every active host serves the tenant directly; each has its own BFF
+  session, signed in silently through the login service. **`is_primary`** (one per tenant
+  and thing served) is the address emails, jobs, and generated links use; revoking the
+  primary makes the platform host primary in the same transaction, so the platform host is
+  the fallback that keeps a tenant reachable.
+- A host, its kind, and its tenant never change; a new host is a new row. Domains are
+  revoked, never deleted.
 - Only active hosts resolve; pending, revoked, and unknown hosts get the same 404 and
   cannot start a login. A background job re-checks custom domains and revokes one whose
   record is gone (built with step 7f).
-- Row-level security: a tenant sees its own domains, the operator tenant all; the
-  request lookup uses a narrow function owned by the `erp_lookup` role (C131, below).
+- Row-level security: a tenant sees its own domains, the operator tenant all, and only the
+  operator adds or changes them for now. The request lookup is
+  `lookup.tenant_by_host(host)`, owned by `erp_lookup` (C131).
   The admin console (`admin.bool.mv`) is a separate operator-only domain, not a
   workspace, configured like a product domain (C142). Product domains such as
   `findcare.mv` are not tenants' domains and are not in this table (C131).
-- Each domain serves either the tenant's workspace or one of its portals (C132), so
-  `workspace.cyryx.edu.mv` and `portal.cyryx.edu.mv` both belong to Cyryx but open
-  different applications. The fields that record this are settled with the table. TLS per custom domain and Hydra's redirect addresses belong to step 7f and
-  deployment.
+- Every active host needs its TLS certificate, an edge route to the BFF, and its callback
+  and logout addresses on the Hydra client; driving those from this table belongs to step
+  7f and deployment.
 
 **Portals** (C132)
 - A tenant may enable any number of portal types that Bool's apps define (a student
@@ -204,8 +212,9 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
 - The lookup before any tenant is known (C131): a `SECURITY DEFINER` function owned by
   `erp_lookup`, a `NOLOGIN BYPASSRLS` role with column-level `SELECT` on only the
   columns it reads and no writes. It pins `search_path`, schema-qualifies its tables,
-  takes the host as a parameter, and returns the tenant and what the domain serves
-  (the workspace or a portal, C132), or nothing. Only the runtime role
+  takes the host as a parameter, and returns the tenant (id, code, status, operator flag)
+  and what the domain serves (the workspace or a portal, C132), or nothing:
+  `lookup.tenant_by_host` (C158). Only the runtime role
   may execute it; the policies themselves are not loosened.
 - Every outsider gets the same 404 (unknown host, a tenant they do not belong to, a
   suspended one), so tenants and their status cannot be probed. A member of a tenant
@@ -306,7 +315,8 @@ Support default domains such as `cyryx.bool.mv` and verified custom domains such
 
 The design must address normalized hostname lookup, ownership verification,
 activation/revocation, trusted proxy headers, TLS, redirect validation, and
-unknown/unverified hosts. The registry and its lifecycle are not approved schemas.
+unknown/unverified hosts. The registry is `domains` (C158); the verification job, TLS, and
+Hydra addresses per host come with step 7f.
 
 ## Isolation (D02, decided in part in C115)
 
