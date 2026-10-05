@@ -67,6 +67,18 @@ func (m *Module) authenticate(requireUser bool, next http.Handler) http.Handler 
 	}))
 }
 
+// RequireUser lets through only a person (C144): after Authenticate, a caller
+// with a user. A machine client acting for itself gets 403.
+func RequireUser(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if caller, ok := FromContext(r.Context()); !ok || caller.User == nil {
+			problem.Error(w, r, http.StatusForbidden, "Only a signed-in person can do this.")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // fromHeader reads "Bearer <token>"; the scheme is case-insensitive (RFC 9110).
 func fromHeader(h string) (string, bool) {
 	scheme, token, ok := strings.Cut(h, " ")

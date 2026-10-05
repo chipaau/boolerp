@@ -89,6 +89,23 @@ func TestFeatureCanUsesThePlanner(t *testing.T) {
 		Attributes: map[string]any{"tenant_id": tenantA, "status": "active"}}))
 }
 
+// GET /api/v1/tenant (C162): the principal the edition builds for a person in a
+// tenant, with member only when RequireMember found their membership.
+func TestFeatureAMemberViewsOnlyTheirOwnTenant(t *testing.T) {
+	addr := cerbosAddr(t)
+	attrs := map[string]any{"account_id": "0192f6a0-0000-7000-8000-0000000ac001", "tenant_id": tenantA, "in_operator_tenant": false}
+	tenant := func(id string) authorization.Resource {
+		return authorization.Resource{Kind: "tenancy:tenant", ID: id, Attributes: map[string]any{"tenant_id": id, "status": "active"}}
+	}
+
+	member := authorizer(t, addr, authorization.Principal{ID: shifau, Roles: []string{"user", "member"}, Attributes: attrs})
+	require.NoError(t, member.Check(t.Context(), "view", tenant(tenantA)))
+	assert.ErrorIs(t, member.Check(t.Context(), "view", tenant(operator)), authorization.ErrDenied)
+
+	outsider := authorizer(t, addr, authorization.Principal{ID: shifau, Roles: []string{"user"}, Attributes: attrs})
+	assert.ErrorIs(t, outsider.Check(t.Context(), "view", tenant(tenantA)), authorization.ErrDenied, "not a member")
+}
+
 func TestFeatureAnUnreachableCerbosRefuses(t *testing.T) {
 	a := authorizer(t, "127.0.0.1:1", authorization.Principal{ID: shifau, Roles: []string{"user"}})
 	start := time.Now()

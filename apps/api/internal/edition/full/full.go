@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
+	"github.com/boolmv/erp/apps/api/internal/platform"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
@@ -74,6 +75,19 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 		d.HTTPClient, users, authz, d.Logger)
 
 	r.Route("/api/auth", authModule.Routes)
+
+	// The platform every module gets (C144): the tenant chain is built here from
+	// the single-purpose middlewares of auth, tenancy, and authorization.
+	tenancyModule := tenancy.New(d.Pool, d.Logger)
+	services := platform.Services{
+		Pool: d.Pool, Authz: authz, Logger: d.Logger,
+		TenantUser: chi.Chain(authModule.Authenticate, auth.RequireUser,
+			tenancyModule.ResolveTenant, tenancyModule.RequireMember, tenancyModule.RequireActiveTenant,
+			authorization.Enforce(d.Logger)),
+	}
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Route("/tenant", tenancyModule.Routes(services))
+	})
 	return nil
 }
 
@@ -81,8 +95,9 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 // C157): the authenticated person (role user), a person who has not registered
 // yet (role account, ID their account), or a machine client (role client); a
 // person's account ID (the token's sub) as account_id; and the tenant the
-// request acts in, when there is one. Inside a tenant, member and the caller's
-// capabilities there are added once memberships and roles exist.
+// request acts in, when there is one. Inside a tenant, a person with an active
+// membership there (RequireMember) also has the role member (C153); their
+// capabilities there are added once roles exist.
 func Principal(ctx context.Context) (authorization.Principal, error) {
 	caller, ok := auth.FromContext(ctx)
 	if !ok {
@@ -100,6 +115,9 @@ func Principal(ctx context.Context) (authorization.Principal, error) {
 	if t, ok := tenant.From(ctx); ok {
 		attrs["tenant_id"] = t.ID
 		attrs["in_operator_tenant"] = t.IsOperator
+		if _, ok := tenant.MembershipFrom(ctx); ok && caller.User != nil {
+			p.Roles = append(p.Roles, "member")
+		}
 	}
 	if len(attrs) > 0 {
 		p.Attributes = attrs

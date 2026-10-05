@@ -211,14 +211,28 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   transaction applies it with `SET LOCAL`. Guards run in order: `Authenticate`,
   `RequireUser` or `RequireClient`, `ResolveTenant`, `RequireMember`,
   `RequireActiveTenant`; modules use the named chains in `platform.Services`.
-- Built: `tenancy/tenant` (`With`/`From`, `Tx`/`ReadTx` with `ErrNoTenant` and `ErrNested`,
-  C145). The guards and `platform.Services` come next. No maintained Go library provides
-  tenant context with PostgreSQL row-level security, so this is our own code (a recorded
-  gap, C144): `context.Context`, chi middleware, and pgx's `BeginTxFunc`.
-- Browser requests: the BFF passes the browser's host, looked up in `domains`. Direct
-  API clients (mobile, integrations) name the tenant in a header. Neither proves access:
-  an active membership does, checked with the tenant's status in one call through the
-  narrow function before the request's transaction.
+- Built: `tenancy/tenant` (`With`/`From`, `WithMembership`/`MembershipFrom`, `Tx`/`ReadTx`
+  with `ErrNoTenant` and `ErrNested`, C145); `auth.RequireUser`; the tenancy guards
+  (`tenancy/middleware.go`) and `platform.Services` with the **`TenantUser`** chain
+  (C162). `TenantClient` and `Operator` come with their first routes. No maintained Go
+  library provides tenant context with PostgreSQL row-level security, so this is our own
+  code (a recorded gap, C144): `context.Context`, chi middleware, and pgx's `BeginTxFunc`.
+- `ResolveTenant`: the request's host, normalised (lowercase, no port or trailing dot),
+  must be an active host serving `workspace` (`lookup.tenant_by_host`); a portal host,
+  an unknown host, or no host is 404. Host only for now (C162): the header for direct API
+  clients (mobile, integrations) and its name are decided with the first such client.
+  The host never proves access.
+- `RequireMember`: the person's active membership (`lookup.active_membership`); none
+  (including invited, disabled, and ended) is 404, the same answer as an unknown host.
+  It puts the membership in the context, and the principal gains the Cerbos role
+  `member` (C153).
+- `RequireActiveTenant`: 403 with the problem type
+  `https://bool.mv/problems/tenant-provisioning`, `…/tenant-suspended`, or
+  `…/tenant-archived` for a tenant that is not active (C162).
+- The lookups run on every tenant request (two queries before the transaction); caching
+  them is open (C131).
+- **`GET /api/v1/tenant`** (C162): the request's tenant (`id`, `code`, `name`, `status`),
+  behind `TenantUser`, read in `ReadTx` and checked with Cerbos (`tenancy:tenant` `view`).
 - The lookup before any tenant is known (C131): a `SECURITY DEFINER` function owned by
   `erp_lookup`, a `NOLOGIN BYPASSRLS` role with column-level `SELECT` on only the
   columns it reads and no writes. It pins `search_path`, schema-qualifies its tables,

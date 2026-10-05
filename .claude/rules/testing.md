@@ -21,6 +21,6 @@ Read [testing.md](../../docs/testing.md).
 - Do not require every use case to have redundant tests at every layer or claim a
   coverage percentage without measurement.
 - Keep the API's total coverage (unit and feature tests, `cmd/*` excluded) at or above
-  the threshold in `apps/api/.testcoverage.yml` (87%, C119, C143); CI fails below it. Add
+  the threshold in `apps/api/.testcoverage.yml` (90%, C119, C143, C163); CI fails below it. Add
   tests with each change; raise the threshold when coverage rises, never lower it.
 - Do not launch services or alter persisted data just to validate planning documents.
