@@ -346,11 +346,29 @@ Table capabilities {
   '''
 }
 
+Table role_capabilities {
+  role_id uuid [not null, ref: > roles.id, note: 'ON DELETE RESTRICT']
+  capability text [not null, ref: > capabilities.key, note: 'ON DELETE RESTRICT; of the role\'s app']
+  tenant_id uuid [ref: > tenants.id, note: "the role's tenant, set by trigger; null for a global role"]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (role_id, capability) [pk]
+  }
+
+  Note: '''
+  Confirmed 2026-10-06 (C169); migration platform/authorization/migrations/00005_role_capabilities.sql.
+  Added and removed, never updated. RLS: a tenant reads its own roles' and the global roles',
+  writes its own roles'. Audited (tenant from tenant_id).
+  '''
+}
+
 TableGroup authorization {
   apps
   tenant_apps
   roles
   capabilities
+  role_capabilities
 }
 
 TableGroup audit {

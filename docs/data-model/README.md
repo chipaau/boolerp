@@ -409,3 +409,21 @@ console; other apps' capabilities come with their routes, each agreed first.
 
 Global: everyone reads, only the seed file writes; retired, never deleted. Audited. The
 migration is `apps/api/internal/platform/authorization/migrations/00004_capabilities.sql`.
+
+### `role_capabilities` (authorization module, C169)
+
+Fields confirmed 2026-10-06 by the user, keeping `tenant_id` so a tenant's audit shows
+changes to its roles. Which capabilities each role grants, one row per pair.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `role_id` | `uuid` | Not null; references `roles.id`, `ON DELETE RESTRICT`; with `capability`, the primary key. |
+| `capability` | `text` | Not null; references `capabilities.key`, `ON DELETE RESTRICT`. |
+| `tenant_id` | `uuid` | Nullable: always the role's tenant (null for a global role), set by the trigger whatever the caller sends; references `tenants.id`. |
+| `created_at` | `timestamptz` | Not null, `now()` default: when the role gained it. |
+
+Rows are added and removed (the audit keeps the history), never updated. A trigger sets
+the tenant from the role and refuses a capability of another app or a retired one.
+Row-level security: a tenant reads its own roles' and the global roles' capabilities, and
+adds and removes only its own roles'; global roles' come only from the seed file. Audited.
+The migration is `apps/api/internal/platform/authorization/migrations/00005_role_capabilities.sql`.
