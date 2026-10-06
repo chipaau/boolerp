@@ -137,3 +137,6 @@ CREATE POLICY tenants_create ON tenants FOR INSERT
 CREATE POLICY tenants_update ON tenants FOR UPDATE
     USING (lookup.is_operator_tenant(current_tenant_id()))
     WITH CHECK (lookup.is_operator_tenant(current_tenant_id()) AND is_operator = lookup.is_operator_tenant(id));
+
+-- Every change is audited (C164); a tenant's rows are its own, by its id.
+SELECT audit.enable('tenants', tenant_column => 'id');

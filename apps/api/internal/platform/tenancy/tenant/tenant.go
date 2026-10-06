@@ -1,6 +1,7 @@
 // Package tenant carries the current tenant in a context.Context and opens
-// database transactions for it (C144, C145). Modules import it directly: it
-// depends only on pgx, never on the tenancy module's tables or HTTP code.
+// database transactions for it (C144, C145), applying the actor for the audit
+// (kit/actor, C164). Modules import it directly: it depends only on pgx and the
+// actor context, never on the tenancy module's tables or HTTP code.
 //
 // The tenant is put in ctx by tenancy's ResolveTenant middleware (HTTP), by a
 // command's --tenant flag (CLI), or from a job's stored tenant (workers); Tx and
@@ -13,6 +14,8 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 )
 
 // Tenant is the tenant a request, command, or job acts in.
@@ -94,7 +97,8 @@ func run(ctx context.Context, db Beginner, opts pgx.TxOptions, fn func(ctx conte
 		return ErrNested
 	}
 	inner := context.WithValue(ctx, insideKey{}, true)
-	return pgx.BeginTxFunc(ctx, db, opts, func(tx pgx.Tx) error {
+	// The actor acts in this tenant, for the audit trigger (C147, C164).
+	return actor.TxIn(ctx, db, opts, t.ID, func(tx pgx.Tx) error {
 		// is_local = true: the setting ends with the transaction, so nothing
 		// survives on the pooled connection (C115).
 		if _, err := tx.Exec(ctx, `SELECT set_config('app.tenant_id', $1, true)`, t.ID); err != nil {

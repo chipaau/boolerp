@@ -55,3 +55,27 @@ SELECT format(
     :'app_role', :'migration_role'
 )
 \gexec
+
+-- The audit schema holds erp_audit's functions and audit_log's partitions (C164). The
+-- runtime role has no USAGE on it, so it can never reach a partition directly (which
+-- would bypass audit_log's row-level security); it reads audit_log itself, in public,
+-- through those policies. The migration role uses audit.enable and creates partitions.
+SELECT 'CREATE SCHEMA audit AUTHORIZATION erp_audit'
+WHERE NOT EXISTS (SELECT FROM pg_namespace WHERE nspname = 'audit')
+\gexec
+REVOKE ALL ON SCHEMA audit FROM PUBLIC;
+SELECT format('GRANT USAGE ON SCHEMA audit TO %I', :'migration_role')
+\gexec
+GRANT USAGE, CREATE ON SCHEMA public TO erp_audit;
+ALTER DEFAULT PRIVILEGES FOR ROLE erp_audit IN SCHEMA audit REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+SELECT format(
+    'ALTER DEFAULT PRIVILEGES FOR ROLE erp_audit IN SCHEMA audit GRANT EXECUTE ON FUNCTIONS TO %I',
+    :'migration_role'
+)
+\gexec
+-- audit_log (in public) is read by both roles, through its row-level security.
+SELECT format(
+    'ALTER DEFAULT PRIVILEGES FOR ROLE erp_audit IN SCHEMA public GRANT SELECT ON TABLES TO %I, %I',
+    :'app_role', :'migration_role'
+)
+\gexec

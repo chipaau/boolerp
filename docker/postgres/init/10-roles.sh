@@ -48,6 +48,17 @@ WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'erp_lookup')
 SELECT format('GRANT erp_lookup TO %I', :'migration_role')
 \gexec
 
+-- erp_audit (C147, C164) owns audit_log, its partitions, and the trigger function that
+-- alone writes it. No one can log in as it. It is not BYPASSRLS: it reads nothing
+-- past row-level security, and as audit_log's owner it inserts past its policies.
+-- The migration role is a member so its migrations can create those objects as
+-- erp_audit, and cmd/deploy and cmd/seed can create the monthly partitions.
+SELECT 'CREATE ROLE erp_audit NOLOGIN NOINHERIT'
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'erp_audit')
+\gexec
+SELECT format('GRANT erp_audit TO %I', :'migration_role')
+\gexec
+
 SQL
 
 # Grants, the private migrations schema, and default privileges are per database;

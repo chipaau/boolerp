@@ -24,8 +24,9 @@ type Services struct {
 	Logger *slog.Logger
 
 	// TenantUser protects a route a person uses inside a tenant: authenticate,
-	// require a person, resolve the tenant from the host, require the person's
-	// active membership, require an active tenant, and require an authorization
-	// decision before answering, in that order (C144, C155).
+	// require a person, record the actor for the audit, resolve the tenant from the
+	// host, require the person's active membership, require an active tenant, and
+	// require an authorization decision before answering, in that order (C144, C155,
+	// C164).
 	TenantUser chi.Middlewares
 }

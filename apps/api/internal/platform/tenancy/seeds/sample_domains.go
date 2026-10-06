@@ -11,6 +11,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 )
 
@@ -97,53 +100,51 @@ func (s *SampleDomains) Run(ctx context.Context, env seed.Env) error {
 	if err != nil {
 		return err
 	}
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
-
 	var created, existing int
-	for _, d := range domains {
-		var exists bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM domains WHERE host = $1 AND status <> 'revoked')`,
-			d.Host).Scan(&exists); err != nil {
-			return fmt.Errorf("sample domain %s: %w", d.Host, err)
-		}
-		if exists {
-			existing++
-			continue
-		}
-		var tenantID string
-		if err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, d.Tenant).Scan(&tenantID); err != nil {
-			return fmt.Errorf("sample domain %s: tenant %s: %w", d.Host, d.Tenant, err)
-		}
-		// A partial unique index cannot be deferred: unflag the old primary first.
-		if d.Primary {
-			if _, err := tx.Exec(ctx, `UPDATE domains SET is_primary = false
-				WHERE tenant_id = $1 AND serves = $2 AND is_primary`, tenantID, d.Serves); err != nil {
+	// One transaction, attributed to the seeder in the audit (C164).
+	err = actor.Tx(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
+		for _, d := range domains {
+			var exists bool
+			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM domains WHERE host = $1 AND status <> 'revoked')`,
+				d.Host).Scan(&exists); err != nil {
 				return fmt.Errorf("sample domain %s: %w", d.Host, err)
 			}
-		}
-		var token *string
-		if d.Kind == "custom" {
-			t := rand.Text() // 26 base32 characters: two make a token of the required length
-			t += rand.Text()
-			token = &t
-		}
-		active := d.Status == "active"
-		if _, err := tx.Exec(ctx, `
+			if exists {
+				existing++
+				continue
+			}
+			var tenantID string
+			if err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, d.Tenant).Scan(&tenantID); err != nil {
+				return fmt.Errorf("sample domain %s: tenant %s: %w", d.Host, d.Tenant, err)
+			}
+			// A partial unique index cannot be deferred: unflag the old primary first.
+			if d.Primary {
+				if _, err := tx.Exec(ctx, `UPDATE domains SET is_primary = false
+				WHERE tenant_id = $1 AND serves = $2 AND is_primary`, tenantID, d.Serves); err != nil {
+					return fmt.Errorf("sample domain %s: %w", d.Host, err)
+				}
+			}
+			var token *string
+			if d.Kind == "custom" {
+				t := rand.Text() // 26 base32 characters: two make a token of the required length
+				t += rand.Text()
+				token = &t
+			}
+			active := d.Status == "active"
+			if _, err := tx.Exec(ctx, `
 			INSERT INTO domains (tenant_id, host, kind, serves, status, verification_token,
 			                     verified_at, activated_at, is_primary)
 			VALUES ($1, $2, $3, $4, $5, $6,
 			        CASE WHEN $7 AND $3 = 'custom' THEN now() END, CASE WHEN $7 THEN now() END, $8)`,
-			tenantID, d.Host, d.Kind, d.Serves, d.Status, token, active, d.Primary); err != nil {
-			return fmt.Errorf("sample domain %s: %w", d.Host, err)
+				tenantID, d.Host, d.Kind, d.Serves, d.Status, token, active, d.Primary); err != nil {
+				return fmt.Errorf("sample domain %s: %w", d.Host, err)
+			}
+			created++
 		}
-		created++
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit: %w", err)
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	env.Logger.InfoContext(ctx, "sample domains seeded", "created", created, "existing", existing)
 	return nil

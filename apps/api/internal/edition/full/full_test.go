@@ -28,9 +28,9 @@ func TestMigrationsListEveryModuleWithItsTables(t *testing.T) {
 	for i, m := range Migrations {
 		names[i] = m.Name
 	}
-	assert.Equal(t, []string{"reference", "identity", "tenancy"}, names, "in dependency order")
+	assert.Equal(t, []string{"audit", "reference", "identity", "tenancy"}, names, "in dependency order, audit first")
 
-	for name, file := range map[int]string{0: "00001_countries.sql", 1: "00001_users.sql", 2: "00001_tenants.sql"} {
+	for name, file := range map[int]string{0: "00001_audit_log.sql", 1: "00001_countries.sql", 2: "00001_users.sql", 3: "00001_tenants.sql"} {
 		files, err := fs.Glob(Migrations[name].FS, "*.sql")
 		require.NoError(t, err)
 		assert.Contains(t, files, file)
@@ -72,7 +72,7 @@ func TestDeploySeedersInOrder(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.operator", "identity.team_accounts", "tenancy.operator_members"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.operator", "identity.team_accounts", "tenancy.operator_members"}, names)
 }
 
 func TestDataSeedersAreTheSeedFiles(t *testing.T) {
@@ -81,7 +81,7 @@ func TestDataSeedersAreTheSeedFiles(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.operator"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.operator"}, names)
 }
 
 func TestSampleSeeders(t *testing.T) {
@@ -210,6 +210,7 @@ func TestEveryRouteIsProtected(t *testing.T) {
 	var (
 		authenticate  = code((&auth.Module{}).Authenticate)
 		requireUser   = code(auth.RequireUser)
+		recordActor   = code(auth.Actor)
 		resolveTenant = code((&tenancy.Module{}).ResolveTenant)
 		requireMember = code((&tenancy.Module{}).RequireMember)
 		requireActive = code((&tenancy.Module{}).RequireActiveTenant)
@@ -226,6 +227,7 @@ func TestEveryRouteIsProtected(t *testing.T) {
 		}
 		assert.True(t, has[authenticate], "%s %s: Authenticate", method, route)
 		assert.True(t, has[requireUser], "%s %s: a caller-kind guard", method, route)
+		assert.True(t, has[recordActor], "%s %s: the actor for the audit", method, route)
 		if has[resolveTenant] {
 			assert.True(t, has[requireMember], "%s %s: ResolveTenant without RequireMember", method, route)
 			assert.True(t, has[requireActive], "%s %s: RequireActiveTenant", method, route)

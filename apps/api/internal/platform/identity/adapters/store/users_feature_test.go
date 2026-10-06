@@ -11,6 +11,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/adapters/store"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/application"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/domain"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
 
@@ -73,4 +74,17 @@ func TestFeatureAvatarURLMustBeAnHTTPAddress(t *testing.T) {
 			assert.Error(t, err, "the check constraint refuses it")
 		})
 	}
+}
+
+func TestFeatureSaveIsAttributedInTheAudit(t *testing.T) {
+	tx := testdb.Tx(t)
+	ctx := actor.With(t.Context(), actor.Actor{Operation: "POST /api/auth/me", ClientID: "bff-workspace"})
+	_, err := store.NewUsers(tx).Save(ctx, domain.Account{
+		KratosIdentityID: "00000000-0000-0000-0000-0000000000e1", Email: "e@b.test", Phone: "+9607000000",
+	})
+	require.NoError(t, err)
+	// Save's transaction is a savepoint of the test's: its local settings remain.
+	var op string
+	require.NoError(t, tx.QueryRow(t.Context(), `SELECT current_setting('app.operation')`).Scan(&op))
+	assert.Equal(t, "POST /api/auth/me", op)
 }

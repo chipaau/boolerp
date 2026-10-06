@@ -28,3 +28,6 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY users_read ON users FOR SELECT USING (true);
 CREATE POLICY users_create ON users FOR INSERT WITH CHECK (true);
 CREATE POLICY users_update ON users FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Every change is audited (C164).
+SELECT audit.enable('users');

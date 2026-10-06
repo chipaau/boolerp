@@ -163,11 +163,13 @@ func TestFeatureEditionMigrationsApply(t *testing.T) {
 			if slices.Contains(before, o) {
 				continue
 			}
-			kind, name, _ := strings.Cut(o, " ")
-			// erp_lookup owns its functions (C131); the migration role may act as it.
+			object, owner, _ := strings.Cut(o, "|")
+			kind, name, _ := strings.Cut(object, " ")
+			// erp_lookup (C131) and erp_audit (C164) own their objects; the migration
+			// role may act as either.
 			stmt := "DROP " + kind + " IF EXISTS " + name + " CASCADE"
-			if strings.HasPrefix(name, "lookup.") {
-				stmt = "SET ROLE erp_lookup; " + stmt + "; RESET ROLE"
+			if owner == "erp_lookup" || owner == "erp_audit" {
+				stmt = "SET ROLE " + owner + "; " + stmt + "; RESET ROLE"
 			}
 			_, _ = db.ExecContext(ctx, stmt)
 		}
@@ -235,12 +237,12 @@ func TestFeaturePoolConnects(t *testing.T) {
 func schemaObjects(ctx context.Context, t *testing.T, db *sql.DB) []string {
 	t.Helper()
 	rows, err := db.QueryContext(ctx, `
-		SELECT 'TABLE ' || quote_ident(schemaname) || '.' || quote_ident(tablename)
-		  FROM pg_tables WHERE schemaname IN ('public', 'lookup')
+		SELECT 'TABLE ' || quote_ident(schemaname) || '.' || quote_ident(tablename) || '|' || tableowner
+		  FROM pg_tables WHERE schemaname IN ('public', 'lookup', 'audit')
 		UNION ALL
-		SELECT 'FUNCTION ' || p.oid::regprocedure::text
+		SELECT 'FUNCTION ' || p.oid::regprocedure::text || '|' || pg_get_userbyid(p.proowner)
 		  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-		 WHERE n.nspname IN ('public', 'lookup')
+		 WHERE n.nspname IN ('public', 'lookup', 'audit')
 		ORDER BY 1 DESC`) // TABLE sorts after FUNCTION; DESC drops tables first
 	require.NoError(t, err)
 	defer rows.Close()

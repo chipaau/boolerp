@@ -73,6 +73,14 @@ On a new, empty Compose PostgreSQL volume, the initialization script creates:
   never PUBLIC. A database initialised before this change lacks both: recreate a
   development volume (`docker compose down`, `docker volume rm erp_pgdata`), and run the
   role and schema statements once, as a superuser, on any other server.
+- The `erp_audit` role (C164): `NOLOGIN NOINHERIT`, not `BYPASSRLS`. It owns `audit_log`, its
+  monthly partitions, and the audit functions; the migration role is a member, so the
+  audit migration and `cmd/deploy`/`cmd/seed` (the partitions) act as it. `10-roles.sh`
+  creates it; `database-setup.psql` creates the `audit` schema it owns (the functions and
+  the partitions; `USAGE` for the migration role only, so the runtime role never reaches a
+  partition directly), gives it `USAGE, CREATE` on `public` (for `audit_log`), and grants
+  `SELECT` on its `public` tables to the runtime and migration roles. A database
+  initialised before this lacks them: recreate the development volume, as above.
 
 Compose passes the API only its explicit `APP_*` settings, including the runtime role's `APP_DB_*`; it does
 not pass the cluster-owner password or migration settings. Passwords are Compose

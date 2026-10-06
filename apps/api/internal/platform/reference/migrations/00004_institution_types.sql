@@ -25,3 +25,6 @@ CREATE TRIGGER institution_types_updated_at BEFORE UPDATE ON institution_types
 -- default); the owning migration role maintains them (migrations, deploy, seed).
 ALTER TABLE institution_types ENABLE ROW LEVEL SECURITY;
 CREATE POLICY institution_types_read ON institution_types FOR SELECT USING (true);
+
+-- Every change is audited (C164).
+SELECT audit.enable('institution_types');

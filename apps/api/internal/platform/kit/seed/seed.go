@@ -13,6 +13,8 @@ import (
 	"log/slog"
 
 	"github.com/brianvoe/gofakeit/v7"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 )
 
 // Seeder seeds one store.
@@ -46,6 +48,8 @@ func NewEnv(environment string, logger *slog.Logger) Env {
 // Run runs the seeders in order, stopping at the first failure.
 func Run(ctx context.Context, seeders []Seeder, env Env) error {
 	for _, s := range seeders {
+		// The seeder's writes are attributed to it in the audit (C164).
+		ctx := actor.With(ctx, actor.Actor{Operation: "seed: " + s.Name()})
 		if err := s.Run(ctx, Env{Environment: env.Environment, Fake: env.Fake, Logger: env.Logger.With("seeder", s.Name())}); err != nil {
 			return fmt.Errorf("seed %s: %w", s.Name(), err)
 		}

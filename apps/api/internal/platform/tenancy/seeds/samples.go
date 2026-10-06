@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 )
 
@@ -107,37 +108,35 @@ func (s *Samples) Run(ctx context.Context, env seed.Env) error {
 	if err != nil {
 		return err
 	}
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
-
 	var created, existing, domains int
-	for _, sm := range samples {
-		var id string
-		err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, sm.Slug).Scan(&id)
-		switch {
-		case err == nil:
-			existing++
-		case errors.Is(err, pgx.ErrNoRows):
-			if id, err = createSample(ctx, tx, sm); err != nil {
+	// One transaction, attributed to the seeder in the audit (C164).
+	err = actor.Tx(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
+		for _, sm := range samples {
+			var id string
+			err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, sm.Slug).Scan(&id)
+			switch {
+			case err == nil:
+				existing++
+			case errors.Is(err, pgx.ErrNoRows):
+				if id, err = createSample(ctx, tx, sm); err != nil {
+					return err
+				}
+				created++
+			default:
+				return fmt.Errorf("sample %s: %w", sm.Slug, err)
+			}
+			added, err := ensurePlatformDomain(ctx, tx, id, sm.Slug, s.platformDomain)
+			if err != nil {
 				return err
 			}
-			created++
-		default:
-			return fmt.Errorf("sample %s: %w", sm.Slug, err)
+			if added {
+				domains++
+			}
 		}
-		added, err := ensurePlatformDomain(ctx, tx, id, sm.Slug, s.platformDomain)
-		if err != nil {
-			return err
-		}
-		if added {
-			domains++
-		}
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit: %w", err)
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	env.Logger.InfoContext(ctx, "sample tenants seeded", "created", created, "existing", existing, "domains", domains)
 	return nil

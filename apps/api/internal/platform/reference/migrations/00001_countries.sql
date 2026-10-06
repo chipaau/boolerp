@@ -35,3 +35,6 @@ CREATE TRIGGER countries_updated_at BEFORE UPDATE ON countries
 -- owning migration role can still maintain the data.
 ALTER TABLE countries ENABLE ROW LEVEL SECURITY;
 CREATE POLICY countries_read ON countries FOR SELECT USING (true);
+
+-- Every change is audited (C164).
+SELECT audit.enable('countries');

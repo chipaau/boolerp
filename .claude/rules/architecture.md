@@ -35,6 +35,10 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   (`internal/platform/<name>/migrations` or `internal/modules/<name>/migrations`), each
   with its own history table, listed in the edition's `Migrations` (platform first);
   `cmd/api`, `cmd/migrate`, `cmd/deploy`, and `cmd/seed` share the edition (C95, C122).
+- Every table is audited (C164): its migration calls `audit.enable(table, exclude => …)`
+  (exclude secrets and sensitive values). Open a writing transaction only with `tenant.Tx`
+  (inside a tenant) or `actor.Tx` (outside one), which carry the actor for the audit; never
+  `Begin` directly. A feature test fails for a table without the audit trigger.
 - Migrations hold schema only, never data. Data every database needs is a seed file in
   the owning package's `seeds` folder, listed in the edition's `DataSeeders`: production
   loads it with `cmd/deploy` (migrations, then seeds; production only), development with

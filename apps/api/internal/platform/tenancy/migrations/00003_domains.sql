@@ -107,3 +107,6 @@ CREATE POLICY domains_create ON domains FOR INSERT
 CREATE POLICY domains_update ON domains FOR UPDATE
     USING (lookup.is_operator_tenant(current_tenant_id()))
     WITH CHECK (lookup.is_operator_tenant(current_tenant_id()));
+
+-- Every change is audited (C164).
+SELECT audit.enable('domains');

@@ -235,6 +235,40 @@ Table memberships {
   '''
 }
 
+Table audit_log {
+  id uuid [not null, default: `uuidv7()`]
+  occurred_at timestamptz [not null, default: `now()`, note: 'partition key: by month']
+  tenant_id uuid [note: "the row's tenant; null for global tables; no foreign key"]
+  action text [not null, note: 'insert | update | delete | read']
+  entity text [not null, note: "the table, or a read event's name"]
+  record_id text [not null, note: 'primary key value(s), joined with /']
+  old_values jsonb [note: 'delete: old row; update: changed columns']
+  new_values jsonb [note: 'insert: new row; update: changed columns']
+  changed_columns text[] [note: 'update only; excluded columns listed without values']
+  actor_user_id uuid
+  actor_client_id text
+  actor_tenant_id uuid
+  operation text [note: 'route pattern, cli: …, job: …, seed: …']
+  request_id text
+  ip inet
+  db_role text [not null, default: `session_user`]
+
+  indexes {
+    (occurred_at, id) [pk]
+  }
+
+  Note: '''
+  Confirmed 2026-10-06 (C164); migration platform/audit/migrations/00001_audit_log.sql.
+  Append-only, written only by the audit.capture trigger every table enables. Partitioned by
+  month (partitions in the audit schema, created ahead; a default partition). Owned by
+  erp_audit. RLS: a tenant reads its own rows, the operator tenant every row.
+  '''
+}
+
+TableGroup audit {
+  audit_log
+}
+
 TableGroup identity {
   users
 }
