@@ -21,6 +21,7 @@ import (
 	auditseeds "github.com/boolmv/erp/apps/api/internal/platform/audit/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	authorizationseeds "github.com/boolmv/erp/apps/api/internal/platform/authorization/seeds"
+	"github.com/boolmv/erp/apps/api/internal/platform/billing"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
 	identityseeds "github.com/boolmv/erp/apps/api/internal/platform/identity/seeds"
@@ -42,6 +43,7 @@ var Migrations = []postgres.ModuleMigrations{
 	{Name: "identity", FS: identity.Migrations()},
 	{Name: "tenancy", FS: tenancy.Migrations()},
 	{Name: "authorization", FS: authorization.Migrations()},
+	{Name: "billing", FS: billing.Migrations()},
 }
 
 // Apps are the edition's apps (C165): the platform's own, then each business module's.

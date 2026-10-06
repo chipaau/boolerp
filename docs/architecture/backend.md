@@ -75,7 +75,7 @@ Later capabilities and business apps follow the current shape (C122, C125):
 ```text
 apps/api/internal/
   platform/                capabilities: identity (with auth), reference, then
-    tenancy/ authorization/ audit/   each: New, Routes, Migrations, plus domain/,
+    tenancy/ authorization/ audit/ billing/   each: New, Routes, Migrations, plus domain/,
                            application/, adapters/, migrations/, seeds/ as needed
     kit/                   technical building blocks (config, postgres, redis, http, …)
   modules/                 business apps, HRMS first

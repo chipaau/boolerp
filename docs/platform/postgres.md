@@ -104,11 +104,20 @@ the connect and usage grants, the `migrations` schema, and default privileges) l
 tests' `erp_platform`, C79) gets identical grants with
 `psql -d <database> -f database-setup.psql`.
 
+### Extensions
+
+`database-setup.psql` creates **`btree_gist`** (bundled with PostgreSQL, C171), which lets
+an exclusion constraint combine equality with range overlap, such as "one tenant's billing
+agreements never overlap in time". The administrator creates it with the roles, so the
+migration role never needs the right to create extensions; on a server other than
+development, run `CREATE EXTENSION btree_gist;` once per database, as for the roles. An
+existing development database gets it as in the next section.
+
 ### New roles on an existing development database
 
-When a change adds a role or schema to the initialization scripts (such as `erp_audit`,
-C164), an existing `pgdata` volume does not get it, and `migrate` fails with
-`role "…" does not exist`. Both scripts only create what is missing, so run them again in
+When a change adds a role, schema, or extension to the initialization scripts (such as
+`erp_audit`, C164, or `btree_gist`, C171), an existing `pgdata` volume does not get it, and
+`migrate` fails (for example with `role "…" does not exist`). Both scripts only create what is missing, so run them again in
 the running container, keeping the data. `10-roles.sh` uses the image's `file_env` helper,
 so load the entrypoint's functions first:
 

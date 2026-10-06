@@ -39,6 +39,7 @@ authorization, and audit are designed (C115-C120) and next. The
 | Apps and their backend-for-frontend | [App integration](platform/bff-frontend.md) |
 | Tenants, memberships, and domains | [Tenancy](platform/tenancy.md) |
 | Access decisions | [Authorization](platform/authorization.md) |
+| Agreements, invoices, and payments | [Billing](platform/billing.md) |
 | Business audit trail | [Audit](platform/audit.md) |
 | Tracing and logging | [Observability](platform/observability.md) |
 | Redis caching | [Caching](platform/caching.md) |
