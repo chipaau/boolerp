@@ -313,3 +313,142 @@ reads, through row-level security (its own tenant's rows; the operator tenant ev
 partitions live in the `audit` schema, which it cannot use. Partitions are created ahead by
 `audit.create_partitions` (the `audit.partitions` seed file); a default partition keeps any
 other row. The migration is `apps/api/internal/platform/audit/migrations/00001_audit_log.sql`.
+
+### `apps` (authorization module, C165)
+
+Fields confirmed 2026-10-06 by the user, with the first rows: `admin` (Admin console,
+operator) and `control-centre` (Control Centre, workspace); business apps are added with
+their backend modules. The catalogue of Bool's apps, mirrored from code: each module
+declares its app and the edition lists them (`full.Apps`); the `authorization.apps` seed
+file writes them here on every `cmd/deploy` and `cmd/seed`. Global, not tenant-scoped.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `key` | `text` | Primary key; `^[a-z][a-z0-9-]{1,30}$`, the frontend manifest's slug. |
+| `name` | `text` | Not null, not blank. |
+| `kind` | `text` | Not null; `workspace` (a tenant's members use it), `operator` (only the operator tenant may activate it), or `product` (a separate product across tenants, such as FindCare). |
+| `description` | `text` | Nullable. |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable, not before `active_from`; set when the app leaves the code. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+Everyone reads; no write policy, so only the seed file (the owning migration role) changes
+it. An app no longer in the code is retired (`active_to`), never deleted, and listed again
+it becomes active. Audited. The migration is
+`apps/api/internal/platform/authorization/migrations/00001_apps.sql`.
+
+### `tenant_apps` (authorization module, C116, C166)
+
+Fields confirmed 2026-10-06 by the user. Which apps each tenant has turned on, with
+history; only the operator tenant turns them on and off for now (the user's choice: apps
+follow what the customer bought, D10).
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default; also unique `(tenant_id, id)`. |
+| `tenant_id` | `uuid` | Not null, `current_tenant_id()` default; references `tenants.id`, `ON DELETE RESTRICT`. |
+| `app_key` | `text` | Not null; references `apps.key`, `ON DELETE RESTRICT`. |
+| `activated_by` | `uuid` | Nullable; references `users.id`; null when provisioning or a seed turned it on. |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable, not before `active_from`: set when turned off. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+One live activation per tenant and app (unique while `active_to` is null); turning an app
+on again is a new row, and an ended one is frozen. A trigger refuses an `operator` app
+outside the operator tenant, a retired app, and changing an activation's tenant or app.
+Who turned an app off is in the audit log. Row-level security: a tenant reads its own; the
+operator tenant reads every tenant's and alone creates and ends them; nothing deletes one.
+Seeds: `authorization.operator_apps` turns on `admin` and `control-centre` for the operator
+(every database); `authorization.sample_apps` turns on `control-centre` for each sample
+tenant (development). The migration is
+`apps/api/internal/platform/authorization/migrations/00002_tenant_apps.sql`.
+
+### `roles` (authorization module, C167)
+
+Fields confirmed 2026-10-06 by the user. What a person may do in one app: a role belongs
+to one app (an app has many roles) and grants only that app's capabilities. **Global
+roles** (`tenant_id` null) are Bool's, declared in each app's code and mirrored by the
+`authorization.roles` seed file (with `role_capabilities`), matched by `key`; a tenant
+creates **its own** (`tenant_id` set) for anything else.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default. |
+| `tenant_id` | `uuid` | Nullable: null for a global role; references `tenants.id`, `ON DELETE RESTRICT`. |
+| `app_key` | `text` | Not null; references `apps.key`, `ON DELETE RESTRICT`. |
+| `key` | `text` | Global roles only (required for them, absent otherwise); unique; `<app key>.<name>`, such as `hrms.admin`. |
+| `name` | `text` | Not null, not blank; unique per app among live global roles, and per tenant and app among a tenant's live roles (case-insensitive); a tenant's live role may not repeat a live global role's name in its app. |
+| `description` | `text` | Nullable. |
+| `archived_at` | `timestamptz` | Nullable: an archived role is not newly assigned and is hidden; roles are never deleted. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+A trigger keeps a role's tenant, app, and key, requires a tenant's role to belong to an app
+that is on in that tenant, and refuses a tenant role named like a global one (a global role
+added later may share a tenant role's name). Row-level security: a tenant reads its own and
+the global roles and creates and changes only its own; global roles are written only by the
+seed file; nothing deletes a role. Audited. The migration is
+`apps/api/internal/platform/authorization/migrations/00003_roles.sql`.
+
+### `capabilities` (authorization module, C168)
+
+Fields confirmed 2026-10-06 by the user. What a role may grant, mirrored from code like
+`apps`: each app declares its capabilities (`authorization.App.Capabilities`) and the
+`authorization.capabilities` seed file writes them here on every `cmd/deploy` and `cmd/seed`.
+First rows: `tenancy:tenant:view` and `tenancy:tenant:manage` (C153), granted by the admin
+console; other apps' capabilities come with their routes, each agreed first.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `key` | `text` | Primary key; `<module>:<resource>:<level>`, the level `view`, `manage`, or `delete` (C153). |
+| `app_key` | `text` | Not null; references `apps.key`: the one app whose roles may grant it. |
+| `name` | `text` | Not null, not blank. |
+| `description` | `text` | Nullable. |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable, not before `active_from`; set when it leaves the code. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+Global: everyone reads, only the seed file writes; retired, never deleted. Audited. The
+migration is `apps/api/internal/platform/authorization/migrations/00004_capabilities.sql`.
+
+### `role_capabilities` (authorization module, C169)
+
+Fields confirmed 2026-10-06 by the user, keeping `tenant_id` so a tenant's audit shows
+changes to its roles. Which capabilities each role grants, one row per pair.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `role_id` | `uuid` | Not null; references `roles.id`, `ON DELETE RESTRICT`; with `capability`, the primary key. |
+| `capability` | `text` | Not null; references `capabilities.key`, `ON DELETE RESTRICT`. |
+| `tenant_id` | `uuid` | Nullable: always the role's tenant (null for a global role), set by the trigger whatever the caller sends; references `tenants.id`. |
+| `created_at` | `timestamptz` | Not null, `now()` default: when the role gained it. |
+
+Rows are added and removed (the audit keeps the history), never updated. A trigger sets
+the tenant from the role and refuses a capability of another app or a retired one.
+Row-level security: a tenant reads its own roles' and the global roles' capabilities, and
+adds and removes only its own roles'; global roles' come only from the seed file. Audited.
+The migration is `apps/api/internal/platform/authorization/migrations/00005_role_capabilities.sql`.
+
+### `role_assignments` (authorization module, C116, C170)
+
+Fields confirmed 2026-10-06 by the user, on the membership rather than the user. Who holds
+which role, and when.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default. |
+| `tenant_id` | `uuid` | Not null, `current_tenant_id()` default; references `tenants.id`. |
+| `membership_id` | `uuid` | Not null; with `tenant_id`, references `memberships (tenant_id, id)`: a member of the same tenant. Indexed. |
+| `role_id` | `uuid` | Not null; references `roles.id`. |
+| `assigned_by` | `uuid` | Nullable; references `users.id`; null when provisioning or a seed assigned it. |
+| `active_from` | `timestamptz` | Not null, `now()` default; may be in the future (an acting appointment). |
+| `active_to` | `timestamptz` | Nullable, not before `active_from`: revoked or ended. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+One open assignment per membership and role (unique while `active_to` is null). A trigger
+requires the role to be global or the tenant's own, not archived, and of an app that is on
+in the tenant; tenant, membership, and role never change; an ended assignment is frozen
+(giving the role again is a new row). Capabilities count only assignments live now, whose
+membership is active and whose role's app is on, so ending a membership or turning an app
+off removes access without touching assignments. Row-level security: a tenant reads and
+changes only its own; nothing deletes one. Audited. The migration is
+`apps/api/internal/platform/authorization/migrations/00006_role_assignments.sql`.

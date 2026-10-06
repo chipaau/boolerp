@@ -265,6 +265,138 @@ Table audit_log {
   '''
 }
 
+Table apps {
+  key text [pk, note: 'the frontend manifest slug: admin, control-centre, …']
+  name text [not null]
+  kind text [not null, note: 'workspace | operator | product']
+  description text
+  active_from timestamptz [not null, default: `now()`]
+  active_to timestamptz [note: 'set when the app leaves the code; never deleted']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  Note: '''
+  Confirmed 2026-10-06 (C165); migration platform/authorization/migrations/00001_apps.sql.
+  The app catalogue, mirrored from code by the authorization.apps seed file. Global; everyone
+  reads, only the seed file writes. Audited.
+  '''
+}
+
+Table tenant_apps {
+  id uuid [pk, default: `uuidv7()`]
+  tenant_id uuid [not null, default: `current_tenant_id()`, ref: > tenants.id, note: 'ON DELETE RESTRICT']
+  app_key text [not null, ref: > apps.key, note: 'ON DELETE RESTRICT']
+  activated_by uuid [ref: > users.id, note: 'null when provisioning or a seed turned it on']
+  active_from timestamptz [not null, default: `now()`]
+  active_to timestamptz [note: 'set when turned off; on again is a new row']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, app_key) [unique, note: 'partial: WHERE active_to IS NULL']
+  }
+
+  Note: '''
+  Confirmed 2026-10-06 (C166); migration platform/authorization/migrations/00002_tenant_apps.sql.
+  Which apps a tenant has on, with history. Operator apps only in the operator tenant; retired
+  apps refused; tenant and app locked; ended rows frozen. RLS: a tenant reads its own; the
+  operator reads all and alone turns apps on and off; none deleted. Audited.
+  '''
+}
+
+Table roles {
+  id uuid [pk, default: `uuidv7()`]
+  tenant_id uuid [ref: > tenants.id, note: "null: a global role (Bool's, from code); set: the tenant's own"]
+  app_key text [not null, ref: > apps.key, note: 'the one app whose capabilities it grants']
+  key text [unique, note: 'global roles only: <app>.<name>, matched by the seed file']
+  name text [not null, note: 'unique among live roles per app (global) and per tenant and app']
+  description text
+  archived_at timestamptz [note: 'not newly assigned, hidden; never deleted']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  indexes {
+    (app_key, `lower(name)`) [unique, note: 'partial: global and live']
+    (tenant_id, app_key, `lower(name)`) [unique, note: "partial: a tenant's and live"]
+  }
+
+  Note: '''
+  Confirmed 2026-10-06 (C167); migration platform/authorization/migrations/00003_roles.sql.
+  Tenant, app, and key fixed; a tenant's role needs its app on and may not repeat a global
+  role's name. RLS: a tenant reads its own and the global roles, writes its own; global roles
+  come only from the seed file; none deleted. Audited.
+  '''
+}
+
+Table capabilities {
+  key text [pk, note: '<module>:<resource>:<level>, level view | manage | delete (C153)']
+  app_key text [not null, ref: > apps.key, note: 'the one app whose roles may grant it']
+  name text [not null]
+  description text
+  active_from timestamptz [not null, default: `now()`]
+  active_to timestamptz [note: 'set when it leaves the code; never deleted']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  Note: '''
+  Confirmed 2026-10-06 (C168); migration platform/authorization/migrations/00004_capabilities.sql.
+  Mirrored from each app's code by the authorization.capabilities seed file. Global; everyone
+  reads, only the seed file writes. Audited.
+  '''
+}
+
+Table role_capabilities {
+  role_id uuid [not null, ref: > roles.id, note: 'ON DELETE RESTRICT']
+  capability text [not null, ref: > capabilities.key, note: 'ON DELETE RESTRICT; of the role\'s app']
+  tenant_id uuid [ref: > tenants.id, note: "the role's tenant, set by trigger; null for a global role"]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (role_id, capability) [pk]
+  }
+
+  Note: '''
+  Confirmed 2026-10-06 (C169); migration platform/authorization/migrations/00005_role_capabilities.sql.
+  Added and removed, never updated. RLS: a tenant reads its own roles' and the global roles',
+  writes its own roles'. Audited (tenant from tenant_id).
+  '''
+}
+
+Table role_assignments {
+  id uuid [pk, default: `uuidv7()`]
+  tenant_id uuid [not null, default: `current_tenant_id()`, ref: > tenants.id]
+  membership_id uuid [not null, note: '(tenant_id, membership_id) references memberships (tenant_id, id)']
+  role_id uuid [not null, ref: > roles.id, note: "global or the tenant's own; not archived; its app on"]
+  assigned_by uuid [ref: > users.id, note: 'null when provisioning or a seed assigned it']
+  active_from timestamptz [not null, default: `now()`]
+  active_to timestamptz [note: 'revoked or ended; never deleted']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  indexes {
+    (membership_id, role_id) [unique, note: 'partial: WHERE active_to IS NULL']
+    membership_id
+  }
+
+  Note: '''
+  Confirmed 2026-10-06 (C170); migration platform/authorization/migrations/00006_role_assignments.sql.
+  No membership, no role. Tenant, membership, role fixed; ended rows frozen. RLS: a tenant reads
+  and changes its own; none deleted. Audited.
+  '''
+}
+
+Ref: role_assignments.(tenant_id, membership_id) > memberships.(tenant_id, id)
+
+TableGroup authorization {
+  apps
+  tenant_apps
+  roles
+  capabilities
+  role_capabilities
+  role_assignments
+}
+
 TableGroup audit {
   audit_log
 }

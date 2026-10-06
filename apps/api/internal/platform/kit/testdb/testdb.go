@@ -151,7 +151,8 @@ func Count(t testing.TB, q Querier, table string, where map[string]any) int {
 			sql += " AND "
 		}
 		args = append(args, where[col])
-		sql += pgx.Identifier{col}.Sanitize() + " = $" + strconv.Itoa(len(args))
+		// IS NOT DISTINCT FROM: a nil value matches NULL, which = never does.
+		sql += pgx.Identifier{col}.Sanitize() + " IS NOT DISTINCT FROM $" + strconv.Itoa(len(args))
 	}
 	var n int
 	if err := q.QueryRow(context.Background(), sql, args...).Scan(&n); err != nil {

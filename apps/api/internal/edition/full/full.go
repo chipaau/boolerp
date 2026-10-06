@@ -20,6 +20,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/audit"
 	auditseeds "github.com/boolmv/erp/apps/api/internal/platform/audit/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
+	authorizationseeds "github.com/boolmv/erp/apps/api/internal/platform/authorization/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
 	identityseeds "github.com/boolmv/erp/apps/api/internal/platform/identity/seeds"
@@ -40,7 +41,12 @@ var Migrations = []postgres.ModuleMigrations{
 	{Name: "reference", FS: reference.Migrations()},
 	{Name: "identity", FS: identity.Migrations()},
 	{Name: "tenancy", FS: tenancy.Migrations()},
+	{Name: "authorization", FS: authorization.Migrations()},
 }
+
+// Apps are the edition's apps (C165): the platform's own, then each business module's.
+// The authorization.apps seed file mirrors them into the apps table.
+var Apps = []authorization.App{authorization.Admin, authorization.ControlCentre}
 
 // Policies are the edition's Cerbos policies, tests, and schemas, one entry per
 // module (C151): the shared authorization pieces, then each module's. cmd/policies
@@ -137,7 +143,8 @@ type SeedSettings struct {
 }
 
 // DataSeeders load the seed files every database needs (C135, C137): audit_log's
-// monthly partitions (C146), the reference lists, and the operator tenant (C142), in
+// monthly partitions (C146), the reference lists, the app catalogue (C165), and the
+// operator tenant (C142) with its apps (C166), in
 // dependency order like Migrations. Both cmd/deploy (in
 // production) and cmd/seed (in development) run them, as the migration role (db),
 // which owns the tables, so production and development load the same files.
@@ -148,18 +155,22 @@ func DataSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 		referenceseeds.NewLegalForms(db),
 		referenceseeds.NewSectors(db),
 		referenceseeds.NewInstitutionTypes(db),
+		authorizationseeds.NewApps(db, Apps),
+		authorizationseeds.NewCapabilities(db, Apps),
 		tenancyseeds.NewOperator(db, tenancyseeds.Bool, s.PlatformDomain),
+		authorizationseeds.NewOperatorApps(db, authorization.Admin.Key, authorization.ControlCentre.Key),
 	}
 }
 
 // SampleSeeders load development's sample data that must be written as the
 // migration role (db), because its module has no operation to create it through
-// yet (C143): the sample tenants, then their extra hosts. cmd/seed runs them after DataSeeders; each skips
+// yet (C143): the sample tenants, their extra hosts, and their apps (C166). cmd/seed runs them after DataSeeders; each skips
 // itself outside dev.
 func SampleSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 	return []seed.Seeder{
 		tenancyseeds.NewSamples(db, s.PlatformDomain),
 		tenancyseeds.NewSampleDomains(db),
+		authorizationseeds.NewSampleApps(db, tenancyseeds.SampleSlugs(), authorization.ControlCentre.Key),
 	}
 }
 

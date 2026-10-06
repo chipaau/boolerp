@@ -71,6 +71,19 @@ func ParseSamples(data []byte) ([]Sample, error) {
 	}
 }
 
+// SampleSlugs are the embedded sample tenants' slugs, for other modules' sample seeds.
+func SampleSlugs() []string {
+	samples, err := ParseSamples(sampleTenantsCSV)
+	if err != nil {
+		panic(err) // the embedded list is checked by its tests
+	}
+	slugs := make([]string, len(samples))
+	for i, s := range samples {
+		slugs[i] = s.Slug
+	}
+	return slugs
+}
+
 // Samples creates the sample tenants, in development only (C143). It writes as
 // the table owner, like Operator: tenancy has no create-tenant operation yet, so
 // this is a recorded exception to seeding through use cases (C50) until it does.
