@@ -310,11 +310,11 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
 - The app catalogue is code (the app packages), like capabilities and role templates.
   `tenant_apps` records `(tenant_id, app_key, activated_by, active_from, active_to)`;
   activating an app copies its role templates into the tenant; history is kept.
-- `subscriptions`: `tenant_id`, `plan`, `seat_limit`, `starts_at`, `ends_at`, with
-  history (a change ends one row and starts the next), managed by the operator. What a
-  plan includes is a catalogue in code until billing.
-- Invitations are refused once active and invited memberships reach the seat limit.
-- Prices, invoices, payments, and the paying party wait for the billing design.
+- `subscriptions` and plans were replaced (C171): there is no plan catalogue; what each
+  tenant pays is its billing agreement, priced per client, monthly or yearly
+  ([billing](billing.md)).
+- Invitations are refused once active and invited memberships reach the agreement's
+  seat limit, when it has one.
 
 **Provisioning**
 - One flow for every caller (an operator now; self-service sign-up and the self-hosted

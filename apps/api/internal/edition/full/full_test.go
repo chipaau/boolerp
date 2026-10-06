@@ -29,7 +29,7 @@ func TestMigrationsListEveryModuleWithItsTables(t *testing.T) {
 	for i, m := range Migrations {
 		names[i] = m.Name
 	}
-	assert.Equal(t, []string{"audit", "reference", "identity", "tenancy", "authorization"}, names, "in dependency order, audit first")
+	assert.Equal(t, []string{"audit", "reference", "identity", "tenancy", "authorization", "billing"}, names, "in dependency order, audit first")
 
 	for name, file := range map[int]string{0: "00001_audit_log.sql", 1: "00001_countries.sql", 2: "00001_users.sql", 3: "00001_tenants.sql", 4: "00001_apps.sql"} {
 		files, err := fs.Glob(Migrations[name].FS, "*.sql")
