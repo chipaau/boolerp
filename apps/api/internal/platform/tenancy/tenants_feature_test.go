@@ -231,13 +231,15 @@ func TestFeatureTenantConstraints(t *testing.T) {
 		"legal form of another country": {insert + `, legal_form_id) VALUES ('x-c', 'XTC', 'C', 'XT', '%FORMXU%')`, "23503"},
 		"a second operator":             {insert + `, is_operator) VALUES ('x-c', 'XTC', 'C', 'XT', true)`, "23505"},
 		"duplicate identity number":     {insert + `, identity_number) VALUES ('x-c', 'XTC', 'C', 'XT', 'c-123')`, "23505"},
+		"blank tax number":              {insert + `, tax_number) VALUES ('x-c', 'XTC', 'C', 'XT', ' ')`, "23514"},
+		"duplicate tax number":          {insert + `, tax_number) VALUES ('x-c', 'XTC', 'C', 'XT', 'tin-9')`, "23505"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			w := newWorld(t)
 			w.operator(t)
-			exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, identity_number)
-				VALUES ('x-a', 'XTA', 'A', 'XT', 'C-123')`)
+			exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, identity_number, tax_number)
+				VALUES ('x-a', 'XTA', 'A', 'XT', 'C-123', 'TIN-9')`)
 			sql := c.sql
 			for k, v := range map[string]string{"%FORM%": w.formXT, "%FORMXU%": w.formXU} {
 				sql = strings.ReplaceAll(sql, k, v)
@@ -252,6 +254,14 @@ func TestFeatureTheSameIdentityNumberInAnotherCountry(t *testing.T) {
 	w := newWorld(t)
 	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, identity_number) VALUES ('x-a', 'XTA', 'A', 'XT', 'C-123')`)
 	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, identity_number) VALUES ('x-b', 'XTB', 'B', 'XU', 'C-123')`)
+}
+
+func TestFeatureTheSameTaxNumberInAnotherCountry(t *testing.T) {
+	w := newWorld(t)
+	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, tax_number) VALUES ('x-a', 'XTA', 'A', 'XT', 'TIN-9')`)
+	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, tax_number) VALUES ('x-b', 'XTB', 'B', 'XU', 'TIN-9')`)
+	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country) VALUES ('x-c', 'XTC', 'C', 'XT')`)
+	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country) VALUES ('x-d', 'XTD', 'D', 'XT')`) // many without one
 }
 
 func TestFeatureAnActiveTenantIsClassified(t *testing.T) {
