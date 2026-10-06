@@ -336,3 +336,29 @@ Everyone reads; no write policy, so only the seed file (the owning migration rol
 it. An app no longer in the code is retired (`active_to`), never deleted, and listed again
 it becomes active. Audited. The migration is
 `apps/api/internal/platform/authorization/migrations/00001_apps.sql`.
+
+### `tenant_apps` (authorization module, C116, C166)
+
+Fields confirmed 2026-10-06 by the user. Which apps each tenant has turned on, with
+history; only the operator tenant turns them on and off for now (the user's choice: apps
+follow what the customer bought, D10).
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default; also unique `(tenant_id, id)`. |
+| `tenant_id` | `uuid` | Not null, `current_tenant_id()` default; references `tenants.id`, `ON DELETE RESTRICT`. |
+| `app_key` | `text` | Not null; references `apps.key`, `ON DELETE RESTRICT`. |
+| `activated_by` | `uuid` | Nullable; references `users.id`; null when provisioning or a seed turned it on. |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable, not before `active_from`: set when turned off. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+One live activation per tenant and app (unique while `active_to` is null); turning an app
+on again is a new row, and an ended one is frozen. A trigger refuses an `operator` app
+outside the operator tenant, a retired app, and changing an activation's tenant or app.
+Who turned an app off is in the audit log. Row-level security: a tenant reads its own; the
+operator tenant reads every tenant's and alone creates and ends them; nothing deletes one.
+Seeds: `authorization.operator_apps` turns on `admin` and `control-centre` for the operator
+(every database); `authorization.sample_apps` turns on `control-centre` for each sample
+tenant (development). The migration is
+`apps/api/internal/platform/authorization/migrations/00002_tenant_apps.sql`.

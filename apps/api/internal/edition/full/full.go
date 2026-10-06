@@ -144,7 +144,7 @@ type SeedSettings struct {
 
 // DataSeeders load the seed files every database needs (C135, C137): audit_log's
 // monthly partitions (C146), the reference lists, the app catalogue (C165), and the
-// operator tenant (C142), in
+// operator tenant (C142) with its apps (C166), in
 // dependency order like Migrations. Both cmd/deploy (in
 // production) and cmd/seed (in development) run them, as the migration role (db),
 // which owns the tables, so production and development load the same files.
@@ -157,17 +157,19 @@ func DataSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 		referenceseeds.NewInstitutionTypes(db),
 		authorizationseeds.NewApps(db, Apps),
 		tenancyseeds.NewOperator(db, tenancyseeds.Bool, s.PlatformDomain),
+		authorizationseeds.NewOperatorApps(db, authorization.Admin.Key, authorization.ControlCentre.Key),
 	}
 }
 
 // SampleSeeders load development's sample data that must be written as the
 // migration role (db), because its module has no operation to create it through
-// yet (C143): the sample tenants, then their extra hosts. cmd/seed runs them after DataSeeders; each skips
+// yet (C143): the sample tenants, their extra hosts, and their apps (C166). cmd/seed runs them after DataSeeders; each skips
 // itself outside dev.
 func SampleSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 	return []seed.Seeder{
 		tenancyseeds.NewSamples(db, s.PlatformDomain),
 		tenancyseeds.NewSampleDomains(db),
+		authorizationseeds.NewSampleApps(db, tenancyseeds.SampleSlugs(), authorization.ControlCentre.Key),
 	}
 }
 
