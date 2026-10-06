@@ -70,9 +70,9 @@ On a new, empty Compose PostgreSQL volume, the initialization script creates:
   `10-roles.sh` creates it and makes the migration role a member; `database-setup.psql`
   creates its `lookup` schema, where only it creates functions and which the runtime and
   migration roles may only use, with EXECUTE on its functions for those two roles and
-  never PUBLIC. A database initialised before this change lacks both: recreate a
-  development volume (`docker compose down`, `docker volume rm erp_pgdata`), and run the
-  role and schema statements once, as a superuser, on any other server.
+  never PUBLIC. A database initialised before this change lacks both: add them to a
+  development database as in [new roles on an existing development database](#new-roles-on-an-existing-development-database),
+  and run the role and schema statements once, as a superuser, on any other server.
 - The `erp_audit` role (C164): `NOLOGIN NOINHERIT`, not `BYPASSRLS`. It owns `audit_log`, its
   monthly partitions, and the audit functions; the migration role is a member, so the
   audit migration and `cmd/deploy`/`cmd/seed` (the partitions) act as it. `10-roles.sh`
@@ -80,7 +80,8 @@ On a new, empty Compose PostgreSQL volume, the initialization script creates:
   the partitions; `USAGE` for the migration role only, so the runtime role never reaches a
   partition directly), gives it `USAGE, CREATE` on `public` (for `audit_log`), and grants
   `SELECT` on its `public` tables to the runtime and migration roles. A database
-  initialised before this lacks them: recreate the development volume, as above.
+  initialised before this lacks them: add them as in
+  [new roles on an existing development database](#new-roles-on-an-existing-development-database).
 
 Compose passes the API only its explicit `APP_*` settings, including the runtime role's `APP_DB_*`; it does
 not pass the cluster-owner password or migration settings. Passwords are Compose
@@ -102,6 +103,27 @@ the connect and usage grants, the `migrations` schema, and default privileges) l
 `docker/postgres/init/database-setup.psql`, so another database (such as the feature
 tests' `erp_platform`, C79) gets identical grants with
 `psql -d <database> -f database-setup.psql`.
+
+### New roles on an existing development database
+
+When a change adds a role or schema to the initialization scripts (such as `erp_audit`,
+C164), an existing `pgdata` volume does not get it, and `migrate` fails with
+`role "…" does not exist`. Both scripts only create what is missing, so run them again in
+the running container, keeping the data. `10-roles.sh` uses the image's `file_env` helper,
+so load the entrypoint's functions first:
+
+```sh
+docker compose exec -T postgres bash -c \
+  'source /usr/local/bin/docker-entrypoint.sh && docker_setup_env && source /docker-entrypoint-initdb.d/10-roles.sh'
+docker compose run --rm migrate
+```
+
+`10-roles.sh` creates the missing roles, then applies `database-setup.psql` (schemas,
+grants, default privileges) to the `erp` database; it never changes existing roles'
+passwords. Recreating the volume (`docker compose down`, `docker volume rm erp_pgdata`,
+then `migrate` and `seed`) also works, but discards the Kratos and Hydra accounts and
+sessions too. On a server other than development, an administrator runs the same role and
+schema statements once, as a superuser.
 
 ## Running migrations
 
