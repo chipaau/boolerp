@@ -388,3 +388,24 @@ added later may share a tenant role's name). Row-level security: a tenant reads 
 the global roles and creates and changes only its own; global roles are written only by the
 seed file; nothing deletes a role. Audited. The migration is
 `apps/api/internal/platform/authorization/migrations/00003_roles.sql`.
+
+### `capabilities` (authorization module, C168)
+
+Fields confirmed 2026-10-06 by the user. What a role may grant, mirrored from code like
+`apps`: each app declares its capabilities (`authorization.App.Capabilities`) and the
+`authorization.capabilities` seed file writes them here on every `cmd/deploy` and `cmd/seed`.
+First rows: `tenancy:tenant:view` and `tenancy:tenant:manage` (C153), granted by the admin
+console; other apps' capabilities come with their routes, each agreed first.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `key` | `text` | Primary key; `<module>:<resource>:<level>`, the level `view`, `manage`, or `delete` (C153). |
+| `app_key` | `text` | Not null; references `apps.key`: the one app whose roles may grant it. |
+| `name` | `text` | Not null, not blank. |
+| `description` | `text` | Nullable. |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable, not before `active_from`; set when it leaves the code. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+Global: everyone reads, only the seed file writes; retired, never deleted. Audited. The
+migration is `apps/api/internal/platform/authorization/migrations/00004_capabilities.sql`.

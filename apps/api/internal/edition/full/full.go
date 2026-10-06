@@ -156,6 +156,7 @@ func DataSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 		referenceseeds.NewSectors(db),
 		referenceseeds.NewInstitutionTypes(db),
 		authorizationseeds.NewApps(db, Apps),
+		authorizationseeds.NewCapabilities(db, Apps),
 		tenancyseeds.NewOperator(db, tenancyseeds.Bool, s.PlatformDomain),
 		authorizationseeds.NewOperatorApps(db, authorization.Admin.Key, authorization.ControlCentre.Key),
 	}

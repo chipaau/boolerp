@@ -5,7 +5,8 @@ role and assignment tables are designed (C116), see
 [tenancy](tenancy.md#approved-table-designs-c116), and roles are per app (step 8). Built:
 the `apps` catalogue, mirrored from code (C165), and `tenant_apps`, which apps each tenant
 has on, turned on and off by the operator (C166), and `roles`, one app each, global (from
-code) or a tenant's own (C167). Next: `role_capabilities`, `role_assignments`.
+code) or a tenant's own (C167), and `capabilities`, mirrored from code (C168). Next:
+`role_capabilities`, `role_assignments`.
 
 ## Required boundary
 

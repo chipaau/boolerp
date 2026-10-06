@@ -19,11 +19,18 @@ func Migrations() fs.FS {
 }
 
 // App is an app tenants activate (C165): its key (the frontend manifest's slug), name,
-// kind, and description. Each module declares its own; the edition lists them, and the
-// authorization.apps seed file mirrors the list into the apps table.
+// kind, description, and the capabilities its roles may grant (C168). Each module
+// declares its own; the edition lists them, and the authorization.apps and
+// authorization.capabilities seed files mirror them into the apps and capabilities tables.
 type App struct {
 	Key, Name, Description string
 	Kind                   AppKind
+	Capabilities           []Capability
+}
+
+// Capability is something a role may grant (C153, C168): <module>:<resource>:<level>.
+type Capability struct {
+	Key, Name, Description string
 }
 
 // AppKind is who uses an app.
@@ -44,7 +51,12 @@ const (
 // administration (members, roles, audit). Business apps are declared by their modules.
 var (
 	Admin = App{Key: "admin", Name: "Admin console", Kind: Operator,
-		Description: "Bool's staff manage tenants, their domains, and their owners."}
+		Description: "Bool's staff manage tenants, their domains, and their owners.",
+		Capabilities: []Capability{ // C153
+			{Key: "tenancy:tenant:view", Name: "View tenants", Description: "List and see every tenant."},
+			{Key: "tenancy:tenant:manage", Name: "Manage tenants",
+				Description: "Create, change, suspend, reactivate, and archive tenants; includes viewing them."},
+		}}
 	ControlCentre = App{Key: "control-centre", Name: "Control Centre", Kind: Workspace,
 		Description: "A tenant's own administration: members, roles, and audit."}
 )

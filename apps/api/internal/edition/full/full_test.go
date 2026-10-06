@@ -73,7 +73,7 @@ func TestDeploySeedersInOrder(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "tenancy.operator", "authorization.operator_apps", "identity.team_accounts", "tenancy.operator_members"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "authorization.capabilities", "tenancy.operator", "authorization.operator_apps", "identity.team_accounts", "tenancy.operator_members"}, names)
 }
 
 func TestDataSeedersAreTheSeedFiles(t *testing.T) {
@@ -82,7 +82,7 @@ func TestDataSeedersAreTheSeedFiles(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "tenancy.operator", "authorization.operator_apps"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "authorization.capabilities", "tenancy.operator", "authorization.operator_apps"}, names)
 }
 
 func TestSampleSeeders(t *testing.T) {
@@ -115,6 +115,7 @@ func TestTheTeamOwnerIsOneOfTheTeam(t *testing.T) {
 
 func TestTheEditionsAppsAreValid(t *testing.T) {
 	require.NoError(t, authorizationseeds.Check(Apps))
+	require.NoError(t, authorizationseeds.CheckCapabilities(Apps))
 	keys := make([]string, len(Apps))
 	for i, a := range Apps {
 		keys[i] = a.Key
