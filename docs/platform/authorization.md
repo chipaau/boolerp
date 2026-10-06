@@ -4,8 +4,8 @@ Status: required backbone capability; Cerbos is selected as the policy engine. T
 role and assignment tables are designed (C116), see
 [tenancy](tenancy.md#approved-table-designs-c116), and roles are per app (step 8). Built:
 the `apps` catalogue, mirrored from code (C165), and `tenant_apps`, which apps each tenant
-has on, turned on and off by the operator (C166). Next: `roles`, `role_capabilities`,
-`role_assignments`.
+has on, turned on and off by the operator (C166), and `roles`, one app each, global (from
+code) or a tenant's own (C167). Next: `role_capabilities`, `role_assignments`.
 
 ## Required boundary
 

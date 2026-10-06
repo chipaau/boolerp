@@ -362,3 +362,29 @@ Seeds: `authorization.operator_apps` turns on `admin` and `control-centre` for t
 (every database); `authorization.sample_apps` turns on `control-centre` for each sample
 tenant (development). The migration is
 `apps/api/internal/platform/authorization/migrations/00002_tenant_apps.sql`.
+
+### `roles` (authorization module, C167)
+
+Fields confirmed 2026-10-06 by the user. What a person may do in one app: a role belongs
+to one app (an app has many roles) and grants only that app's capabilities. **Global
+roles** (`tenant_id` null) are Bool's, declared in each app's code and mirrored by the
+`authorization.roles` seed file (with `role_capabilities`), matched by `key`; a tenant
+creates **its own** (`tenant_id` set) for anything else.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default. |
+| `tenant_id` | `uuid` | Nullable: null for a global role; references `tenants.id`, `ON DELETE RESTRICT`. |
+| `app_key` | `text` | Not null; references `apps.key`, `ON DELETE RESTRICT`. |
+| `key` | `text` | Global roles only (required for them, absent otherwise); unique; `<app key>.<name>`, such as `hrms.admin`. |
+| `name` | `text` | Not null, not blank; unique per app among live global roles, and per tenant and app among a tenant's live roles (case-insensitive); a tenant's live role may not repeat a live global role's name in its app. |
+| `description` | `text` | Nullable. |
+| `archived_at` | `timestamptz` | Nullable: an archived role is not newly assigned and is hidden; roles are never deleted. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+A trigger keeps a role's tenant, app, and key, requires a tenant's role to belong to an app
+that is on in that tenant, and refuses a tenant role named like a global one (a global role
+added later may share a tenant role's name). Row-level security: a tenant reads its own and
+the global roles and creates and changes only its own; global roles are written only by the
+seed file; nothing deletes a role. Audited. The migration is
+`apps/api/internal/platform/authorization/migrations/00003_roles.sql`.
