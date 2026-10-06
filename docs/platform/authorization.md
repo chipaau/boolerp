@@ -2,7 +2,9 @@
 
 Status: required backbone capability; Cerbos is selected as the policy engine. The
 role and assignment tables are designed (C116), see
-[tenancy](tenancy.md#approved-table-designs-c116); policies and integration are open.
+[tenancy](tenancy.md#approved-table-designs-c116), and roles are per app (step 8). Built:
+the `apps` catalogue, mirrored from code (C165). Next: `tenant_apps`, `roles`,
+`role_capabilities`, `role_assignments`.
 
 ## Required boundary
 

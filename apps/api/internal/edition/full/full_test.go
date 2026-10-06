@@ -16,6 +16,7 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/bootstrap"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
+	authorizationseeds "github.com/boolmv/erp/apps/api/internal/platform/authorization/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
@@ -28,9 +29,9 @@ func TestMigrationsListEveryModuleWithItsTables(t *testing.T) {
 	for i, m := range Migrations {
 		names[i] = m.Name
 	}
-	assert.Equal(t, []string{"audit", "reference", "identity", "tenancy"}, names, "in dependency order, audit first")
+	assert.Equal(t, []string{"audit", "reference", "identity", "tenancy", "authorization"}, names, "in dependency order, audit first")
 
-	for name, file := range map[int]string{0: "00001_audit_log.sql", 1: "00001_countries.sql", 2: "00001_users.sql", 3: "00001_tenants.sql"} {
+	for name, file := range map[int]string{0: "00001_audit_log.sql", 1: "00001_countries.sql", 2: "00001_users.sql", 3: "00001_tenants.sql", 4: "00001_apps.sql"} {
 		files, err := fs.Glob(Migrations[name].FS, "*.sql")
 		require.NoError(t, err)
 		assert.Contains(t, files, file)
@@ -72,7 +73,7 @@ func TestDeploySeedersInOrder(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.operator", "identity.team_accounts", "tenancy.operator_members"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "tenancy.operator", "identity.team_accounts", "tenancy.operator_members"}, names)
 }
 
 func TestDataSeedersAreTheSeedFiles(t *testing.T) {
@@ -81,7 +82,7 @@ func TestDataSeedersAreTheSeedFiles(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.operator"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "tenancy.operator"}, names)
 }
 
 func TestSampleSeeders(t *testing.T) {
@@ -110,6 +111,15 @@ func TestTheTeamOwnerIsOneOfTheTeam(t *testing.T) {
 		}
 	}
 	assert.Equal(t, []string{"shifau@bool.mv"}, owners)
+}
+
+func TestTheEditionsAppsAreValid(t *testing.T) {
+	require.NoError(t, authorizationseeds.Check(Apps))
+	keys := make([]string, len(Apps))
+	for i, a := range Apps {
+		keys[i] = a.Key
+	}
+	assert.Equal(t, []string{"admin", "control-centre"}, keys)
 }
 
 func TestPrincipalForEachKindOfCaller(t *testing.T) {

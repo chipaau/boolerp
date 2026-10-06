@@ -313,3 +313,26 @@ reads, through row-level security (its own tenant's rows; the operator tenant ev
 partitions live in the `audit` schema, which it cannot use. Partitions are created ahead by
 `audit.create_partitions` (the `audit.partitions` seed file); a default partition keeps any
 other row. The migration is `apps/api/internal/platform/audit/migrations/00001_audit_log.sql`.
+
+### `apps` (authorization module, C165)
+
+Fields confirmed 2026-10-06 by the user, with the first rows: `admin` (Admin console,
+operator) and `control-centre` (Control Centre, workspace); business apps are added with
+their backend modules. The catalogue of Bool's apps, mirrored from code: each module
+declares its app and the edition lists them (`full.Apps`); the `authorization.apps` seed
+file writes them here on every `cmd/deploy` and `cmd/seed`. Global, not tenant-scoped.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `key` | `text` | Primary key; `^[a-z][a-z0-9-]{1,30}$`, the frontend manifest's slug. |
+| `name` | `text` | Not null, not blank. |
+| `kind` | `text` | Not null; `workspace` (a tenant's members use it), `operator` (only the operator tenant may activate it), or `product` (a separate product across tenants, such as FindCare). |
+| `description` | `text` | Nullable. |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable, not before `active_from`; set when the app leaves the code. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+Everyone reads; no write policy, so only the seed file (the owning migration role) changes
+it. An app no longer in the code is retired (`active_to`), never deleted, and listed again
+it becomes active. Audited. The migration is
+`apps/api/internal/platform/authorization/migrations/00001_apps.sql`.
