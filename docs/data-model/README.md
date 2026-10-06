@@ -427,3 +427,28 @@ the tenant from the role and refuses a capability of another app or a retired on
 Row-level security: a tenant reads its own roles' and the global roles' capabilities, and
 adds and removes only its own roles'; global roles' come only from the seed file. Audited.
 The migration is `apps/api/internal/platform/authorization/migrations/00005_role_capabilities.sql`.
+
+### `role_assignments` (authorization module, C116, C170)
+
+Fields confirmed 2026-10-06 by the user, on the membership rather than the user. Who holds
+which role, and when.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default. |
+| `tenant_id` | `uuid` | Not null, `current_tenant_id()` default; references `tenants.id`. |
+| `membership_id` | `uuid` | Not null; with `tenant_id`, references `memberships (tenant_id, id)`: a member of the same tenant. Indexed. |
+| `role_id` | `uuid` | Not null; references `roles.id`. |
+| `assigned_by` | `uuid` | Nullable; references `users.id`; null when provisioning or a seed assigned it. |
+| `active_from` | `timestamptz` | Not null, `now()` default; may be in the future (an acting appointment). |
+| `active_to` | `timestamptz` | Nullable, not before `active_from`: revoked or ended. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+One open assignment per membership and role (unique while `active_to` is null). A trigger
+requires the role to be global or the tenant's own, not archived, and of an app that is on
+in the tenant; tenant, membership, and role never change; an ended assignment is frozen
+(giving the role again is a new row). Capabilities count only assignments live now, whose
+membership is active and whose role's app is on, so ending a membership or turning an app
+off removes access without touching assignments. Row-level security: a tenant reads and
+changes only its own; nothing deletes one. Audited. The migration is
+`apps/api/internal/platform/authorization/migrations/00006_role_assignments.sql`.

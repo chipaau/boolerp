@@ -363,12 +363,38 @@ Table role_capabilities {
   '''
 }
 
+Table role_assignments {
+  id uuid [pk, default: `uuidv7()`]
+  tenant_id uuid [not null, default: `current_tenant_id()`, ref: > tenants.id]
+  membership_id uuid [not null, note: '(tenant_id, membership_id) references memberships (tenant_id, id)']
+  role_id uuid [not null, ref: > roles.id, note: "global or the tenant's own; not archived; its app on"]
+  assigned_by uuid [ref: > users.id, note: 'null when provisioning or a seed assigned it']
+  active_from timestamptz [not null, default: `now()`]
+  active_to timestamptz [note: 'revoked or ended; never deleted']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  indexes {
+    (membership_id, role_id) [unique, note: 'partial: WHERE active_to IS NULL']
+    membership_id
+  }
+
+  Note: '''
+  Confirmed 2026-10-06 (C170); migration platform/authorization/migrations/00006_role_assignments.sql.
+  No membership, no role. Tenant, membership, role fixed; ended rows frozen. RLS: a tenant reads
+  and changes its own; none deleted. Audited.
+  '''
+}
+
+Ref: role_assignments.(tenant_id, membership_id) > memberships.(tenant_id, id)
+
 TableGroup authorization {
   apps
   tenant_apps
   roles
   capabilities
   role_capabilities
+  role_assignments
 }
 
 TableGroup audit {
