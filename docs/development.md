@@ -194,8 +194,9 @@ docker build -f docker/bff.Dockerfile --build-arg APP=workspace -t bool-bff-work
 administration. On a newly initialized volume, Compose creates separate runtime
 and migration roles. The API receives only the runtime role's `APP_DB_*` settings; it never receives
 the migration role's `MIGRATE_DB_*` settings or the cluster-owner password. The PostgreSQL init script does not
-run again for an existing `pgdata` volume; provision and verify the restricted
-roles through the database administration process without resetting that volume.
+run again for an existing `pgdata` volume: when a change adds a role or schema (`migrate`
+fails with `role "…" does not exist`), run the scripts again in the container, keeping the
+data, as in [new roles on an existing development database](platform/postgres.md#new-roles-on-an-existing-development-database).
 See [the role and migration instructions](platform/postgres.md).
 
 The API builds a lazy PostgreSQL pool at startup and reports database availability
