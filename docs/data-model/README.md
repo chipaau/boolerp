@@ -179,6 +179,7 @@ operator tenant.
 | `legal_form_id` | `uuid` | Nullable until activation; with `country`, references `legal_forms (id, country)`, so the form is of the tenant's own country. |
 | `identity_number` | `text` | Nullable, not blank; unique per country, case-insensitive. Required at activation when the legal form names a document, refused when it names none (application). |
 | `registered_on` | `date` | Nullable. |
+| `tax_number` | `text` | Nullable, not blank; unique per country, case-insensitive. The tax registration number (TIN) printed on invoices; null when the organisation has none. Added 2026-10-06 (C172, confirmed). |
 | `timezone` | `text` | IANA name, checked by the application; nullable until activation; no default. |
 | `email` | `text` | Nullable contact, not blank. |
 | `phone` | `text` | Nullable contact; CHECK `^\+[0-9]{6,15}$`. |
@@ -188,7 +189,8 @@ operator tenant.
 
 Before a tenant leaves `provisioning`, `legal_form_id` and `timezone` are required (CHECK),
 and it must have a primary institution type in `tenant_institution_types`. Changed
-2026-10-04 (C141, confirmed): the `institution_type` column was removed. The operator is never suspended or archived and has no parent.
+2026-10-04 (C141, confirmed): the `institution_type` column was removed. Changed 2026-10-06
+(C172, confirmed): `tax_number` was added, in the original migration (C140). The operator is never suspended or archived and has no parent.
 Row-level security is enabled (not forced; the registry has no `tenant_id`): a tenant reads
 its own row; the operator tenant reads every row and alone creates and changes them; nothing
 deletes a tenant. No migration creates a tenant. The migration is

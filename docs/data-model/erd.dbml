@@ -133,6 +133,7 @@ Table tenants {
   legal_form_id uuid [note: 'FK (legal_form_id, country) -> legal_forms (id, country), ON DELETE RESTRICT']
   identity_number text [note: 'the number of the document the legal form names; unique per country (case-insensitive)']
   registered_on date
+  tax_number text [note: 'TIN printed on invoices; unique per country (case-insensitive); C172']
   timezone text [note: 'IANA name, checked by the application']
   email text [note: 'contact; not blank']
   phone text [note: 'contact; CHECK ^\+[0-9]{6,15}$']
