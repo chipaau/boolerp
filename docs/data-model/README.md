@@ -1,9 +1,8 @@
 # Data model status
 
 Updated: 2026-10-06.
-Status: open. Confirmed and implemented: `users`, `countries`, `legal_forms`, `sectors`,
-`institution_types`, `tenants`, `tenant_institution_types`, `domains`, and `memberships`
-(below). (A `sessions`
+Status: open. The confirmed and implemented tables are listed below, each with its
+confirmation. (A `sessions`
 table was approved for sessions in PostgreSQL and withdrawn when sessions moved to the
 BFF's Redis, C90.)
 
@@ -454,3 +453,35 @@ membership is active and whose role's app is on, so ending a membership or turni
 off removes access without touching assignments. Row-level security: a tenant reads and
 changes only its own; nothing deletes one. Audited. The migration is
 `apps/api/internal/platform/authorization/migrations/00006_role_assignments.sql`.
+
+### `billing_agreements` (billing module, C171)
+
+Fields confirmed 2026-10-06 by the user, keeping both the recurring and the per-seat price.
+What a tenant has agreed to pay; there is no plan catalogue (pricing is per client, monthly
+or yearly). See [billing](../platform/billing.md).
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default; also unique `(tenant_id, id)` for tenant-aware foreign keys. |
+| `tenant_id` | `uuid` | Not null; references `tenants.id`, `ON DELETE RESTRICT`; never changes (a trigger). |
+| `payer_tenant_id` | `uuid` | Nullable; references `tenants.id`; another tenant that pays; never the tenant itself. |
+| `cycle` | `text` | Not null; `monthly` or `yearly`. |
+| `currency` | `char(3)` | Not null; ISO 4217 code (three capital letters). |
+| `recurring_amount` | `numeric(19,4)` | Not null, ≥ 0; the fixed price per cycle (0 for seats only). |
+| `per_seat_amount` | `numeric(19,4)` | Nullable, ≥ 0; the price per seat per cycle. |
+| `setup_amount` | `numeric(19,4)` | Nullable, ≥ 0; the one-time setup price. |
+| `tax_rate` | `numeric(5,2)` | Not null, default 0, 0 to 100 (percent). |
+| `seat_limit` | `integer` | Nullable, > 0; null means no limit. |
+| `starts_on` | `date` | Not null; the first billing period starts here. |
+| `ends_on` | `date` | Nullable, ≥ `starts_on`; the last day covered, set when replaced or ended. |
+| `contract_reference` | `text` | Nullable, not blank. |
+| `notes` | `text` | Nullable. |
+| `created_by` | `uuid` | Nullable; references `users.id`; the operator who recorded it. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+A tenant's agreements never overlap in time (an exclusion constraint on `tenant_id` and the
+inclusive `[starts_on, ends_on]` range, with `btree_gist`), so at most one is open; changing
+the terms ends one and starts the next. Row-level security: the operator reads and writes
+all; a tenant reads its own and a payer the ones it pays for; tenants never write; none are
+deleted. Audited (C164). The migration is
+`apps/api/internal/platform/billing/migrations/00001_billing_agreements.sql`.
