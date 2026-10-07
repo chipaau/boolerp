@@ -233,6 +233,11 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   them is open (C131).
 - **`GET /api/v1/tenant`** (C162): the request's tenant (`id`, `code`, `name`, `status`),
   behind `TenantUser`, read in `ReadTx` and checked with Cerbos (`tenancy:tenant` `view`).
+- **`GET /api/v1/tenants`** (C179): the admin console's list behind the `Operator` chain
+  (`ResolveOperator` resolves the operator tenant whatever the host, C178): `page`,
+  `pageSize`, `q`, `status`, `sort` (`name`, `code`, `createdAt`), returning `{items, page,
+  pageSize, total}` with each tenant's `id`, `slug`, `code`, `name`, `status`, `country`,
+  `parentId`, `workspaceHost`, and `createdAt`; Cerbos `list` on `tenancy:tenant` first.
 - The lookup before any tenant is known (C131): a `SECURITY DEFINER` function owned by
   `erp_lookup`, a `NOLOGIN BYPASSRLS` role with column-level `SELECT` on only the
   columns it reads and no writes. It pins `search_path`, schema-qualifies its tables,

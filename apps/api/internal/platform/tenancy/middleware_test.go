@@ -21,16 +21,24 @@ import (
 // fakeLookups stands in for the database lookups: hosts and memberships by
 // tenant and user, or err for every call.
 type fakeLookups struct {
-	hosts   map[string]store.Host
-	members map[string]tenant.Membership // tenantID + "/" + userID
-	err     error
-	asked   []string
+	hosts    map[string]store.Host
+	members  map[string]tenant.Membership // tenantID + "/" + userID
+	operator *tenant.Tenant
+	err      error
+	asked    []string
 }
 
 func (f *fakeLookups) TenantByHost(_ context.Context, host string) (store.Host, bool, error) {
 	f.asked = append(f.asked, host)
 	h, ok := f.hosts[host]
 	return h, ok, f.err
+}
+
+func (f *fakeLookups) OperatorTenant(context.Context) (tenant.Tenant, bool, error) {
+	if f.operator == nil {
+		return tenant.Tenant{}, false, f.err
+	}
+	return *f.operator, true, f.err
 }
 
 func (f *fakeLookups) ActiveMembership(_ context.Context, tenantID, userID string) (tenant.Membership, bool, error) {
@@ -192,4 +200,25 @@ func detail(t *testing.T, rec *httptest.ResponseRecorder) string {
 	var body struct{ Detail string }
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&body))
 	return body.Detail
+}
+
+func TestResolveOperator(t *testing.T) {
+	op := tenant.Tenant{ID: "t-op", Code: "BOOL", Status: "active", IsOperator: true}
+	l := lookups()
+	l.operator = &op
+	var s seen
+	rec := httptest.NewRecorder()
+	module(l).ResolveOperator(s.handler()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, op, s.tenant, "whatever the host")
+
+	rec = httptest.NewRecorder()
+	module(lookups()).ResolveOperator((&seen{}).handler()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code, "no operator yet")
+
+	l = lookups()
+	l.err = errors.New("database down")
+	rec = httptest.NewRecorder()
+	module(l).ResolveOperator((&seen{}).handler()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 }

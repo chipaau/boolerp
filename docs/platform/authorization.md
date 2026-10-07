@@ -5,8 +5,10 @@ role and assignment tables are designed (C116), see
 [tenancy](tenancy.md#approved-table-designs-c116), and roles are per app (step 8). Built:
 the `apps` catalogue, mirrored from code (C165), and `tenant_apps`, which apps each tenant
 has on, turned on and off by the operator (C166), and `roles`, one app each, global (from
-code) or a tenant's own (C167), and `capabilities`, mirrored from code (C168), `role_capabilities` (C169), and `role_assignments`, on memberships (C170). Next: capabilities
-in the principal, the `Operator` chain, and the first operator route.
+code) or a tenant's own (C167), and `capabilities`, mirrored from code (C168), `role_capabilities` (C169), and `role_assignments`, on memberships (C170); the
+admin console's global roles (`admin.administrator`, `admin.viewer`) mirrored from code, the
+team's Administrator role seeded, and the caller's capabilities loaded per request and sent
+to Cerbos as roles (C177); the `Operator` chain (C178) and `GET /api/v1/tenants` (C179).
 
 ## Required boundary
 

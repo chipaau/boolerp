@@ -60,6 +60,7 @@ func actingAs(next http.Handler) http.Handler {
 type stated struct {
 	allow bool
 	asked []authorization.Resource
+	cans  []string
 }
 
 func (s *stated) Check(ctx context.Context, _ string, r authorization.Resource, _ ...authorization.Fact) error {
@@ -71,9 +72,13 @@ func (s *stated) Check(ctx context.Context, _ string, r authorization.Resource, 
 	return nil
 }
 
-func (s *stated) Can(ctx context.Context, _, _ string, _ ...authorization.Fact) error {
+func (s *stated) Can(ctx context.Context, action, kind string, _ ...authorization.Fact) error {
 	authorization.NoteDecision(ctx)
-	return authorization.ErrDenied
+	s.cans = append(s.cans, action+" "+kind)
+	if !s.allow {
+		return authorization.ErrDenied
+	}
+	return nil
 }
 
 // tenantRouter mounts the module at /api/v1/tenant behind the tenant chain, as the
