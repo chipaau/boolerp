@@ -4,7 +4,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { api } from '@/lib/api'
-import { fromApiStatus, fromDesignStatus } from './logic'
+import { fromDesignStatus } from './logic'
 import * as mock from './mock'
 import type {
   ActivityEvent,
@@ -76,52 +76,36 @@ export const useTenantProfiles = () => useQuery(profilesQuery()).data ?? mock.TE
 /** One fixture profile by slug, or undefined. Prefer `useDirectoryTenant` for screens. */
 export const useTenantProfile = (slug: string) => useTenantProfiles().find((p) => p.slug === slug)
 
-/** Sensible design-field defaults for an API tenant that has no fixture profile. */
-function defaultProfile(t: Tenant): TenantProfile {
-  const created = new Date(t.created_at)
-  const when = Number.isNaN(created.getTime())
-    ? '—'
-    : created.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-  return {
-    slug: t.slug, name: t.name, abbr: t.code.toUpperCase(), regNo: '—', orgType: 'Not set', entityType: 'Not set',
-    parentSlug: null, plan: 'Starter', seatsUsed: 0, seatLimit: 40, status: 'Active',
-    activeFrom: t.status === 'active' ? when : '—', contact: '—', email: '—', country: t.country || '—', district: '—',
-    addr: '—', mail: '—', apps: { 'Control Centre': ['Settings'] }, admins: [],
-    activity: [{ when, what: 'Tenant provisioned', who: 'System' }],
-  }
-}
-
 export type TenantDirectory = {
-  /** API tenants (merged with a profile when the slug matches) + fixture-only tenants. Fixture order first, API-only appended. */
+  /** The fixture tenants (design seed + anything created or edited this session). */
   tenants: DirectoryTenant[]
   isLoading: boolean
   error: Error | null
 }
 
 /**
- * The tenant list every screen should use. Merges `useTenants()` with fixture profiles by slug:
- * API name/code/country/status win; design fields come from the profile or defaults.
- * While the API loads (or if it errors) fixture tenants still render.
+ * The prototype's tenants, from fixtures only. It used to merge `useTenants()`, written for the
+ * previous API's GET /api/v1/tenants (an array); that route now returns a page of tenants (C179),
+ * which the merge could not read, so the prototype screens read fixtures until they move to the
+ * new API (roadmap F2).
  */
 export function useTenantDirectory(): TenantDirectory {
-  const list = useTenants()
   const profiles = useTenantProfiles()
-  const tenants = useMemo(() => {
-    const rows = list.data ?? []
-    const bySlug = new Map(rows.map((t) => [t.slug, t]))
-    const out: DirectoryTenant[] = profiles.map((p) => {
-      const t = bySlug.get(p.slug)
-      if (!t) return { ...p, apiId: null, source: 'fixture', directoryStatus: fromDesignStatus(p.status), createdAt: null, hasProfile: true }
-      return { ...p, name: t.name, country: t.country || p.country, apiId: t.id, source: 'api', directoryStatus: fromApiStatus(t.status), createdAt: t.created_at, hasProfile: true }
-    })
-    const known = new Set(profiles.map((p) => p.slug))
-    for (const t of rows) {
-      if (known.has(t.slug)) continue
-      out.push({ ...defaultProfile(t), apiId: t.id, source: 'api', directoryStatus: fromApiStatus(t.status), createdAt: t.created_at, hasProfile: false })
-    }
-    return out
-  }, [list.data, profiles])
-  return { tenants, isLoading: list.isLoading, error: list.error }
+  const tenants = useMemo(
+    () =>
+      profiles.map(
+        (p): DirectoryTenant => ({
+          ...p,
+          apiId: null,
+          source: 'fixture',
+          directoryStatus: fromDesignStatus(p.status),
+          createdAt: null,
+          hasProfile: true,
+        })
+      ),
+    [profiles]
+  )
+  return { tenants, isLoading: false, error: null }
 }
 
 /** One directory tenant by slug (undefined while unknown). */
