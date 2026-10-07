@@ -1,20 +1,20 @@
-// The tenants data seam. The list and lifecycle transitions call the real Go API; the design-only
-// profile (plan, seats, hierarchy, apps, admins, activity…) is fixture-backed until the SRS and data
-// model cover it. Fixture mutations update the cache in place and return an undo.
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+// The design prototype's tenants, fixtures only (C184/F2f). It used to call the Go API here for the
+// list, creation and the lifecycle transitions; those moved to features/tenants/api.ts, the one place
+// the tenants calls live, and the prototype keeps only its design-only profile (plan, seats,
+// hierarchy, apps, admins, activity…). Fixture mutations update the cache in place and return an undo.
+//
+// Nothing here reaches the network. This file goes with the rest of the prototype once the new list
+// is accepted (roadmap F2e).
+import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
-import { api } from '@/lib/api'
 import { fromDesignStatus } from './logic'
 import * as mock from './mock'
 import type {
   ActivityEvent,
   AppName,
-  CreateTenantInput,
-  CreateTenantResult,
   DesignStatus,
   DirectoryTenant,
   PlanName,
-  Tenant,
   TenantAdmin,
   TenantApps,
   TenantProfile,
@@ -22,36 +22,6 @@ import type {
 } from './types'
 
 const key = (...parts: string[]) => ['admin', 'tenants', ...parts] as const
-
-// ---------------------------------------------------------------------------------------------
-// Real API (unchanged contract)
-// ---------------------------------------------------------------------------------------------
-
-export function useTenants() {
-  return useQuery({ queryKey: key('list'), queryFn: () => api.get<Tenant[]>('/api/v1/tenants') })
-}
-
-export function useCreateTenant() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: CreateTenantInput) => api.post<CreateTenantResult>('/api/v1/tenants', input),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: key('list') }),
-  })
-}
-
-type TransitionAction = 'suspend' | 'reactivate' | 'archive'
-
-function useTransition(action: TransitionAction) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) => api.post<Tenant>(`/api/v1/tenants/${id}/${action}`),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: key('list') }),
-  })
-}
-
-export const useSuspendTenant = () => useTransition('suspend')
-export const useReactivateTenant = () => useTransition('reactivate')
-export const useArchiveTenant = () => useTransition('archive')
 
 // ---------------------------------------------------------------------------------------------
 // Fixture-backed catalogue + profiles. `initialData` means these never suspend or load.

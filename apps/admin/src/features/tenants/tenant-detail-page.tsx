@@ -14,7 +14,7 @@ import { cn } from '@workspace/ui/lib/utils'
 import { formatMvr } from '@/features/billing/logic'
 import { useTenantBilling } from '@/features/billing/queries'
 import { childrenOf, pendingAdmins, seatPct, statusLabel } from './logic'
-import { useAppCatalog, useArchiveTenant, useReactivateTenant, useSuspendTenant, useTenantDirectory, useTenantProfileActions } from './queries'
+import { useAppCatalog, useTenantDirectory, useTenantProfileActions } from './queries'
 import type { DirectoryTenant } from './types'
 import { TenantBillingTab } from './tenant-billing-tab'
 import { DetailCard, INVITE_TONE, LinkAction, Overline, STATUS_TONE, SeatBar } from './tenant-detail-bits'
@@ -142,9 +142,6 @@ function IdentityPlate({ abbr, status }: { abbr: string; status: DirectoryTenant
 function TenantHeader({ tenant: t, parent, onOpen }: { tenant: DirectoryTenant; parent?: DirectoryTenant; onOpen: (d: TenantModalState) => void }) {
   const toast = useToast()
   const { setStatus, resendPendingInvites } = useTenantProfileActions()
-  const suspend = useSuspendTenant()
-  const reactivate = useReactivateTenant()
-  const archive = useArchiveTenant()
   const [confirmArchive, setConfirmArchive] = useState(false)
   const pending = pendingAdmins(t.admins)
   const suspended = t.directoryStatus === 'suspended'
@@ -152,17 +149,9 @@ function TenantHeader({ tenant: t, parent, onOpen }: { tenant: DirectoryTenant; 
 
   const facts = [t.orgType, t.entityType, t.district].join(' · ') + (t.activeFrom !== '—' ? ` · active from ${t.activeFrom}` : '')
 
+  // Fixtures only (F2f); the API branch this had was unreachable, since prototype tenants have no apiId.
   const toggleSuspension = () => {
     const done = suspended ? `${t.abbr} is active again.` : `${t.abbr} suspended — every sign-in is blocked until you lift it.`
-    if (t.apiId) {
-      const id = t.apiId
-      const [run, back] = suspended ? [reactivate, suspend] : [suspend, reactivate]
-      run.mutate(id, {
-        onSuccess: () => toast(done, { undo: () => back.mutate(id, { onError: (e) => toast(e.message, { ok: false }) }) }),
-        onError: (e) => toast(e.message, { ok: false }),
-      })
-      return
-    }
     toast(done, { undo: setStatus(t.slug, suspended ? 'Active' : 'Suspended') })
   }
 
@@ -245,11 +234,9 @@ function TenantHeader({ tenant: t, parent, onOpen }: { tenant: DirectoryTenant; 
         onClose={() => setConfirmArchive(false)}
         onConfirm={() => {
           setConfirmArchive(false)
-          if (!t.apiId) return
-          archive.mutate(t.apiId, {
-            onSuccess: () => toast(`${t.name} archived`),
-            onError: (e) => toast(e.message, { ok: false }),
-          })
+          // Fixtures only (F2f). The prototype's tenants carry no apiId, so this already did nothing;
+          // archiving for real belongs to the new list's endpoints.
+          toast(`${t.name} archived`)
         }}
       />
     </Card>

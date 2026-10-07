@@ -14,10 +14,12 @@ import { cn } from '@workspace/ui/lib/utils'
 import { Field, ReviewCard, StepHeading, fieldClass } from '@/components/form-field'
 import { useCurrentUser } from '@/components/layout/user-context'
 import { useActiveCountries, useChildGeographies, useTopLevelGeographies } from '@/features/geographies/queries'
-import { useAppCatalog, useCoreApps, useCreateTenant, useEntityTypes, useOrgTypes, usePlans, useTenantDirectory, useTenantProfileActions, useTenants } from './queries'
+import { useAppCatalog, useCoreApps, useEntityTypes, useOrgTypes, usePlans, useTenantDirectory, useTenantProfileActions } from './queries'
 import type { AppName, CreateTenantInput, EntityType, Nationality, OrgType, PlanName, TenantAdmin, TenantApps, TenantProfile } from './types'
 
 /** What the list shows after a successful provision: the one-time recovery link for the owner. */
+/** What the list shows after the prototype's wizard finishes. Fixtures only (F2f): the activation
+ *  link is a placeholder, since nothing is provisioned. Creating a tenant for real is F3. */
 export type Provisioned = { name: string; recoveryLink: string }
 
 const STEPS = [
@@ -83,10 +85,8 @@ const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
 export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => void; onProvisioned: (p: Provisioned) => void }) {
   const toast = useToast()
   const user = useCurrentUser()
-  const create = useCreateTenant()
   const { create: saveProfile } = useTenantProfileActions()
   const { tenants } = useTenantDirectory()
-  const apiList = useTenants()
   const plans = usePlans()
   const catalog = useAppCatalog()
   const core = useCoreApps()
@@ -212,17 +212,11 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
       owner_email: f.ownerEmail.trim(),
       owner_name: f.ownerName.trim(),
     }
-    create.mutate(input, {
-      onSuccess: async (res) => {
-        saveProfile(profileFrom(res.tenant.slug, res.tenant.name, 'Active'))
-        // Wait for the list to hold the new tenant, so its row carries the API id (and the API
-        // lifecycle buttons) the moment the list shows it.
-        await apiList.refetch()
-        toast(`${res.tenant.name} created`)
-        onProvisioned({ name: res.tenant.name, recoveryLink: res.recovery_link })
-      },
-      onError: (e) => toast(e instanceof Error ? e.message : 'Could not create tenant', { ok: false }),
-    })
+    // Fixtures only (F2f): this used to POST /api/v1/tenants. Creating a tenant for real — the
+    // endpoint, the form, and the API's field errors on it — is F3, in the new list.
+    saveProfile(profileFrom(input.slug, input.name, 'Active'))
+    toast(`${input.name} created`)
+    onProvisioned({ name: input.name, recoveryLink: 'Not provisioned — this is the design prototype.' })
   }
 
   const saveDraft = () => {
@@ -568,8 +562,8 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
               </Button>
             )}
             {(ready || step === last) && (
-              <Button onClick={create_} disabled={create.isPending}>
-                {create.isPending ? 'Creating…' : 'Create tenant'}
+              <Button onClick={create_}>
+                Create tenant
               </Button>
             )}
           </StepperFooter>

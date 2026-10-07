@@ -17,7 +17,7 @@ import { routeLink } from '@/lib/route-link'
 import { AddTenantWizard } from './add-tenant-wizard'
 import type { Provisioned } from './add-tenant-wizard'
 import { childrenOf, isNearSeatLimit, orderByHierarchy, pendingAdmins, seatPct, statusLabel } from './logic'
-import { useArchiveTenant, useOrgTypes, usePlans, useReactivateTenant, useSuspendTenant, useTenantDirectory, useTenantProfileActions } from './queries'
+import { useOrgTypes, usePlans, useTenantDirectory, useTenantProfileActions } from './queries'
 import type { DirectoryStatus, DirectoryTenant } from './types'
 
 type StatusFilter = 'all' | 'active' | 'pending' | 'suspended' | 'draft' | 'archived'
@@ -76,9 +76,6 @@ export function TenantsPage() {
   const toast = useToast()
   const navigate = useNavigate()
   const profileActions = useTenantProfileActions()
-  const suspend = useSuspendTenant()
-  const reactivate = useReactivateTenant()
-  const archive = useArchiveTenant()
 
   // The sidebar's "Needs attention" rows land here with ?status=pending|active.
   const urlStatus: string | undefined = useSearch({ strict: false }).status
@@ -120,24 +117,15 @@ export function TenantsPage() {
   const count = (f: StatusFilter) => tenants.filter((t) => inFilter(t.directoryStatus, f)).length
   const notLive = tenants.filter((t) => t.directoryStatus === 'pending' || t.directoryStatus === 'provisioning' || t.directoryStatus === 'draft').length
 
+  // Fixtures only (F2f): the prototype's tenants have no apiId, so the API branch this once had was
+  // already unreachable. The real lifecycle endpoints belong to the new list.
   const runTransition = () => {
     if (!pending) return
     const { tenant, action } = pending
     const copy = TRANSITION_COPY[action]
-    if (!tenant.apiId) {
-      const undo = profileActions.setStatus(tenant.slug, action === 'suspend' ? 'Suspended' : 'Active')
-      toast(`${tenant.name} ${copy.pastTense}`, { undo })
-      setPending(null)
-      return
-    }
-    const mutation = action === 'suspend' ? suspend : action === 'reactivate' ? reactivate : archive
-    mutation.mutate(tenant.apiId, {
-      onSuccess: () => {
-        toast(`${tenant.name} ${copy.pastTense}`)
-        setPending(null)
-      },
-      onError: (e) => toast(e instanceof Error ? e.message : 'Something went wrong', { ok: false }),
-    })
+    const undo = profileActions.setStatus(tenant.slug, action === 'suspend' ? 'Suspended' : 'Active')
+    toast(`${tenant.name} ${copy.pastTense}`, { undo })
+    setPending(null)
   }
 
   const open = (slug: string) => void navigate(routeLink('/tenants/$slug', undefined, { slug }) as never)
