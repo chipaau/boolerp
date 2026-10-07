@@ -96,8 +96,13 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
 - Every failure is an `ApiError` with a `kind` (`http`, `network`, `timeout`, `aborted`,
   `contract`), built from the RFC 9457 problem: `status`, `type`, `title`, `detail`,
   `requestId`, `fieldErrors` (from JSON pointers, as dotted paths), `paramErrors`.
-- 401 sends the browser to sign-in and back; 403 is a forbidden state or a permission toast;
-  queries retry network and 5xx errors twice, never a 4xx; mutations never retry.
+- General errors are handled in one place (C185): `createQueryClient({ notify })` applies one
+  policy to every query and mutation. 401 sends the browser to sign-in and back; 403 and 404
+  are the screen's state for a query, a toast for a mutation; 409 toasts and refetches; 422
+  stays with the form; 429, 5xx, network, and timeout are the screen's error state on a first
+  load and a toast otherwise (with the request reference). A query or mutation opts out of a
+  status with `meta: { handles: [...] }`. Queries retry network and 5xx errors twice, never a
+  4xx; mutations never retry.
 - Resources: `createKeys(name)`, per-feature `queryOptions` builders, and `useApiMutation`
   (invalidation, toasts, 422 onto the form).
 - Tests fake the network with MSW; the fetch core's own tests stub `fetch`.
