@@ -10,7 +10,8 @@ export const IDENTITY = 'http://identity.bool.test'
 
 /**
  * The account the suite signs in with: seeded by `docker compose run --rm seed` in development
- * only, with the team's public development password, as an active member of male-city (C160).
+ * only, with the team's public development password, as an active member of male-city (C160) and of
+ * the operator tenant with Viewer, which the admin console's tenants list requires (F2g).
  */
 export const user = (): { email: string; password: string } => ({ email: 'e2e@bool.test', password: 'password' })
 

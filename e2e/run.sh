@@ -8,7 +8,12 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-TRAEFIK=$(docker network inspect proxy --format '{{range .Containers}}{{.Name}}{{"\n"}}{{end}}' | grep -m1 traefik || true)
+# An exact "traefik" first: the shared dev-machine proxy brings companions onto this network whose
+# names also contain "traefik" (traefik-proxy-whoami-1, traefik-proxy-dnsmasq-1), and a plain
+# first-match picked whichever Docker listed first — pointing the whole suite at an echo server, with
+# every spec failing on a page that was never the app. TRAEFIK_CONTAINER overrides both.
+names=$(docker network inspect proxy --format '{{range .Containers}}{{.Name}}{{"\n"}}{{end}}')
+TRAEFIK="${TRAEFIK_CONTAINER:-$(printf '%s\n' "$names" | grep -x traefik || printf '%s\n' "$names" | grep -m1 traefik || true)}"
 TRAEFIK_IP=$(docker network inspect proxy --format "{{range .Containers}}{{if eq .Name \"${TRAEFIK}\"}}{{.IPv4Address}}{{end}}{{end}}" | cut -d/ -f1)
 if [ -z "$TRAEFIK_IP" ]; then
   echo "error: no Traefik container found on the 'proxy' network — is the dev stack (docker compose up) running?" >&2

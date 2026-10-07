@@ -190,16 +190,23 @@ func SampleSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 // MembershipSeeders give people their memberships (C160), as the migration role
 // (db), because tenancy has no invite operation yet: the team in the operator
 // tenant, then, in dev only, the team in every sample tenant and the end-to-end
-// account in male-city, the suite's workspace; then the team's admin console role
+// account in male-city, the suite's workspace; then the admin console roles
 // (C177). They need the accounts, so cmd/seed runs them after Seeders.
+//
+// The end-to-end account is also a member of the operator tenant, with Viewer
+// (F2g): the admin console's tenants list is operator surface, so a journey
+// through it needs standing there. Viewer and not Administrator on purpose — the
+// journey only reads, and a suite account that could change every tenant is a
+// larger blast radius than the test needs. It stays dev-only: DeploySeeders,
+// production's, seeds the team and no one else.
 func MembershipSeeders(db *pgxpool.Pool) []seed.Seeder {
 	team := teamMembers()
+	e2e := tenancyseeds.Member{Email: identityseeds.E2EEmail}
 	return []seed.Seeder{
-		tenancyseeds.NewOperatorMembers(db, team),
-		tenancyseeds.NewSampleMembers(db, team, tenancyseeds.Grant{
-			Tenant: "male-city", Member: tenancyseeds.Member{Email: identityseeds.E2EEmail},
-		}),
+		tenancyseeds.NewOperatorMembers(db, append(append([]tenancyseeds.Member{}, team...), e2e)),
+		tenancyseeds.NewSampleMembers(db, team, tenancyseeds.Grant{Tenant: "male-city", Member: e2e}),
 		authorizationseeds.NewTeamRoles(db, identityseeds.TeamEmails(), authorization.AdminAdministrator.Key),
+		authorizationseeds.NewTeamRoles(db, []string{identityseeds.E2EEmail}, authorization.AdminViewer.Key),
 	}
 }
 

@@ -19,6 +19,7 @@ import (
 	authorizationseeds "github.com/boolmv/erp/apps/api/internal/platform/authorization/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
+	identityseeds "github.com/boolmv/erp/apps/api/internal/platform/identity/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
@@ -100,7 +101,9 @@ func TestMembershipSeeders(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"tenancy.operator_members", "tenancy.sample_members", "authorization.team_roles"}, names)
+	// Two team_roles seeders: the team gets Administrator, the end-to-end account Viewer (F2g).
+	assert.Equal(t, []string{"tenancy.operator_members", "tenancy.sample_members",
+		"authorization.team_roles", "authorization.team_roles"}, names)
 }
 
 func TestTheTeamOwnerIsOneOfTheTeam(t *testing.T) {
@@ -251,4 +254,15 @@ func TestEveryRouteIsProtected(t *testing.T) {
 		return nil
 	}))
 	assert.GreaterOrEqual(t, routes, 2, "the walk saw /tenant and /tenants")
+}
+
+// The end-to-end account is development only: it belongs to MembershipSeeders (cmd/seed), never to
+// DeploySeeders, which is what production runs (C135, C137). A suite account with standing in the
+// operator tenant of a real deployment would be a login nobody asked for.
+func TestDeploySeedersLeaveOutTheEndToEndAccount(t *testing.T) {
+	for _, s := range DeploySeeders(nil, SeedSettings{}, nil, nil, nil) {
+		assert.NotContains(t, s.Name(), "sample", "production seeds no sample data")
+	}
+	assert.NotContains(t, identityseeds.TeamEmails(), identityseeds.E2EEmail,
+		"the team's accounts, which production seeds, must not include the suite's")
 }
