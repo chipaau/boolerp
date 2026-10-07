@@ -16,5 +16,7 @@
 
 :root {
   /* FindCare's tokens, each overriding the Bool value imported above.
-     Empty on purpose: the design is not yet decided (C190). */
+     The design is not yet decided (C190); this one value is a placeholder, set to see the
+     override working, and is not a choice about what colour FindCare is. */
+  --background: #e3f0fa; /* light blue · placeholder, not FindCare's design */
 }
