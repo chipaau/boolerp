@@ -318,24 +318,37 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
 **Subscription and enabled apps**
 - The app catalogue is code (the app packages), like capabilities and role templates.
   `tenant_apps` records `(tenant_id, app_key, activated_by, active_from, active_to)`;
-  activating an app copies its role templates into the tenant; history is kept.
+  history is kept. **Role templates are not settled**: nothing copies a template into a
+  tenant today, and roles are either global — `roles.tenant_id IS NULL`, seeded from code
+  (C177) — or a tenant's own. Whether activating an app should seed the tenant roles, and
+  from what, is undecided; the admin console's two global roles cover the console itself.
 - `subscriptions` and plans were replaced (C171): there is no plan catalogue; what each
   tenant pays is its billing agreement, priced per client, monthly or yearly
   ([billing](billing.md)).
 - Invitations are refused once active and invited memberships reach the agreement's
   seat limit, when it has one.
 
-**Provisioning**
+**Provisioning** — the design for F3; `POST /api/v1/tenants` does not exist yet, and the
+fields it accepts are not confirmed (see the open question below).
 - One flow for every caller (an operator now; self-service sign-up and the self-hosted
   first run later).
 - The owner's Kratos account is found by email or created first (idempotent). Then one
-  database transaction creates the tenant, its default domain, the subscription, the
-  enabled apps with their roles, the owner membership, and the audit rows. If it fails,
-  the Kratos account is reused on retry (the previous design claimed one transaction, but
-  a Kratos account cannot be rolled back).
+  database transaction creates the tenant, its default domain, the enabled apps, and the
+  owner membership. If it fails, the Kratos account is reused on retry (the previous
+  design claimed one transaction, but a Kratos account cannot be rolled back).
+- **Audit rows are not written by that transaction.** Every table carries an `audit.enable`
+  trigger (C164), so the rows appear on their own; what the transaction must do is open
+  through `tenant.Tx` or `actor.Tx`, which carry the actor the trigger records.
+- **No billing agreement is created.** C171 replaced `subscriptions` and the plan
+  catalogue: what a tenant pays is a billing agreement, agreed per client and recorded
+  separately ([billing](billing.md)). Provisioning does not price a tenant.
 - The owner's email goes out only after commit.
-- The operator tenant is created only by a first-run setup command, the one path that
-  sets `is_operator`.
+- The operator tenant is **not** created by this flow, and not by the API at all: it is a
+  seed file (`tenancy/seeds/operator.go`) that `cmd/deploy` runs in production and
+  `cmd/seed` in development, as the migration role. Row-level security makes that the only
+  way: `tenants_create` requires `NOT is_operator`, and `tenants_update` requires the flag
+  to keep the value it had, so the runtime role can neither create an operator tenant nor
+  promote one.
 - Provisioning requests carry an idempotency key, so a retry cannot create a second
   tenant.
 - Sector templates are deferred with classification; every tenant starts from the same
@@ -368,6 +381,30 @@ Read visibility and mutation policies must be separate: broad descendant visibil
 must not authorize descendant updates or deletes. WITH CHECK does not protect
 DELETE operations. Aggregate-only access must not expose unrestricted detail reads.
 See [PostgreSQL policy semantics](https://www.postgresql.org/docs/18/sql-createpolicy.html).
+
+## Open before provisioning is built (F3)
+
+`POST /api/v1/tenants` is the next step, and these are undecided. Each needs the user's
+confirmation, the field list table by table (see
+[the data model's working agreement](../data-model/README.md)) before any migration or
+`erd.dbml` change.
+
+- **What the request accepts.** The tenant's own columns are settled (C116, above), but not
+  which of them provisioning requires rather than allows later: `legal_form_id` and
+  `timezone` are required only before a tenant leaves `provisioning`, so a tenant may be
+  created without them. The admin console's design prototype collects far more — plan,
+  seats, address, contact, apps and modules, several admins — and most of that has no
+  table behind it.
+- **Whether the default domain is part of it.** The flow above creates one; `domains` is
+  built (C158), but what host a new tenant gets, and whether the caller may choose it, is
+  not written down.
+- **Which apps a new tenant starts with**, and what roles it starts with — see the role
+  templates note under Apps above, which is the same open question from the other side.
+- **The owner.** Provisioning creates a membership for an owner, so it needs that person's
+  identity: whether the request carries an e-mail that may already exist, what happens when
+  it does, and how the invitation reaches them.
+- **Idempotency.** The key is required above; where it is stored and how long it is honoured
+  is not designed.
 
 No historical schema-per-tenant, hierarchy, or visible-set design is inherited.
 See [identity](identity.md), [authorization](authorization.md), [deployment](deployment.md), and
