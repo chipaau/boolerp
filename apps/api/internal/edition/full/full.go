@@ -50,6 +50,10 @@ var Migrations = []postgres.ModuleMigrations{
 // The authorization.apps seed file mirrors them into the apps table.
 var Apps = []authorization.App{authorization.Admin, authorization.ControlCentre}
 
+// Roles are the edition's global roles (C167, C177), mirrored by the authorization.roles
+// seed file.
+var Roles = []authorization.Role{authorization.AdminAdministrator, authorization.AdminViewer}
+
 // Policies are the edition's Cerbos policies, tests, and schemas, one entry per
 // module (C151): the shared authorization pieces, then each module's. cmd/policies
 // assembles them into the directory Cerbos reads, so an edition ships only its own
@@ -90,14 +94,19 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 	// The platform every module gets (C144): the tenant chain is built here from
 	// the single-purpose middlewares of auth, tenancy, and authorization.
 	tenancyModule := tenancy.New(d.Pool, d.Logger)
+	capabilities := authorization.LoadCapabilities(d.Pool, d.Logger)
 	services := platform.Services{
 		Pool: d.Pool, Authz: authz, Logger: d.Logger,
 		TenantUser: chi.Chain(authModule.Authenticate, auth.RequireUser, auth.Actor,
 			tenancyModule.ResolveTenant, tenancyModule.RequireMember, tenancyModule.RequireActiveTenant,
-			authorization.Enforce(d.Logger)),
+			capabilities, authorization.Enforce(d.Logger)),
+		Operator: chi.Chain(authModule.Authenticate, auth.RequireUser, auth.Actor,
+			tenancyModule.ResolveOperator, tenancyModule.RequireMember, tenancyModule.RequireActiveTenant,
+			capabilities, authorization.Enforce(d.Logger)),
 	}
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/tenant", tenancyModule.Routes(services))
+		r.Route("/tenants", tenancyModule.TenantsRoutes(services))
 	})
 	return nil
 }
@@ -107,8 +116,8 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 // yet (role account, ID their account), or a machine client (role client); a
 // person's account ID (the token's sub) as account_id; and the tenant the
 // request acts in, when there is one. Inside a tenant, a person with an active
-// membership there (RequireMember) also has the role member (C153); their
-// capabilities there are added once roles exist.
+// membership there (RequireMember) also has the role member (C153) and their
+// capabilities there (LoadCapabilities, C177) as roles.
 func Principal(ctx context.Context) (authorization.Principal, error) {
 	caller, ok := auth.FromContext(ctx)
 	if !ok {
@@ -127,7 +136,8 @@ func Principal(ctx context.Context) (authorization.Principal, error) {
 		attrs["tenant_id"] = t.ID
 		attrs["in_operator_tenant"] = t.IsOperator
 		if _, ok := tenant.MembershipFrom(ctx); ok && caller.User != nil {
-			p.Roles = append(p.Roles, "member")
+			// A member, with their capabilities there as Cerbos roles (C150, C177).
+			p.Roles = append(append(p.Roles, "member"), authorization.CapabilitiesFrom(ctx)...)
 		}
 	}
 	if len(attrs) > 0 {
@@ -159,6 +169,7 @@ func DataSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 		referenceseeds.NewInstitutionTypes(db),
 		authorizationseeds.NewApps(db, Apps),
 		authorizationseeds.NewCapabilities(db, Apps),
+		authorizationseeds.NewRoles(db, Roles, Apps),
 		tenancyseeds.NewOperator(db, tenancyseeds.Bool, s.PlatformDomain),
 		authorizationseeds.NewOperatorApps(db, authorization.Admin.Key, authorization.ControlCentre.Key),
 	}
@@ -179,8 +190,8 @@ func SampleSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 // MembershipSeeders give people their memberships (C160), as the migration role
 // (db), because tenancy has no invite operation yet: the team in the operator
 // tenant, then, in dev only, the team in every sample tenant and the end-to-end
-// account in male-city, the suite's workspace. They need the accounts, so cmd/seed
-// runs them after Seeders.
+// account in male-city, the suite's workspace; then the team's admin console role
+// (C177). They need the accounts, so cmd/seed runs them after Seeders.
 func MembershipSeeders(db *pgxpool.Pool) []seed.Seeder {
 	team := teamMembers()
 	return []seed.Seeder{
@@ -188,6 +199,7 @@ func MembershipSeeders(db *pgxpool.Pool) []seed.Seeder {
 		tenancyseeds.NewSampleMembers(db, team, tenancyseeds.Grant{
 			Tenant: "male-city", Member: tenancyseeds.Member{Email: identityseeds.E2EEmail},
 		}),
+		authorizationseeds.NewTeamRoles(db, identityseeds.TeamEmails(), authorization.AdminAdministrator.Key),
 	}
 }
 
@@ -202,15 +214,16 @@ func teamMembers() []tenancyseeds.Member {
 }
 
 // DeploySeeders load production's starting data (C135, C137): DataSeeders, then
-// the team's accounts without passwords and their memberships of the operator
-// tenant (C160). cmd/deploy runs them after applying the migrations, as the
+// the team's accounts without passwords, their memberships of the operator tenant
+// (C160), and their admin console role (C177). cmd/deploy runs them after applying the migrations, as the
 // migration role (db). terminal is where one-time recovery codes for new accounts
 // are shown, or nil for none.
 func DeploySeeders(db *pgxpool.Pool, s SeedSettings, client *http.Client, logger *slog.Logger, terminal io.Writer) []seed.Seeder {
 	users := identity.New(db, s.Identity, client, logger)
 	return append(DataSeeders(db, s),
 		identityseeds.NewTeamAccounts(users, terminal),
-		tenancyseeds.NewOperatorMembers(db, teamMembers()))
+		tenancyseeds.NewOperatorMembers(db, teamMembers()),
+		authorizationseeds.NewTeamRoles(db, identityseeds.TeamEmails(), authorization.AdminAdministrator.Key))
 }
 
 // Seeders are the edition's demo data seeders (C135), one per store, in

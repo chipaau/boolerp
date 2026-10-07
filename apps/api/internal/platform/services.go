@@ -26,7 +26,13 @@ type Services struct {
 	// TenantUser protects a route a person uses inside a tenant: authenticate,
 	// require a person, record the actor for the audit, resolve the tenant from the
 	// host, require the person's active membership, require an active tenant, and
-	// require an authorization decision before answering, in that order (C144, C155,
-	// C164).
+	// load their capabilities there (C177), and require an authorization decision
+	// before answering, in that order (C144, C155, C164).
 	TenantUser chi.Middlewares
+
+	// Operator protects the admin console's routes: authenticate, require a person,
+	// record the actor, resolve the operator tenant, require the person's active
+	// membership of it, require it active, load their capabilities, and require an
+	// authorization decision (C144, C178). Cerbos then requires an operator capability.
+	Operator chi.Middlewares
 }

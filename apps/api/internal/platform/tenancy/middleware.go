@@ -42,6 +42,26 @@ func (m *Module) ResolveTenant(next http.Handler) http.Handler {
 	})
 }
 
+// ResolveOperator puts the operator tenant in the request's context, for the admin
+// console's routes (C144, C178): those act in the operator tenant whatever the host, and
+// RequireMember and Cerbos then decide (operator staff with a capability). Before the
+// operator is seeded, 404.
+func (m *Module) ResolveOperator(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t, ok, err := m.lookups.OperatorTenant(r.Context())
+		if err != nil {
+			m.logger.ErrorContext(r.Context(), "looking up the operator failed", "error", err)
+			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+			return
+		}
+		if !ok {
+			problem.Error(w, r, http.StatusNotFound, notFound)
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(tenant.With(r.Context(), t)))
+	})
+}
+
 // RequireMember lets through only a person with an active membership in the
 // request's tenant, and puts the membership in the context (C144, C160). Anyone
 // else gets 404, the same answer as an unknown host. It comes after Authenticate,

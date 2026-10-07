@@ -73,7 +73,7 @@ func TestDeploySeedersInOrder(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "authorization.capabilities", "tenancy.operator", "authorization.operator_apps", "identity.team_accounts", "tenancy.operator_members"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "authorization.capabilities", "authorization.roles", "tenancy.operator", "authorization.operator_apps", "identity.team_accounts", "tenancy.operator_members", "authorization.team_roles"}, names)
 }
 
 func TestDataSeedersAreTheSeedFiles(t *testing.T) {
@@ -82,7 +82,7 @@ func TestDataSeedersAreTheSeedFiles(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "authorization.capabilities", "tenancy.operator", "authorization.operator_apps"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "authorization.capabilities", "authorization.roles", "tenancy.operator", "authorization.operator_apps"}, names)
 }
 
 func TestSampleSeeders(t *testing.T) {
@@ -100,7 +100,7 @@ func TestMembershipSeeders(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"tenancy.operator_members", "tenancy.sample_members"}, names)
+	assert.Equal(t, []string{"tenancy.operator_members", "tenancy.sample_members", "authorization.team_roles"}, names)
 }
 
 func TestTheTeamOwnerIsOneOfTheTeam(t *testing.T) {
@@ -116,6 +116,7 @@ func TestTheTeamOwnerIsOneOfTheTeam(t *testing.T) {
 func TestTheEditionsAppsAreValid(t *testing.T) {
 	require.NoError(t, authorizationseeds.Check(Apps))
 	require.NoError(t, authorizationseeds.CheckCapabilities(Apps))
+	require.NoError(t, authorizationseeds.CheckRoles(Roles, Apps))
 	keys := make([]string, len(Apps))
 	for i, a := range Apps {
 		keys[i] = a.Key
@@ -223,6 +224,8 @@ func TestEveryRouteIsProtected(t *testing.T) {
 		requireUser   = code(auth.RequireUser)
 		recordActor   = code(auth.Actor)
 		resolveTenant = code((&tenancy.Module{}).ResolveTenant)
+		resolveOp     = code((&tenancy.Module{}).ResolveOperator)
+		loadCaps      = code(authorization.LoadCapabilities(nil, nil))
 		requireMember = code((&tenancy.Module{}).RequireMember)
 		requireActive = code((&tenancy.Module{}).RequireActiveTenant)
 	)
@@ -239,11 +242,13 @@ func TestEveryRouteIsProtected(t *testing.T) {
 		assert.True(t, has[authenticate], "%s %s: Authenticate", method, route)
 		assert.True(t, has[requireUser], "%s %s: a caller-kind guard", method, route)
 		assert.True(t, has[recordActor], "%s %s: the actor for the audit", method, route)
-		if has[resolveTenant] {
+		assert.True(t, has[resolveTenant] || has[resolveOp], "%s %s: a tenant or the operator", method, route)
+		if has[resolveTenant] || has[resolveOp] {
+			assert.True(t, has[loadCaps], "%s %s: the caller's capabilities", method, route)
 			assert.True(t, has[requireMember], "%s %s: ResolveTenant without RequireMember", method, route)
 			assert.True(t, has[requireActive], "%s %s: RequireActiveTenant", method, route)
 		}
 		return nil
 	}))
-	assert.Positive(t, routes, "the walk saw the tenant route")
+	assert.GreaterOrEqual(t, routes, 2, "the walk saw /tenant and /tenants")
 }

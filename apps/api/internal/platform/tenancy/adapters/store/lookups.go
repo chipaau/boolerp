@@ -53,3 +53,14 @@ func (l *Lookups) ActiveMembership(ctx context.Context, tenantID, userID string)
 	}
 	return m, err == nil, err
 }
+
+// OperatorTenant returns the operator tenant (C178); ok is false before it is seeded.
+func (l *Lookups) OperatorTenant(ctx context.Context) (t tenant.Tenant, ok bool, err error) {
+	err = l.db.QueryRow(ctx, `SELECT tenant_id::text, tenant_code, tenant_status FROM lookup.operator_tenant()`).
+		Scan(&t.ID, &t.Code, &t.Status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return tenant.Tenant{}, false, nil
+	}
+	t.IsOperator = true
+	return t, err == nil, err
+}

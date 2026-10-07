@@ -31,6 +31,7 @@ type DB interface {
 type Lookups interface {
 	TenantByHost(ctx context.Context, host string) (store.Host, bool, error)
 	ActiveMembership(ctx context.Context, tenantID, userID string) (tenant.Membership, bool, error)
+	OperatorTenant(ctx context.Context) (tenant.Tenant, bool, error)
 }
 
 // Module is the tenancy module.
