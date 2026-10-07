@@ -29,4 +29,7 @@ them by default. See [product scope](../../docs/product/scope.md) and
   (`bff-workspace`, `bff-admin`, C90, ADR 0003). Public-facing applications,
   reached by people outside a customer's staff (`apps/website`, `apps/identity`, and
   `apps/findcare` — FindCare's public side, C189), use Next.js (C87). All apps share `@workspace/ui` and
-  `@workspace/assets`; other changes to these conventions need explicit agreement.
+  `@workspace/assets`; other changes to these conventions need explicit agreement. `apps/findcare` is the
+  one exception, and only to the design: it uses the shared components but defines its own tokens in its
+  own `globals.css`, overriding the Bool values it imports (C190). FindCare's design never goes into
+  `packages/ui`, which stays Bool's for the workspace, admin and website.

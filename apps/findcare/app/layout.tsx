@@ -10,7 +10,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        {/* Lato is the single typeface (300 / 400 / 700 / 900) shared with the apps via packages/ui */}
+        {/* Lato, Bool's typeface, standing in until FindCare's own design chooses one (C190);
+            the weights match packages/ui so the shared primitives render as they were drawn. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
