@@ -81,6 +81,23 @@ TanStack Query with query-key factories, loaders prefetching through the router'
 TanStack Form with zod, and URL state through `validateSearch` (C103). The standards are
 being decided one area at a time on the admin console's tenants (roadmap F1, C128).
 
+### API access and the fetch core (C172)
+
+- The browser calls only same-origin `/api/...`; the app's BFF adds the token and forwards
+  to the API. No base URLs, tokens, or direct API calls in frontend code.
+- `@workspace/api` is the one fetch core: `api.get/post/put/patch/delete(path, { query,
+  body, signal, schema })`, responses parsed with zod (`listOf(item)` for lists), the query's
+  `signal` passed through, a 30-second timeout. Lint bans raw `fetch(` elsewhere (except
+  `@workspace/session`).
+- Every failure is an `ApiError` with a `kind` (`http`, `network`, `timeout`, `aborted`,
+  `contract`), built from the RFC 9457 problem: `status`, `type`, `title`, `detail`,
+  `requestId`, `fieldErrors` (from JSON pointers, as dotted paths), `paramErrors`.
+- 401 sends the browser to sign-in and back; 403 is a forbidden state or a permission toast;
+  queries retry network and 5xx errors twice, never a 4xx; mutations never retry.
+- Resources: `createKeys(name)`, per-feature `queryOptions` builders, and `useApiMutation`
+  (invalidation, toasts, 422 onto the form).
+- Tests fake the network with MSW; the fetch core's own tests stub `fetch`.
+
 ### List pages (C171)
 
 - The URL holds the list's state with the API's parameter names: `page`, `pageSize`, `q`,
@@ -105,5 +122,5 @@ features/<feature>/
   <feature>-list.tsx   the page
 routes/<feature>/index.tsx   validateSearch, loaderDeps, loader only
 ``` `@workspace/api` (fetch
-core, errors, resources, mutation helper) arrives with the first real API resource; the apps
+core, errors, resources, mutation helper; C172) arrives with the tenants list (F2); the apps
 read mock data until then.
