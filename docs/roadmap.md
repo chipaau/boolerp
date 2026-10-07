@@ -14,7 +14,7 @@ Resolve one decision at a time using the [decision register](decisions/README.md
 | 3. Platform acceptance | Prove protected operations, audit, tracing, caching, domains, and same-release SaaS/self-host installation, licensing, upgrades, and restore | Not started |
 | 4. Employee operation | Resolve D11 and implement one approved employee operation through domain/application/adapters, including access, audit, and trace | Not started |
 | 5. Cache-backed employee read | Prove scoped Redis caching, invalidation, and failure behavior for a concrete employee read | Not started |
-| 6. Frontend integration | Define/generate client contract, connect frontend, add browser validation, package assets as agreed | Started 2026-10-02: workspace structure decided (ADR 0004, C102–C106) and Control Centre moved into its own package; the other workspace apps move one at a time; `@workspace/api` comes with the first real API resource ([frontend structure](architecture/frontend.md)) |
+| 6. Frontend integration | Define/generate client contract, connect frontend, add browser validation, package assets as agreed | Started 2026-10-02: workspace structure decided (ADR 0004, C102–C106) and Control Centre moved into its own package; the other workspace apps move one at a time. **Now the main direction (2026-10-07):** the frontend standards are proposed and decided one area at a time on a real resource, the admin console's tenants list (F1–F2), then tenant creation (F3); see the [frontend integration track](#frontend-integration-track) |
 
 Deployment constraints inform earlier choices; postponing implementation does not
 mean ignoring custom-domain or self-host requirements during identity design.
@@ -101,6 +101,22 @@ The product decisions remain sequential: D01 is decided (C115), and D02's policy
 details are settled with the first tenancy tables. Provider/deployment constraints inform design early;
 their later implementation position does not postpone those design checks.
 
+## Frontend integration track
+
+Direction set 2026-10-07: standardise the frontend's API access, fetch core, types,
+validation, and lists on a real resource, the admin console's tenants, before more
+screens are connected (C128 leaves these standards open; C103 is the starting direction,
+reviewed against `sentinel-app`). Each standard is proposed, decided, and recorded before
+it is built. The single API proxy already exists: the browser calls same-origin `/api`,
+which Traefik sends to the app's BFF, which adds the token and forwards to the API (C90,
+C98); that stays the only path.
+
+| Step | Increment | Done when | Needs |
+| --- | --- | --- | --- |
+| F1 | **Frontend standards, decided one area at a time** (decided 2026-10-07: lists C174; API access, fetch core, resources C175; types and forms C176): (1) API access through the BFF only; (2) the fetch core in `@workspace/api` (one error type from RFC 9457 problems, request IDs, abort, 401/403 handling, a lint ban on raw `fetch`); (3) resources (query-key factories, `queryOptions` builders for loaders, a mutation helper); (4) types and folder layout (zod schemas per feature, inferred types; generation later with H7); (5) validation and server errors (TanStack Form with zod; a 422's `errors[].pointer` shown on the form's fields); (6) lists (URL search params validated with zod, server-side pagination, sorting, filtering, and search through a shared data table). | Each area is recorded in the decision register and [frontend structure](architecture/frontend.md). | The user's decisions; C68, C69, C71 (the API's list and error formats). |
+| F2 | **Tenants list, end to end:** the admin console lists tenants from the API. Backend: the admin console's global roles and the team's operator role assignments (seeded), the caller's capabilities in the Cerbos principal, the `Operator` chain (the admin host resolves the operator tenant), and `GET /api/v1/tenants` (page, pageSize, q, status, sort). Frontend: `@workspace/api`, the shared data table, and the tenants page rebuilt on them, with its fixtures removed. | Operator staff with `tenancy:tenant:view` see, search, filter, sort, and page every tenant; others get 403; the list's URL is shareable; unit, endpoint, and end-to-end tests cover it. | F1 areas 1–4 and 6; step 8's tables (C165–C170). |
+| F3 | **Create a tenant:** `POST /api/v1/tenants` (provisioning, C116) and the admin console's create flow on TanStack Form with zod, with the API's field errors shown on the form. | A valid tenant is created and appears in the list; every server-side refusal shows on its field; audited. | F1 area 5; the provisioning design and its fields confirmed. |
+
 ## Working one increment at a time
 
 1. Pick the next bounded behavior and resolve only the decisions it needs. Record
@@ -112,7 +128,7 @@ their later implementation position does not postpone those design checks.
 4. Run the relevant Docker-based checks from the [verification strategy](testing.md),
    update the component document, and record evidence before marking it done.
 
-**Next implementation increment: step 8 (roles and capabilities)**, with each table's fields confirmed first (C121), starting with `roles`. Step 6 (tenancy) is done and audit (step 9) is built for changes (C164). Identity comes before tenancy (C83): identities exist independently of tenants, and only custom-domain login (7f) waits for the tenancy domain registry. Request tracing (step 5) is
+**Next implementation increment: the frontend integration track (F1–F3)**: standards decided one area at a time, then the admin console's tenants list end to end, which also finishes step 8 (global roles, capabilities in the principal, the `Operator` chain). Step 8's tables are built (C165–C170). Step 6 (tenancy) is done and audit (step 9) is built for changes (C164). Identity comes before tenancy (C83): identities exist independently of tenants, and only custom-domain login (7f) waits for the tenancy domain registry. Request tracing (step 5) is
 complete, which completes the infrastructure increments (steps 1–5). Before domain work,
 H1–H6 (platform hardening) close gaps that need no product decision: every domain
 endpoint depends on them. Step 6 (tenancy) follows; its tenant model is decided (C115, C116). The Redis foundation (step 4) is complete; step 5 is split into 5a–5e. The HTTP foundation (step 2) is complete; step 3 is split into 3a–3c like step 2. Step 2 is split into
