@@ -518,3 +518,27 @@ Row-level security: the operator reads and writes all; a tenant reads its own is
 invoices, and a payer the issued invoices of the agreements it pays for; tenants never
 write; none are deleted. Audited (C164). The migration is
 `apps/api/internal/platform/billing/migrations/00002_invoices.sql`.
+
+### `invoice_lines` (billing module, C181)
+
+Fields confirmed 2026-10-07 by the user. What an invoice's subtotal adds up from. See
+[billing](../platform/billing.md).
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default. |
+| `tenant_id` | `uuid` | Not null; with `invoice_id`, references `invoices (tenant_id, id)`. |
+| `invoice_id` | `uuid` | Not null; never changes. |
+| `position` | `integer` | Not null, > 0; unique per invoice. |
+| `kind` | `text` | Not null; `recurring`, `seats`, `setup`, or `other`. |
+| `description` | `text` | Not null, not blank; the label printed. |
+| `quantity` | `numeric(19,4)` | Not null, > 0. |
+| `unit_amount` | `numeric(19,4)` | Not null; negative for a discount line. |
+| `amount` | `numeric(19,4)` | Not null; `round(quantity * unit_amount, 4)` (check). |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+Lines are added, changed, and removed only while their invoice is a draft (a trigger).
+Issuing an invoice, or inserting one already issued or paid, checks that its subtotal is the
+sum of its lines (0 with none). Row-level security as for invoices; the operator may delete a
+draft's lines. Audited (C164). The migration is
+`apps/api/internal/platform/billing/migrations/00003_invoice_lines.sql`.

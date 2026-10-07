@@ -459,9 +459,36 @@ Table invoices {
 
 Ref: invoices.(tenant_id, agreement_id) > billing_agreements.(tenant_id, id)
 
+Table invoice_lines {
+  id uuid [pk, default: `uuidv7()`]
+  tenant_id uuid [not null]
+  invoice_id uuid [not null, note: 'with tenant_id, -> invoices (tenant_id, id); never changes']
+  position integer [not null, note: '> 0; unique per invoice']
+  kind text [not null, note: 'recurring | seats | setup | other']
+  description text [not null]
+  quantity "numeric(19,4)" [not null, note: '> 0']
+  unit_amount "numeric(19,4)" [not null, note: 'negative for a discount']
+  amount "numeric(19,4)" [not null, note: '= round(quantity * unit_amount, 4)']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  indexes {
+    (invoice_id, position) [unique]
+  }
+
+  Note: '''
+  Confirmed 2026-10-07 (C181); migration platform/billing/migrations/00003_invoice_lines.sql.
+  Changed only while the invoice is a draft; issuing checks the subtotal is their sum.
+  RLS as for invoices; the operator may delete a draft's lines.
+  '''
+}
+
+Ref: invoice_lines.(tenant_id, invoice_id) > invoices.(tenant_id, id)
+
 TableGroup billing {
   billing_agreements
   invoices
+  invoice_lines
 }
 
 TableGroup authorization {

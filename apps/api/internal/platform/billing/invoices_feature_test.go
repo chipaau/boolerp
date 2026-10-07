@@ -11,12 +11,16 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
 
-// draft adds a draft invoice for September 2026 under agreement (MVR, 0% tax) and returns its id.
+// draft adds a draft invoice for September 2026 under agreement (MVR, 0% tax), with lines
+// adding up to its subtotal (120 seats at 19, and a 450 site pack), and returns its id.
 func (w world) draft(t *testing.T, tenant, agreement string) string {
 	t.Helper()
-	return id(t, w.tx, `INSERT INTO invoices (tenant_id, agreement_id, period_start, period_end, currency,
+	inv := id(t, w.tx, `INSERT INTO invoices (tenant_id, agreement_id, period_start, period_end, currency,
 		subtotal, tax_rate, tax_amount, total)
 		VALUES ($1, $2, '2026-09-01', '2026-09-30', 'MVR', 2730, 0, 0, 2730) RETURNING id`, tenant, agreement)
+	exec(t, w.tx, `INSERT INTO invoice_lines (tenant_id, invoice_id, position, kind, description, quantity, unit_amount, amount)
+		VALUES ($1, $2, 1, 'seats', 'Seats', 120, 19, 2280), ($1, $2, 2, 'other', 'Extra site pack', 1, 450, 450)`, tenant, inv)
+	return inv
 }
 
 // issue issues invoice with number.
