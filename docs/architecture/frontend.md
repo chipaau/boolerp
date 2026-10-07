@@ -81,7 +81,11 @@ TanStack Query with query-key factories, loaders prefetching through the router'
 TanStack Form with zod, and URL state through `validateSearch` (C103). The standards are
 being decided one area at a time on the admin console's tenants (roadmap F1, C128).
 
-### API access and the fetch core (C175)
+### API access and the fetch core (C175, C184)
+
+- API calls live in one place, at two levels: only `@workspace/api` calls `fetch`, and each
+  feature's calls (keys, `queryOptions`, mutations) live in its `features/<x>/api.ts`;
+  components and routes import from there, never `@workspace/api`'s `api` directly (C184).
 
 - The browser calls only same-origin `/api/...`; the app's BFF adds the token and forwards
   to the API. No base URLs, tokens, or direct API calls in frontend code.
