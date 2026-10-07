@@ -27,6 +27,6 @@ them by default. See [product scope](../../docs/product/scope.md) and
 - Internal applications (`apps/workspace`, `apps/admin`) use React with Vite and TanStack
   Router; each is embedded in and served by its backend-for-frontend service
   (`bff-workspace`, `bff-admin`, C90, ADR 0003). Public-facing applications,
-  reached by people outside a customer's staff (`apps/website`, `apps/identity`, later
-  FindCare's public side), use Next.js (C87). All apps share `@workspace/ui` and
+  reached by people outside a customer's staff (`apps/website`, `apps/identity`, and
+  `apps/findcare` — FindCare's public side, C189), use Next.js (C87). All apps share `@workspace/ui` and
   `@workspace/assets`; other changes to these conventions need explicit agreement.

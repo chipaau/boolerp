@@ -16,6 +16,8 @@ apps/
     src/features/          the shell's own features and the remaining prototype apps
   admin/                   the operator console (bff-admin); one app, same conventions (C104)
   identity/                the login service, Next.js (C105)
+  website/                 the Bool ERP marketing site, Next.js (C87); no Compose service
+  findcare/                FindCare's public side, Next.js (C189), at findcare.test
 packages/
   app-kit/                 defineApp and the manifest types (C102)
   app-control-centre/      an app: index.ts (manifest), rail.tsx, routes/, features/<feature>/
