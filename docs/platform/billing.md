@@ -1,8 +1,9 @@
 # Billing
 
-Status: in progress (C171). `billing_agreements` built; the billing contact, invoices,
+Status: in progress (C171–C173). `billing_agreements` and `invoices` built; invoice lines,
 credits, payments with receipts, Bool's bank accounts, change requests, and overdue
-chasing come next, one table at a time.
+chasing come next, one table at a time. There is no billing contact: invoices use the
+tenant's name, email, phone, and `tax_number` (C172).
 
 Billing is a platform capability (`internal/platform/billing`, C122). Bool's operators
 manage it from the admin console; a tenant sees its own billing in Control Centre and
@@ -33,10 +34,24 @@ with its own `tax_rate` (0 when exempt), an optional `seat_limit`, and a
   own, and a payer the ones it pays for; tenants never write; nothing deletes one.
   Every change is audited (C164).
 
+## `invoices` (C173)
+
+What a tenant is billed for one period under its agreement, with a copy of the agreement's
+currency and tax rate, its subtotal, tax, and total, an optional purchase-order reference,
+and notes.
+
+- **Lifecycle:** a draft is Bool's to edit; issuing gives it its number (unique, never
+  reused) and freezes it. Afterwards only its status moves on: `issued` to `paid` (with
+  the payment date) or `void`. A correction is a credit note and a new invoice.
+- **Derived, not stored:** "Due" and "Overdue" are an issued invoice before and after its
+  due date; "Credited" comes from credit notes.
+- **Access:** the operator reads and writes all; a tenant reads its own issued invoices
+  (not drafts), and a payer those of the agreements it pays for.
+
 ## Next
 
-- The billing contact: name, email, phone, address, and tax number, current only.
-- Invoices and their lines, then credit notes and refunds.
+- Invoice lines (what the subtotal is the sum of), then credit notes and refunds.
+- The numbering format, settled with the operation that issues an invoice.
 - Payments submitted from Control Centre with a receipt, verified or rejected by an
   operator. Receipts need object storage ([storage](storage.md)), decided with this
   first use.
