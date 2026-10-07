@@ -15,6 +15,7 @@ x-node: &node
     - /w/apps/workspace/node_modules
     - /w/apps/admin/node_modules
     - /w/apps/website/node_modules
+    - /w/apps/findcare/node_modules
     - /w/apps/identity/node_modules
     - /w/packages/ui/node_modules
     - /w/packages/api/node_modules
@@ -152,6 +153,49 @@ services:
       - traefik.http.routers.erp-workspace.priority=1
       - traefik.http.routers.erp-workspace.service=erp-workspace
       - traefik.http.services.erp-workspace.loadbalancer.server.port=3000
+
+  # Bool's own marketing site (apps/website) at the bool.test apex and its www. Those two are
+  # Bool's hosts, never a tenant's, so they are claimed above the workspace's *.test catch-all
+  # the way admin.bool.test and identity.bool.test already are — without this the catch-all
+  # answered the apex with the tenant workspace. The priority has to clear bff-workspace's
+  # catch-all too (3 = the same *.test regexp with /auth and /api): at 2 the tenant BFF answered
+  # bool.test/api/*, so these hosts were only mostly the website.
+  website:
+    <<: *node
+    command: pnpm --filter website dev
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - "traefik.http.routers.erp-website.rule=Host(`bool.test`) || Host(`www.bool.test`)"
+      - traefik.http.routers.erp-website.entrypoints=web
+      - traefik.http.routers.erp-website.priority=5
+      - traefik.http.routers.erp-website.service=erp-website
+      - traefik.http.services.erp-website.loadbalancer.server.port=3000
+
+  # FindCare's public side (apps/findcare), a Next.js app like apps/website, on its own domain
+  # rather than a host under bool.test: it is a separate product, as cyryx.test is on the same
+  # development proxy. Its apex and www outrank the workspace routers for the same reason the
+  # website's do — their *.test catch-alls match every host, so findcare.test answered with the
+  # tenant workspace, and its /api paths with the tenant BFF.
+  #
+  # findcare.test must resolve: the shared traefik-proxy's dnsmasq maps bool.test and
+  # cyryx.test to 127.0.0.1, and needs --address=/findcare.test/127.0.0.1 alongside them.
+  # That configuration lives outside this repository.
+  findcare:
+    <<: *node
+    command: pnpm --filter findcare dev
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - "traefik.http.routers.erp-findcare.rule=Host(`findcare.test`) || Host(`www.findcare.test`)"
+      - traefik.http.routers.erp-findcare.entrypoints=web
+      - traefik.http.routers.erp-findcare.priority=5
+      - traefik.http.routers.erp-findcare.service=erp-findcare
+      - traefik.http.services.erp-findcare.loadbalancer.server.port=3000
 
   # The admin app's dev server (apps/admin) at admin.bool.test (C97), above the
   # tenant catch-all; /auth and /api go to bff-admin (C97, C98).

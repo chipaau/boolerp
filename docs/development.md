@@ -25,7 +25,7 @@ below work against the current code. The [roadmap](roadmap.md) has the status.
 
 ## Compose baseline
 
-[compose.yaml](../compose.yaml) started with `api`, `app` (now `workspace`, C108), `postgres`, and `redis` (C08) and adds services when a step needs them: `lgtm` (`grafana/otel-lgtm`) for viewing traces and metrics in Grafana at `http://grafana.bool.test` (C82, replacing Jaeger from C63); `kratos` and `kratos-migrate` for accounts at `http://identity.bool.test/kratos`, `identity` for the login pages at `http://identity.bool.test` (Next.js, C86, C87), `hydra`, `hydra-migrate`, and `hydra-clients` for OAuth2 and OpenID Connect with the issuer `http://identity.bool.test/` (C89), `mailpit` for development email and SMS at `http://mail.bool.test`, and `oidc` standing in for Google at `http://oidc.bool.test` (C85; see [identity](platform/identity.md)), `redis-sessions`, `bff-workspace`, and `bff-admin` for the backends-for-frontend, which serve `/auth/*` on tenant domains and on `admin.bool.test` (C90, C96, C97), and `admin`, the admin app's dev server at `http://admin.bool.test` (C97); `cerbos`, the authorization policy engine, on the internal network only (gRPC `cerbos:3593` for the API, HTTP `cerbos:3592` for its healthcheck and debugging, C152), with `policies`, which assembles the edition's policies into Cerbos's volume before it starts (after editing a policy: `docker compose run --rm policies`; Cerbos reloads a few seconds later, C151); and the `migrate` and `seed` tools (profile `tools`).
+[compose.yaml](../compose.yaml) started with `api`, `app` (now `workspace`, C108), `postgres`, and `redis` (C08) and adds services when a step needs them: `lgtm` (`grafana/otel-lgtm`) for viewing traces and metrics in Grafana at `http://grafana.bool.test` (C82, replacing Jaeger from C63); `kratos` and `kratos-migrate` for accounts at `http://identity.bool.test/kratos`, `identity` for the login pages at `http://identity.bool.test` (Next.js, C86, C87), `hydra`, `hydra-migrate`, and `hydra-clients` for OAuth2 and OpenID Connect with the issuer `http://identity.bool.test/` (C89), `mailpit` for development email and SMS at `http://mail.bool.test`, and `oidc` standing in for Google at `http://oidc.bool.test` (C85; see [identity](platform/identity.md)), `redis-sessions`, `bff-workspace`, and `bff-admin` for the backends-for-frontend, which serve `/auth/*` on tenant domains and on `admin.bool.test` (C90, C96, C97), and `admin`, the admin app's dev server at `http://admin.bool.test` (C97); `cerbos`, the authorization policy engine, on the internal network only (gRPC `cerbos:3593` for the API, HTTP `cerbos:3592` for its healthcheck and debugging, C152), with `policies`, which assembles the edition's policies into Cerbos's volume before it starts (after editing a policy: `docker compose run --rm policies`; Cerbos reloads a few seconds later, C151); `website`, the marketing site's dev server at `http://bool.test` and `http://www.bool.test`, and `findcare`, FindCare's public side at `http://findcare.test` and `http://www.findcare.test` (both Next.js, C87, C189); and the `migrate` and `seed` tools (profile `tools`).
 PostgreSQL stores data in the `erp_pgdata` volume (C49). When it is empty, first
 start creates the `erp` database and `10-roles.sh` creates the runtime and migration
 roles, then applies `database-setup.psql` (grants and the `migrations` schema, C79), as
@@ -51,6 +51,17 @@ not deleted.
 The configuration retains the shared external `proxy` network used by local
 Traefik routing at `*.bool.test`; the proxy is not a fifth service in this file.
 That external network/proxy must be provided separately when running this setup.
+Its dnsmasq resolves the development domains, so `findcare.test` needs
+`--address=/findcare.test/127.0.0.1` beside the existing `bool.test` and `cyryx.test`
+entries; without it the host does not resolve the name at all.
+
+The workspace routers match every `*.test` host, because a tenant's verified domain can be
+any name (`workspace.male-city.test`, `cyryx-portal.bool.test`). Bool's own hosts are
+therefore claimed explicitly above them: `admin.bool.test`, `identity.bool.test`,
+`api.bool.test`, and — the apexes — `bool.test` and `www.bool.test` for the website,
+`findcare.test` and `www.findcare.test` for FindCare. Their priority clears both workspace
+routers, the SPA's catch-all and the BFF's `*.test` + `/auth`/`/api` one, so an apex owns
+every path under it rather than handing `/api` to the tenant BFF (C189).
 
 Other Compose projects on the same `proxy` network can reach the services joined to it,
 including Kratos's and Hydra's admin ports, and their service names share its DNS: a
