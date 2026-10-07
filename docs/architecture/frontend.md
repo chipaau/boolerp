@@ -137,6 +137,13 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   sortable column's `id` is the API's sort field), a toolbar with a 300 ms debounced search
   and filters declared as data, pagination, and the standard loading, empty, no-match,
   forbidden, error, and refetching states.
+- `DataTable` (`@workspace/ui/components/data-table`): columns are TanStack Table definitions;
+  a sortable one sets `enableSorting`, an `id` that is the API's sort field, and an accessor
+  (TanStack Table sorts only columns with one, even in manual mode); `meta.wide` hides a column
+  below `lg`. It shows the first load's error (403 as forbidden, others with the reference and a
+  retry); when data is shown, a failed refresh keeps it (the error policy toasts, C185).
+  `ListToolbar` (`list-toolbar`): `search` (debounced), `filters` (declared `select` chips),
+  `summary`, `onClear`.
 - Responses are parsed with zod in every environment; a mismatch is an error naming the field.
 - Types are hand-written zod per feature (`features/<x>/schemas.ts`), camelCase; there is no
   OpenAPI and no generated client (C183).
