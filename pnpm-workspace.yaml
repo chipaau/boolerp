@@ -9,3 +9,10 @@ allowBuilds:
   lightningcss: true
   "@tailwindcss/oxide": true
   unrs-resolver: true
+
+# Security overrides (C186): remove each once the dependency that pulled the old version is
+# updated past it. solid-js 1.9.15 (via the TanStack devtools) pins seroval ~1.5.4, affected by
+# GHSA-p6vx-979v-rg4c (critical) and GHSA-jp82-f5mq-hwhp; solid-js 1.9.16 moved to ~1.6.8.
+overrides:
+  "solid-js>seroval": "~1.6.8"
+  "solid-js>seroval-plugins": "~1.6.8"
