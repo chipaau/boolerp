@@ -57,6 +57,15 @@ Audit stays on in tests. It is a business record written in the same transaction
 change it describes (step 9), so tests must exercise it: an audited change without its record,
 or a failed audit write that does not roll the change back, is a defect a test has to catch.
 
+## Frontend tests (C175, C185)
+
+- `@workspace/api`'s unit tests stub `fetch`; `@workspace/ui`'s components test with jsdom.
+- The admin console's tests (`pnpm --filter admin test`) render the real route tree with the
+  console's own QueryClient (the error policy included) and fake the network with MSW 3, which
+  fails any request without a handler (`onUnhandledFrame: 'error'`). Never mock a feature's
+  modules: schemas and error handling must run. Helpers: `src/test/server.ts` (the MSW server,
+  answering `/api/auth/me`) and `src/test/render.tsx` (`renderRoute(url)`).
+
 ## End-to-end tests (C109)
 
 Playwright tests run in a real browser against the running Compose stack, through Traefik,

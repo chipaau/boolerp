@@ -107,6 +107,9 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   keys it changes in `meta.invalidates`: the query client refetches them on success, and on a
   404 or 409 (C185). A form's mutation declares `meta.handles: [422]` and puts the field errors
   on the form (C176).
+- The admin console: `src/lib/query-client.ts` creates its QueryClient with `createQueryClient`
+  and connects the policy to the app's toast (`ToastBridge`, rendered in the root route); the
+  client reaches every route's loader through the router context (`RouterContext`).
 - `packages/api/src`: `client.ts` (the fetch core), `error.ts` (`ApiError`), `policy.ts`
   (`decide`, the error policy as a pure function), `query-client.ts` (`createQueryClient`,
   `shouldRetry`, the `meta` types), `schemas.ts` (`listOf`, `listSearch`, `id`, `timestamp`),
