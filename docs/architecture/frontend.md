@@ -123,8 +123,8 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   and filters declared as data, pagination, and the standard loading, empty, no-match,
   forbidden, error, and refetching states.
 - Responses are parsed with zod in every environment; a mismatch is an error naming the field.
-- Types are hand-written zod per feature (`features/<x>/schemas.ts`), camelCase, until the
-  API contract generates them (H7).
+- Types are hand-written zod per feature (`features/<x>/schemas.ts`), camelCase; there is no
+  OpenAPI and no generated client (C183).
 
 ```text
 features/<feature>/
