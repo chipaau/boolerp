@@ -1,7 +1,7 @@
 # Billing
 
-Status: in progress (C171–C173). `billing_agreements` and `invoices` built; invoice lines,
-credits, payments with receipts, Bool's bank accounts, change requests, and overdue
+Status: in progress (C171–C173, C181). `billing_agreements`, `invoices`, and `invoice_lines`
+built; credits, payments with receipts, Bool's bank accounts, change requests, and overdue
 chasing come next, one table at a time. There is no billing contact: invoices use the
 tenant's name, email, phone, and `tax_number` (C172).
 
@@ -48,9 +48,16 @@ and notes.
 - **Access:** the operator reads and writes all; a tenant reads its own issued invoices
   (not drafts), and a payer those of the agreements it pays for.
 
+## `invoice_lines` (C181)
+
+What an invoice's subtotal adds up from: each line has a `kind` (`recurring`, `seats`,
+`setup`, or `other`), a description, a quantity, a unit amount (negative for a discount),
+and its amount (quantity × unit amount). Lines change only while the invoice is a draft,
+and issuing checks that the subtotal is their sum.
+
 ## Next
 
-- Invoice lines (what the subtotal is the sum of), then credit notes and refunds.
+- Credit notes and refunds.
 - The numbering format, settled with the operation that issues an invoice.
 - Payments submitted from Control Centre with a receipt, verified or rejected by an
   operator. Receipts need object storage ([storage](storage.md)), decided with this
