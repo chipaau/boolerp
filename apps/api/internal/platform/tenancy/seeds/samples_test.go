@@ -41,7 +41,7 @@ func TestParseSamplesRejectsBadRows(t *testing.T) {
 func TestTheEmbeddedSampleDomains(t *testing.T) {
 	domains, err := ParseSampleDomains(sampleDomainsCSV)
 	require.NoError(t, err)
-	assert.Contains(t, domains, SampleDomain{Tenant: "cyryx", Host: "cyryx-portal.bool.test", Kind: "custom",
+	assert.Contains(t, domains, SampleDomain{Tenant: "cyryx", Host: "portal.cyryx.test", Kind: "custom",
 		Serves: "academics.student", Status: "active", Primary: true})
 
 	samples, err := ParseSamples(sampleTenantsCSV)

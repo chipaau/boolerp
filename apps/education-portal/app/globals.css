@@ -1,0 +1,23 @@
+/*
+ * The education portal's theme layer, the pattern C190 set for FindCare: @workspace/ui supplies the
+ * primitives and the Tailwind @theme mapping they compile against, and this file owns the values
+ * they resolve to. Because that mapping is @theme inline, a utility emits var(--background) at
+ * runtime, so a token redefined here after the import wins and every token left alone keeps Bool's.
+ *
+ * One tenant portal, many institutions (C132): the portal is Bool's app, so this palette is the
+ * product's, not a customer's. Per-tenant branding is a separate question and is not decided.
+ */
+@import "@workspace/ui/globals.css";
+
+/* scan this app's own source (the shared UI package is scanned by its own globals.css) */
+@source "../";
+
+:root {
+  /* Greenish, as asked. A placeholder like FindCare's blue: enough to tell the portals apart on
+     screen, not a decision about what the education portal looks like.
+
+     Light mode only. The shared .dark block outranks :root, so dark mode still renders Bool's
+     #161616 — a real design defines both, and inventing a dark palette here would be the guess
+     this placeholder exists to avoid. apps/findcare behaves the same way. */
+  --background: #e4f0e6;
+}
