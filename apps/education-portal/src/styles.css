@@ -4,12 +4,12 @@
  * they resolve to. Because that mapping is @theme inline, a utility emits var(--background) at
  * runtime, so a token redefined here after the import wins and every token left alone keeps Bool's.
  *
- * One tenant portal, many institutions (C132): the portal is Bool's app, so this palette is the
- * product's, not a customer's. Per-tenant branding is a separate question and is not decided.
+ * One portal, many institutions (C132): the portal is Bool's app, so this palette is the product's,
+ * not a customer's. Per-tenant branding is a separate question and is not decided.
  */
 @import "@workspace/ui/globals.css";
 
-/* scan this app's own source (the shared UI package is scanned by its own globals.css) */
+/* scan this app's own source for Tailwind classes (the shared UI package is scanned by its own globals.css) */
 @source "../";
 
 :root {

@@ -22,10 +22,11 @@ authorization, and audit are designed (C115-C120) and next. The
 4. [Framework and provider decisions](adr/0002-tool-and-provider-selection.md)
 5. [Backend-for-frontend service](adr/0003-browser-bff-service.md)
 6. [Workspace apps as packages](adr/0004-frontend-apps-as-packages.md)
-7. [Backend structure](architecture/backend.md)
-8. [Frontend structure](architecture/frontend.md)
-9. [Employee request lifecycle](architecture/request-lifecycle.md)
-10. [Sequential roadmap and platform delivery plan](roadmap.md)
+7. [Resolving a tenant host](adr/0005-tenant-host-resolution.md)
+8. [Backend structure](architecture/backend.md)
+9. [Frontend structure](architecture/frontend.md)
+10. [Employee request lifecycle](architecture/request-lifecycle.md)
+11. [Sequential roadmap and platform delivery plan](roadmap.md)
 
 ## Component documents
 
