@@ -98,6 +98,18 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   (invalidation, toasts, 422 onto the form).
 - Tests fake the network with MSW; the fetch core's own tests stub `fetch`.
 
+### Types and forms (C173)
+
+- Hand-written zod per feature: `tenantSchema` → `Tenant`, `createTenantSchema` →
+  `CreateTenantInput` (the request body), `tenantListSearch` → `TenantListSearch`. A form has
+  its own values schema only when its shape differs from the body, with a pure mapper to it.
+- TanStack Form with zod (`onChange` once touched, `onSubmit`); field components in
+  `@workspace/ui` take the form's `field`.
+- A 422's field errors appear on their fields (the `onServer` error), with the server's
+  `detail` as the message; errors matching no field show in a banner above the form with the
+  request reference. Editing a field clears its server error; submit is disabled only while
+  sending.
+
 ### List pages (C171)
 
 - The URL holds the list's state with the API's parameter names: `page`, `pageSize`, `q`,
