@@ -28,10 +28,9 @@ const created = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short
 
 /**
  * The tenants table's columns (C174, C179), styled as the tenants page. A sortable column's id is
- * the API's sort field and has an accessor. `parents` names a parent when it is on the same page
- * (the API returns the parent's id).
+ * the API's sort field and has an accessor.
  */
-export function tenantColumns(parents: Map<string, string>): DataTableColumn<Tenant>[] {
+export function tenantColumns(): DataTableColumn<Tenant>[] {
   return [
     {
       id: 'name',
@@ -68,7 +67,7 @@ export function tenantColumns(parents: Map<string, string>): DataTableColumn<Ten
       header: 'Parent',
       enableSorting: false,
       cell: ({ row: { original: t } }) => (
-        <span className="truncate text-compact text-body">{t.parentId ? (parents.get(t.parentId) ?? 'Another tenant') : '—'}</span>
+        <span className="truncate text-compact text-body">{t.parentName ?? '—'}</span>
       ),
       meta: { wide: true },
     },

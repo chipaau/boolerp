@@ -16,6 +16,7 @@ export const tenantSchema = z.object({
   status: z.enum(tenantStatuses),
   country: z.string(),
   parentId: id.nullable(),
+  parentName: z.string().nullable(),
   workspaceHost: z.string().nullable(),
   createdAt: timestamp,
 })

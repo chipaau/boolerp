@@ -237,7 +237,11 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   (`ResolveOperator` resolves the operator tenant whatever the host, C178): `page`,
   `pageSize`, `q`, `status`, `sort` (`name`, `code`, `createdAt`), returning `{items, page,
   pageSize, total}` with each tenant's `id`, `slug`, `code`, `name`, `status`, `country`,
-  `parentId`, `workspaceHost`, and `createdAt`; Cerbos `list` on `tenancy:tenant` first.
+  `parentId`, `parentName`, `workspaceHost`, and `createdAt`; Cerbos `list` on `tenancy:tenant`
+  first. `parentName` comes from a `LEFT JOIN` on the parent row, not from the page: a page is a
+  window over the whole table, so a tenant's parent is usually on another one, and a name resolved
+  from the rows at hand would be missing precisely as the directory outgrows a single page (C188).
+  The list is flat — the parent is a column, not an indent.
 - The lookup before any tenant is known (C131): a `SECURITY DEFINER` function owned by
   `erp_lookup`, a `NOLOGIN BYPASSRLS` role with column-level `SELECT` on only the
   columns it reads and no writes. It pins `search_path`, schema-qualifies its tables,

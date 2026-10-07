@@ -25,7 +25,7 @@ var sortColumns = map[string]string{"name": "t.name", "code": "t.code", "created
 // TenantItem is a tenant as the list shows it (C179).
 type TenantItem struct {
 	ID, Slug, Code, Name, Status, Country string
-	ParentID, WorkspaceHost               *string
+	ParentID, ParentName, WorkspaceHost   *string
 	CreatedAt                             time.Time
 }
 
@@ -55,11 +55,15 @@ func ListTenants(ctx context.Context, tx pgx.Tx, l httpinput.List) ([]TenantItem
 	}
 	order = append(order, "t.id") // a stable order across pages
 
-	sql := `SELECT t.id::text, t.slug, t.code, t.name, t.status, t.country, t.parent_id::text,
+	// p.name, not just t.parent_id: the list shows the parent by name, and a page is a window over
+	// the whole table — a tenant's parent is usually on another page, so a name resolved from the
+	// rows at hand would be missing precisely when the hierarchy is worth seeing.
+	sql := `SELECT t.id::text, t.slug, t.code, t.name, t.status, t.country, t.parent_id::text, p.name,
 	               (SELECT d.host FROM domains d WHERE d.tenant_id = t.id AND d.serves = 'workspace'
 	                   AND d.is_primary AND d.status = 'active'),
 	               t.created_at, count(*) OVER ()
-	          FROM tenants t`
+	          FROM tenants t
+	          LEFT JOIN tenants p ON p.id = t.parent_id`
 	if len(where) > 0 {
 		sql += " WHERE " + strings.Join(where, " AND ")
 	}
@@ -75,7 +79,7 @@ func ListTenants(ctx context.Context, tx pgx.Tx, l httpinput.List) ([]TenantItem
 	for rows.Next() {
 		var t TenantItem
 		if err := rows.Scan(&t.ID, &t.Slug, &t.Code, &t.Name, &t.Status, &t.Country, &t.ParentID,
-			&t.WorkspaceHost, &t.CreatedAt, &total); err != nil {
+			&t.ParentName, &t.WorkspaceHost, &t.CreatedAt, &total); err != nil {
 			return nil, 0, err
 		}
 		items = append(items, t)

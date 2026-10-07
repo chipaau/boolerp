@@ -53,6 +53,7 @@ func (m *Module) list(authz authorization.Authorizer) http.HandlerFunc {
 		Status        string    `json:"status"`
 		Country       string    `json:"country"`
 		ParentID      *string   `json:"parentId"`
+		ParentName    *string   `json:"parentName"`
 		WorkspaceHost *string   `json:"workspaceHost"`
 		CreatedAt     time.Time `json:"createdAt"`
 	}
@@ -78,7 +79,7 @@ func (m *Module) list(authz authorization.Authorizer) http.HandlerFunc {
 		}
 		items := make([]item, len(tenants))
 		for i, t := range tenants {
-			items[i] = item{t.ID, t.Slug, t.Code, t.Name, t.Status, t.Country, t.ParentID, t.WorkspaceHost, t.CreatedAt}
+			items[i] = item{t.ID, t.Slug, t.Code, t.Name, t.Status, t.Country, t.ParentID, t.ParentName, t.WorkspaceHost, t.CreatedAt}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(struct {

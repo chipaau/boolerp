@@ -31,8 +31,7 @@ export function TenantsList() {
   const clear = () => set({ q: undefined, status: undefined })
 
   const items = list.data?.items
-  const parents = useMemo(() => new Map((items ?? []).map((t) => [t.id, t.name])), [items])
-  const columns = useMemo(() => tenantColumns(parents), [parents])
+  const columns = useMemo(() => tenantColumns(), [])
   const total = list.data?.total ?? 0
 
   return (
