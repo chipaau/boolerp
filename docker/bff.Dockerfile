@@ -33,8 +33,9 @@ COPY --from=app /w/apps/${APP}/dist/ internal/bff/web/app/
 RUN CGO_ENABLED=0 go build -trimpath -buildvcs=false -o /out/bff ./cmd/bff
 
 FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
-# wget serves container health checks against /healthz.
-RUN apk add --no-cache ca-certificates wget
+# Alpine's security fixes before the base image is republished (C180), then wget,
+# which serves container health checks against /healthz.
+RUN apk upgrade --no-cache && apk add --no-cache ca-certificates wget
 COPY --from=build /out/bff /usr/local/bin/bff
 # Run as an unprivileged user; the BFF needs no root access.
 USER 65532:65532

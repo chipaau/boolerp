@@ -9,8 +9,9 @@ RUN CGO_ENABLED=0 go build -trimpath -buildvcs=false -o /out/api ./cmd/api
 RUN CGO_ENABLED=0 go build -trimpath -buildvcs=false -o /out/migrate ./cmd/migrate
 
 FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
-# wget serves container health checks against /api/healthz.
-RUN apk add --no-cache ca-certificates wget
+# Alpine's security fixes before the base image is republished (C180), then wget,
+# which serves container health checks against /api/healthz.
+RUN apk upgrade --no-cache && apk add --no-cache ca-certificates wget
 COPY --from=build /out/api /usr/local/bin/api
 COPY --from=build /out/migrate /usr/local/bin/migrate
 # Run as an unprivileged user; the API needs no root access.
