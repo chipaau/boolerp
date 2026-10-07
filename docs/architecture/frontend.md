@@ -103,8 +103,14 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   load and a toast otherwise (with the request reference). A query or mutation opts out of a
   status with `meta: { handles: [...] }`. Queries retry network and 5xx errors twice, never a
   4xx; mutations never retry.
-- Resources: `createKeys(name)`, per-feature `queryOptions` builders, and `useApiMutation`
-  (invalidation, toasts, 422 onto the form).
+- Resources: `createKeys(name)` and per-feature `queryOptions` builders. A mutation lists the
+  keys it changes in `meta.invalidates`: the query client refetches them on success, and on a
+  404 or 409 (C185). A form's mutation declares `meta.handles: [422]` and puts the field errors
+  on the form (C176).
+- `packages/api/src`: `client.ts` (the fetch core), `error.ts` (`ApiError`), `policy.ts`
+  (`decide`, the error policy as a pure function), `query-client.ts` (`createQueryClient`,
+  `shouldRetry`, the `meta` types), `schemas.ts` (`listOf`, `listSearch`, `id`, `timestamp`),
+  `keys.ts` (`createKeys`).
 - Tests fake the network with MSW; the fetch core's own tests stub `fetch`.
 
 ### Types and forms (C176)
