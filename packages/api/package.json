@@ -1,0 +1,27 @@
+{
+  "name": "@workspace/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The one way to the API through the app's BFF: the fetch core, ApiError from RFC 9457 problems, zod-checked responses, query keys, and the one error policy (C175, C184, C185).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@workspace/session": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.104.1",
+    "react": "^19.3.0",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.3"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.104.1"
+  }
+}

@@ -1,0 +1,12 @@
+// The frontend's one way to the API (C175, C184, C185): see docs/architecture/frontend.md.
+export { api, toSearch, TIMEOUT_MS } from './client'
+export type { Options, Query } from './client'
+export { ApiError, pointerToPath } from './error'
+export type { ApiErrorKind, Messages } from './error'
+export { createKeys } from './keys'
+export { decide } from './policy'
+export type { ErrorAction, ErrorContext } from './policy'
+export { createQueryClient, shouldRetry } from './query-client'
+export type { ApiMeta, Notify } from './query-client'
+export { id, listOf, listSearch, timestamp } from './schemas'
+export type { Page } from './schemas'
