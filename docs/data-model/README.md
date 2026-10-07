@@ -512,8 +512,8 @@ agreement; its lines come next (`invoice_lines`). See [billing](../platform/bill
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
 
 A draft is editable. Once issued an invoice is frozen (a trigger): only its status moves on,
-`issued` to `paid` (with `paid_on`) or `void`; `paid` and `void` are final; a correction is a
-credit note and a new invoice. "Due", "Overdue", and "Credited" are derived, not stored.
+`issued` to `paid` (with `paid_on`) or `void`; `paid` and `void` are final; a mistake is
+corrected by voiding the invoice and issuing a new one (no credit notes, C182). "Due" and "Overdue" are derived, not stored.
 Row-level security: the operator reads and writes all; a tenant reads its own issued
 invoices, and a payer the issued invoices of the agreements it pays for; tenants never
 write; none are deleted. Audited (C164). The migration is

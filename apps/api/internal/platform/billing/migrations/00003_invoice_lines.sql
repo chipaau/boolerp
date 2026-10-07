@@ -16,7 +16,7 @@ CREATE TABLE invoice_lines (
     kind        text          NOT NULL CHECK (kind IN ('recurring', 'seats', 'setup', 'other')),
     description text          NOT NULL CHECK (btrim(description) <> ''),
     quantity    numeric(19,4) NOT NULL CHECK (quantity > 0),
-    -- Negative for a discount line; refunds and credits are credit notes.
+    -- Negative for a discount line (there are no credit notes or refunds, C182).
     unit_amount numeric(19,4) NOT NULL,
     amount      numeric(19,4) NOT NULL,
     created_at  timestamptz   NOT NULL DEFAULT now(),

@@ -451,8 +451,8 @@ Table invoices {
 
   Note: '''
   Confirmed 2026-10-07 (C173); migration platform/billing/migrations/00002_invoices.sql.
-  A draft is editable; issuing freezes it (only issued -> paid or void). Due, Overdue, and
-  Credited are derived. RLS: the operator reads and writes; a tenant reads its own issued
+  A draft is editable; issuing freezes it (only issued -> paid or void). Due and Overdue
+  are derived; no credit notes (C182). RLS: the operator reads and writes; a tenant reads its own issued
   invoices and a payer those of the agreements it pays for; none deleted.
   '''
 }

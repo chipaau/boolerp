@@ -1,7 +1,7 @@
 # Billing
 
 Status: in progress (C171–C173, C181). `billing_agreements`, `invoices`, and `invoice_lines`
-built; credits, payments with receipts, Bool's bank accounts, change requests, and overdue
+built; payments with receipts, Bool's bank accounts, change requests, and overdue
 chasing come next, one table at a time. There is no billing contact: invoices use the
 tenant's name, email, phone, and `tax_number` (C172).
 
@@ -42,9 +42,10 @@ and notes.
 
 - **Lifecycle:** a draft is Bool's to edit; issuing gives it its number (unique, never
   reused) and freezes it. Afterwards only its status moves on: `issued` to `paid` (with
-  the payment date) or `void`. A correction is a credit note and a new invoice.
+  the payment date) or `void`. A mistake is corrected by voiding the invoice and issuing
+  a new one; there are no credit notes or refunds (C182).
 - **Derived, not stored:** "Due" and "Overdue" are an issued invoice before and after its
-  due date; "Credited" comes from credit notes.
+  due date.
 - **Access:** the operator reads and writes all; a tenant reads its own issued invoices
   (not drafts), and a payer those of the agreements it pays for.
 
@@ -57,7 +58,6 @@ and issuing checks that the subtotal is their sum.
 
 ## Next
 
-- Credit notes and refunds.
 - The numbering format, settled with the operation that issues an invoice.
 - Payments submitted from Control Centre with a receipt, verified or rejected by an
   operator. Receipts need object storage ([storage](storage.md)), decided with this

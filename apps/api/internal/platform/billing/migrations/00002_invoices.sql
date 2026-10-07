@@ -1,9 +1,9 @@
 -- Invoices (C173; fields confirmed 2026-10-07): what a tenant is billed for one period
 -- under its agreement. Their lines are in invoice_lines. A draft is Bool's to edit;
 -- issuing gives it its number and freezes it, after which only its status moves on
--- (paid, or void to cancel it). A correction is a credit note and a new invoice. "Due"
--- and "Overdue" are an issued invoice before and after due_on, and "Credited" comes
--- from credit notes: none is stored. The schema only: no invoice is created by a
+-- (paid, or void to cancel it). A mistake is corrected by voiding it and issuing a new
+-- invoice; there are no credit notes or refunds (C182). "Due" and "Overdue" are an
+-- issued invoice before and after due_on: neither is stored. The schema only: no invoice is created by a
 -- migration (C135).
 
 -- +goose Up
@@ -35,7 +35,7 @@ CREATE TABLE invoices (
     created_at   timestamptz   NOT NULL DEFAULT now(),
     updated_at   timestamptz   NOT NULL DEFAULT now(),
 
-    -- Tenant tables (lines, credits, payments) reference an invoice with its tenant.
+    -- Tenant tables (lines, payments) reference an invoice with its tenant.
     UNIQUE (tenant_id, id),
     FOREIGN KEY (tenant_id, agreement_id) REFERENCES billing_agreements (tenant_id, id) ON DELETE RESTRICT,
     CHECK (total = subtotal + tax_amount),
