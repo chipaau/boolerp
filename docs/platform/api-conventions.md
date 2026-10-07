@@ -131,10 +131,10 @@ submitted values:
   application layer and database constraints, which return `problem.ValidationError`;
   the response has the same format.
 
-## Contract and frontend types (C74)
+## Contract and frontend types (C74, C183)
 
-No OpenAPI contract is maintained yet (C70 was replaced): the Go request and response
-structs are the source of truth. When the frontend's API contract is standardised (C128), frontend TypeScript
-types and Zod schemas are generated from them; options include `hypersequent/zen` (Zod
-directly from validator tags) and OpenAPI with `orval` (typed client and TanStack Query
-hooks). The frontend's validation is for user feedback only; the API always validates.
+There is no OpenAPI description and no generated client (C183; C70 was replaced): the Go
+request and response structs are the API's source of truth. Each frontend feature writes
+its zod schemas by hand (`features/<x>/schemas.ts`, C176) and parses every response with
+them (C174), so a mismatch shows at once as a contract error. The frontend's validation is
+for user feedback only; the API always validates.
