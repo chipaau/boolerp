@@ -78,6 +78,32 @@ apps each sells) are decided with licensing (D10).
 ## Data
 
 TanStack Query with query-key factories, loaders prefetching through the router's context,
-TanStack Form with zod, and URL state through `validateSearch` (C103). `@workspace/api` (fetch
+TanStack Form with zod, and URL state through `validateSearch` (C103). The standards are
+being decided one area at a time on the admin console's tenants (roadmap F1, C128).
+
+### List pages (C171)
+
+- The URL holds the list's state with the API's parameter names: `page`, `pageSize`, `q`,
+  `sort` (`-` for descending), one key per filter. The route validates it with a zod schema
+  in `validateSearch`; invalid values fall back to defaults. Changing search, a filter, or the
+  sort resets `page` to 1 and replaces the history entry.
+- The route's loader prefetches the feature's `queryOptions`; the page uses the same options
+  with `keepPreviousData`.
+- `@workspace/ui`'s `DataTable` (TanStack Table v8, manual mode) renders typed columns (a
+  sortable column's `id` is the API's sort field), a toolbar with a 300 ms debounced search
+  and filters declared as data, pagination, and the standard loading, empty, no-match,
+  forbidden, error, and refetching states.
+- Responses are parsed with zod in every environment; a mismatch is an error naming the field.
+- Types are hand-written zod per feature (`features/<x>/schemas.ts`), camelCase, until the
+  API contract generates them (H7).
+
+```text
+features/<feature>/
+  schemas.ts    response and search schemas; types via z.infer
+  api.ts        keys, queryOptions builders, mutations
+  columns.tsx   the table's columns
+  <feature>-list.tsx   the page
+routes/<feature>/index.tsx   validateSearch, loaderDeps, loader only
+``` `@workspace/api` (fetch
 core, errors, resources, mutation helper) arrives with the first real API resource; the apps
 read mock data until then.
