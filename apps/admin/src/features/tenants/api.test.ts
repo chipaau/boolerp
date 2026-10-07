@@ -17,6 +17,7 @@ const tenant = (n: number, over: Record<string, unknown> = {}) => ({
   status: 'active',
   country: 'MV',
   parentId: null,
+  parentName: null,
   workspaceHost: `tenant-${n}.bool.test`,
   createdAt: '2026-10-01T09:00:00Z',
   ...over,
@@ -57,13 +58,13 @@ describe('tenantListSearch', () => {
 
 describe('tenantQueries.list', () => {
   it('sends the URL state as the API parameters and parses the page', async () => {
-    const seen = listApi([tenant(1), tenant(2, { parentId: tenant(1).id, workspaceHost: null, status: 'provisioning' })], 42)
+    const seen = listApi([tenant(1), tenant(2, { parentId: tenant(1).id, parentName: 'Tenant 1', workspaceHost: null, status: 'provisioning' })], 42)
     const page = await client().fetchQuery(tenantQueries.list(tenantListSearch.parse({ page: '2', q: 'cy', status: 'active', sort: '-name' })))
 
     expect(Object.fromEntries(seen[0])).toEqual({ page: '2', pageSize: '25', q: 'cy', status: 'active', sort: '-name' })
     expect(page.total).toBe(42)
     expect(page.items.map((t) => t.code)).toEqual(['T1', 'T2'])
-    expect(page.items[1]).toMatchObject({ parentId: tenant(1).id, workspaceHost: null, status: 'provisioning' })
+    expect(page.items[1]).toMatchObject({ parentId: tenant(1).id, parentName: 'Tenant 1', workspaceHost: null, status: 'provisioning' })
   })
 
   it('leaves out what the URL does not set', async () => {

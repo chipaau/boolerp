@@ -15,6 +15,7 @@ const tenant = (n: number, over: Record<string, unknown> = {}) => ({
   status: 'active',
   country: 'MV',
   parentId: null,
+  parentName: null,
   workspaceHost: `tenant-${n}.bool.test`,
   createdAt: '2026-10-01T09:00:00Z',
   ...over,
@@ -37,14 +38,14 @@ const search = () => screen.getByLabelText('Filter by name, code, or slug')
 
 describe('the tenants list', () => {
   it('shows the API tenants, with creating and the lifecycle actions disabled', async () => {
-    listApi([tenant(1), tenant(2, { status: 'suspended', parentId: tenant(1).id, workspaceHost: null })])
+    listApi([tenant(1), tenant(2, { status: 'suspended', parentId: tenant(1).id, parentName: 'Tenant 1', workspaceHost: null })])
     renderRoute('/tenants')
 
     expect(await screen.findByText('T1 · tenant-1')).toBeInTheDocument()
     expect(screen.getByText('tenant-1.bool.test')).toBeInTheDocument()
     const row2 = screen.getByText('T2 · tenant-2').closest('tr') as HTMLElement
     expect(within(row2).getByText('suspended')).toBeInTheDocument()
-    expect(within(row2).getByText('Tenant 1')).toBeInTheDocument() // its parent, by name
+    expect(within(row2).getByText('Tenant 1')).toBeInTheDocument() // its parent, named by the API (C188)
     expect(within(row2).getByRole('button', { name: 'Reactivate' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'New tenant' })).toBeDisabled()
     expect(screen.getByText('2 of 2 tenants')).toBeInTheDocument()
