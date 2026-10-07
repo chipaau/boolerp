@@ -14,7 +14,7 @@ export type AttentionTone = 'warning' | 'danger' | 'caution' | 'muted'
 
 /** Where the item links: a route plus the filter the design pre-applies there. */
 export type AttentionTarget =
-  | { to: '/tenants'; search: { status: 'pending' | 'active' } }
+  | { to: '/tenants-prototype'; search: { status: 'pending' | 'active' } }
   | { to: '/admin-users'; search: { invite: 'Invited' } }
   | { to: '/billing'; search: { status: 'Overdue' } }
   | { to: '/billing'; search: { view: 'payments' } }
@@ -33,11 +33,11 @@ export function useAttention(): AttentionItem[] {
     const pendingInvites = users.filter((u) => u.invite !== 'Accepted').length
     const expired = users.some((u) => u.invite === 'Expired')
     const items: AttentionItem[] = [
-      { key: 'tenants-not-live', label: 'Tenants not yet live', count: tenants.filter((t) => isNotLive(t.directoryStatus)).length, tone: 'warning', target: { to: '/tenants', search: { status: 'pending' } } },
+      { key: 'tenants-not-live', label: 'Tenants not yet live', count: tenants.filter((t) => isNotLive(t.directoryStatus)).length, tone: 'warning', target: { to: '/tenants-prototype', search: { status: 'pending' } } },
       { key: 'invites', label: 'Invites waiting or expired', count: pendingInvites, tone: expired ? 'danger' : 'warning', target: { to: '/admin-users', search: { invite: 'Invited' } } },
       { key: 'payments-to-verify', label: 'Payments to verify', count: payments.filter((p) => p.status === 'Pending verification').length, tone: 'warning', target: { to: '/billing', search: { view: 'payments' } } },
       { key: 'invoices-overdue', label: 'Invoices overdue', count: invoices.filter((i) => i.status === 'Overdue').length, tone: 'danger', target: { to: '/billing', search: { status: 'Overdue' } } },
-      { key: 'near-seat-limit', label: 'Tenants near their seat limit', count: tenants.filter(isNearSeatLimit).length, tone: 'caution', target: { to: '/tenants', search: { status: 'active' } } },
+      { key: 'near-seat-limit', label: 'Tenants near their seat limit', count: tenants.filter(isNearSeatLimit).length, tone: 'caution', target: { to: '/tenants-prototype', search: { status: 'active' } } },
       { key: 'unused-geographies', label: 'Geographies nobody uses', count: geos.filter((g) => !g.use && g.status !== 'Inactive').length, tone: 'muted', target: { to: '/geographies', search: { tab: 'places' } } },
     ]
     return items.filter((a) => a.count > 0)
@@ -110,7 +110,7 @@ export function useAttentionNotifications() {
         .map((u) => ({ id: `invite:${u.idNo}:${u.invite}`, title: u.invite === 'Expired' ? `Invite expired for ${u.name}` : `Invite waiting for ${u.name}`, time: u.scope, category: 'Admin users', target: { to: '/admin-users', search: { invite: 'Invited' } } as const })),
       ...tenants
         .filter((t) => isNotLive(t.directoryStatus))
-        .map((t) => ({ id: `tenant:${t.slug}:${t.directoryStatus}`, title: `${t.name} is not live yet`, time: NOT_LIVE_LABEL[t.directoryStatus] ?? 'Pending activation', category: 'Tenants', target: { to: '/tenants', search: { status: 'pending' } } as const })),
+        .map((t) => ({ id: `tenant:${t.slug}:${t.directoryStatus}`, title: `${t.name} is not live yet`, time: NOT_LIVE_LABEL[t.directoryStatus] ?? 'Pending activation', category: 'Tenants', target: { to: '/tenants-prototype', search: { status: 'pending' } } as const })),
     ]
     return rows.map((r): AttentionNotification => ({ ...r, unread: !readSet.has(r.id) }))
   }, [tenants, users, invoices, payments, read])

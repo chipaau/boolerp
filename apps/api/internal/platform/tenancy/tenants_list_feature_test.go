@@ -65,7 +65,7 @@ func listRouter(w *world, authz authorization.Authorizer) http.Handler {
 type tenantPage struct {
 	Items []struct {
 		ID, Slug, Code, Name, Status, Country string
-		ParentID, WorkspaceHost               *string
+		ParentID, ParentName, WorkspaceHost   *string
 		CreatedAt                             string
 	}
 	Page, PageSize, Total int
@@ -119,6 +119,8 @@ func TestFeatureOperatorStaffListTenants(t *testing.T) {
 		case "XBRV":
 			require.NotNil(t, i.ParentID)
 			assert.Equal(t, lw.tenants["XALP"], *i.ParentID)
+			require.NotNil(t, i.ParentName)
+			assert.Equal(t, "Alpha Hospital", *i.ParentName, "the list names the parent, not only its id")
 			assert.Nil(t, i.WorkspaceHost)
 			assert.Equal(t, "provisioning", i.Status)
 		}
@@ -171,4 +173,34 @@ func TestFeatureTheTenantListRefuses(t *testing.T) {
 
 	rec, _ = listTenants(t, listRouter(lw.world, authz), "client", "")
 	assert.Equal(t, http.StatusForbidden, rec.Code, "a machine client")
+}
+
+// The parent's name comes from the database, not from the rows on the page. A page is a window over
+// the whole table, so a tenant's parent is usually NOT on it — the console used to resolve the name
+// from the loaded rows and fall back to the literal "Another tenant", which meant the Parent column
+// went blank-ish exactly when the directory grew past one page.
+func TestFeatureTheTenantListNamesAParentOnAnotherPage(t *testing.T) {
+	lw := newListWorld(t)
+	h := listRouter(lw.world, &stated{allow: true})
+
+	// Alphabetically XALP (the parent) is first and XBRV (its child) second, so a page holding the
+	// child and not the parent is page 2 of 1.
+	rec, p := listTenants(t, h, "user:"+lw.staff, "?q=x-&pageSize=1&page=2")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	require.Equal(t, []string{"XBRV"}, codes(p), "only the child is on this page")
+
+	child := p.Items[0]
+	require.NotNil(t, child.ParentID, "the child still reports its parent")
+	assert.Equal(t, lw.tenants["XALP"], *child.ParentID)
+	require.NotNil(t, child.ParentName, "and names it, though the parent is on another page")
+	assert.Equal(t, "Alpha Hospital", *child.ParentName)
+}
+
+// A root tenant has no parent, and says so rather than naming something.
+func TestFeatureTheTenantListLeavesARootsParentEmpty(t *testing.T) {
+	lw := newListWorld(t)
+	_, p := listTenants(t, listRouter(lw.world, &stated{allow: true}), "user:"+lw.staff, "?q=x-alp")
+	require.Len(t, p.Items, 1)
+	assert.Nil(t, p.Items[0].ParentID)
+	assert.Nil(t, p.Items[0].ParentName, "no parent, no name — not an empty string")
 }

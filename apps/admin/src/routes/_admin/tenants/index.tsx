@@ -1,9 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { TenantsPage } from '@/features/tenants/tenants-page'
+import { tenantQueries } from '@/features/tenants/api'
+import { tenantListSearch } from '@/features/tenants/schemas'
+import { TenantsList } from '@/features/tenants/tenants-list'
 
-// Session guard lives once in the parent _admin layout — operator AUTHORIZATION is Cerbos's job,
-// enforced server-side on every AdminRoute-gated request, not here.
-// The list lives at tenants/index so tenants/$slug can sit beside it without a layout route.
+// The tenants list (C174): its state is the URL, validated here and prefetched by the loader. The
+// session guard is the _admin layout; Cerbos decides access on the API (C178, C179).
 export const Route = createFileRoute('/_admin/tenants/')({
-  component: TenantsPage,
+  validateSearch: tenantListSearch,
+  loaderDeps: ({ search }) => search,
+  // Prefetch without throwing: a 403 or failure shows in the list's own states (C185).
+  loader: ({ context, deps }) => context.queryClient.prefetchQuery(tenantQueries.list(deps)),
+  component: TenantsList,
 })

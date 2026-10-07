@@ -128,6 +128,13 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   request reference. Editing a field clears its server error; submit is disabled only while
   sending.
 
+### The first list: tenants (C187)
+
+`apps/admin/src/features/tenants/`: `schemas.ts`, `api.ts`, `columns.tsx`, `tenants-list.tsx`,
+with `api.test.ts` and `tenants-list.test.tsx`; `routes/_admin/tenants/index.tsx` holds
+`validateSearch`, `loaderDeps`, and the loader. The design prototype is at `/tenants-prototype`
+until the list is accepted. Use it as the pattern for the next list.
+
 ### List pages (C174)
 
 - The URL holds the list's state with the API's parameter names: `page`, `pageSize`, `q`,
