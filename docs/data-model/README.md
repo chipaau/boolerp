@@ -1,9 +1,8 @@
 # Data model status
 
-Updated: 2026-10-05.
-Status: open. Confirmed and implemented: `users`, `countries`, `legal_forms`, `sectors`,
-`institution_types`, `tenants`, `tenant_institution_types`, `domains`, and `memberships`
-(below). (A `sessions`
+Updated: 2026-10-07.
+Status: open. The confirmed and implemented tables are listed below, each with its
+confirmation. (A `sessions`
 table was approved for sessions in PostgreSQL and withdrawn when sessions moved to the
 BFF's Redis, C90.)
 
@@ -180,6 +179,7 @@ operator tenant.
 | `legal_form_id` | `uuid` | Nullable until activation; with `country`, references `legal_forms (id, country)`, so the form is of the tenant's own country. |
 | `identity_number` | `text` | Nullable, not blank; unique per country, case-insensitive. Required at activation when the legal form names a document, refused when it names none (application). |
 | `registered_on` | `date` | Nullable. |
+| `tax_number` | `text` | Nullable, not blank; unique per country, case-insensitive. The tax registration number (TIN) printed on invoices; null when the organisation has none. Added 2026-10-06 (C172, confirmed). |
 | `timezone` | `text` | IANA name, checked by the application; nullable until activation; no default. |
 | `email` | `text` | Nullable contact, not blank. |
 | `phone` | `text` | Nullable contact; CHECK `^\+[0-9]{6,15}$`. |
@@ -189,7 +189,8 @@ operator tenant.
 
 Before a tenant leaves `provisioning`, `legal_form_id` and `timezone` are required (CHECK),
 and it must have a primary institution type in `tenant_institution_types`. Changed
-2026-10-04 (C141, confirmed): the `institution_type` column was removed. The operator is never suspended or archived and has no parent.
+2026-10-04 (C141, confirmed): the `institution_type` column was removed. Changed 2026-10-06
+(C172, confirmed): `tax_number` was added, in the original migration (C140). The operator is never suspended or archived and has no parent.
 Row-level security is enabled (not forced; the registry has no `tenant_id`): a tenant reads
 its own row; the operator tenant reads every row and alone creates and changes them; nothing
 deletes a tenant. No migration creates a tenant. The migration is
@@ -452,3 +453,68 @@ membership is active and whose role's app is on, so ending a membership or turni
 off removes access without touching assignments. Row-level security: a tenant reads and
 changes only its own; nothing deletes one. Audited. The migration is
 `apps/api/internal/platform/authorization/migrations/00006_role_assignments.sql`.
+
+### `billing_agreements` (billing module, C171)
+
+Fields confirmed 2026-10-06 by the user, keeping both the recurring and the per-seat price.
+What a tenant has agreed to pay; there is no plan catalogue (pricing is per client, monthly
+or yearly). See [billing](../platform/billing.md).
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default; also unique `(tenant_id, id)` for tenant-aware foreign keys. |
+| `tenant_id` | `uuid` | Not null; references `tenants.id`, `ON DELETE RESTRICT`; never changes (a trigger). |
+| `payer_tenant_id` | `uuid` | Nullable; references `tenants.id`; another tenant that pays; never the tenant itself. |
+| `cycle` | `text` | Not null; `monthly` or `yearly`. |
+| `currency` | `char(3)` | Not null; ISO 4217 code (three capital letters). |
+| `recurring_amount` | `numeric(19,4)` | Not null, ≥ 0; the fixed price per cycle (0 for seats only). |
+| `per_seat_amount` | `numeric(19,4)` | Nullable, ≥ 0; the price per seat per cycle. |
+| `setup_amount` | `numeric(19,4)` | Nullable, ≥ 0; the one-time setup price. |
+| `tax_rate` | `numeric(5,2)` | Not null, default 0, 0 to 100 (percent). |
+| `seat_limit` | `integer` | Nullable, > 0; null means no limit. |
+| `starts_on` | `date` | Not null; the first billing period starts here. |
+| `ends_on` | `date` | Nullable, ≥ `starts_on`; the last day covered, set when replaced or ended. |
+| `contract_reference` | `text` | Nullable, not blank. |
+| `notes` | `text` | Nullable. |
+| `created_by` | `uuid` | Nullable; references `users.id`; the operator who recorded it. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+A tenant's agreements never overlap in time (an exclusion constraint on `tenant_id` and the
+inclusive `[starts_on, ends_on]` range, with `btree_gist`), so at most one is open; changing
+the terms ends one and starts the next. Row-level security: the operator reads and writes
+all; a tenant reads its own and a payer the ones it pays for; tenants never write; none are
+deleted. Audited (C164). The migration is
+`apps/api/internal/platform/billing/migrations/00001_billing_agreements.sql`.
+
+### `invoices` (billing module, C173)
+
+Fields confirmed 2026-10-07 by the user. What a tenant is billed for one period under its
+agreement; its lines come next (`invoice_lines`). See [billing](../platform/billing.md).
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default; also unique `(tenant_id, id)`. |
+| `tenant_id` | `uuid` | Not null; references `tenants.id`; never changes. |
+| `agreement_id` | `uuid` | Not null; with `tenant_id`, references `billing_agreements (tenant_id, id)`; never changes. |
+| `number` | `text` | Unique, not blank; null while draft, required once issued, never reused (a voided invoice keeps it). |
+| `status` | `text` | Not null, default `draft`; `draft`, `issued`, `paid`, or `void`. |
+| `period_start`, `period_end` | `date` | Not null; `period_end >= period_start`; inside the agreement's dates. |
+| `issued_on`, `due_on` | `date` | Required once issued; `due_on >= issued_on`. |
+| `paid_on` | `date` | Required when paid. |
+| `currency` | `char(3)` | Not null; the agreement's (checked). |
+| `subtotal` | `numeric(19,4)` | Not null, ≥ 0. |
+| `tax_rate` | `numeric(5,2)` | Not null; the agreement's (checked). |
+| `tax_amount` | `numeric(19,4)` | Not null, ≥ 0. |
+| `total` | `numeric(19,4)` | Not null; `subtotal + tax_amount` (check). |
+| `po_reference` | `text` | Nullable, not blank. |
+| `notes` | `text` | Nullable. |
+| `issued_by` | `uuid` | Nullable; references `users.id`. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
+
+A draft is editable. Once issued an invoice is frozen (a trigger): only its status moves on,
+`issued` to `paid` (with `paid_on`) or `void`; `paid` and `void` are final; a correction is a
+credit note and a new invoice. "Due", "Overdue", and "Credited" are derived, not stored.
+Row-level security: the operator reads and writes all; a tenant reads its own issued
+invoices, and a payer the issued invoices of the agreements it pays for; tenants never
+write; none are deleted. Audited (C164). The migration is
+`apps/api/internal/platform/billing/migrations/00002_invoices.sql`.

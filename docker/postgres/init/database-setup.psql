@@ -7,6 +7,12 @@
 \getenv app_role POSTGRES_APP_USER
 \getenv migration_role POSTGRES_MIGRATE_USER
 
+-- btree_gist (bundled with PostgreSQL) lets an exclusion constraint combine equality
+-- with range overlap, such as "one tenant's billing agreements never overlap in time"
+-- (C171). Created here, by the administrator, so migrations never need the right to
+-- create extensions.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 -- PostgreSQL 15+ already denies CREATE on public to PUBLIC; stating it keeps the
 -- runtime role unable to create objects on any server version.
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;

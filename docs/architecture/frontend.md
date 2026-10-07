@@ -81,7 +81,7 @@ TanStack Query with query-key factories, loaders prefetching through the router'
 TanStack Form with zod, and URL state through `validateSearch` (C103). The standards are
 being decided one area at a time on the admin console's tenants (roadmap F1, C128).
 
-### API access and the fetch core (C172)
+### API access and the fetch core (C175)
 
 - The browser calls only same-origin `/api/...`; the app's BFF adds the token and forwards
   to the API. No base URLs, tokens, or direct API calls in frontend code.
@@ -98,7 +98,7 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   (invalidation, toasts, 422 onto the form).
 - Tests fake the network with MSW; the fetch core's own tests stub `fetch`.
 
-### Types and forms (C173)
+### Types and forms (C176)
 
 - Hand-written zod per feature: `tenantSchema` → `Tenant`, `createTenantSchema` →
   `CreateTenantInput` (the request body), `tenantListSearch` → `TenantListSearch`. A form has
@@ -110,7 +110,7 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   request reference. Editing a field clears its server error; submit is disabled only while
   sending.
 
-### List pages (C171)
+### List pages (C174)
 
 - The URL holds the list's state with the API's parameter names: `page`, `pageSize`, `q`,
   `sort` (`-` for descending), one key per filter. The route validates it with a zod schema
@@ -134,5 +134,5 @@ features/<feature>/
   <feature>-list.tsx   the page
 routes/<feature>/index.tsx   validateSearch, loaderDeps, loader only
 ``` `@workspace/api` (fetch
-core, errors, resources, mutation helper; C172) arrives with the tenants list (F2); the apps
+core, errors, resources, mutation helper; C175) arrives with the tenants list (F2); the apps
 read mock data until then.

@@ -31,6 +31,9 @@ CREATE TABLE tenants (
     -- when the form names one and refuses it when the form names none.
     identity_number  text        CHECK (btrim(identity_number) <> ''),
     registered_on    date,
+    -- The tax registration number (TIN) printed on invoices (C172); null when the
+    -- organisation has none. Formats differ by country, so only blanks are refused.
+    tax_number       text        CHECK (btrim(tax_number) <> ''),
     timezone         text        CHECK (btrim(timezone) <> ''),  -- IANA name, checked by the application
     email            text        CHECK (btrim(email) <> ''),
     phone            text        CHECK (phone ~ '^\+[0-9]{6,15}$'),
@@ -60,6 +63,9 @@ CREATE UNIQUE INDEX tenants_one_operator ON tenants (is_operator) WHERE is_opera
 -- A registration number belongs to one organisation in a country.
 CREATE UNIQUE INDEX tenants_identity_number ON tenants (country, upper(identity_number))
     WHERE identity_number IS NOT NULL;
+-- A tax number belongs to one organisation in a country.
+CREATE UNIQUE INDEX tenants_tax_number ON tenants (country, upper(tax_number))
+    WHERE tax_number IS NOT NULL;
 CREATE INDEX tenants_parent ON tenants (parent_id);
 
 CREATE TRIGGER tenants_updated_at BEFORE UPDATE ON tenants
