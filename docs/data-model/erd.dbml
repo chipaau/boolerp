@@ -130,11 +130,11 @@ Table tenants {
   parent_id uuid [ref: > tenants.id, note: 'ON DELETE RESTRICT; not itself, no cycle, never the operator (trigger); indexed']
   is_operator boolean [not null, default: false, note: 'at most one true; never set by the runtime role (policies)']
   country char(2) [not null, ref: > countries.code, note: 'ON DELETE RESTRICT']
-  legal_form_id uuid [note: 'FK (legal_form_id, country) -> legal_forms (id, country), ON DELETE RESTRICT']
+  legal_form_id uuid [not null, note: 'FK (legal_form_id, country) -> legal_forms (id, country), ON DELETE RESTRICT; C195']
   identity_number text [note: 'the number of the document the legal form names; unique per country (case-insensitive)']
   registered_on date
   tax_number text [note: 'TIN printed on invoices; unique per country (case-insensitive); C172']
-  timezone text [note: 'IANA name, checked by the application']
+  timezone text [not null, note: 'IANA name, checked by the application; not blank; C195']
   email text [note: 'contact; not blank']
   phone text [note: 'contact; CHECK ^\+[0-9]{6,15}$']
   status text [not null, default: 'provisioning', note: 'provisioning | active | suspended | archived']
@@ -145,9 +145,10 @@ Table tenants {
   updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
 
   Note: '''
-  Confirmed 2026-10-04 (C136, C139, C141); migration platform/tenancy/migrations/00001_tenants.sql.
-  CHECKs: legal form and time zone before leaving provisioning (and a primary type, see
-  tenant_institution_types); status timestamps follow
+  Confirmed 2026-10-04 (C136, C139, C141), changed 2026-10-08 (C195);
+  migration platform/tenancy/migrations/00001_tenants.sql.
+  CHECKs: a primary type before leaving provisioning (see tenant_institution_types);
+  status timestamps follow
   the status; the operator is never suspended or archived and has no parent.
   RLS enabled: a tenant reads its own row; the operator tenant reads all and alone creates
   and changes them (lookup.is_operator_tenant, owned by erp_lookup); no delete policy.

@@ -13,11 +13,11 @@ import (
 )
 
 // A small list in the test world's country and types, in the sample file's format.
-const testSamples = `slug,code,name,country,legal_form,identity_number,parent,types
-x-ministry,XMIN,Test Ministry,XT,test_ministry,,,x_tenancy_type
-x-hospital,XHOS,Test Hospital,XT,test_ministry,,x-ministry,x_tenancy_type|x_tenancy_type2
-x-company,XCOM,Test Company,XT,test_company,T-9,,x_tenancy_type2
-x-new,XNEW,Test New,XT,,,,
+const testSamples = `slug,code,name,country,legal_form,timezone,identity_number,parent,types
+x-ministry,XMIN,Test Ministry,XT,test_ministry,Etc/UTC,,,x_tenancy_type
+x-hospital,XHOS,Test Hospital,XT,test_ministry,Etc/UTC,,x-ministry,x_tenancy_type|x_tenancy_type2
+x-company,XCOM,Test Company,XT,test_company,Etc/UTC,T-9,,x_tenancy_type2
+x-new,XNEW,Test New,XT,test_company,Etc/UTC,T-10,,
 `
 
 func TestFeatureTheSampleSeederCreatesTenantsInDev(t *testing.T) {
@@ -80,7 +80,7 @@ func TestFeatureTheSampleSeederRunsOnlyInDev(t *testing.T) {
 
 func TestFeatureTheSampleSeederNeedsItsLegalForm(t *testing.T) {
 	w := newWorld(t)
-	bad := "slug,code,name,country,legal_form,identity_number,parent,types\nx-a,XTA,A,XT,x_none,,,x_tenancy_type\n"
+	bad := "slug,code,name,country,legal_form,timezone,identity_number,parent,types\nx-a,XTA,A,XT,x_none,Etc/UTC,,,x_tenancy_type\n"
 	require.Error(t, seeds.NewSamplesFrom(w.tx, []byte(bad), "x-tenancy.test").Run(t.Context(), seedEnvFor("dev")))
 }
 

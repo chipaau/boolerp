@@ -26,11 +26,14 @@ func newWorld(t *testing.T) world {
 	t.Helper()
 	tx := testdb.OwnerTx(t)
 	exec(t, tx, `INSERT INTO countries (code, alpha3, name, phone_prefix) VALUES ('XG', 'XGG', 'Billland', '+996')`)
+	form := id(t, tx, `INSERT INTO legal_forms (country, code, name, category)
+		VALUES ('XG', 'test_ministry', 'Test ministry', 'government') RETURNING id`)
+	const insert = `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, is_operator)
+		VALUES ($1, $2, $3, 'XG', $4, 'Etc/UTC', $5) RETURNING id`
 	return world{tx: tx,
-		operator: id(t, tx, `INSERT INTO tenants (slug, code, name, country, is_operator)
-			VALUES ('x-billing-operator', 'XGOP', 'Test operator', 'XG', true) RETURNING id`),
-		ministry: id(t, tx, `INSERT INTO tenants (slug, code, name, country) VALUES ('x-billing-ministry', 'XGM', 'Ministry', 'XG') RETURNING id`),
-		hospital: id(t, tx, `INSERT INTO tenants (slug, code, name, country) VALUES ('x-billing-hospital', 'XGH', 'Hospital', 'XG') RETURNING id`),
+		operator: id(t, tx, insert, "x-billing-operator", "XGOP", "Test operator", form, true),
+		ministry: id(t, tx, insert, "x-billing-ministry", "XGM", "Ministry", form, false),
+		hospital: id(t, tx, insert, "x-billing-hospital", "XGH", "Hospital", form, false),
 	}
 }
 

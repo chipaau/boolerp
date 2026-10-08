@@ -38,8 +38,8 @@ func newListWorld(t *testing.T) listWorld {
 	for _, c := range []struct{ slug, code, name string }{
 		{"x-bravo", "XBRV", "Bravo Clinic"}, {"x-alpha", "XALP", "Alpha Hospital"}, {"x-charlie", "XCHA", "Charlie 50% Clinic"},
 	} {
-		lw.tenants[c.code] = id(t, w.tx, `INSERT INTO tenants (slug, code, name, country) VALUES ($1, $2, $3, 'XT') RETURNING id`,
-			c.slug, c.code, c.name)
+		lw.tenants[c.code] = id(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone)
+			VALUES ($1, $2, $3, 'XT', $4, 'Etc/UTC') RETURNING id`, c.slug, c.code, c.name, w.formXTNoDocument)
 	}
 	w.activate(t, lw.tenants["XALP"])
 	w.platformDomain(t, lw.tenants["XALP"], "x-alpha.x-tenancy.test", "workspace", true)

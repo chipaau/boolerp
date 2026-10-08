@@ -20,25 +20,25 @@ import (
 var sampleTenantsCSV []byte
 
 // Sample is one row of sample_tenants.csv: a tenant, its legal form by code in its
-// country, its parent by slug, and its types, the primary first. No legal form
-// means still provisioning.
+// country, its time zone, its parent by slug, and its types, the primary first. No
+// types means still provisioning.
 type Sample struct {
-	Slug, Code, Name, Country, LegalForm, IdentityNumber, Parent string
-	Types                                                        []string
+	Slug, Code, Name, Country, LegalForm, Timezone, IdentityNumber, Parent string
+	Types                                                                  []string
 }
 
 // ParseSamples reads sample tenants CSV. It rejects a malformed row, a repeated
-// slug, a parent that is not an earlier row, and a classified tenant without types
-// or an unclassified one with them.
+// slug, a parent that is not an earlier row, and a row without a legal form or time
+// zone (C195).
 func ParseSamples(data []byte) ([]Sample, error) {
 	r := csv.NewReader(bytes.NewReader(data))
 	r.Comment = '#'
-	r.FieldsPerRecord = 8
+	r.FieldsPerRecord = 9
 	header, err := r.Read()
 	if err != nil {
 		return nil, fmt.Errorf("sample tenants header: %w", err)
 	}
-	if strings.Join(header, ",") != "slug,code,name,country,legal_form,identity_number,parent,types" {
+	if strings.Join(header, ",") != "slug,code,name,country,legal_form,timezone,identity_number,parent,types" {
 		return nil, fmt.Errorf("sample tenants header: got %q", header)
 	}
 	var samples []Sample
@@ -52,9 +52,9 @@ func ParseSamples(data []byte) ([]Sample, error) {
 			return nil, fmt.Errorf("sample tenants: %w", err)
 		}
 		s := Sample{Slug: rec[0], Code: rec[1], Name: rec[2], Country: rec[3], LegalForm: rec[4],
-			IdentityNumber: rec[5], Parent: rec[6]}
-		if rec[7] != "" {
-			s.Types = strings.Split(rec[7], "|")
+			Timezone: rec[5], IdentityNumber: rec[6], Parent: rec[7]}
+		if rec[8] != "" {
+			s.Types = strings.Split(rec[8], "|")
 		}
 		switch {
 		case s.Slug == "" || s.Code == "" || strings.TrimSpace(s.Name) == "" || s.Country == "":
@@ -63,8 +63,8 @@ func ParseSamples(data []byte) ([]Sample, error) {
 			return nil, fmt.Errorf("sample tenants: duplicate %s", s.Slug)
 		case s.Parent != "" && !seen[s.Parent]:
 			return nil, fmt.Errorf("sample tenants %s: parent %s is not an earlier row", s.Slug, s.Parent)
-		case (s.LegalForm == "") != (len(s.Types) == 0):
-			return nil, fmt.Errorf("sample tenants %s: a legal form and types go together", s.Slug)
+		case s.LegalForm == "" || s.Timezone == "":
+			return nil, fmt.Errorf("sample tenants %s: a legal form and time zone are required", s.Slug)
 		}
 		seen[s.Slug] = true
 		samples = append(samples, s)
@@ -162,15 +162,14 @@ func createSample(ctx context.Context, tx pgx.Tx, sm Sample) (string, error) {
 		INSERT INTO tenants (slug, code, name, country, parent_id, legal_form_id, identity_number,
 		                     timezone, status, activated_at)
 		SELECT $1, $2, $3, $7, (SELECT p.id FROM tenants p WHERE p.slug = nullif($4, '')),
-		       lf.id, nullif($6, ''),
-		       CASE WHEN $5 = '' THEN NULL ELSE 'Indian/Maldives' END,
-		       CASE WHEN $5 = '' THEN 'provisioning' ELSE 'active' END,
-		       CASE WHEN $5 = '' THEN NULL ELSE now() END
-		  FROM (SELECT 1) one
-		  LEFT JOIN legal_forms lf ON lf.country = $7 AND lf.code = $5
-		 WHERE $5 = '' OR lf.id IS NOT NULL
+		       lf.id, nullif($6, ''), $8,
+		       CASE WHEN $9 THEN 'provisioning' ELSE 'active' END,
+		       CASE WHEN $9 THEN NULL ELSE now() END
+		  FROM legal_forms lf
+		 WHERE lf.country = $7 AND lf.code = $5
 		RETURNING id`,
-		sm.Slug, sm.Code, sm.Name, sm.Parent, sm.LegalForm, sm.IdentityNumber, sm.Country).Scan(&id)
+		sm.Slug, sm.Code, sm.Name, sm.Parent, sm.LegalForm, sm.IdentityNumber, sm.Country, sm.Timezone,
+		len(sm.Types) == 0).Scan(&id)
 	if err != nil {
 		return "", fmt.Errorf("sample %s (legal form %q): %w", sm.Slug, sm.LegalForm, err)
 	}

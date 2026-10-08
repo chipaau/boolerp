@@ -1,6 +1,6 @@
 # Data model status
 
-Updated: 2026-10-07.
+Updated: 2026-10-08.
 Status: open. The confirmed and implemented tables are listed below, each with its
 confirmation. (A `sessions`
 table was approved for sessions in PostgreSQL and withdrawn when sessions moved to the
@@ -160,7 +160,7 @@ loaded by `cmd/deploy` and `cmd/seed` after the sectors (C135, C137). Row-level 
 as for `countries`. The migration is
 `apps/api/internal/platform/reference/migrations/00004_institution_types.sql`.
 
-### `tenants` (tenancy module, C115, C136, C139, C141)
+### `tenants` (tenancy module, C115, C136, C139, C141, C195)
 
 Fields confirmed 2026-10-04 by the user, after checking the admin console's New tenant
 wizard. `code` is Bool's own identifier for every tenant; `identity_number` is only the
@@ -176,21 +176,23 @@ operator tenant.
 | `parent_id` | `uuid` | Nullable (standalone); references `tenants.id`, `ON DELETE RESTRICT`; never itself, never a cycle, never the operator (trigger). |
 | `is_operator` | `boolean` | Not null, default false; at most one true; the runtime role can never set or change it (policies). |
 | `country` | `char(2)` | Not null; references `countries.code`, `ON DELETE RESTRICT`. |
-| `legal_form_id` | `uuid` | Nullable until activation; with `country`, references `legal_forms (id, country)`, so the form is of the tenant's own country. |
+| `legal_form_id` | `uuid` | Not null (C195); with `country`, references `legal_forms (id, country)`, so the form is of the tenant's own country. |
 | `identity_number` | `text` | Nullable, not blank; unique per country, case-insensitive. Required at activation when the legal form names a document, refused when it names none (application). |
 | `registered_on` | `date` | Nullable. |
 | `tax_number` | `text` | Nullable, not blank; unique per country, case-insensitive. The tax registration number (TIN) printed on invoices; null when the organisation has none. Added 2026-10-06 (C172, confirmed). |
-| `timezone` | `text` | IANA name, checked by the application; nullable until activation; no default. |
+| `timezone` | `text` | Not null (C195), not blank; IANA name, checked by the application; no default. |
 | `email` | `text` | Nullable contact, not blank. |
 | `phone` | `text` | Nullable contact; CHECK `^\+[0-9]{6,15}$`. |
 | `status` | `text` | `provisioning` (default), `active`, `suspended`, `archived`. |
 | `activated_at`, `suspended_at`, `archived_at` | `timestamptz` | Set with the status; CHECKs keep them consistent. |
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
 
-Before a tenant leaves `provisioning`, `legal_form_id` and `timezone` are required (CHECK),
-and it must have a primary institution type in `tenant_institution_types`. Changed
-2026-10-04 (C141, confirmed): the `institution_type` column was removed. Changed 2026-10-06
-(C172, confirmed): `tax_number` was added, in the original migration (C140). The operator is never suspended or archived and has no parent.
+Before a tenant leaves `provisioning`, it must have a primary institution type in
+`tenant_institution_types`. Changed 2026-10-04 (C141, confirmed): the `institution_type`
+column was removed. Changed 2026-10-06 (C172, confirmed): `tax_number` was added, in the
+original migration (C140). Changed 2026-10-08 (C195, confirmed): `legal_form_id` and
+`timezone` are not null from creation, and the CHECK that required them only outside
+`provisioning` was dropped, in the original migration (C140). The operator is never suspended or archived and has no parent.
 Row-level security is enabled (not forced; the registry has no `tenant_id`): a tenant reads
 its own row; the operator tenant reads every row and alone creates and changes them; nothing
 deletes a tenant. No migration creates a tenant. The migration is

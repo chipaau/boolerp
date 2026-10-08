@@ -48,15 +48,15 @@ func newWorld(t *testing.T) *world {
 // tenant inserts a provisioning tenant in country XT and returns its id.
 func (w *world) tenant(t *testing.T, slug, code string) string {
 	t.Helper()
-	return id(t, w.tx, `INSERT INTO tenants (slug, code, name, country) VALUES ($1, $2, $3, 'XT') RETURNING id`,
-		slug, code, "Tenant "+code)
+	return id(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone)
+		VALUES ($1, $2, $3, 'XT', $4, 'Etc/UTC') RETURNING id`, slug, code, "Tenant "+code, w.formXTNoDocument)
 }
 
 // operator inserts the operator tenant, as only the owner can.
 func (w *world) operator(t *testing.T) string {
 	t.Helper()
-	return id(t, w.tx, `INSERT INTO tenants (slug, code, name, country, is_operator)
-		VALUES ('x-operator', 'XOP', 'Test operator', 'XT', true) RETURNING id`)
+	return id(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, is_operator)
+		VALUES ('x-operator', 'XOP', 'Test operator', 'XT', $1, 'Etc/UTC', true) RETURNING id`, w.formXTNoDocument)
 }
 
 // enforce applies the row-level security policies to the owner too, for the rest
@@ -85,15 +85,13 @@ func (w *world) visible(t *testing.T) []string {
 	return codes
 }
 
-// activate classifies tenant and makes it active, with x_tenancy_type as its primary
-// type, then runs the commit-time checks at once (SET CONSTRAINTS ALL IMMEDIATE),
+// activate makes tenant active, with x_tenancy_type as its primary type, then runs the commit-time checks at once (SET CONSTRAINTS ALL IMMEDIATE),
 // as the test's transaction never commits.
 func (w *world) activate(t *testing.T, tenant string) {
 	t.Helper()
 	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
 		VALUES ($1, 'x_tenancy_type', true)`, tenant)
-	exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1, timezone = 'Indian/Maldives',
-		status = 'active', activated_at = now() WHERE id = $2`, w.formXTNoDocument, tenant)
+	exec(t, w.tx, `UPDATE tenants SET status = 'active', activated_at = now() WHERE id = $1`, tenant)
 	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
 }
 
@@ -169,14 +167,16 @@ func TestFeatureOnlyTheOperatorCreatesAndChangesTenants(t *testing.T) {
 	tag, err := savepoint(t, w.tx, `UPDATE tenants SET name = 'Renamed' WHERE id = $1`, a)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "a tenant cannot change even its own registry row")
-	_, err = savepoint(t, w.tx, `INSERT INTO tenants (slug, code, name, country) VALUES ('x-c', 'XTC', 'C', 'XT')`)
+	const insertC = `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, parent_id)
+		VALUES ('x-c', 'XTC', 'C', 'XT', $1, 'Etc/UTC', $2)`
+	_, err = savepoint(t, w.tx, insertC, w.formXTNoDocument, nil)
 	assert.Equal(t, "42501", code(t, err), "a tenant cannot create tenants")
 
 	w.as(t, op)
 	tag, err = savepoint(t, w.tx, `UPDATE tenants SET name = 'Renamed' WHERE id = $1`, a)
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, tag.RowsAffected())
-	_, err = savepoint(t, w.tx, `INSERT INTO tenants (slug, code, name, country, parent_id) VALUES ('x-c', 'XTC', 'C', 'XT', $1)`, b)
+	_, err = savepoint(t, w.tx, insertC, w.formXTNoDocument, b)
 	require.NoError(t, err, "the operator creates tenants")
 
 	tag, err = savepoint(t, w.tx, `DELETE FROM tenants WHERE id = $1`, a)
@@ -192,7 +192,8 @@ func TestFeatureTheRuntimeRoleNeverSetsTheOperatorFlag(t *testing.T) {
 	w.as(t, op)
 
 	for name, sql := range map[string]string{
-		"create an operator":      `INSERT INTO tenants (slug, code, name, country, is_operator) VALUES ('x-c', 'XTC', 'C', 'XT', true)`,
+		"create an operator": `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, is_operator)
+			VALUES ('x-c', 'XTC', 'C', 'XT', '` + w.formXTNoDocument + `', 'Etc/UTC', true)`,
 		"make a tenant operator":  `UPDATE tenants SET is_operator = true WHERE id = '` + a + `'`,
 		"stop being the operator": `UPDATE tenants SET is_operator = false WHERE id = '` + op + `'`,
 	} {
@@ -204,42 +205,45 @@ func TestFeatureTheRuntimeRoleNeverSetsTheOperatorFlag(t *testing.T) {
 }
 
 func TestFeatureTenantConstraints(t *testing.T) {
-	const insert = `INSERT INTO tenants (slug, code, name, country`
+	// Every case is a complete tenant but for the one value it gets wrong.
+	const insert = `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone`
+	const valid = `'%FORM%', 'Etc/UTC'`
 	cases := map[string]struct {
 		sql  string
 		want string
 	}{
-		"short slug":      {insert + `) VALUES ('xa', 'XTC', 'C', 'XT')`, "23514"},
-		"uppercase slug":  {insert + `) VALUES ('X-C', 'XTC', 'C', 'XT')`, "23514"},
-		"hyphen at end":   {insert + `) VALUES ('x-c-', 'XTC', 'C', 'XT')`, "23514"},
-		"reserved slug":   {insert + `) VALUES ('admin', 'XTC', 'C', 'XT')`, "23514"},
-		"duplicate slug":  {insert + `) VALUES ('x-a', 'XTC', 'C', 'XT')`, "23505"},
-		"lowercase code":  {insert + `) VALUES ('x-c', 'xtc', 'C', 'XT')`, "23514"},
-		"duplicate code":  {insert + `) VALUES ('x-c', 'XTA', 'C', 'XT')`, "23505"},
-		"blank name":      {insert + `) VALUES ('x-c', 'XTC', ' ', 'XT')`, "23514"},
-		"unknown country": {insert + `) VALUES ('x-c', 'XTC', 'C', 'XC')`, "23503"},
-		"bad phone":       {insert + `, phone) VALUES ('x-c', 'XTC', 'C', 'XT', '7771234')`, "23514"},
-		"blank email":     {insert + `, email) VALUES ('x-c', 'XTC', 'C', 'XT', ' ')`, "23514"},
-		"unknown status":  {insert + `, status) VALUES ('x-c', 'XTC', 'C', 'XT', 'draft')`, "23514"},
-		"active without classification": {insert + `, status, activated_at)
-			VALUES ('x-c', 'XTC', 'C', 'XT', 'active', now())`, "23514"},
-		"active without activated_at": {insert + `, status, legal_form_id, timezone)
-			VALUES ('x-c', 'XTC', 'C', 'XT', 'active', '%FORM%', 'Indian/Maldives')`, "23514"},
-		"suspended without suspended_at": {insert + `, status, legal_form_id, timezone, activated_at)
-			VALUES ('x-c', 'XTC', 'C', 'XT', 'suspended', '%FORM%', 'Indian/Maldives', now())`, "23514"},
-		"archived without archived_at":  {insert + `, status) VALUES ('x-c', 'XTC', 'C', 'XT', 'archived')`, "23514"},
-		"legal form of another country": {insert + `, legal_form_id) VALUES ('x-c', 'XTC', 'C', 'XT', '%FORMXU%')`, "23503"},
-		"a second operator":             {insert + `, is_operator) VALUES ('x-c', 'XTC', 'C', 'XT', true)`, "23505"},
-		"duplicate identity number":     {insert + `, identity_number) VALUES ('x-c', 'XTC', 'C', 'XT', 'c-123')`, "23505"},
-		"blank tax number":              {insert + `, tax_number) VALUES ('x-c', 'XTC', 'C', 'XT', ' ')`, "23514"},
-		"duplicate tax number":          {insert + `, tax_number) VALUES ('x-c', 'XTC', 'C', 'XT', 'tin-9')`, "23505"},
+		"short slug":      {insert + `) VALUES ('xa', 'XTC', 'C', 'XT', ` + valid + `)`, "23514"},
+		"uppercase slug":  {insert + `) VALUES ('X-C', 'XTC', 'C', 'XT', ` + valid + `)`, "23514"},
+		"hyphen at end":   {insert + `) VALUES ('x-c-', 'XTC', 'C', 'XT', ` + valid + `)`, "23514"},
+		"reserved slug":   {insert + `) VALUES ('admin', 'XTC', 'C', 'XT', ` + valid + `)`, "23514"},
+		"duplicate slug":  {insert + `) VALUES ('x-a', 'XTC', 'C', 'XT', ` + valid + `)`, "23505"},
+		"lowercase code":  {insert + `) VALUES ('x-c', 'xtc', 'C', 'XT', ` + valid + `)`, "23514"},
+		"duplicate code":  {insert + `) VALUES ('x-c', 'XTA', 'C', 'XT', ` + valid + `)`, "23505"},
+		"blank name":      {insert + `) VALUES ('x-c', 'XTC', ' ', 'XT', ` + valid + `)`, "23514"},
+		"unknown country": {insert + `) VALUES ('x-c', 'XTC', 'C', 'XC', ` + valid + `)`, "23503"},
+		"no legal form":   {insert + `) VALUES ('x-c', 'XTC', 'C', 'XT', NULL, 'Etc/UTC')`, "23502"},
+		"no time zone":    {insert + `) VALUES ('x-c', 'XTC', 'C', 'XT', '%FORM%', NULL)`, "23502"},
+		"blank time zone": {insert + `) VALUES ('x-c', 'XTC', 'C', 'XT', '%FORM%', ' ')`, "23514"},
+		"bad phone":       {insert + `, phone) VALUES ('x-c', 'XTC', 'C', 'XT', ` + valid + `, '7771234')`, "23514"},
+		"blank email":     {insert + `, email) VALUES ('x-c', 'XTC', 'C', 'XT', ` + valid + `, ' ')`, "23514"},
+		"unknown status":  {insert + `, status) VALUES ('x-c', 'XTC', 'C', 'XT', ` + valid + `, 'draft')`, "23514"},
+		"active without activated_at": {insert + `, status)
+			VALUES ('x-c', 'XTC', 'C', 'XT', ` + valid + `, 'active')`, "23514"},
+		"suspended without suspended_at": {insert + `, status, activated_at)
+			VALUES ('x-c', 'XTC', 'C', 'XT', ` + valid + `, 'suspended', now())`, "23514"},
+		"archived without archived_at":  {insert + `, status) VALUES ('x-c', 'XTC', 'C', 'XT', ` + valid + `, 'archived')`, "23514"},
+		"legal form of another country": {insert + `) VALUES ('x-c', 'XTC', 'C', 'XT', '%FORMXU%', 'Etc/UTC')`, "23503"},
+		"a second operator":             {insert + `, is_operator) VALUES ('x-c', 'XTC', 'C', 'XT', ` + valid + `, true)`, "23505"},
+		"duplicate identity number":     {insert + `, identity_number) VALUES ('x-c', 'XTC', 'C', 'XT', ` + valid + `, 'c-123')`, "23505"},
+		"blank tax number":              {insert + `, tax_number) VALUES ('x-c', 'XTC', 'C', 'XT', ` + valid + `, ' ')`, "23514"},
+		"duplicate tax number":          {insert + `, tax_number) VALUES ('x-c', 'XTC', 'C', 'XT', ` + valid + `, 'tin-9')`, "23505"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			w := newWorld(t)
 			w.operator(t)
-			exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, identity_number, tax_number)
-				VALUES ('x-a', 'XTA', 'A', 'XT', 'C-123', 'TIN-9')`)
+			exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, identity_number, tax_number)
+				VALUES ('x-a', 'XTA', 'A', 'XT', $1, 'Etc/UTC', 'C-123', 'TIN-9')`, w.formXT)
 			sql := c.sql
 			for k, v := range map[string]string{"%FORM%": w.formXT, "%FORMXU%": w.formXU} {
 				sql = strings.ReplaceAll(sql, k, v)
@@ -252,16 +256,20 @@ func TestFeatureTenantConstraints(t *testing.T) {
 
 func TestFeatureTheSameIdentityNumberInAnotherCountry(t *testing.T) {
 	w := newWorld(t)
-	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, identity_number) VALUES ('x-a', 'XTA', 'A', 'XT', 'C-123')`)
-	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, identity_number) VALUES ('x-b', 'XTB', 'B', 'XU', 'C-123')`)
+	const insert = `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, identity_number)
+		VALUES ($1, $2, $3, $4, $5, 'Etc/UTC', 'C-123')`
+	exec(t, w.tx, insert, "x-a", "XTA", "A", "XT", w.formXT)
+	exec(t, w.tx, insert, "x-b", "XTB", "B", "XU", w.formXU)
 }
 
 func TestFeatureTheSameTaxNumberInAnotherCountry(t *testing.T) {
 	w := newWorld(t)
-	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, tax_number) VALUES ('x-a', 'XTA', 'A', 'XT', 'TIN-9')`)
-	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, tax_number) VALUES ('x-b', 'XTB', 'B', 'XU', 'TIN-9')`)
-	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country) VALUES ('x-c', 'XTC', 'C', 'XT')`)
-	exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country) VALUES ('x-d', 'XTD', 'D', 'XT')`) // many without one
+	const insert = `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, tax_number)
+		VALUES ($1, $2, $3, $4, $5, 'Etc/UTC', $6)`
+	exec(t, w.tx, insert, "x-a", "XTA", "A", "XT", w.formXT, "TIN-9")
+	exec(t, w.tx, insert, "x-b", "XTB", "B", "XU", w.formXU, "TIN-9")
+	exec(t, w.tx, insert, "x-c", "XTC", "C", "XT", w.formXT, nil)
+	exec(t, w.tx, insert, "x-d", "XTD", "D", "XT", w.formXT, nil) // many without one
 }
 
 func TestFeatureAnActiveTenantIsClassified(t *testing.T) {
@@ -319,8 +327,7 @@ func TestFeatureReferencedClassificationCannotBeDeleted(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			w := newWorld(t)
-			a := w.tenant(t, "x-a", "XTA")
-			exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1 WHERE id = $2`, w.formXTNoDocument, a)
+			a := w.tenant(t, "x-a", "XTA") // its legal form is test_ministry
 			exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type')`, a)
 			_, err := w.tx.Exec(t.Context(), sql)
 			assert.Contains(t, []string{"23001", "23503"}, code(t, err))
@@ -331,8 +338,8 @@ func TestFeatureReferencedClassificationCannotBeDeleted(t *testing.T) {
 func TestFeatureTenantUpdatedAtFollowsChanges(t *testing.T) {
 	w := newWorld(t)
 	// The trigger runs on updates only, so a backdated insert keeps its updated_at.
-	a := id(t, w.tx, `INSERT INTO tenants (slug, code, name, country, updated_at)
-		VALUES ('x-a', 'XTA', 'A', 'XT', '2000-01-01') RETURNING id`)
+	a := id(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, updated_at)
+		VALUES ('x-a', 'XTA', 'A', 'XT', $1, 'Etc/UTC', '2000-01-01') RETURNING id`, w.formXTNoDocument)
 	exec(t, w.tx, `UPDATE tenants SET name = 'Renamed' WHERE id = $1`, a)
 	var setToNow bool
 	require.NoError(t, w.tx.QueryRow(t.Context(), `SELECT updated_at = now() FROM tenants WHERE id = $1`, a).Scan(&setToNow))
