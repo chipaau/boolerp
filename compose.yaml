@@ -16,6 +16,7 @@ x-node: &node
     - /w/apps/admin/node_modules
     - /w/apps/website/node_modules
     - /w/apps/findcare/node_modules
+    - /w/apps/education-portal/node_modules
     - /w/apps/identity/node_modules
     - /w/packages/ui/node_modules
     - /w/packages/api/node_modules
@@ -173,6 +174,31 @@ services:
       - traefik.http.routers.erp-website.priority=5
       - traefik.http.routers.erp-website.service=erp-website
       - traefik.http.services.erp-website.loadbalancer.server.port=3000
+
+  # A tenant's education portal (apps/education-portal). Unlike FindCare it is not a product on
+  # Bool's own domain: a portal is always on the customer's own verified domain (C191), one codebase
+  # serving every institution (C132), and which institution a request belongs to comes from its host
+  # through the domain lookup (C131).
+  #
+  # That makes development routing a stand-in, not the design. A tenant's workspace host and its
+  # portal host are both arbitrary customer domains, so no static rule can tell them apart -- only
+  # the domains table can, and nothing at the edge consults it yet. These are the seeded sample
+  # tenant's portal hosts, named here so the app is reachable; they are above the workspace routers
+  # for the same reason Bool's own hosts are. Routing every tenant host through one edge that does
+  # the lookup is the open decision this placeholder is waiting on.
+  education-portal:
+    <<: *node
+    command: pnpm --filter education-portal dev
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - "traefik.http.routers.erp-education-portal.rule=Host(`portal.cyryx.test`) || Host(`lecturer.cyryx.test`)"
+      - traefik.http.routers.erp-education-portal.entrypoints=web
+      - traefik.http.routers.erp-education-portal.priority=5
+      - traefik.http.routers.erp-education-portal.service=erp-education-portal
+      - traefik.http.services.erp-education-portal.loadbalancer.server.port=3000
 
   # FindCare's public side (apps/findcare), a Next.js app like apps/website, on its own domain
   # rather than a host under bool.test: it is a separate product, as cyryx.test is on the same

@@ -72,6 +72,7 @@ jobs:
               - 'apps/identity/**'
               - 'apps/website/**'
               - 'apps/findcare/**'
+              - 'apps/education-portal/**'
               - 'packages/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
@@ -242,7 +243,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [workspace, admin, identity, website, findcare]
+        app: [workspace, admin, identity, website, findcare, education-portal]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

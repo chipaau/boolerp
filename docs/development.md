@@ -56,7 +56,7 @@ Its dnsmasq resolves the development domains, so `findcare.test` needs
 entries; without it the host does not resolve the name at all.
 
 The workspace routers match every `*.test` host, because a tenant's verified domain can be
-any name (`workspace.male-city.test`, `cyryx-portal.bool.test`). Bool's own hosts are
+any name (`workspace.male-city.test`, `portal.cyryx.test`). Bool's own hosts are
 therefore claimed explicitly above them: `admin.bool.test`, `identity.bool.test`,
 `api.bool.test`, and — the apexes — `bool.test` and `www.bool.test` for the website,
 `findcare.test` and `www.findcare.test` for FindCare. Their priority clears both workspace
