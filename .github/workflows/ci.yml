@@ -22,7 +22,7 @@ permissions:
 # code, as trivy-action's were in March 2026. Dependabot updates the Actions and the
 # Dockerfiles; the images below and in .github/scripts and e2e/run.sh are updated by hand.
 env:
-  GO_IMAGE: golang:1.27@sha256:e0174e51e81218523251d85d248a90d24c3d5e81543b4f07a5d66229397db190
+  GO_IMAGE: golang:1.27@sha256:5bc7f572bbaa98885a3a1fd9c0aa76b59e3e14e8628bfc316bbfd0c701e4818c
   LINT_IMAGE: golangci/golangci-lint:v2.14.0@sha256:ad862ba6b3798cbe0fd9fd7408d498fd74fbd2623a92406b2fd3898faf0bf98f
   # The same Cerbos as compose.yaml, to compile and test the policies (C151).
   CERBOS_IMAGE: ghcr.io/cerbos/cerbos:0.56.0@sha256:540643bc67ba628011a150ad1d3370f285daa38995be5cd7a4be181da902bec1
