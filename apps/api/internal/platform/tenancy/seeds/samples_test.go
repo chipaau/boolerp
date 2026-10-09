@@ -12,25 +12,24 @@ func TestTheEmbeddedSampleTenants(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, samples, 17)
 	assert.Contains(t, samples, Sample{Slug: "haah", Code: "HAAH", Name: "Haa Alif Atoll Hospital", Country: "MV",
-		LegalForm: "statutory_body", Timezone: "Indian/Maldives", Parent: "moh", Types: []string{"hospital"}})
+		LegalForm: "statutory_body", Parent: "moh", Types: []string{"hospital"}})
 	assert.Contains(t, samples, Sample{Slug: "new-island-clinic", Code: "NIC", Name: "New Island Clinic", Country: "MV",
-		LegalForm: "private_company", Timezone: "Indian/Maldives", IdentityNumber: "C-2007/2024"})
+		LegalForm: "private_company", IdentityNumber: "C-2007/2024"})
 	for _, s := range samples {
 		assert.NotEqual(t, "workspace", s.Slug, "the operator is not a sample")
 	}
 }
 
 func TestParseSamplesRejectsBadRows(t *testing.T) {
-	const header = "slug,code,name,country,legal_form,timezone,identity_number,parent,types\n"
+	const header = "slug,code,name,country,legal_form,identity_number,parent,types\n"
 	for name, data := range map[string]string{
 		"wrong header":   "slug,code\nx,X\n",
-		"missing column": header + "x,X,Name,MV,f,Etc/UTC,,\n",
-		"no name":        header + "x,X, ,MV,f,Etc/UTC,,,\n",
-		"no country":     header + "x,X,A,,f,Etc/UTC,,,\n",
-		"duplicate":      header + "x,X,A,MV,f,Etc/UTC,,,\nx,Y,B,MV,f,Etc/UTC,,,\n",
-		"later parent":   header + "x,X,A,MV,f,Etc/UTC,,y,\ny,Y,B,MV,f,Etc/UTC,,,\n",
-		"no legal form":  header + "x,X,A,MV,,Etc/UTC,,,clinic\n",
-		"no time zone":   header + "x,X,A,MV,f,,,,clinic\n",
+		"missing column": header + "x,X,Name,MV,f,,\n",
+		"no name":        header + "x,X, ,MV,f,,,\n",
+		"no country":     header + "x,X,A,,f,,,\n",
+		"duplicate":      header + "x,X,A,MV,f,,,\nx,Y,B,MV,f,,,\n",
+		"later parent":   header + "x,X,A,MV,f,,y,\ny,Y,B,MV,f,,,\n",
+		"no legal form":  header + "x,X,A,MV,,,,clinic\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := ParseSamples([]byte(data))
