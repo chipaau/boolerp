@@ -400,6 +400,12 @@ func (noUsers) Register(context.Context, string, string) (identity.User, error) 
 	return identity.User{}, nil
 }
 
+func (noUsers) Portraits() []identity.Portrait { return nil }
+
+func (noUsers) SetPortrait(context.Context, string, string) (identity.User, error) {
+	return identity.User{}, nil
+}
+
 func TestModulesInheritDefaultsAndApplyTheirOwnAuth(t *testing.T) {
 	// No issuer is reachable: a request without a token is refused before any
 	// key is needed, and health checks never ask for one.

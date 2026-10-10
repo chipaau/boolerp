@@ -42,6 +42,8 @@ type tokenVerifier interface {
 type Users interface {
 	User(ctx context.Context, kratosIdentityID string) (identity.User, error)
 	Register(ctx context.Context, subject, accessToken string) (identity.User, error)
+	Portraits() []identity.Portrait
+	SetPortrait(ctx context.Context, kratosIdentityID, portraitID string) (identity.User, error)
 }
 
 // Caller is who a request is from: the verified token and, when the token is
@@ -71,6 +73,8 @@ func (m *Module) Routes(r chi.Router) {
 		// Every route here asks Cerbos before it answers (C155).
 		r.Use(m.Authenticate, Actor, authorization.Enforce(m.logger))
 		r.Get("/me", m.me)
+		r.Get("/me/portraits", m.portraits)
+		r.Put("/me/photo", m.setPhoto)
 	})
 	r.Group(func(r chi.Router) {
 		// Registering is the one route a person may call before they have a user.

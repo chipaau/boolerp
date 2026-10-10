@@ -41,11 +41,13 @@ const (
 	operator = "0192f6a0-0000-7000-8000-0000000000bb"
 )
 
-func TestFeatureAPersonSeesOnlyTheirOwnUser(t *testing.T) {
+func TestFeatureAPersonSeesAndUpdatesOnlyTheirOwnUser(t *testing.T) {
 	a := authorizer(t, cerbosAddr(t), authorization.Principal{ID: shifau, Roles: []string{"user"}})
 	require.NoError(t, a.Check(t.Context(), "view", authorization.Resource{Kind: "identity:user", ID: shifau}))
 	assert.ErrorIs(t, a.Check(t.Context(), "view", authorization.Resource{Kind: "identity:user", ID: mariyam}), authorization.ErrDenied)
-	assert.ErrorIs(t, a.Check(t.Context(), "update", authorization.Resource{Kind: "identity:user", ID: shifau}), authorization.ErrDenied)
+	// update changes their picture (C196): their own user only.
+	require.NoError(t, a.Check(t.Context(), "update", authorization.Resource{Kind: "identity:user", ID: shifau}))
+	assert.ErrorIs(t, a.Check(t.Context(), "update", authorization.Resource{Kind: "identity:user", ID: mariyam}), authorization.ErrDenied)
 }
 
 func TestFeatureAClientSeesItselfWithinATenantOrNot(t *testing.T) {

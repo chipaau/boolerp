@@ -34,6 +34,10 @@ type Accounts interface {
 	// Recover returns a one-time recovery link and code for the account, valid
 	// for ttl.
 	Recover(ctx context.Context, kratosIdentityID string, ttl time.Duration) (domain.Recovery, error)
+	// SetPicture sets the account's picture trait to pictureURL, or removes it
+	// when pictureURL is empty, keeping everything else about the account, and
+	// returns the account as saved.
+	SetPicture(ctx context.Context, kratosIdentityID, pictureURL string) (domain.Account, error)
 }
 
 // Logins are a person's logins at Hydra (adapters/hydra implements it).
@@ -135,6 +139,30 @@ func (s *Service) Sync(ctx context.Context, kratosIdentityID string) (domain.Use
 	}
 	return s.users.Save(ctx, a)
 }
+
+// SetPicture changes a person's picture (C196): the Kratos account is where it
+// lives, so every app reading the person sees it and the copy made at each
+// sign-in (Register) keeps it; the user is then saved from the account Kratos
+// returns, so it shows at once. pictureURL is empty to go back to initials; anything that is not
+// an http(s) address is refused with ErrInvalidPicture. A person without a user
+// gets ErrNotFound and nothing is written.
+func (s *Service) SetPicture(ctx context.Context, kratosIdentityID, pictureURL string) (domain.User, error) {
+	if !domain.ValidAvatarURL(pictureURL) {
+		return domain.User{}, ErrInvalidPicture
+	}
+	if _, err := s.users.ByKratosID(ctx, kratosIdentityID); err != nil {
+		return domain.User{}, err
+	}
+	a, err := s.accounts.SetPicture(ctx, kratosIdentityID, pictureURL)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return s.users.Save(ctx, a)
+}
+
+// ErrInvalidPicture is returned by SetPicture for a picture that is not an
+// http(s) address.
+var ErrInvalidPicture = errors.New("identity: the picture must be an http(s) address")
 
 // ErrInvalidAccount is returned by EnsureAccount for an account without an
 // email or phone, which Kratos's schema requires (C85).

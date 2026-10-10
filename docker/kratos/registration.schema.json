@@ -41,7 +41,7 @@
         },
         "picture": {
           "title": "Picture",
-          "description": "An optional address of the person's picture, filled from Google's picture claim (oidc.google.jsonnet).",
+          "description": "An optional address of the person's picture: filled from Google's picture claim when the account is created (oidc.google.jsonnet), or a built-in portrait the person chooses (C196).",
           "type": "string",
           "format": "uri",
           "pattern": "^https?://",

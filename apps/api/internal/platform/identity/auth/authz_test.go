@@ -114,6 +114,12 @@ type registering struct {
 	err  error
 }
 
+func (registering) Portraits() []identity.Portrait { return nil }
+
+func (registering) SetPortrait(context.Context, string, string) (identity.User, error) {
+	return identity.User{}, errors.New("unexpected set portrait")
+}
+
 func (registering) User(context.Context, string) (identity.User, error) {
 	return identity.User{}, identity.ErrNotFound
 }

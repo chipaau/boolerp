@@ -8,4 +8,8 @@ type Identity struct {
 	// HydraAdminURL is Hydra's admin API, reachable only on the internal network,
 	// such as http://hydra:4445.
 	HydraAdminURL string `env:"HYDRA_ADMIN_URL,required,notEmpty" validate:"http_url"`
+	// PortraitsURL is where the built-in portraits people may choose as their
+	// picture are served (C196), such as http://identity.bool.test/portraits/;
+	// empty offers none.
+	PortraitsURL string `env:"PORTRAITS_URL" validate:"omitempty,http_url"`
 }

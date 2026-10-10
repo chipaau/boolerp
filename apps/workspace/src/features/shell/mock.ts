@@ -1,13 +1,6 @@
 // FIXTURES — sample data for the shell chrome. Only ./queries.ts may import this file
 // (lint-enforced). Delete it when the notifications / counts endpoints exist.
-import avatar1 from '@workspace/assets/avatars/avatar-1.jpg'
-import avatar2 from '@workspace/assets/avatars/avatar-2.jpg'
-import avatar3 from '@workspace/assets/avatars/avatar-3.jpg'
-import avatar4 from '@workspace/assets/avatars/avatar-4.webp'
-import avatar5 from '@workspace/assets/avatars/avatar-5.jpg'
-import avatar6 from '@workspace/assets/avatars/avatar-6.jpg'
-import avatar7 from '@workspace/assets/avatars/avatar-7.jpg'
-import type { AvatarChoice, Membership, NavCounts, Notification, SavedView, SupportLink } from './types'
+import type { Membership, NavCounts, Notification, SavedView, SupportLink } from './types'
 
 export const NOTIFICATIONS: Notification[] = [
   { id: 'n8', eventKey: 'calendar.meeting_invite', recipientIds: ['EMP-017'], title: 'Northwind quarterly needs your reply', meta: 'Tom Kean · today 11:30am · Atrium', category: 'Meetings', time: '08:12 AM', group: 'Today', unread: true, to: { app: 'calendar', section: 'meetings', id: 'm08' } },
@@ -45,19 +38,8 @@ export const SAVED_VIEWS: Record<string, SavedView[]> = {
   ],
 }
 
-/** The photo is not here: it belongs to the user (avatars, roadmap step 7g); initials until then. */
+/** The photo is not here: it belongs to the person's account, read from GET /api/auth/me (C196). */
 export const MEMBERSHIP: Membership = { role: 'Admin' }
-
-/** Stand-in portraits until the workspace supplies its own Bool set. */
-export const AVATAR_CHOICES: AvatarChoice[] = [
-  { id: 'a1', src: avatar1, label: 'Portrait 1' },
-  { id: 'a2', src: avatar2, label: 'Portrait 2' },
-  { id: 'a3', src: avatar3, label: 'Portrait 3' },
-  { id: 'a4', src: avatar4, label: 'Portrait 4' },
-  { id: 'a5', src: avatar5, label: 'Portrait 5' },
-  { id: 'a6', src: avatar6, label: 'Portrait 6' },
-  { id: 'a7', src: avatar7, label: 'Portrait 7' },
-]
 
 /** Placeholder destinations; the real help centre and support inbox replace these at integration. */
 export const SUPPORT_LINKS: SupportLink[] = [

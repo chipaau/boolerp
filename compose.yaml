@@ -128,8 +128,9 @@ services:
       # Next.js's static assets (/_next/) carry no secrets and are the same for everyone, and a
       # development page loads dozens of them: counting them against erp-auth-limit ran a
       # browser out of requests within a few pages (429 on the next navigation). They get
-      # their own route without the limit; pages and form submissions keep theirs.
-      - "traefik.http.routers.erp-identity-assets.rule=Host(`identity.bool.test`) && PathPrefix(`/_next/`)"
+      # their own route without the limit; pages and form submissions keep theirs. The
+      # portraits (/portraits/, C196) are people's pictures in every app, so they go the same way.
+      - "traefik.http.routers.erp-identity-assets.rule=Host(`identity.bool.test`) && (PathPrefix(`/_next/`) || PathPrefix(`/portraits/`))"
       - traefik.http.routers.erp-identity-assets.entrypoints=web
       - traefik.http.routers.erp-identity-assets.priority=35
       - traefik.http.routers.erp-identity-assets.service=erp-identity
@@ -336,6 +337,8 @@ services:
       APP_IDENTITY_KRATOS_ADMIN_URL: http://kratos:4434
       # Disabling an account ends its Hydra logins and tokens (C101).
       APP_IDENTITY_HYDRA_ADMIN_URL: http://hydra:4445
+      # The portraits people may choose as their picture, served by the login service (C196).
+      APP_IDENTITY_PORTRAITS_URL: http://identity.bool.test/portraits/
       # Every protected operation asks Cerbos, over gRPC on the internal network
       # (C152, C155); plaintext is allowed only in development and tests.
       APP_CERBOS_ADDR: cerbos:3593

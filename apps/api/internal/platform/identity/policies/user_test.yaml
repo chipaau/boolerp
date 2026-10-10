@@ -20,21 +20,21 @@ resources:
     kind: "identity:user"
     id: 0192f6a0-0000-7000-8000-00000000a002
 tests:
-  - name: A person views their own user, inside a workspace or not, and no one else's
+  - name: A person views and updates their own user, inside a workspace or not, and no one else's
     input:
       principals: [shifau, shifau_in_a_workspace]
       resources: [shifau_user, mariyam_user]
       actions: [view, update]
     expected:
-      - { principal: shifau, resource: shifau_user, actions: { view: EFFECT_ALLOW, update: EFFECT_DENY } }
+      - { principal: shifau, resource: shifau_user, actions: { view: EFFECT_ALLOW, update: EFFECT_ALLOW } }
       - { principal: shifau, resource: mariyam_user, actions: { view: EFFECT_DENY, update: EFFECT_DENY } }
-      - { principal: shifau_in_a_workspace, resource: shifau_user, actions: { view: EFFECT_ALLOW, update: EFFECT_DENY } }
+      - { principal: shifau_in_a_workspace, resource: shifau_user, actions: { view: EFFECT_ALLOW, update: EFFECT_ALLOW } }
       - { principal: shifau_in_a_workspace, resource: mariyam_user, actions: { view: EFFECT_DENY, update: EFFECT_DENY } }
 
   - name: A client is never a user, even with the same ID
     input:
       principals: [client_with_user_id]
       resources: [shifau_user]
-      actions: [view]
+      actions: [view, update]
     expected:
-      - { principal: client_with_user_id, resource: shifau_user, actions: { view: EFFECT_DENY } }
+      - { principal: client_with_user_id, resource: shifau_user, actions: { view: EFFECT_DENY, update: EFFECT_DENY } }

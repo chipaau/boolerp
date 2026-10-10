@@ -58,3 +58,37 @@ func ValidAvatarURL(s string) bool {
 	scheme := strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
 	return err == nil && scheme && u.Host != ""
 }
+
+// Portrait is one of the built-in pictures a person may choose (C196): its ID is
+// what clients send, File its name where the portraits are served.
+type Portrait struct {
+	ID   string
+	File string
+}
+
+// Portraits are the pictures a person may choose until uploads have somewhere
+// to live (C196).
+var Portraits = []Portrait{
+	{ID: "portrait-1", File: "portrait-1.jpg"},
+	{ID: "portrait-2", File: "portrait-2.jpg"},
+	{ID: "portrait-3", File: "portrait-3.jpg"},
+	{ID: "portrait-4", File: "portrait-4.webp"},
+	{ID: "portrait-5", File: "portrait-5.jpg"},
+	{ID: "portrait-6", File: "portrait-6.jpg"},
+	{ID: "portrait-7", File: "portrait-7.jpg"},
+}
+
+// PortraitURL is the address of the portrait id under baseURL (where the
+// portraits are served), or false for an unknown id or no baseURL.
+func PortraitURL(baseURL, id string) (string, bool) {
+	if baseURL == "" {
+		return "", false
+	}
+	for _, p := range Portraits {
+		if p.ID == id {
+			u, err := url.JoinPath(baseURL, p.File)
+			return u, err == nil && ValidAvatarURL(u)
+		}
+	}
+	return "", false
+}

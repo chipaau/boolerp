@@ -18,15 +18,21 @@ func (m *Module) me(w http.ResponseWriter, r *http.Request) {
 	caller, _ := FromContext(r.Context())
 
 	// A person may see their own user; a machine client only itself (C154).
-	res := authorization.Resource{Kind: "identity:client", ID: caller.Token.ClientID}
-	if caller.User != nil {
-		res = authorization.Resource{Kind: "identity:user", ID: caller.User.ID}
-	}
-	if err := m.authz.Check(r.Context(), "view", res); err != nil {
+	if err := m.authz.Check(r.Context(), "view", ownUser(caller)); err != nil {
 		authorization.WriteError(w, r, err)
 		return
 	}
 	writeCaller(w, caller)
+}
+
+// ownUser is the caller's own user as a Cerbos resource; a machine client acting
+// for itself has none, so it is checked as itself: Cerbos lets it view itself
+// (GET /me) and nothing else.
+func ownUser(caller Caller) authorization.Resource {
+	if caller.User == nil {
+		return authorization.Resource{Kind: "identity:client", ID: caller.Token.ClientID}
+	}
+	return authorization.Resource{Kind: "identity:user", ID: caller.User.ID}
 }
 
 // register creates or updates the caller's user (POST /api/auth/me, C157) from
