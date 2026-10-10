@@ -30,11 +30,14 @@ func newAppsWorld(t *testing.T) appsWorld {
 	t.Helper()
 	tx := testdb.OwnerTx(t)
 	exec(t, tx, `INSERT INTO countries (code, alpha3, name, phone_prefix) VALUES ('XV', 'XVV', 'Appland', '+997')`)
+	form := id(t, tx, `INSERT INTO legal_forms (country, code, name, category)
+		VALUES ('XV', 'test_ministry', 'Test ministry', 'government') RETURNING id`)
+	const insert = `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, is_operator)
+		VALUES ($1, $2, $3, 'XV', $4, 'Etc/UTC', $5) RETURNING id`
 	w := appsWorld{tx: tx,
-		operator: id(t, tx, `INSERT INTO tenants (slug, code, name, country, is_operator)
-			VALUES ('x-authz-operator', 'XAOP', 'Test operator', 'XV', true) RETURNING id`),
-		a: id(t, tx, `INSERT INTO tenants (slug, code, name, country) VALUES ('x-authz-a', 'XAA', 'A', 'XV') RETURNING id`),
-		b: id(t, tx, `INSERT INTO tenants (slug, code, name, country) VALUES ('x-authz-b', 'XAB', 'B', 'XV') RETURNING id`),
+		operator: id(t, tx, insert, "x-authz-operator", "XAOP", "Test operator", form, true),
+		a:        id(t, tx, insert, "x-authz-a", "XAA", "A", form, false),
+		b:        id(t, tx, insert, "x-authz-b", "XAB", "B", form, false),
 	}
 	exec(t, tx, `INSERT INTO apps (key, name, kind) VALUES ('x-hr', 'Test HR', 'workspace'),
 		('x-console', 'Test console', 'operator'), ('x-tasks', 'Test tasks', 'workspace'), ('x-gone', 'Gone', 'workspace')`)

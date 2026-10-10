@@ -1,8 +1,9 @@
--- Tenants (C115, C136, C141; fields confirmed 2026-10-04): the registry of customer
--- organisations, each one data boundary, and the single operator tenant (Bool). Its
--- institution types, the primary one flagged, are in tenant_institution_types (00002).
--- Classification references the reference module's lists (C134 allows the foreign
--- keys). The schema only: no tenant is created by a migration (C135).
+-- Tenants (C115, C136, C141, C195; fields confirmed 2026-10-04, changed 2026-10-08):
+-- the registry of customer organisations, each one data boundary, and the single
+-- operator tenant (Bool). Its institution types, the primary one flagged, are in
+-- tenant_institution_types (00002). Classification references the reference module's
+-- lists (C134 allows the foreign keys). The schema only: no tenant is created by a
+-- migration (C135).
 
 -- +goose Up
 
@@ -26,7 +27,7 @@ CREATE TABLE tenants (
     parent_id        uuid        REFERENCES tenants (id) ON DELETE RESTRICT CHECK (parent_id <> id),
     is_operator      boolean     NOT NULL DEFAULT false,
     country          char(2)     NOT NULL REFERENCES countries (code) ON DELETE RESTRICT,
-    legal_form_id    uuid,
+    legal_form_id    uuid        NOT NULL,
     -- The number of the document the legal form names; the application requires it
     -- when the form names one and refuses it when the form names none.
     identity_number  text        CHECK (btrim(identity_number) <> ''),
@@ -34,7 +35,7 @@ CREATE TABLE tenants (
     -- The tax registration number (TIN) printed on invoices (C172); null when the
     -- organisation has none. Formats differ by country, so only blanks are refused.
     tax_number       text        CHECK (btrim(tax_number) <> ''),
-    timezone         text        CHECK (btrim(timezone) <> ''),  -- IANA name, checked by the application
+    timezone         text        NOT NULL CHECK (btrim(timezone) <> ''),  -- IANA name, checked by the application
     email            text        CHECK (btrim(email) <> ''),
     phone            text        CHECK (phone ~ '^\+[0-9]{6,15}$'),
     status           text        NOT NULL DEFAULT 'provisioning'
@@ -47,9 +48,9 @@ CREATE TABLE tenants (
 
     -- The legal form must be one of the tenant's own country.
     FOREIGN KEY (legal_form_id, country) REFERENCES legal_forms (id, country) ON DELETE RESTRICT,
-    -- The legal form and time zone are required before a tenant leaves provisioning
-    -- (C136); its primary institution type is checked by tenant_institution_types (00002).
-    CHECK (status = 'provisioning' OR (legal_form_id IS NOT NULL AND timezone IS NOT NULL)),
+    -- The legal form and time zone are required from creation (C195); the primary
+    -- institution type, required before a tenant leaves provisioning, is checked by
+    -- tenant_institution_types (00002).
     -- The status timestamps follow the status.
     CHECK (status NOT IN ('active', 'suspended') OR activated_at IS NOT NULL),
     CHECK (status <> 'suspended' OR suspended_at IS NOT NULL),

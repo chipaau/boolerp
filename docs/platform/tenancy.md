@@ -84,7 +84,9 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   `app.ancestor_tenants` for policies that read published data.
 - `country` references `countries.code` (C122) and `timezone` is checked by the
   application; both are chosen at provisioning, with no country defaults (the product
-  is not limited to one country).
+  is not limited to one country). `legal_form_id` and `timezone` are required from
+  creation (C195): not null in the table, and `POST /api/v1/tenants` refuses a request
+  without either with a 422 on the field.
 - `status` provisioning / active / suspended / archived, with guarded, audited
   transitions (409 on an illegal one); `activated_at`, `suspended_at`, `archived_at`;
   `created_at`, `updated_at` (trigger).
@@ -389,12 +391,11 @@ confirmation, the field list table by table (see
 [the data model's working agreement](../data-model/README.md)) before any migration or
 `erd.dbml` change.
 
-- **What the request accepts.** The tenant's own columns are settled (C116, above), but not
-  which of them provisioning requires rather than allows later: `legal_form_id` and
-  `timezone` are required only before a tenant leaves `provisioning`, so a tenant may be
-  created without them. The admin console's design prototype collects far more — plan,
-  seats, address, contact, apps and modules, several admins — and most of that has no
-  table behind it.
+- **What the request accepts.** The tenant's own columns are settled (C116, above), and
+  `legal_form_id` and `timezone` are required at creation (C195); which of the other
+  columns provisioning requires rather than allows later is not. The admin console's
+  design prototype collects far more — plan, seats, address, contact, apps and modules,
+  several admins — and most of that has no table behind it.
 - **Whether the default domain is part of it.** The flow above creates one; `domains` is
   built (C158), but what host a new tenant gets, and whether the caller may choose it, is
   not written down.

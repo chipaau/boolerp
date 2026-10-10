@@ -1,7 +1,8 @@
 # Sample tenants for development only (C143): invented organisations, except Cyryx and
 # MI College (the user's examples). Parents come before their children. legal_form is
-# the legal form's code in that country; empty legal_form and types mean a tenant still being set
-# up (provisioning). types: the primary first, then additional ones, separated by |.
+# the legal form's code in that country, required (C195); every sample's time zone is
+# Indian/Maldives. Empty types mean a tenant still being set up (provisioning). types: the
+# primary first, then additional ones, separated by |.
 # identity_number: a made-up registration number, only where the legal form names one.
 slug,code,name,country,legal_form,identity_number,parent,types
 moh,MOH,Ministry of Health,MV,government_ministry,,,ministry_office
@@ -20,4 +21,4 @@ sunrise-school,SRS,Sunrise School,MV,statutory_body,,moe,school|preschool
 bright-future,BFIS,Bright Future International School,MV,private_company,C-2004/2015,,school|preschool
 cyryx,CYRYX,Cyryx College,MV,private_company,C-2005/2002,,college_university
 mi-college,MIC,MI College,MV,private_company,C-2006/2011,,college_university|training_centre
-new-island-clinic,NIC,New Island Clinic,MV,,,,
+new-island-clinic,NIC,New Island Clinic,MV,private_company,C-2007/2024,,
