@@ -1,9 +1,10 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import { Button } from '@workspace/ui/components/button'
 import { DataTable } from '@workspace/ui/components/data-table'
 import { ListToolbar } from '@workspace/ui/components/list-toolbar'
+import { AddTenantWizard } from './add-tenant-wizard'
 import { tenantQueries } from './api'
 import { statusLabel, tenantColumns } from './columns'
 import { tenantStatuses } from './schemas'
@@ -14,13 +15,15 @@ const route = getRouteApi('/_admin/tenants/')
 /**
  * The tenants list (C174, C179), in the tenants page's design: every tenant from the API, searched,
  * filtered, sorted, and paged on the server, with its state in the URL. Creating a tenant (F3) and
- * the lifecycle actions show disabled until their endpoints exist. The design prototype this
+ * the lifecycle actions show disabled until their endpoints exist; "New tenant" opens the create form
+ * as a preview that saves nothing until F3 builds the endpoint. The design prototype this
  * replaces is at /tenants-prototype until this is accepted.
  */
 export function TenantsList() {
   const search = route.useSearch()
   const navigate = route.useNavigate()
   const list = useQuery(tenantQueries.list(search))
+  const [creating, setCreating] = useState(false)
 
   /** Changes the URL; anything but paging goes back to page 1 (C174). */
   const set = useCallback(
@@ -36,6 +39,7 @@ export function TenantsList() {
 
   return (
     <div className="min-h-0 w-full overflow-y-auto">
+      {creating && <AddTenantWizard preview onClose={() => setCreating(false)} onProvisioned={() => setCreating(false)} />}
       <div className="px-8 pt-[26px] pb-24">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-5">
           <div className="min-w-0">
@@ -44,9 +48,7 @@ export function TenantsList() {
               {list.data ? `${total} ${total === 1 ? 'tenant' : 'tenants'}${search.q || search.status ? ' match' : ''}` : ' '}
             </p>
           </div>
-          <Button disabled title="Not available yet: creating tenants comes next (F3).">
-            New tenant
-          </Button>
+          <Button onClick={() => setCreating(true)}>New tenant</Button>
         </div>
 
         <ListToolbar
