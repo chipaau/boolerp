@@ -215,7 +215,8 @@ picture is always one the platform serves; an unknown ID gets 422. Cerbos decide
 account is created, so a later Google sign-in never replaces a chosen picture. Both apps read the
 person through one query (`meQuery` in `@workspace/session`) that is fetched again whenever the
 tab regains focus, so a picture changed in one app shows in the other on returning to it; the app
-where it changed shows it at once. Uploads wait for object storage.
+where it changed shows it at once (end to end: `e2e/tests/photo.spec.ts`). Uploads wait for
+object storage.
 
 **Reads never write (C157).** The `Authenticate` middleware
 (`internal/platform/identity/auth`, C125) verifies the token, looks up the subject's
