@@ -48,7 +48,7 @@ export function ArtSwitch({
   }, [shown])
   return (
     <div className={cn('relative inline-flex items-center', className)}>
-      <div role="radiogroup" aria-label="Artwork" className="inline-flex items-center gap-1">
+      <div role="radiogroup" aria-label="Artwork" className="inline-flex items-center">
         {ART_KINDS.map(({ kind, label }) => {
           const on = kind === value
           return (

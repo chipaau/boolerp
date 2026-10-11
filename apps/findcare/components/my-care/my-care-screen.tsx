@@ -24,9 +24,9 @@ const INTRO_KEY = 'findcare.introSeen'
 // single objects, drawn smaller (the cell at the design's 62%) and a little lower, so they clear the
 // switch above them. Faded on phones, where the cards cover them.
 const ART_FIT: Record<ArtKind, string> = {
-  pathways: 'scale-[.66] translate-y-[6%] opacity-30 min-[1100px]:scale-[.66] min-[1100px]:opacity-75',
-  cell: 'scale-[.62] translate-y-[6%] opacity-50 min-[1100px]:opacity-100',
-  heart: 'scale-[.7] translate-y-[6%] opacity-50 min-[1100px]:opacity-100',
+  pathways: 'scale-[.66] translate-y-[6%] min-[1100px]:-translate-y-[2%] opacity-30 min-[1100px]:opacity-75',
+  cell: 'scale-[.62] translate-y-[6%] min-[1100px]:-translate-y-[2%] opacity-50 min-[1100px]:opacity-100',
+  heart: 'scale-[.7] translate-y-[6%] min-[1100px]:-translate-y-[2%] opacity-50 min-[1100px]:opacity-100',
 }
 
 /**
@@ -98,7 +98,7 @@ function Dashboard({ account, holder }: { account: Account; holder: Patient }) {
   return (
     // One page that scrolls like every other: the art stays fixed behind it, the side columns flow,
     // and on wide screens the search stays to hand at the bottom of the centre column.
-    <main className="relative grid w-full grid-cols-[minmax(0,1fr)] gap-x-7 gap-y-[22px] px-[var(--page-pad)] pt-2 pb-28 min-[760px]:pb-16 min-[1100px]:grid-cols-[clamp(300px,23vw,344px)_minmax(0,1fr)_clamp(300px,23vw,344px)] min-[1100px]:grid-rows-[auto_1fr] min-[1100px]:px-7 min-[1100px]:pt-2 min-[1100px]:pb-[22px]">
+    <main className="relative grid w-full grid-cols-[minmax(0,1fr)] gap-x-7 gap-y-[22px] px-[var(--page-pad)] pt-2 pb-28 min-[760px]:pb-16 min-[1100px]:grid-cols-[clamp(300px,23vw,344px)_minmax(0,1fr)_clamp(300px,23vw,344px)] min-[1100px]:grid-rows-[auto_1fr] min-[1100px]:px-[clamp(28px,4vw,72px)] min-[1100px]:pt-2 min-[1100px]:pb-[22px]">
       <div className="pointer-events-none fixed inset-0 -z-[1]">
         <CareArt ref={artRef} kind={art} intro={play} className={cn('absolute inset-0 transition-opacity duration-500', ART_FIT[art])} />
       </div>
@@ -122,7 +122,7 @@ function Dashboard({ account, holder }: { account: Account; holder: Patient }) {
           reveal(stage, 1),
         )}
       >
-        <ArtSwitch value={art} onChange={setArt} tip="above" className="absolute bottom-full left-1/2 mb-4 -translate-x-1/2 max-[1099px]:hidden" />
+        <ArtSwitch value={art} onChange={setArt} tip="above" className="absolute bottom-full left-1/2 mb-10 -translate-x-1/2 max-[1099px]:hidden" />
         <QuickSearch />
       </div>
       <div className="relative z-[2] min-[1100px]:col-start-3 min-[1100px]:row-start-2">{lists}</div>
