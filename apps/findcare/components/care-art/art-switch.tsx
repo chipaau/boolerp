@@ -28,7 +28,18 @@ export function useArtKind() {
 }
 
 /** Three small dots beside the art; choosing one shows its name briefly, then the name fades. */
-export function ArtSwitch({ value, onChange, className }: { value: ArtKind; onChange: (kind: ArtKind) => void; className?: string }) {
+export function ArtSwitch({
+  value,
+  onChange,
+  tip = 'below',
+  className,
+}: {
+  value: ArtKind
+  onChange: (kind: ArtKind) => void
+  /** Which side the name appears on, away from whatever sits next to the dots. */
+  tip?: 'above' | 'below'
+  className?: string
+}) {
   const [shown, setShown] = useState<string | null>(null)
   useEffect(() => {
     if (!shown) return
@@ -37,11 +48,7 @@ export function ArtSwitch({ value, onChange, className }: { value: ArtKind; onCh
   }, [shown])
   return (
     <div className={cn('relative inline-flex items-center', className)}>
-      <div
-        role="radiogroup"
-        aria-label="Artwork"
-        className="inline-flex items-center gap-1 rounded-full bg-white/60 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,.95),0_6px_18px_rgba(106,92,176,.1)] backdrop-blur-[18px]"
-      >
+      <div role="radiogroup" aria-label="Artwork" className="inline-flex items-center gap-1">
         {ART_KINDS.map(({ kind, label }) => {
           const on = kind === value
           return (
@@ -66,7 +73,8 @@ export function ArtSwitch({ value, onChange, className }: { value: ArtKind; onCh
       <span
         aria-live="polite"
         className={cn(
-          'pointer-events-none absolute top-full left-1/2 mt-1.5 -translate-x-1/2 rounded-full bg-indigo-900 px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-white transition-opacity duration-300',
+          'pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full bg-indigo-900 px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-white transition-opacity duration-300',
+          tip === 'above' ? 'bottom-full mb-1.5' : 'top-full mt-1.5',
           shown ? 'opacity-100' : 'opacity-0',
         )}
       >

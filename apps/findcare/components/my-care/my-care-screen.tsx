@@ -100,21 +100,10 @@ function Dashboard({ account, holder }: { account: Account; holder: Patient }) {
     // and on wide screens the search stays to hand at the bottom of the centre column.
     <main className="relative grid w-full grid-cols-[minmax(0,1fr)] gap-x-7 gap-y-[22px] px-[var(--page-pad)] pt-5 pb-28 min-[760px]:pb-16 min-[1100px]:grid-cols-[clamp(300px,23vw,344px)_minmax(0,1fr)_clamp(300px,23vw,344px)] min-[1100px]:grid-rows-[auto_1fr] min-[1100px]:px-7 min-[1100px]:pt-6 min-[1100px]:pb-[22px]">
       <div className="pointer-events-none fixed inset-0 -z-[1]">
-        <CareArt
-          ref={artRef}
-          kind={art}
-          intro={play}
-          className={cn('absolute inset-0 transition-opacity duration-500', ART_FIT[art])}
-        />
+        <CareArt ref={artRef} kind={art} intro={play} className={cn('absolute inset-0 transition-opacity duration-500', ART_FIT[art])} />
       </div>
-      <ArtSwitch
-        value={art}
-        onChange={setArt}
-        className={cn(
-          'absolute top-5 right-[var(--page-pad)] z-[3] min-[1100px]:top-6 min-[1100px]:right-auto min-[1100px]:left-1/2 min-[1100px]:-translate-x-1/2',
-          reveal(stage, 1),
-        )}
-      />
+      {/* Phones and tablets: top right, clear of the tab bar. Wide screens: under the art, above the search. */}
+      <ArtSwitch value={art} onChange={setArt} className={cn('absolute top-5 right-[var(--page-pad)] z-[3] min-[1100px]:hidden', reveal(stage, 1))} />
 
       <header className={cn('relative z-[2] pt-12 min-[1100px]:col-start-1 min-[1100px]:row-start-1 min-[1100px]:pt-0', reveal(stage, 1))}>
         <Overline size="lg">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</Overline>
@@ -133,6 +122,7 @@ function Dashboard({ account, holder }: { account: Account; holder: Patient }) {
           reveal(stage, 1),
         )}
       >
+        <ArtSwitch value={art} onChange={setArt} tip="above" className="absolute bottom-full left-1/2 mb-4 -translate-x-1/2 max-[1099px]:hidden" />
         <QuickSearch />
       </div>
       <div className="relative z-[2] min-[1100px]:col-start-3 min-[1100px]:row-start-2">{lists}</div>
