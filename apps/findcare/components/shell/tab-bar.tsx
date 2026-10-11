@@ -15,10 +15,10 @@ export function TabBar() {
   const href = useNavHref()
   if (pathname.startsWith('/sign-in')) return null
   const tabs = [
-    ...NAV.map((n) => ({ id: n.id, label: n.label, icon: n.icon, href: href(n), on: n.match(pathname) })),
+    ...NAV.map((n) => ({ id: n.id, label: n.label, icon: n.icon, fills: n.fills, href: href(n), on: n.match(pathname) })),
     account
-      ? { id: 'me', label: 'Profile', icon: User, href: routes.account(), on: pathname.startsWith('/account') }
-      : { id: 'in', label: 'Sign in', icon: LogIn, href: routes.signIn(pathname), on: false },
+      ? { id: 'me', label: 'Profile', icon: User, fills: true, href: routes.account(), on: pathname.startsWith('/account') }
+      : { id: 'in', label: 'Sign in', icon: LogIn, fills: false, href: routes.signIn(pathname), on: false },
   ]
   return (
     <nav
@@ -30,10 +30,14 @@ export function TabBar() {
           key={t.id}
           href={t.href}
           aria-current={t.on ? 'page' : undefined}
-          className={cn('flex h-[54px] flex-col items-center justify-center gap-1 rounded-[14px] text-[10.5px] font-medium no-underline', t.on ? 'text-ink-900' : 'text-ink-600')}
+          className={cn(
+            'flex h-[58px] flex-col items-center justify-center gap-1.5 rounded-[14px] text-[11px] no-underline',
+            t.on ? 'font-semibold text-ink-900' : 'font-medium text-ink-600',
+          )}
         >
-          <span className={cn('flex h-[26px] w-11 items-center justify-center rounded-full', t.on ? 'bg-indigo-900 text-white' : 'text-ink-600')}>
-            <t.icon className="size-[18px]" strokeWidth={1.8} />
+          <span className={cn('flex h-8 w-14 items-center justify-center rounded-full', t.on ? 'bg-indigo-900 text-white' : 'text-ink-600')}>
+            {/* selected: filled where the shape allows, otherwise a heavier line */}
+            <t.icon className="size-5" strokeWidth={t.on && !t.fills ? 2.4 : 1.8} fill={t.on && t.fills ? 'currentColor' : 'none'} />
           </span>
           {t.label}
         </Link>

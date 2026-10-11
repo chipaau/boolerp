@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { cn } from '@workspace/ui/lib/utils'
 import { SignedIn } from '@/components/shell/signed-in'
 import { Overline } from '@/components/ui/text'
@@ -69,6 +69,7 @@ export function MyCareScreen() {
 function Dashboard({ account, holder }: { account: Account; holder: Patient }) {
   const { play, stage } = useIntro()
   const [art, setArt] = useArtKind()
+  const showArt = useShowArt()
   const artRef = useRef<CareArtHandle>(null)
 
   const upcoming = upcomingVisits(account)
@@ -99,14 +100,16 @@ function Dashboard({ account, holder }: { account: Account; holder: Patient }) {
     // One page that scrolls like every other: the art stays fixed behind it, the side columns flow,
     // and on wide screens the search stays to hand at the bottom of the centre column.
     <main className="relative grid w-full grid-cols-[minmax(0,1fr)] gap-x-7 gap-y-[22px] px-[var(--page-pad)] pt-2 pb-28 min-[760px]:pb-16 min-[1100px]:grid-cols-[clamp(300px,23vw,344px)_minmax(0,1fr)_clamp(300px,23vw,344px)] min-[1100px]:grid-rows-[auto_1fr] min-[1100px]:px-[clamp(28px,4vw,72px)] min-[1100px]:pt-2 min-[1100px]:pb-[22px]">
-      <div className="pointer-events-none fixed inset-0 -z-[1]">
-        {/* Pathways draws in faster here than on Find care: on the dashboard it is a backdrop, not the hero. */}
-        <CareArt ref={artRef} kind={art} introSpeed={1.6} className={cn('absolute inset-0 transition-opacity duration-500', ART_FIT[art])} />
-      </div>
-      {/* Phones and tablets: top right, clear of the tab bar. Wide screens: under the art, above the search. */}
-      <ArtSwitch value={art} onChange={setArt} className={cn('absolute top-2 right-[var(--page-pad)] z-[3] min-[1100px]:hidden', reveal(stage, 1))} />
+      {showArt && (
+        <div className="pointer-events-none fixed inset-0 -z-[1]">
+          {/* Pathways draws in faster here than on Find care: on the dashboard it is a backdrop, not the hero. */}
+          <CareArt ref={artRef} kind={art} introSpeed={1.6} className={cn('absolute inset-0 transition-opacity duration-500', ART_FIT[art])} />
+        </div>
+      )}
+      {/* Tablets: top right. Wide screens: under the art, above the search. Phones have no art. */}
+      {showArt && <ArtSwitch value={art} onChange={setArt} className={cn('absolute top-2 right-[var(--page-pad)] z-[3] min-[1100px]:hidden', reveal(stage, 1))} />}
 
-      <header className={cn('relative z-[2] pt-12 min-[1100px]:col-start-1 min-[1100px]:row-start-1 min-[1100px]:pt-0', reveal(stage, 1))}>
+      <header className={cn('relative z-[2] min-[760px]:pt-12 min-[1100px]:col-start-1 min-[1100px]:row-start-1 min-[1100px]:pt-0', reveal(stage, 1))}>
         <Overline size="lg">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</Overline>
         <h1 className="mt-3 text-[28px] leading-[1.05] font-normal tracking-[-0.02em] text-ink-500">
           {greeting}
@@ -135,6 +138,21 @@ function Dashboard({ account, holder }: { account: Account; holder: Patient }) {
  * The art answers what actually happens: a heartbeat when the queue moves on, and a softer one when
  * a doctor in "Open today" gets a new first opening. Nothing is invented to make it move.
  */
+// Phones get no artwork: behind the cards on a small screen it is clutter, and it costs battery.
+// It is not mounted at all there, rather than hidden, so nothing renders out of sight.
+const WIDE = '(min-width: 760px)'
+const onWidth = (change: () => void) => {
+  const mq = window.matchMedia(WIDE)
+  mq.addEventListener('change', change)
+  return () => mq.removeEventListener('change', change)
+}
+const useShowArt = () =>
+  useSyncExternalStore(
+    onWidth,
+    () => window.matchMedia(WIDE).matches,
+    () => false,
+  )
+
 function usePulses(artRef: React.RefObject<CareArtHandle | null>, serving: number) {
   const lastServing = useRef(serving)
   const opening = openSoon()
