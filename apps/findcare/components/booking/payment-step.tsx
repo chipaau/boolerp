@@ -66,8 +66,7 @@ export function PaymentStep({
       {required && (
         <div className="rounded-xl bg-[var(--tint-butter-bg)] px-3.5 py-2.5 text-[12.5px] leading-normal text-[#6b5313]">
           {clinic.name}
-          {pc.deposit ? ` asks for a MVR ${amount} deposit` : ' asks for payment in advance'}. Upload your transfer receipt within {pc.windowH || 2} hours to keep
-          this time.
+          {pc.deposit ? ` asks for a MVR ${amount} deposit` : ' asks for payment in advance'}. Upload your transfer receipt within {pc.windowH || 2} hours to keep this time.
         </div>
       )}
       <div role="group" aria-label="How to pay" className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2">
@@ -84,7 +83,9 @@ export function PaymentStep({
                 on ? 'bg-white shadow-soft' : 'bg-wash-1',
               )}
             >
-              <span className={cn('flex size-[34px] shrink-0 items-center justify-center rounded-full', on ? 'bg-indigo-900 text-white' : 'bg-info-bg text-[var(--tint-lilac-fg)]')}>
+              <span
+                className={cn('flex size-[34px] shrink-0 items-center justify-center rounded-full', on ? 'bg-indigo-900 text-white' : 'bg-info-bg text-[var(--tint-lilac-fg)]')}
+              >
                 <Icon aria-hidden className="size-[15px]" strokeWidth={1.8} />
               </span>
               <span className="min-w-0">

@@ -28,7 +28,11 @@ export function QuickSearch() {
         placeholder="Doctor, specialty or clinic"
         className="min-w-0 flex-1 border-0 bg-transparent text-[13.5px] text-ink-900 outline-none placeholder:text-ink-400 [&::-webkit-search-cancel-button]:hidden"
       />
-      <button type="submit" aria-label="Search" className="flex h-9 min-w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-indigo-900 text-white hover:bg-indigo-950 min-[760px]:px-4">
+      <button
+        type="submit"
+        aria-label="Search"
+        className="flex h-9 min-w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-indigo-900 text-white hover:bg-indigo-950 min-[760px]:px-4"
+      >
         <span className="cta-label hidden text-[10.5px] min-[760px]:inline">Search</span>
         <ArrowRight aria-hidden className="size-[15px] min-[760px]:hidden" strokeWidth={2} />
       </button>

@@ -8,8 +8,7 @@ import { FactTile } from '@/components/ui/text'
 import { isSaved, toggleSaved } from '@/lib/data'
 import type { Doctor, Specialty } from '@/lib/data'
 
-const ages = (d: Doctor) =>
-  d.ageMin != null && d.ageMax != null ? `${d.ageMin}–${d.ageMax}` : d.ageMin != null ? `${d.ageMin}+` : d.ageMax != null ? `Up to ${d.ageMax}` : 'All'
+const ages = (d: Doctor) => (d.ageMin != null && d.ageMax != null ? `${d.ageMin}–${d.ageMax}` : d.ageMin != null ? `${d.ageMin}+` : d.ageMax != null ? `Up to ${d.ageMax}` : 'All')
 
 /** Who the doctor (or service) is: name, specialty, three facts, about and qualifications, and the pin. */
 export function ProfileCard({ doctor, spec, signedIn, signInHref }: { doctor: Doctor; spec?: Specialty; signedIn: boolean; signInHref: string }) {
@@ -17,7 +16,10 @@ export function ProfileCard({ doctor, spec, signedIn, signInHref }: { doctor: Do
   const service = doctor.kind === 'service'
   const saved = signedIn && isSaved(doctor.id)
   const label = !signedIn ? 'Sign in to pin' : saved ? 'Unpin from your doctors' : 'Pin to your doctors'
-  const langs = doctor.langs.split(',').map((l) => l.trim()).filter(Boolean)
+  const langs = doctor.langs
+    .split(',')
+    .map((l) => l.trim())
+    .filter(Boolean)
   return (
     <section className="glass flex flex-col gap-[18px] rounded-[22px] p-[22px]">
       <div className="flex items-center gap-3.5">

@@ -14,8 +14,7 @@ export const hash = (s: string) => {
 }
 
 /** A record by id, honestly typed: ids from a URL or saved data may name nothing. */
-export const lookup = <T>(records: Record<string, T>, id: string | null | undefined): T | undefined =>
-  id && Object.hasOwn(records, id) ? records[id] : undefined
+export const lookup = <T>(records: Record<string, T>, id: string | null | undefined): T | undefined => (id && Object.hasOwn(records, id) ? records[id] : undefined)
 
 export const uid = (prefix: string) => prefix + Math.random().toString(36).slice(2, 8)
 
@@ -66,8 +65,7 @@ export function slotTimes(se: Session): string[] {
 
 export const clinicOfBranch = (s: DemoState, branchId: string) => s.clinics[s.branches[branchId].clinicId]
 
-type NewAppointment = Pick<Appointment, 'sessionId' | 'patientId' | 'status' | 'source'> &
-  Partial<Pick<Appointment, 'time' | 'queueNo' | 'accountId' | 'notif' | 'reason' | 'ref'>>
+type NewAppointment = Pick<Appointment, 'sessionId' | 'patientId' | 'status' | 'source'> & Partial<Pick<Appointment, 'time' | 'queueNo' | 'accountId' | 'notif' | 'reason' | 'ref'>>
 
 const bookedBy = (source: Appointment['source']) =>
   source === 'online'
@@ -103,13 +101,7 @@ export function addAppointment(s: DemoState, o: NewAppointment): Appointment {
   return a
 }
 
-export function addNotification(
-  s: DemoState,
-  apptId: string | null,
-  type: NotificationType,
-  status: Notification['status'],
-  offerId: string | null = null,
-): Notification {
+export function addNotification(s: DemoState, apptId: string | null, type: NotificationType, status: Notification['status'], offerId: string | null = null): Notification {
   const id = uid('n')
   const n: Notification = {
     id,

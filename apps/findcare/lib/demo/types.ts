@@ -230,16 +230,7 @@ export type Offer = {
 }
 
 export type NotificationType =
-  | 'confirmation'
-  | 'request_received'
-  | 'request_offered'
-  | 'reminder'
-  | 'cancellation'
-  | 'reschedule'
-  | 'session_cancelled'
-  | 'waitlist_offer'
-  | 'waitlist_accepted'
-  | 'waitlisted'
+  'confirmation' | 'request_received' | 'request_offered' | 'reminder' | 'cancellation' | 'reschedule' | 'session_cancelled' | 'waitlist_offer' | 'waitlist_accepted' | 'waitlisted'
 
 export type Notification = {
   id: string

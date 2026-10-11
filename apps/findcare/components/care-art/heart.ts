@@ -15,7 +15,8 @@ const VERTEX = `attribute vec2 p; varying vec2 vP; void main(){ vP=p*.5+.5; gl_P
 const FRAGMENT = `precision highp float;
 varying vec2 vP;
 uniform sampler2D uImg, uMask; uniform vec2 uRes, uImgSize, uClk, uTilt; uniform vec3 uHole[4];
-uniform float uAtr, uBeat, uClkT;
+uniform float uAtr, uBeat, uClkT, uDraw;
+float grain(vec2 p){ return fract(sin(dot(floor(p), vec2(12.9898,78.233)))*43758.5453); }
 float hm(vec2 uv){ vec2 f = (uv*uImgSize - vec2(133.,119.))/.558/vec2(1024.,1700.); return (f.x>0.&&f.x<1.&&f.y>0.&&f.y<1.) ? texture2D(uMask,f).a : 0.; }
 void main(){
   float ca=uRes.x/uRes.y, ia=uImgSize.x/uImgSize.y;
@@ -38,6 +39,12 @@ void main(){
   for(int i=0;i<4;i++) hole *= smoothstep(uHole[i].z*.8, uHole[i].z, length(ip-uHole[i].xy));
   a *= max(hole, keep);
   a *= smoothstep(0.,.015,min(min(uv.x,1.-uv.x),min(uv.y,1.-uv.y)));
+  // the intro grows the drawing out from the heart's centre, the way Pathways grows its tree from
+  // the root: firm lines lead, the lighter shading follows, with a little pencil grain; the paper
+  // fill settles in last
+  float order = length((uv-vec2(.48,.52))*vec2(ia,1.))*1.5 + grain(ip/2.5)*.18 - a*.25;
+  a *= clamp((uDraw*1.2 - order)/.12, 0., 1.);
+  fillA *= smoothstep(.55,1.,uDraw);
   float inkA = a; vec3 pre = c*a + paper*fillA*(1.-a); a = a + fillA*(1.-a);
   // the rose signal travels out along the vessels from where it started
   float pink = smoothstep(.02,.1, c.r-c.g) * smoothstep(.08,.35,inkA) * smoothstep(.5,.9,m);
@@ -59,6 +66,10 @@ const loadImage = (src: string) =>
   })
 
 /** A beat's envelope: a quick rise and a slower fall. */
+const ease = (k: number) => 1 - Math.pow(1 - k, 3)
+const back = (k: number) => 1 + 2.6 * Math.pow(k - 1, 3) + 1.6 * Math.pow(k - 1, 2)
+const clamp = (x: number) => Math.min(1, Math.max(0, x))
+
 const envelope = (x: number) => (x < 0 ? 0 : Math.exp(-x * 5.5) * (1 - Math.exp(-x * 28)))
 
 export const createHeart: ArtFactory = async (container, { reducedMotion }): Promise<CareArt> => {
@@ -142,7 +153,8 @@ export const createHeart: ArtFactory = async (container, { reducedMotion }): Pro
     extraBeat = now
   }
 
-  const drawOverlay = (t: number) => {
+  /** t: seconds since load, for the breathing; intro: seconds into the intro, for drawing in. */
+  const drawOverlay = (t: number, intro: number) => {
     g.clearRect(0, 0, overlay.width, overlay.height)
     const { s, ox, oy } = fit()
     const at = (x: number, y: number, k: number): [number, number] => [ox + x * s + tilt.x * 6 * k * dpr, oy + y * s + tilt.y * 5 * k * dpr]
@@ -152,7 +164,9 @@ export const createHeart: ArtFactory = async (container, { reducedMotion }): Pro
     g.lineWidth = Math.max(1, s * 1.1)
     g.beginPath()
     g.moveTo(ax, ay)
-    g.lineTo(bx, by)
+    // the tick line draws itself in once the drawing has grown, as Pathways' arcs do
+    const k = ease(clamp((intro - 2) / 0.6))
+    g.lineTo(ax + (bx - ax) * k, ay + (by - ay) * k)
     g.stroke()
     // the rose marker breathes
     const breath = 0.5 + 0.5 * Math.sin(t * 1.6)
@@ -160,7 +174,7 @@ export const createHeart: ArtFactory = async (container, { reducedMotion }): Pro
     g.strokeStyle = `rgba(214,92,143,${0.28 * (1 - breath)})`
     g.lineWidth = dpr
     g.beginPath()
-    g.arc(mx, my, (5 + breath * 7) * s, 0, Math.PI * 2)
+    g.arc(mx, my, (5 + breath * 7) * s * Math.max(0, back(clamp((intro - 2.4) / 0.5))), 0, Math.PI * 2)
     g.stroke()
   }
 
@@ -178,9 +192,13 @@ export const createHeart: ArtFactory = async (container, { reducedMotion }): Pro
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
     const t0 = performance.now() / 1000
+    // reduced motion: the drawing is simply there
+    const INTRO_S = reducedMotion ? 0 : 2.4
     const frame = () => {
       const t = performance.now() / 1000
       const el = t - t0
+      const draw = INTRO_S ? Math.min(1, el / INTRO_S) : 1
+      const drawn = 1 - (1 - draw) ** 3
       const on = inHeart(ptr.x, ptr.y)
       hover += (Number(on) - hover) * 0.03
       // reduced motion: one still frame of the drawing; a tap or pulse still sends its signal
@@ -198,12 +216,14 @@ export const createHeart: ArtFactory = async (container, { reducedMotion }): Pro
       gl.uniform2f(u('uTilt'), tilt.x, tilt.y)
       gl.uniform2f(u('uClk'), signal.at[0], signal.at[1])
       gl.uniform1f(u('uClkT'), t - signal.t)
-      gl.uniform1f(u('uBeat'), beat)
+      gl.uniform1f(u('uDraw'), drawn)
+      // the beat starts as the drawing finishes
+      gl.uniform1f(u('uBeat'), beat * drawn ** 4)
       gl.uniform1f(u('uAtr'), atria)
       gl.clearColor(0, 0, 0, 0)
       gl.clear(gl.COLOR_BUFFER_BIT)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
-      drawOverlay(reducedMotion ? 0 : el)
+      drawOverlay(reducedMotion ? 0 : el, INTRO_S ? el : 9)
       overlay.style.cursor = on ? 'pointer' : 'default'
       raf = requestAnimationFrame(frame)
     }

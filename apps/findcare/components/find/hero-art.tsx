@@ -17,10 +17,12 @@ export function HeroArt({ compact }: { compact: boolean }) {
           EASE,
           'left-1/2 opacity-30',
           compact ? 'top-[40%] scale-30' : 'top-1/2 scale-55',
-          compact ? 'min-[760px]:top-[52%] min-[760px]:left-[88%] min-[760px]:scale-30 min-[760px]:opacity-30' : 'min-[760px]:left-[70%] min-[760px]:scale-80 min-[760px]:opacity-72',
+          compact
+            ? 'min-[760px]:top-[52%] min-[760px]:left-[88%] min-[760px]:scale-30 min-[760px]:opacity-30'
+            : 'min-[760px]:left-[70%] min-[760px]:scale-80 min-[760px]:opacity-72',
         )}
       >
-        <CareArt kind="pathways" intro className="size-full" />
+        <CareArt kind="pathways" className="size-full" />
       </div>
     </div>
   )

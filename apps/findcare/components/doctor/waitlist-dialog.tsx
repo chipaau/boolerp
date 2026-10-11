@@ -81,9 +81,7 @@ export function WaitlistDialog({
         </>
       ) : joined ? (
         <>
-          <p className="text-[14px] leading-[1.55] text-ink-700">
-            You’re on the list. We’ll text {phone} when something opens. You can leave it any time in Appointments.
-          </p>
+          <p className="text-[14px] leading-[1.55] text-ink-700">You’re on the list. We’ll text {phone} when something opens. You can leave it any time in Appointments.</p>
           <Link href={routes.appointments({ waitlist: joined.id })} className="self-start text-[12.5px] font-medium text-[var(--tint-lilac-fg)] no-underline hover:text-indigo-900">
             View waitlist in Appointments →
           </Link>
@@ -131,8 +129,7 @@ export function WaitlistDialog({
             </div>
           )}
           <p className="text-center text-[12px] leading-normal text-ink-500">
-            No date to pick — you’re in line for this doctor, and we offer you the first opening that fits. You get 30 minutes to take it before it goes to
-            the next person.
+            No date to pick — you’re in line for this doctor, and we offer you the first opening that fits. You get 30 minutes to take it before it goes to the next person.
           </p>
         </>
       )}

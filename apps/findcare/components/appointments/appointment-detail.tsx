@@ -34,7 +34,8 @@ function paymentFact(a: Appointment) {
 function noteFor(a: Appointment, upcoming: boolean) {
   const clinic = clinicOf(a.branchId)
   if (a.pay?.method === 'transfer' && a.pay.refund) return `Refund of MVR ${a.pay.refund.amount} is on its way to your bank account. It usually takes 3–5 working days.`
-  if (a.status === 'requested') return `The clinic will offer you an exact time${a.preference && a.preference !== 'any' ? ` in the ${a.preference}` : ''} and text you. You take it here.`
+  if (a.status === 'requested')
+    return `The clinic will offer you an exact time${a.preference && a.preference !== 'any' ? ` in the ${a.preference}` : ''} and text you. You take it here.`
   if (a.status === 'waitlisted') return 'That day filled up, so you’re on the waitlist. We’ll text you if a place opens.'
   if (a.status === 'needs_reschedule') {
     const reason = sessionFor(a.sessionId).reason
@@ -84,7 +85,13 @@ export function AppointmentDetail({ appt: a, id, onMessage, onClose }: { appt: A
             setConfirming(false)
             if (r.ok) {
               onClose()
-              onMessage(isRequest ? 'Request withdrawn.' : refundOnCancel && a.pay ? `Visit cancelled. Your MVR ${a.pay.amount} is on its way back to your bank account.` : 'Visit cancelled. The time goes back to other patients.')
+              onMessage(
+                isRequest
+                  ? 'Request withdrawn.'
+                  : refundOnCancel && a.pay
+                    ? `Visit cancelled. Your MVR ${a.pay.amount} is on its way back to your bank account.`
+                    : 'Visit cancelled. The time goes back to other patients.',
+              )
             } else onMessage('This visit can no longer be cancelled online.')
           }}
         />

@@ -39,7 +39,12 @@ export function BranchPicker({ doctor, branchId, onPick }: { doctor: Doctor; bra
             onClick={() => onPick(id)}
             className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors outline-none hover-glass focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
-            <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full transition-colors', on ? 'bg-indigo-900 text-white' : 'bg-info-bg text-[var(--tint-lilac-fg)]')}>
+            <span
+              className={cn(
+                'flex size-9 shrink-0 items-center justify-center rounded-full transition-colors',
+                on ? 'bg-indigo-900 text-white' : 'bg-info-bg text-[var(--tint-lilac-fg)]',
+              )}
+            >
               <MapPin aria-hidden className="size-[15px]" strokeWidth={1.8} />
             </span>
             <span className="min-w-0 flex-1">
@@ -61,7 +66,12 @@ export function BranchPicker({ doctor, branchId, onPick }: { doctor: Doctor; bra
           <span className="block text-ink-500">{branch.hours}</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <a href={maps} target="_blank" rel="noopener noreferrer" className={buttonClass({ variant: 'primary', size: 'sm' }, 'h-8 px-[13px] text-[12px] font-medium tracking-normal normal-case')}>
+          <a
+            href={maps}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClass({ variant: 'primary', size: 'sm' }, 'h-8 px-[13px] text-[12px] font-medium tracking-normal normal-case')}
+          >
             Directions ↗
           </a>
           {branch.phone && (

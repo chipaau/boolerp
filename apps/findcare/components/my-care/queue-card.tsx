@@ -45,7 +45,10 @@ export function QueueCard({ account, visit }: { account: Account; visit: Appoint
         {Array.from({ length: places }, (_, i) => (
           <span
             key={i}
-            className={cn('h-3.5 rounded-[4px] transition-colors duration-300', i < serving ? 'bg-indigo-900' : i === mine - 1 ? 'bg-white shadow-[inset_0_0_0_1.5px_var(--indigo-500)]' : 'bg-line-2')}
+            className={cn(
+              'h-3.5 rounded-[4px] transition-colors duration-300',
+              i < serving ? 'bg-indigo-900' : i === mine - 1 ? 'bg-white shadow-[inset_0_0_0_1.5px_var(--indigo-500)]' : 'bg-line-2',
+            )}
           />
         ))}
       </div>

@@ -48,8 +48,7 @@ export const toMin = (time: string) => {
   return h * 60 + m
 }
 
-export const toTime = (min: number) =>
-  `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`
+export const toTime = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`
 
 /** When a session or slot starts, as an instant. */
 export const startMs = (date: string, time: string) => Date.parse(`${date}T${time}:00Z`) - MVT_MS

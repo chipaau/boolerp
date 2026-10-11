@@ -61,4 +61,10 @@ export function clinicSummaries(rows = search({})): ClinicSummary[] {
 }
 
 /** The cities with a branch, for area filters. */
-export const cities = () => [...new Set(Object.values(db().branches).map((b) => b.city).filter(Boolean))]
+export const cities = () => [
+  ...new Set(
+    Object.values(db().branches)
+      .map((b) => b.city)
+      .filter(Boolean),
+  ),
+]

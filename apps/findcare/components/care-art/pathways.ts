@@ -21,7 +21,7 @@ const back = (k: number) => 1 + 2.6 * Math.pow(k - 1, 3) + 1.6 * Math.pow(k - 1,
 const clamp = (x: number) => Math.min(1, Math.max(0, x))
 const polar = (r: number, deg: number): [number, number] => [CX + r * Math.cos((deg * Math.PI) / 180), CY + r * Math.sin((deg * Math.PI) / 180)]
 
-export const createPathways: ArtFactory = (container, { intro, reducedMotion }): CareArt => {
+export const createPathways: ArtFactory = (container, { reducedMotion }): CareArt => {
   // a seeded random, so the tree grows the same every time
   let seed = 9
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
@@ -82,7 +82,13 @@ export const createPathways: ArtFactory = (container, { intro, reducedMotion }):
 
   // specialty rings
   const RINGS = RING_RADII.map((r, i) =>
-    stroke('circle', { cx: CX, cy: CY, r, 'stroke-width': i === 2 ? 0.9 : 0.6, 'stroke-opacity': 0.42, transform: `rotate(${-90 - i * 25} ${CX} ${CY})` }, rings, 0.3 + i * 0.12, 1.3),
+    stroke(
+      'circle',
+      { cx: CX, cy: CY, r, 'stroke-width': i === 2 ? 0.9 : 0.6, 'stroke-opacity': 0.42, transform: `rotate(${-90 - i * 25} ${CX} ${CY})` },
+      rings,
+      0.3 + i * 0.12,
+      1.3,
+    ),
   )
   stroke('circle', { cx: CX, cy: CY, r: 40, 'stroke-width': 0.6, 'stroke-opacity': 0.35, 'stroke-dasharray': '2 3' }, rings, 0.9, 0.8)
 
@@ -140,7 +146,18 @@ export const createPathways: ArtFactory = (container, { intro, reducedMotion }):
     const y2 = y + Math.sin(a) * len
     const mx = (x + x2) / 2 + Math.cos(a + Math.PI / 2) * len * bend * 0.3
     const my = (y + y2) / 2 + Math.sin(a + Math.PI / 2) * len * bend * 0.3
-    stroke('path', { d: `M${x.toFixed(1)} ${y.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`, 'stroke-width': Math.max(0.35, w).toFixed(2), 'stroke-linecap': 'round', 'stroke-opacity': 0.9 }, tree, t0, len / SPEED)
+    stroke(
+      'path',
+      {
+        d: `M${x.toFixed(1)} ${y.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`,
+        'stroke-width': Math.max(0.35, w).toFixed(2),
+        'stroke-linecap': 'round',
+        'stroke-opacity': 0.9,
+      },
+      tree,
+      t0,
+      len / SPEED,
+    )
     const t1 = t0 + len / SPEED
     if (depth >= maxDepth || len < 5) {
       tips.push([x2, y2, t1])
@@ -161,7 +178,17 @@ export const createPathways: ArtFactory = (container, { intro, reducedMotion }):
     for (let i = 0; i < 9; i++) {
       const nx = CX + Math.sin(i * 1.3 + 1) * (14 - i) + (rnd() - 0.5) * 8
       const ny = y - 36
-      stroke('path', { d: `M${x.toFixed(1)} ${y.toFixed(1)} Q${(x + (rnd() - 0.5) * 18).toFixed(1)} ${(y - 18).toFixed(1)} ${nx.toFixed(1)} ${ny.toFixed(1)}`, 'stroke-width': w.toFixed(2), 'stroke-linecap': 'round' }, tree, t, 36 / SPEED)
+      stroke(
+        'path',
+        {
+          d: `M${x.toFixed(1)} ${y.toFixed(1)} Q${(x + (rnd() - 0.5) * 18).toFixed(1)} ${(y - 18).toFixed(1)} ${nx.toFixed(1)} ${ny.toFixed(1)}`,
+          'stroke-width': w.toFixed(2),
+          'stroke-linecap': 'round',
+        },
+        tree,
+        t,
+        36 / SPEED,
+      )
       t += 36 / SPEED
       x = nx
       y = ny
@@ -174,7 +201,9 @@ export const createPathways: ArtFactory = (container, { intro, reducedMotion }):
     for (let k = 0; k < 5; k++) branch(CX, CY + 300, Math.PI / 2 + (k - 2) * 0.45 + (rnd() - 0.5) * 0.2, 22 + rnd() * 12, 2.2, 3, 1.0, 6)
     // your visit: a target on the trunk
     const [ax, ay] = trunk[5]
-    ;[22, 14, 7].forEach((r, i) => stroke('circle', { cx: ax, cy: ay, r, 'stroke-width': 0.7, 'stroke-opacity': 0.6 + i * 0.1, transform: `rotate(-90 ${ax} ${ay})` }, tree, 2.2 + i * 0.1, 0.6))
+    ;[22, 14, 7].forEach((r, i) =>
+      stroke('circle', { cx: ax, cy: ay, r, 'stroke-width': 0.7, 'stroke-opacity': 0.6 + i * 0.1, transform: `rotate(-90 ${ax} ${ay})` }, tree, 2.2 + i * 0.1, 0.6),
+    )
     pop({ cx: ax, cy: ay, r: 3.2, fill: ACCENT }, tree, 2.5)
   }
   tips.forEach(([x, y, t], i) => {
@@ -192,7 +221,11 @@ export const createPathways: ArtFactory = (container, { intro, reducedMotion }):
       const r = kind === 3 ? 7 : kind === 2 ? 4.5 : 3.2
       const g = mk<SVGGElement>('g', {}, orbit)
       const halo = mk<SVGCircleElement>('circle', { cx: 0, cy: 0, r: 0, fill: 'none', stroke: ACCENT, 'stroke-width': 1, opacity: 0 }, g)
-      pop({ cx: 0, cy: 0, r, fill: kind === 3 ? 'url(#pw-pearl)' : kind === 1 ? '#FFFFFF' : INK, stroke: INK, 'stroke-width': kind === 3 ? 0.5 : 0.8 }, g, 2.2 + ORBITERS.length * 0.05)
+      pop(
+        { cx: 0, cy: 0, r, fill: kind === 3 ? 'url(#pw-pearl)' : kind === 1 ? '#FFFFFF' : INK, stroke: INK, 'stroke-width': kind === 3 ? 0.5 : 0.8 },
+        g,
+        2.2 + ORBITERS.length * 0.05,
+      )
       if (kind === 3) mk('circle', { cx: 0, cy: 0, r: r + 5, fill: 'none', stroke: INK, 'stroke-width': 0.5, 'stroke-opacity': 0.5 }, g)
       ORBITERS.push({ g, halo, ring, a0, sp: (ring % 2 ? -1 : 1) * (1.4 + rnd() * 1.8) })
     }
@@ -213,7 +246,19 @@ export const createPathways: ArtFactory = (container, { intro, reducedMotion }):
     const y = CY + Math.sin(a) * r * 0.95
     if (y < 70 || y > 860) continue
     const filled = rnd() < 0.5
-    pop({ cx: x.toFixed(1), cy: y.toFixed(1), r: Number((1.2 + rnd() * 2.6).toFixed(1)), fill: filled ? INK : '#fff', stroke: INK, 'stroke-width': 0.6, 'fill-opacity': filled ? 0.8 : 1 }, orbit, 2.3 + rnd() * 0.6)
+    pop(
+      {
+        cx: x.toFixed(1),
+        cy: y.toFixed(1),
+        r: Number((1.2 + rnd() * 2.6).toFixed(1)),
+        fill: filled ? INK : '#fff',
+        stroke: INK,
+        'stroke-width': 0.6,
+        'fill-opacity': filled ? 0.8 : 1,
+      },
+      orbit,
+      2.3 + rnd() * 0.6,
+    )
   }
 
   // ---------- animation
@@ -227,7 +272,7 @@ export const createPathways: ArtFactory = (container, { intro, reducedMotion }):
   const pulses: Record<number, number> = {}
   const target = { x: 0, y: 0 }
   const drift = { x: 0, y: 0 }
-  let start = performance.now() - (intro && !reducedMotion ? 0 : 1e5)
+  let start = performance.now() - (reducedMotion ? 1e5 : 0)
   let raf = 0
 
   const frame = (now: number) => {
@@ -285,4 +330,3 @@ export const createPathways: ArtFactory = (container, { intro, reducedMotion }):
     },
   }
 }
-

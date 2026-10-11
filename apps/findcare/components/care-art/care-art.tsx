@@ -23,11 +23,9 @@ const onControl = (target: EventTarget | null) => target instanceof Element && !
  * The chosen artwork, drawn behind the dashboard. It sits under the cards (pointer-events none), so
  * it follows the pointer and taps through window listeners, measured against its own box.
  */
-export function CareArt({ kind, intro, className, ref }: { kind: ArtKind; intro: boolean; className?: string; ref?: Ref<CareArtHandle> }) {
+export function CareArt({ kind, className, ref }: { kind: ArtKind; className?: string; ref?: Ref<CareArtHandle> }) {
   const box = useRef<HTMLDivElement>(null)
   const art = useRef<Art | null>(null)
-  // The intro is decided once, when My Care opens; switching art later redraws it without one.
-  const playIntro = useRef(intro)
 
   useImperativeHandle(ref, () => ({
     pulse: (k, i) => art.current?.pulse(k, i),
@@ -45,8 +43,7 @@ export function CareArt({ kind, intro, className, ref }: { kind: ArtKind; intro:
       const factory = await LOADERS[k]()
       if (!wanted()) return
       try {
-        const a = await factory(el, { intro: playIntro.current, reducedMotion: reducedMotion() })
-        playIntro.current = false
+        const a = await factory(el, { reducedMotion: reducedMotion() })
         if (!wanted()) return a.dispose()
         mounted = art.current = a
       } catch {

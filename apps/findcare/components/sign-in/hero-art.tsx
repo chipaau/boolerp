@@ -10,7 +10,7 @@ import { CareArt } from '@/components/care-art/care-art'
 export function HeroArt({ className }: { className?: string }) {
   return (
     <div aria-hidden className={cn('pointer-events-none', className)}>
-      <CareArt kind="pathways" intro className="absolute inset-0" />
+      <CareArt kind="pathways" className="absolute inset-0" />
     </div>
   )
 }

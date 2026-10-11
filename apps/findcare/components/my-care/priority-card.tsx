@@ -54,7 +54,11 @@ export function PriorityCard({ account }: { account: Account }) {
             {card.cta.label}
           </Link>
         )}
-        <button type="button" onClick={dismiss} className="cursor-pointer border-0 bg-transparent p-0 text-[10.5px] font-medium tracking-[0.18em] text-indigo-300 uppercase hover:text-white">
+        <button
+          type="button"
+          onClick={dismiss}
+          className="cursor-pointer border-0 bg-transparent p-0 text-[10.5px] font-medium tracking-[0.18em] text-indigo-300 uppercase hover:text-white"
+        >
           {card.dismiss.label}
         </button>
       </div>

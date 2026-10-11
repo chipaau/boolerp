@@ -22,5 +22,9 @@ export function SectionHead({ overline, title, link }: { overline: ReactNode; ti
 
 /** The quiet glass box a list shows when nothing matches. */
 export function EmptyNote({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('rounded-[20px] bg-glass p-7 text-center text-[14px] leading-normal text-ink-600 shadow-[inset_0_0_0_1px_rgba(255,255,255,.95)]', className)}>{children}</div>
+  return (
+    <div className={cn('rounded-[20px] bg-glass p-7 text-center text-[14px] leading-normal text-ink-600 shadow-[inset_0_0_0_1px_rgba(255,255,255,.95)]', className)}>
+      {children}
+    </div>
+  )
 }

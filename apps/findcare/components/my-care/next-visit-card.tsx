@@ -34,27 +34,27 @@ export function NextVisitCard({ account, visit, hasHistory }: { account: Account
   const forWhom = visit.patientId !== account.holderId ? ` · ${s.patients[visit.patientId].name.split(' ')[0]}` : ''
   const at = visit.time ?? (visit.queueNo ? `Queue #${visit.queueNo}` : sessionFor(visit.sessionId).start)
   return (
-    <section aria-label="Next appointment" className="glass rounded-[20px] p-[18px]">
+    <section aria-label="Next appointment" className="glass rounded-[20px] p-4">
       <div className="flex items-center justify-between">
         <Overline>Next appointment</Overline>
         <Overline className="text-indigo-500">{relativeDay(visit.date)}</Overline>
       </div>
-      <div className="mt-3.5 flex items-center gap-3">
-        <Avatar initials={doctor.initials || initialsOf(doctor.name)} tint={spec?.tint ?? 'blue'} size={44} />
+      <div className="mt-3 flex items-center gap-3">
+        <Avatar initials={doctor.initials || initialsOf(doctor.name)} tint={spec?.tint ?? 'blue'} size={40} />
         <div className="min-w-0">
           <div className="text-[15px] font-semibold">{doctor.name}</div>
           <div className="mt-[3px] text-[12px] text-ink-600">{[spec?.name, s.clinics[branch.clinicId].name].filter(Boolean).join(' · ')}</div>
         </div>
       </div>
-      <div className="mt-3.5 grid grid-cols-2 gap-2">
-        <FactTile size="lg" label="Date" value={day === 'Today' || day === 'Tomorrow' ? day : fmtDate(visit.date)} />
-        <FactTile size="lg" label={`${branch.city}${forWhom}`} value={at} />
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <FactTile label="Date" value={day === 'Today' || day === 'Tomorrow' ? day : fmtDate(visit.date)} />
+        <FactTile label={`${branch.city}${forWhom}`} value={at} />
       </div>
-      <p className="mt-3.5 flex items-center gap-2 text-[12px] leading-[1.45] text-ink-600">
+      <p className="mt-3 flex items-center gap-2 text-[12px] leading-[1.45] text-ink-600">
         <Clock aria-hidden className="size-3.5 shrink-0 text-indigo-500" strokeWidth={1.8} />
         {visitNote(visit)}
       </p>
-      <div className="mt-4 flex gap-2">
+      <div className="mt-3 flex gap-2">
         <a href={directionsHref(visit.branchId)} target="_blank" rel="noopener noreferrer" className={buttonClass({ size: 'md' }, 'flex-1 text-[10.5px]')}>
           Directions
         </a>

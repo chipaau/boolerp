@@ -2,13 +2,7 @@ import type { ComponentProps } from 'react'
 import { cn } from '@workspace/ui/lib/utils'
 
 /** A filter or choice pill; selected is solid indigo. */
-export function Chip({
-  selected,
-  size = 'md',
-  className,
-  type = 'button',
-  ...props
-}: ComponentProps<'button'> & { selected?: boolean; size?: 'sm' | 'md' }) {
+export function Chip({ selected, size = 'md', className, type = 'button', ...props }: ComponentProps<'button'> & { selected?: boolean; size?: 'sm' | 'md' }) {
   return (
     <button
       type={type}

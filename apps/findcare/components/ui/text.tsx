@@ -7,10 +7,10 @@ export function Overline({ size = 'md', className, ...props }: ComponentProps<'d
 }
 
 /** A labelled fact: the value, with its label under it. */
-export function FactTile({ label, value, size = 'md', className }: { label: string; value: ReactNode; size?: 'md' | 'lg'; className?: string }) {
+export function FactTile({ label, value, className }: { label: string; value: ReactNode; className?: string }) {
   return (
     <div className={cn('min-w-0 rounded-xl bg-wash-1 px-3 py-2.5', className)}>
-      <div className={cn('truncate leading-[1.2] font-semibold text-ink-900', size === 'lg' ? 'text-[14px]' : 'text-[13.5px]')}>{value}</div>
+      <div className="truncate text-[13.5px] leading-[1.2] font-semibold text-ink-900">{value}</div>
       <div className="mt-0.5 text-[9.5px] font-medium tracking-[0.18em] text-ink-500 uppercase">{label}</div>
     </div>
   )

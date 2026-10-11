@@ -45,7 +45,13 @@ export function PatientPicker({
   allowNew?: boolean
 }) {
   const name = (p: Patient) => (p.id === holderId ? 'Me' : p.name.split(' ')[0] || 'Family member')
-  const blocked = people.map((p) => ({ p, msg: (() => { const el = eligible(doctorId, p.dob); return el.ok ? null : el.msg })() }))
+  const blocked = people.map((p) => ({
+    p,
+    msg: (() => {
+      const el = eligible(doctorId, p.dob)
+      return el.ok ? null : el.msg
+    })(),
+  }))
   const notes = blocked.filter((x) => x.msg)
   return (
     <div className="flex flex-col gap-2">
@@ -70,9 +76,7 @@ export function PatientPicker({
           </Chip>
         )}
       </div>
-      {notes.length > 0 && (
-        <p className="text-[12px] text-ink-500">{notes.map(({ p, msg }) => `${p.id === holderId ? 'You' : p.name.split(' ')[0]}: ${msg}`).join(' ')}</p>
-      )}
+      {notes.length > 0 && <p className="text-[12px] text-ink-500">{notes.map(({ p, msg }) => `${p.id === holderId ? 'You' : p.name.split(' ')[0]}: ${msg}`).join(' ')}</p>}
       {value.kind === 'new' && (
         <div className="grid gap-2 pt-1 min-[760px]:grid-cols-2">
           <label className="flex flex-col gap-1 min-[760px]:col-span-2">

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
-import { Suspense  } from 'react'
-import type {ReactNode} from 'react';
+import { Suspense } from 'react'
+import type { ReactNode } from 'react'
 import { Header } from '@/components/shell/header'
 import { Glows } from '@/components/shell/page'
 import { TabBar } from '@/components/shell/tab-bar'

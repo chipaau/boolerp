@@ -14,9 +14,7 @@ export const ART_KINDS: { kind: ArtKind; label: string }[] = [
 export type PulseKind = 'queue' | 'slot'
 
 export type ArtOptions = {
-  /** Play the drawing-in intro (first visit) rather than appear finished. */
-  intro: boolean
-  /** Prefer stillness: no intro, gentler motion. */
+  /** Prefer stillness: no drawing-in intro, gentler motion. Otherwise every artwork draws in as it loads. */
   reducedMotion: boolean
 }
 

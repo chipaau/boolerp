@@ -304,17 +304,7 @@ function DoctorView({ doctor, account, query }: { doctor: Doctor; account: Accou
         </div>
       </div>
 
-      {waitlistOpen && (
-        <WaitlistDialog
-          open
-          onOpenChange={setWaitlistOpen}
-          doctor={doctor}
-          branchId={branchId}
-          account={account}
-          resched={resched}
-          signInHref={waitlistSignIn}
-        />
-      )}
+      {waitlistOpen && <WaitlistDialog open onOpenChange={setWaitlistOpen} doctor={doctor} branchId={branchId} account={account} resched={resched} signInHref={waitlistSignIn} />}
     </Page>
   )
 }

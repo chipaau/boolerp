@@ -25,8 +25,7 @@ const newKey = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) 
 const digits = (phone: string) => phone.replace(/[^\d+]/g, '')
 
 /** The picked time, as one line: "Tomorrow · 10:30", "Today · Queue 16:00–19:00". */
-export const pickLine = (se: Session, pick: SlotPick) =>
-  `${fmtDay(se.date)} · ${pick.time || `${se.mode === 'request' ? 'Request · ' : 'Queue '}${se.start}–${se.end}`}`
+export const pickLine = (se: Session, pick: SlotPick) => `${fmtDay(se.date)} · ${pick.time || `${se.mode === 'request' ? 'Request · ' : 'Queue '}${se.start}–${se.end}`}`
 
 /**
  * Finishing a booking for the picked time: who it is for, the reason and where texts go, then how to
@@ -145,7 +144,10 @@ export function BookingPanel({
   }
 
   return (
-    <section aria-label={resched ? 'New time' : 'Your booking'} className="flex animate-fc-rise flex-col gap-4 rounded-[22px] bg-white/86 p-5 shadow-[inset_0_0_0_1px_rgba(255,255,255,.95),0_20px_50px_rgba(106,92,176,.14)]">
+    <section
+      aria-label={resched ? 'New time' : 'Your booking'}
+      className="flex animate-fc-rise flex-col gap-4 rounded-[22px] bg-white/86 p-5 shadow-[inset_0_0_0_1px_rgba(255,255,255,.95),0_20px_50px_rgba(106,92,176,.14)]"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <Overline>{resched ? 'New time' : 'Your booking'}</Overline>
@@ -183,7 +185,10 @@ export function BookingPanel({
             <div className="flex items-center gap-2.5">
               <div aria-hidden className="flex gap-1">
                 {steps.map((x, k) => (
-                  <span key={x} className={cn('h-1 rounded-full transition-[width,background-color] duration-250', k === i ? 'w-[18px]' : 'w-1.5', k <= i ? 'bg-indigo-900' : 'bg-line-3')} />
+                  <span
+                    key={x}
+                    className={cn('h-1 rounded-full transition-[width,background-color] duration-250', k === i ? 'w-[18px]' : 'w-1.5', k <= i ? 'bg-indigo-900' : 'bg-line-3')}
+                  />
                 ))}
               </div>
               <span className="eyebrow flex-1 text-ink-500">

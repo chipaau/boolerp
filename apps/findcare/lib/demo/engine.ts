@@ -6,18 +6,7 @@
 import { addAppointment, addNotification, clinicOfBranch, isLive, lookup, sessionById, sessionsBetween, slotTimes, uid } from './records'
 import { commit, getState } from './store'
 import { addDays, age, fmtDate, nowMin, nowMs, periodOf, startMs, toMin, toTime, today } from './time'
-import type {
-  Account,
-  Appointment,
-  DayPeriod,
-  DemoState,
-  Doctor,
-  Offer,
-  Receipt,
-  Session,
-  SlotPick,
-  WaitlistEntry,
-} from './types'
+import type { Account, Appointment, DayPeriod, DemoState, Doctor, Offer, Receipt, Session, SlotPick, WaitlistEntry } from './types'
 
 const HOLD_MS = 5 * 60e3
 const OFFER_MS = 30 * 60e3
@@ -423,7 +412,14 @@ function bookIn(s: DemoState, o: BookingRequest): BookingResult {
   let pid = o.patient.id
   if (!pid) {
     pid = uid('p')
-    s.patients[pid] = { id: pid, name: o.patient.name ?? '', dob: o.patient.dob ?? null, phone: o.patient.phone ?? null, accountId: o.accountId, relation: o.patient.relation ?? null }
+    s.patients[pid] = {
+      id: pid,
+      name: o.patient.name ?? '',
+      dob: o.patient.dob ?? null,
+      phone: o.patient.phone ?? null,
+      accountId: o.accountId,
+      relation: o.patient.relation ?? null,
+    }
     if (o.accountId && o.patient.relation && o.patient.relation !== 'self') s.accounts[o.accountId].familyIds.push(pid)
   }
   const el = eligibleFor(s.doctors[se.doctorId], s.patients[pid].dob)
@@ -446,7 +442,17 @@ function bookIn(s: DemoState, o: BookingRequest): BookingResult {
   const needPay = !isRequest && method === 'transfer' && pc.prepay === 'required'
   const status = isRequest ? 'requested' : needPay ? (o.receipt ? 'payment_review' : 'pending_payment') : 'confirmed'
 
-  const a = addAppointment(s, { sessionId: se.id, time: o.pick.time ?? null, queueNo, patientId: pid, accountId: o.accountId, status, source: 'online', notif: o.notif, reason: o.reason })
+  const a = addAppointment(s, {
+    sessionId: se.id,
+    time: o.pick.time ?? null,
+    queueNo,
+    patientId: pid,
+    accountId: o.accountId,
+    status,
+    source: 'online',
+    notif: o.notif,
+    reason: o.reason,
+  })
   a.createdAt = nowMs()
   a.history = [{ at: nowMs(), text: isRequest ? 'Request sent online — awaiting clinic' : 'Booked online', by: o.by ?? 'Patient' }]
   if (isRequest) {
@@ -566,7 +572,9 @@ function offerNextIn(s: DemoState, sessionId: string, queueNo: number | null, ti
   const se = sessionById(s, sessionId)
   if (se.status !== 'active' || se.date < today()) return null
   const period = periodOf(se.start)
-  const tried = Object.values(s.offers).filter((o) => o.sessionId === sessionId && (o.time ?? null) === (time ?? null)).map((o) => o.waitlistId)
+  const tried = Object.values(s.offers)
+    .filter((o) => o.sessionId === sessionId && (o.time ?? null) === (time ?? null))
+    .map((o) => o.waitlistId)
   const next = Object.values(s.waitlist)
     .filter(
       (w) =>
@@ -614,9 +622,18 @@ export function joinWaitlist(o: WaitlistRequest) {
       s.accounts[o.accountId].familyIds.push(pid)
     }
     s.waitlist[id] = {
-      id, accountId: o.accountId, patientId: pid, doctorId: o.doctorId, branchId: o.branchId,
-      kind: o.linkedApptId ? 'earlier' : 'new', linkedApptId: o.linkedApptId ?? null, dates: o.dates, sessions: o.sessions,
-      status: 'active', createdAt: nowMs(), notif: o.notif,
+      id,
+      accountId: o.accountId,
+      patientId: pid,
+      doctorId: o.doctorId,
+      branchId: o.branchId,
+      kind: o.linkedApptId ? 'earlier' : 'new',
+      linkedApptId: o.linkedApptId ?? null,
+      dates: o.dates,
+      sessions: o.sessions,
+      status: 'active',
+      createdAt: nowMs(),
+      notif: o.notif,
     }
     return s.waitlist[id]
   })
@@ -749,4 +766,3 @@ export function updateAccount(accountId: string, patch: Partial<Pick<Account, 'n
     Object.assign(s.accounts[accountId], patch)
   })
 }
-

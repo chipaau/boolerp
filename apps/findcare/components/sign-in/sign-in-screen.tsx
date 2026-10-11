@@ -85,7 +85,10 @@ export function SignInScreen() {
 
   return (
     <main className="relative min-h-[calc(100svh-var(--header-h))] overflow-x-hidden [background:radial-gradient(ellipse_70%_80%_at_68%_50%,#fffcfa_0%,#fbf5f2_55%,#f4ece8_100%)] min-[760px]:h-[calc(100svh-var(--header-h))] min-[760px]:overflow-hidden">
-      <div aria-hidden className="pointer-events-none absolute -top-[24%] -left-[14%] h-[70%] w-[56%] rounded-full [background:radial-gradient(closest-side,rgba(199,188,238,.38),rgba(199,188,238,0))]" />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-[24%] -left-[14%] h-[70%] w-[56%] rounded-full [background:radial-gradient(closest-side,rgba(199,188,238,.38),rgba(199,188,238,0))]"
+      />
       {/* The 1440×900 drawing, centred on the right-hand space (on phones, faint behind the top). */}
       <HeroArt className="absolute -top-[300px] left-1/2 h-[900px] w-[1440px] -translate-x-1/2 scale-[.6] opacity-30 min-[760px]:top-1/2 min-[760px]:left-[calc((var(--page-inset)+464px)/2+50%)] min-[760px]:-translate-y-1/2 min-[760px]:scale-[.8] min-[760px]:opacity-[.72]" />
       {/* The form starts where every page's content does (Find care's search card), and its column is
@@ -164,9 +167,17 @@ function SignUp({ via, onDone, onRestart }: { via: Provider; onDone: () => void;
 
   return (
     <>
-      <Intro kicker={`Create your account · ${via}`} title={<>One last <span className="font-semibold text-ink-900">step.</span></>} nowrap>
-        Check your name and add your mobile. Clinics use your name on bookings and your mobile for reminders, queue updates and earlier-slot offers. You only do this
-        once. Next time, just tap {via}.
+      <Intro
+        kicker={`Create your account · ${via}`}
+        title={
+          <>
+            One last <span className="font-semibold text-ink-900">step.</span>
+          </>
+        }
+        nowrap
+      >
+        Check your name and add your mobile. Clinics use your name on bookings and your mobile for reminders, queue updates and earlier-slot offers. You only do this once. Next
+        time, just tap {via}.
       </Intro>
       <div className="glass rounded-[22px] p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,.95),0_20px_50px_rgba(106,92,176,.12)]">
         {sent ? (

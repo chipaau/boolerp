@@ -12,7 +12,10 @@ export function BranchList({ branches }: { branches: Branch[] }) {
       {branches.map((b) => {
         const area = b.name.replace(' — ', ' · ')
         return (
-          <div key={b.id} className="flex items-start gap-3.5 rounded-[20px] bg-white/72 p-[18px] shadow-[0_12px_30px_rgba(106,92,176,.07)] backdrop-blur-[18px] backdrop-saturate-[1.2]">
+          <div
+            key={b.id}
+            className="flex items-start gap-3.5 rounded-[20px] bg-white/72 p-[18px] shadow-[0_12px_30px_rgba(106,92,176,.07)] backdrop-blur-[18px] backdrop-saturate-[1.2]"
+          >
             <span aria-hidden className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-[var(--tint-lilac-bg)] text-[var(--tint-lilac-fg)]">
               <MapPin className="size-[15px]" strokeWidth={1.8} />
             </span>

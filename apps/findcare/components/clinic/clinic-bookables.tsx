@@ -32,7 +32,12 @@ export function ClinicBookables({ clinicName, rows }: { clinicName: string; rows
   const needle = q.trim().toLowerCase()
   const seen = new Set<string>()
   const list = rows
-    .filter((r) => (kind === 'all' || (kind === 'svc') === isService(r)) && (spec === 'all' || r.spec.id === spec) && (!needle || `${r.doctor.name} ${r.spec.name}`.toLowerCase().includes(needle)))
+    .filter(
+      (r) =>
+        (kind === 'all' || (kind === 'svc') === isService(r)) &&
+        (spec === 'all' || r.spec.id === spec) &&
+        (!needle || `${r.doctor.name} ${r.spec.name}`.toLowerCase().includes(needle)),
+    )
     .filter((r) => {
       if (seen.has(r.doctor.id)) return false
       seen.add(r.doctor.id)
@@ -81,7 +86,7 @@ export function ClinicBookables({ clinicName, rows }: { clinicName: string; rows
               <Dropdown
                 variant="ghost"
                 size="sm"
-               
+
                 label="Specialty"
                 value={spec}
                 onChange={setSpec}
@@ -91,9 +96,7 @@ export function ClinicBookables({ clinicName, rows }: { clinicName: string; rows
           }
         />
       </div>
-      {list.length === 0 && (
-        <EmptyNote className="p-6">Nothing matches that here.</EmptyNote>
-      )}
+      {list.length === 0 && <EmptyNote className="p-6">Nothing matches that here.</EmptyNote>}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(330px,100%),1fr))] gap-[18px]">
         {list.map((r) => (
           <ListingCard

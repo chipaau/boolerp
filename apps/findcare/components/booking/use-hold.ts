@@ -24,9 +24,12 @@ export function useHold(signedIn: boolean) {
     current.current = held
   }, [held])
 
-  useEffect(() => () => {
-    if (current.current) release(current.current.id)
-  }, [])
+  useEffect(
+    () => () => {
+      if (current.current) release(current.current.id)
+    },
+    [],
+  )
 
   // Countdown, once a second while something is held.
   useEffect(() => {

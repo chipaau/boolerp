@@ -53,9 +53,7 @@ export function AdvancedList({ initial }: { initial: ListKind }) {
 
   const needle = q.trim().toLowerCase()
   const clinics =
-    list === 'clinics'
-      ? clinicSummaries().filter((c) => (!needle || `${c.name} ${c.places}`.toLowerCase().includes(needle)) && (area === 'all' || c.places.includes(area)))
-      : []
+    list === 'clinics' ? clinicSummaries().filter((c) => (!needle || `${c.name} ${c.places}`.toLowerCase().includes(needle)) && (area === 'all' || c.places.includes(area))) : []
   const rows =
     list === 'clinics'
       ? []
@@ -114,7 +112,6 @@ export function AdvancedList({ initial }: { initial: ListKind }) {
           }
         />
         <Dropdown
-         
           label="Area"
           icon={<MapPin className="size-4" strokeWidth={1.8} />}
           value={area}

@@ -16,4 +16,3 @@ export function useNavHref() {
   const { account } = useAccount()
   return (n: NavItem) => (n.signedIn && !account ? routes.signIn(n.path) : n.path)
 }
-

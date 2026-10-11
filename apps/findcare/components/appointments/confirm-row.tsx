@@ -4,7 +4,19 @@ import { useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 
 /** An inline "are you sure?" that takes the place of a detail panel's actions until answered. */
-export function ConfirmRow({ question, confirmLabel, keepLabel, onConfirm, onKeep }: { question: string; confirmLabel: string; keepLabel: string; onConfirm: () => void; onKeep: () => void }) {
+export function ConfirmRow({
+  question,
+  confirmLabel,
+  keepLabel,
+  onConfirm,
+  onKeep,
+}: {
+  question: string
+  confirmLabel: string
+  keepLabel: string
+  onConfirm: () => void
+  onKeep: () => void
+}) {
   const keep = useRef<HTMLButtonElement>(null)
   // Focus the safe answer, so a stray Enter keeps the visit.
   useEffect(() => keep.current?.focus(), [])

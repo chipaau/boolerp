@@ -111,7 +111,10 @@ export function Family({ account }: { account: Account }) {
           />
         )
       })}
-      <Link href={`${routes.account()}#add`} className="flex items-center gap-2.5 rounded-[14px] px-2.5 py-[9px] text-[12.5px] font-medium text-ink-700 no-underline hover-glass hover:text-ink-900">
+      <Link
+        href={`${routes.account()}#add`}
+        className="flex items-center gap-2.5 rounded-[14px] px-2.5 py-[9px] text-[12.5px] font-medium text-ink-700 no-underline hover-glass hover:text-ink-900"
+      >
         <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_1px_rgba(30,10,24,.18)]">
           <Plus className="size-3.5" strokeWidth={2} />
         </span>

@@ -44,10 +44,7 @@ export function ProfileCard({ account, holder, onEdit }: { account: Account; hol
           </span>
           <span aria-hidden className={cn('relative h-[22px] w-[38px] shrink-0 rounded-full transition-colors duration-200', sms ? 'bg-indigo-900' : 'bg-[rgba(30,10,24,.15)]')}>
             <span
-              className={cn(
-                'absolute top-[3px] size-4 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.2)] transition-[left] duration-200',
-                sms ? 'left-[19px]' : 'left-[3px]',
-              )}
+              className={cn('absolute top-[3px] size-4 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.2)] transition-[left] duration-200', sms ? 'left-[19px]' : 'left-[3px]')}
             />
           </span>
         </button>

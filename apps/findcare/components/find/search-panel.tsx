@@ -78,7 +78,11 @@ export function SearchPanel({
         </Link>
       </div>
 
-      <form role="search" onSubmit={submit} className="flex h-[54px] min-w-0 items-center gap-2 rounded-full bg-white pr-1.5 pl-[18px] shadow-[inset_0_0_0_1px_rgba(30,10,24,.1)] focus-within:ring-2 focus-within:ring-indigo-500/40">
+      <form
+        role="search"
+        onSubmit={submit}
+        className="flex h-[54px] min-w-0 items-center gap-2 rounded-full bg-white pr-1.5 pl-[18px] shadow-[inset_0_0_0_1px_rgba(30,10,24,.1)] focus-within:ring-2 focus-within:ring-indigo-500/40"
+      >
         <Search aria-hidden className="size-[17px] shrink-0 text-ink-500" strokeWidth={1.8} />
         <input
           value={q}
@@ -120,7 +124,7 @@ export function SearchPanel({
         <Dropdown
           variant="chip"
           size="sm"
-         
+
           label={tab === 'svc' ? 'All services' : 'All specialties'}
           icon={<ListFilter className="size-3.5" strokeWidth={1.8} />}
           value={spec ?? ''}

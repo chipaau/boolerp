@@ -66,7 +66,7 @@ function backdropTexture() {
   return new THREE.CanvasTexture(c)
 }
 
-export const createCell: ArtFactory = (container, { intro, reducedMotion }): CareArt => {
+export const createCell: ArtFactory = (container, { reducedMotion }): CareArt => {
   const canvas = document.createElement('canvas')
   canvas.setAttribute('aria-hidden', 'true')
   canvas.style.cssText = 'display:block;width:100%;height:100%'
@@ -133,7 +133,9 @@ export const createCell: ArtFactory = (container, { intro, reducedMotion }): Car
     uniforms: { uT: { value: 0 } },
     transparent: true,
     depthWrite: false,
-    vertexShader: NOISE + `uniform float uT; varying vec3 vN,vV; void main(){ vec3 p=normalize(position); float n=snoise(p*1.4+uT*.1)*.14+snoise(p*3.2-uT*.08)*.05; vec3 d=position*(1.+n); vec4 mv=modelViewMatrix*vec4(d,1.); vV=-mv.xyz; vN=normalMatrix*p; gl_Position=projectionMatrix*mv; }`,
+    vertexShader:
+      NOISE +
+      `uniform float uT; varying vec3 vN,vV; void main(){ vec3 p=normalize(position); float n=snoise(p*1.4+uT*.1)*.14+snoise(p*3.2-uT*.08)*.05; vec3 d=position*(1.+n); vec4 mv=modelViewMatrix*vec4(d,1.); vV=-mv.xyz; vN=normalMatrix*p; gl_Position=projectionMatrix*mv; }`,
     fragmentShader: `varying vec3 vN,vV; void main(){ vec3 n=normalize(vN), v=normalize(vV); float f=1.-max(dot(n,v),0.);
       float mot=fract(sin(dot(floor(n*9.),vec3(12.9,78.2,37.7)))*43758.5);
       vec3 c=mix(vec3(.60,.52,.76),vec3(.80,.74,.92),f)-mot*.06; c+=pow(max(dot(reflect(-normalize(vec3(-.4,.7,.6)),n),v),0.),16.)*.15;
@@ -324,7 +326,7 @@ export const createCell: ArtFactory = (container, { intro, reducedMotion }): Car
   const tmp = new THREE.Vector3()
   const hitL = new THREE.Vector3()
   const dq = new THREE.Quaternion()
-  let start = performance.now() - (intro && !reducedMotion ? 0 : 1e5)
+  let start = performance.now() - (reducedMotion ? 1e5 : 0)
   let last = performance.now()
   let spin = 0
   // reduced motion: the cell holds still; time stops, so taps and pulses leave it as it is

@@ -36,10 +36,20 @@ export function DateStrip({ days, value, onPick }: { days: DayInfo[]; value: str
       <div className="flex items-center justify-between gap-2.5">
         <h2 className="eyebrow text-ink-500">Availability</h2>
         <div className="flex items-center gap-1.5">
-          <IconButton label="Earlier dates" size={34} onClick={() => scroll(-300)} className="hidden bg-white shadow-[inset_0_0_0_1px_rgba(30,10,24,.1)] hover:bg-indigo-50 min-[760px]:flex">
+          <IconButton
+            label="Earlier dates"
+            size={34}
+            onClick={() => scroll(-300)}
+            className="hidden bg-white shadow-[inset_0_0_0_1px_rgba(30,10,24,.1)] hover:bg-indigo-50 min-[760px]:flex"
+          >
             <ChevronLeft className="size-3.5" strokeWidth={2} />
           </IconButton>
-          <IconButton label="Later dates" size={34} onClick={() => scroll(300)} className="hidden bg-white shadow-[inset_0_0_0_1px_rgba(30,10,24,.1)] hover:bg-indigo-50 min-[760px]:flex">
+          <IconButton
+            label="Later dates"
+            size={34}
+            onClick={() => scroll(300)}
+            className="hidden bg-white shadow-[inset_0_0_0_1px_rgba(30,10,24,.1)] hover:bg-indigo-50 min-[760px]:flex"
+          >
             <ChevronRight className="size-3.5" strokeWidth={2} />
           </IconButton>
           <MonthPicker days={days} value={value} onPick={onPick} />

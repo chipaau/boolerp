@@ -30,8 +30,8 @@ const ART_FIT: Record<ArtKind, string> = {
 }
 
 /**
- * The intro plays once per browser — the art draws in, then the greeting, then the cards — and again
- * whenever the address asks for it with ?intro=1. Never with reduced motion.
+ * The art draws in every time it loads. The dashboard's intro (the greeting, then the cards) plays once
+ * per browser, and again whenever the address asks for it with ?intro=1. Never with reduced motion.
  */
 function useIntro() {
   const replay = useSearchParams().get('intro') === '1'
@@ -100,7 +100,7 @@ function Dashboard({ account, holder }: { account: Account; holder: Patient }) {
     // and on wide screens the search stays to hand at the bottom of the centre column.
     <main className="relative grid w-full grid-cols-[minmax(0,1fr)] gap-x-7 gap-y-[22px] px-[var(--page-pad)] pt-2 pb-28 min-[760px]:pb-16 min-[1100px]:grid-cols-[clamp(300px,23vw,344px)_minmax(0,1fr)_clamp(300px,23vw,344px)] min-[1100px]:grid-rows-[auto_1fr] min-[1100px]:px-[clamp(28px,4vw,72px)] min-[1100px]:pt-2 min-[1100px]:pb-[22px]">
       <div className="pointer-events-none fixed inset-0 -z-[1]">
-        <CareArt ref={artRef} kind={art} intro={play} className={cn('absolute inset-0 transition-opacity duration-500', ART_FIT[art])} />
+        <CareArt ref={artRef} kind={art} className={cn('absolute inset-0 transition-opacity duration-500', ART_FIT[art])} />
       </div>
       {/* Phones and tablets: top right, clear of the tab bar. Wide screens: under the art, above the search. */}
       <ArtSwitch value={art} onChange={setArt} className={cn('absolute top-2 right-[var(--page-pad)] z-[3] min-[1100px]:hidden', reveal(stage, 1))} />

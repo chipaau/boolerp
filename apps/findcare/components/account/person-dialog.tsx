@@ -27,8 +27,7 @@ export function PersonDialog({ account, target, open, onClose }: { account: Acco
       {confirming && id ? (
         <>
           <p className="text-[14px] leading-[1.55] text-ink-700">
-            Remove <b className="font-semibold text-ink-900">{person?.name}</b> from your family? Their past visits stay on record; you just won’t be able to book for
-            them.
+            Remove <b className="font-semibold text-ink-900">{person?.name}</b> from your family? Their past visits stay on record; you just won’t be able to book for them.
           </p>
           <div className="flex gap-2">
             <Button
@@ -111,7 +110,9 @@ function PersonForm({ account, target, onDone, onRemove }: { account: Account; t
         </fieldset>
       )}
       <div className="mt-1 flex items-center gap-3">
-        <Button type="submit" size="lg" className="flex-1">{target.kind === 'new' ? 'Add to family' : 'Save changes'}</Button>
+        <Button type="submit" size="lg" className="flex-1">
+          {target.kind === 'new' ? 'Add to family' : 'Save changes'}
+        </Button>
         {target.kind === 'member' && (
           <Button variant="danger" size="lg" className="px-3.5" onClick={onRemove}>
             Remove

@@ -6,12 +6,7 @@ import { cn } from '@workspace/ui/lib/utils'
  * banners and inner panels. Interactive cards brighten on hover; nothing lifts or scales.
  */
 export function Card({ interactive, className, ...props }: ComponentProps<'div'> & { interactive?: boolean }) {
-  return (
-    <div
-      className={cn('glass rounded-[20px] px-5 py-[18px] text-ink-900', interactive && 'cursor-pointer transition-colors hover-glass', className)}
-      {...props}
-    />
-  )
+  return <div className={cn('glass rounded-[20px] px-5 py-[18px] text-ink-900', interactive && 'cursor-pointer transition-colors hover-glass', className)} {...props} />
 }
 
 /** An inner panel: a 3.5% ink wash, no shadow. */
