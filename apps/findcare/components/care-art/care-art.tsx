@@ -23,7 +23,7 @@ const onControl = (target: EventTarget | null) => target instanceof Element && !
  * The chosen artwork, drawn behind the dashboard. It sits under the cards (pointer-events none), so
  * it follows the pointer and taps through window listeners, measured against its own box.
  */
-export function CareArt({ kind, className, ref }: { kind: ArtKind; className?: string; ref?: Ref<CareArtHandle> }) {
+export function CareArt({ kind, introSpeed = 1, className, ref }: { kind: ArtKind; introSpeed?: number; className?: string; ref?: Ref<CareArtHandle> }) {
   const box = useRef<HTMLDivElement>(null)
   const art = useRef<Art | null>(null)
 
@@ -43,7 +43,7 @@ export function CareArt({ kind, className, ref }: { kind: ArtKind; className?: s
       const factory = await LOADERS[k]()
       if (!wanted()) return
       try {
-        const a = await factory(el, { reducedMotion: reducedMotion() })
+        const a = await factory(el, { reducedMotion: reducedMotion(), introSpeed })
         if (!wanted()) return a.dispose()
         mounted = art.current = a
       } catch {

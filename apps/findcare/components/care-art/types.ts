@@ -16,6 +16,8 @@ export type PulseKind = 'queue' | 'slot'
 export type ArtOptions = {
   /** Prefer stillness: no drawing-in intro, gentler motion. Otherwise every artwork draws in as it loads. */
   reducedMotion: boolean
+  /** How fast the drawing-in intro plays: 1 is the design's pace. Pathways honours it. */
+  introSpeed: number
 }
 
 export interface CareArt {

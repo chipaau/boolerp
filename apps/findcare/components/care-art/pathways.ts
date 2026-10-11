@@ -21,7 +21,7 @@ const back = (k: number) => 1 + 2.6 * Math.pow(k - 1, 3) + 1.6 * Math.pow(k - 1,
 const clamp = (x: number) => Math.min(1, Math.max(0, x))
 const polar = (r: number, deg: number): [number, number] => [CX + r * Math.cos((deg * Math.PI) / 180), CY + r * Math.sin((deg * Math.PI) / 180)]
 
-export const createPathways: ArtFactory = (container, { reducedMotion }): CareArt => {
+export const createPathways: ArtFactory = (container, { reducedMotion, introSpeed }): CareArt => {
   // a seeded random, so the tree grows the same every time
   let seed = 9
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
@@ -276,7 +276,7 @@ export const createPathways: ArtFactory = (container, { reducedMotion }): CareAr
   let raf = 0
 
   const frame = (now: number) => {
-    const el = (now - start) / 1000
+    const el = ((now - start) / 1000) * introSpeed
     const t = reducedMotion ? 0 : now / 1000
     for (const d of DRAW) d.e.style.strokeDashoffset = String(d.len * (1 - ease(clamp((el - d.d) / d.dur))))
     for (const p of POP) {
