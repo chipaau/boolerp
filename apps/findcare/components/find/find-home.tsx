@@ -70,15 +70,16 @@ export function FindHome() {
   return (
     <>
       {/* The hero spans the window, as designed: the art sits at 70% of the window's width and may
-          spread to its edges, while the search card stays on the page's content column. */}
+          spread to its edges, while the search card stays on the page's content column. On phones it
+          is only as tall as its content and starts at the top, so the search is in reach at once. */}
       <section
         className={cn(
           'relative -mt-5 ml-[calc(50%-50vw)] w-screen transition-[height] duration-[900ms] ease-[cubic-bezier(.2,.8,.2,1)] min-[760px]:-mt-7',
-          active ? 'h-[250px] min-[760px]:h-[290px]' : 'h-[min(720px,calc(100svh-var(--header-h)))]',
+          active ? 'h-[250px] min-[760px]:h-[290px]' : 'min-[760px]:h-[min(720px,calc(100svh-var(--header-h)))]',
         )}
       >
         <HeroArt compact={active} />
-        <div className={cn('page relative z-[5] flex h-full flex-col', active ? 'justify-start pt-5' : 'justify-center')}>
+        <div className={cn('page relative z-[5] flex h-full flex-col', active ? 'justify-start pt-5' : 'justify-start pt-8 pb-10 min-[760px]:justify-center min-[760px]:py-0')}>
           <div className={cn('w-full', active ? 'max-w-[640px]' : 'max-w-[520px]')}>
             <div className={cn('overflow-hidden transition-[max-height,opacity] duration-700', active ? 'max-h-0 opacity-0' : 'max-h-60 opacity-100')}>
               <div className="pb-7">

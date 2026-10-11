@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@workspace/ui/lib/utils'
 import { SignedIn } from '@/components/shell/signed-in'
 import { Overline } from '@/components/ui/text'
@@ -9,6 +9,7 @@ import { accountAppointments, queueLive, sessionFor, today } from '@/lib/data'
 import type { Account, Patient } from '@/lib/data'
 import { ArtSwitch, useArtKind } from '@/components/care-art/art-switch'
 import { CareArt } from '@/components/care-art/care-art'
+import { useShowArt } from '@/components/care-art/use-show-art'
 import type { CareArtHandle } from '@/components/care-art/care-art'
 import type { ArtKind } from '@/components/care-art/types'
 import { openSoon, subline, todaysQueue, upcomingVisits } from './dashboard'
@@ -138,21 +139,6 @@ function Dashboard({ account, holder }: { account: Account; holder: Patient }) {
  * The art answers what actually happens: a heartbeat when the queue moves on, and a softer one when
  * a doctor in "Open today" gets a new first opening. Nothing is invented to make it move.
  */
-// Phones get no artwork: behind the cards on a small screen it is clutter, and it costs battery.
-// It is not mounted at all there, rather than hidden, so nothing renders out of sight.
-const WIDE = '(min-width: 760px)'
-const onWidth = (change: () => void) => {
-  const mq = window.matchMedia(WIDE)
-  mq.addEventListener('change', change)
-  return () => mq.removeEventListener('change', change)
-}
-const useShowArt = () =>
-  useSyncExternalStore(
-    onWidth,
-    () => window.matchMedia(WIDE).matches,
-    () => false,
-  )
-
 function usePulses(artRef: React.RefObject<CareArtHandle | null>, serving: number) {
   const lastServing = useRef(serving)
   const opening = openSoon()

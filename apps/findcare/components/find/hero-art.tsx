@@ -2,24 +2,22 @@
 
 import { cn } from '@workspace/ui/lib/utils'
 import { CareArt } from '@/components/care-art/care-art'
+import { useShowArt } from '@/components/care-art/use-show-art'
 
 // The care diagram behind Find care's search card, as the prototype places it: a 1440×900 drawing
 // centred on a point, scaled. At rest it sits large and to the right; once a search runs it glides
-// to the right edge and shrinks out of the way. On phones it stays centred and faint.
+// to the right edge and shrinks out of the way. Phones have none.
 const EASE = 'ease-[cubic-bezier(.2,.8,.2,1)]'
 
 export function HeroArt({ compact }: { compact: boolean }) {
+  if (!useShowArt()) return null
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
       <div
         className={cn(
           'absolute h-[900px] w-[1440px] -translate-x-1/2 -translate-y-1/2 transition-[left,top,scale,opacity] duration-[900ms]',
           EASE,
-          'left-1/2 opacity-30',
-          compact ? 'top-[40%] scale-30' : 'top-1/2 scale-55',
-          compact
-            ? 'min-[760px]:top-[52%] min-[760px]:left-[88%] min-[760px]:scale-30 min-[760px]:opacity-30'
-            : 'min-[760px]:left-[70%] min-[760px]:scale-80 min-[760px]:opacity-72',
+          compact ? 'top-[52%] left-[88%] scale-30 opacity-30' : 'top-1/2 left-[70%] scale-80 opacity-72',
         )}
       >
         <CareArt kind="pathways" className="size-full" />
