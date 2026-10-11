@@ -1,27 +1,20 @@
-import { Card, CardDescription, CardHeader, CardTitle } from '@workspace/ui/components/card'
+'use client'
 
-/**
- * A placeholder, deliberately: this scaffolds the app, its routing and its place in CI, and nothing
- * is yet decided about what FindCare's public side says or does. Writing marketing copy here would
- * put claims about a product into the repository ahead of anyone agreeing them — the one thing a
- * scaffold should not do. Replace this page; the shell around it is what this change is for.
- */
-export default function Home() {
+import { useSearchParams } from 'next/navigation'
+import { Page } from '@/components/shell/page'
+import { AdvancedList } from '@/components/find/advanced-list'
+import { FindHome } from '@/components/find/find-home'
+import { FindFooter } from '@/components/find/idle-sections'
+import { isListKind } from '@/components/find/list-kind'
+
+/** Find care: the search home, or with ?all= one of its full lists (doctors, services, clinics). */
+export default function FindCarePage() {
+  const all = useSearchParams().get('all')
   return (
-    <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-6 px-6 py-24">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">Bool</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight">FindCare</h1>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Nothing here yet</CardTitle>
-          <CardDescription>
-            The Next.js app, its development host and its checks are in place. What this page says is
-            still to be decided.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    </main>
+    // At least a screen tall, so the footer sits at the very bottom when the content is short.
+    <Page className="min-h-[calc(100svh-var(--header-h))] gap-0 pb-0 min-[760px]:pb-0">
+      <div className="flex-1 pb-16">{isListKind(all) ? <AdvancedList initial={all} /> : <FindHome />}</div>
+      <FindFooter />
+    </Page>
   )
 }
