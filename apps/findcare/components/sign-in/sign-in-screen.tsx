@@ -89,12 +89,12 @@ export function SignInScreen() {
         aria-hidden
         className="pointer-events-none absolute -top-[24%] -left-[14%] h-[70%] w-[56%] rounded-full [background:radial-gradient(closest-side,rgba(199,188,238,.38),rgba(199,188,238,0))]"
       />
-      {/* The 1440×900 drawing, centred on the right-hand space (on phones, faint behind the top). */}
+      {/* The 1440×900 drawing, centred on the right-hand space. */}
       <HeroArt className="absolute top-1/2 left-[calc((var(--page-inset)+464px)/2+50%)] h-[900px] w-[1440px] -translate-x-1/2 -translate-y-1/2 scale-[.8] opacity-[.72]" />
-      {/* The form starts where every page's content does (Find care's search card), and its column is
+      {/* Centred a little above the middle on phones (the optical centre). The form starts where every page's content does (Find care's search card), and its column is
           that inset plus the form's own width, so the form is never squeezed on a wide screen. */}
       <div className="relative flex min-h-[calc(100svh-var(--header-h))] flex-col pr-[var(--page-pad)] pb-7 pl-[var(--page-inset)] min-[760px]:h-full min-[760px]:w-[calc(var(--page-inset)+464px)] min-[760px]:pr-0 min-[760px]:pb-[34px]">
-        <div className="flex w-full max-w-[392px] flex-1 flex-col justify-center gap-[30px] py-6">
+        <div className="flex w-full max-w-[392px] flex-1 flex-col justify-center gap-6 pt-6 pb-[10svh] min-[760px]:gap-[30px] min-[760px]:py-6">
           {via ? (
             <SignUp key={via} via={via} onDone={() => router.replace(next)} onRestart={() => setVia(null)} />
           ) : (
@@ -114,7 +114,7 @@ export function SignInScreen() {
               <div className="flex flex-col gap-2.5">
                 <ProviderButtons onProvider={pick} />
                 <p className="mt-1.5 text-center text-[12px] leading-normal text-pretty text-ink-500">
-                  New here? We’ll ask for your mobile once, so clinics can reach you. After that, just tap to sign in.
+                  New here? We’ll ask for your mobile once, so clinics can reach you.<span className="max-[759px]:hidden"> After that, just tap to sign in.</span>
                 </p>
               </div>
             </>
