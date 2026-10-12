@@ -1,4 +1,6 @@
 import { Button } from '@workspace/ui/components/button'
+import { SiteHeader } from '@/components/site-header'
+import { Hero } from '@/features/hero/hero'
 import {
   Card,
   CardContent,
@@ -22,47 +24,11 @@ const modules = [
 export default function Home() {
   return (
     <>
-      <header className="sticky top-0 z-10 border-b border-border/60 bg-background/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <a href="/" className="font-semibold tracking-tight">
-            Bool<span className="text-muted-foreground"> ERP</span>
-          </a>
-          <nav className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
-            <a href="#modules" className="hover:text-foreground">Modules</a>
-            <a href="#deployment" className="hover:text-foreground">Deployment</a>
-            <a href="#contact" className="hover:text-foreground">Contact</a>
-          </nav>
-          <Button size="sm" render={<a href="#contact" />}>
-            Get started
-          </Button>
-        </div>
-      </header>
+      {/* over the hero photo */}
+      <SiteHeader className="absolute inset-x-0 top-0" />
 
       <main>
-        {/* Hero */}
-        <section className="mx-auto max-w-6xl px-6 py-24 text-center">
-          <p className="mb-4 text-sm font-medium text-muted-foreground">
-            Multi-tenant ERP · Maldives
-          </p>
-          <h1 className="mx-auto max-w-3xl text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-            Run your institution on one system.
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground">
-            Bool ERP unifies inventory, HR, procurement, and performance for councils, ministries,
-            health facilities, and companies — as cloud SaaS, or self-hosted on your own infrastructure.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" render={<a href="#contact" />}>
-              Get started
-            </Button>
-            <Button size="lg" variant="outline" render={<a href="#contact" />}>
-              Talk to us
-            </Button>
-          </div>
-          <p className="mt-6 text-sm text-muted-foreground">
-            Built for councils, ministries, and health facilities — bilingual Dhivehi &amp; English.
-          </p>
-        </section>
+        <Hero />
 
         {/* Modules */}
         <section id="modules" className="border-t border-border/60 bg-muted/20">

@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Lato is the single typeface (300 / 400 / 700 / 900) shared with the app via packages/ui */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

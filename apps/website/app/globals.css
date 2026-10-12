@@ -2,3 +2,57 @@
 
 /* scan this app's own source (the shared UI package is scanned by its own globals.css) */
 @source "../";
+
+/*
+  The bee (features/hero/bee.tsx). `data-pose` on the bee shows one clip; the rest of the time
+  only the still is visible.
+*/
+[data-bee] [data-clip] {
+  opacity: 0;
+}
+[data-bee][data-pose="fly"] [data-clip="fly"],
+[data-bee][data-pose="swoop"] [data-clip="swoop"],
+[data-bee][data-pose="land"] [data-clip="land"],
+[data-bee][data-pose="rest"] [data-clip="rest"] {
+  opacity: 1;
+}
+
+/*
+  The opening. An inline script in hero.tsx sets html[data-hero-motion="pending"] unless the
+  visitor prefers reduced motion; these are the states the GSAP timeline starts from, and it sets
+  "done" when it ends. The server render without the flag is the finished hero, which is what
+  reduced-motion and no-JavaScript visitors see. If the controller never starts, the fallback
+  clears everything after a few seconds. The buttons stay visible and clickable throughout.
+*/
+@keyframes hero-fallback {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes hero-fallback-focus {
+  to {
+    opacity: 0;
+  }
+}
+html[data-hero-motion="pending"] {
+  [data-hero-focus] {
+    opacity: 1;
+    animation: hero-fallback-focus 0.6s 6s forwards;
+  }
+  [data-bee],
+  [data-hero-reveal="copy"],
+  [data-hero-reveal="dashboard"] {
+    opacity: 0;
+  }
+  [data-hero-reveal="copy"] {
+    transform: translateY(14px);
+  }
+  [data-hero-reveal="cta"] {
+    opacity: 0.4;
+    transform: translateY(8px);
+  }
+  [data-bee],
+  [data-hero-reveal] {
+    animation: hero-fallback 0.6s 6s forwards;
+  }
+}

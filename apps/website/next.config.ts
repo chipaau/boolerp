@@ -2,7 +2,7 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   // compile the shared TS/TSX UI package
-  transpilePackages: ['@workspace/ui'],
+  transpilePackages: ['@workspace/ui', '@workspace/assets'],
   // allow dev asset requests when served behind Traefik at *.bool.test
   allowedDevOrigins: ['website.bool.test', 'bool.test', 'www.bool.test'],
 }
