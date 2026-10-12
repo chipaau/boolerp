@@ -37,7 +37,7 @@ function listApi(items: unknown[], total = items.length) {
 const search = () => screen.getByLabelText('Filter by name, code, or slug')
 
 describe('the tenants list', () => {
-  it('shows the API tenants, with creating and the lifecycle actions disabled', async () => {
+  it('shows the API tenants, with the lifecycle actions disabled', async () => {
     listApi([tenant(1), tenant(2, { status: 'suspended', parentId: tenant(1).id, parentName: 'Tenant 1', workspaceHost: null })])
     renderRoute('/tenants')
 
@@ -47,7 +47,7 @@ describe('the tenants list', () => {
     expect(within(row2).getByText('suspended')).toBeInTheDocument()
     expect(within(row2).getByText('Tenant 1')).toBeInTheDocument() // its parent, named by the API (C188)
     expect(within(row2).getByRole('button', { name: 'Reactivate' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'New tenant' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'New tenant' })).toBeEnabled()
     expect(screen.getByText('2 of 2 tenants')).toBeInTheDocument()
   })
 
@@ -129,6 +129,30 @@ describe('the tenants list', () => {
     const before = calls
     await userEvent.click(screen.getByText('Try again'))
     await waitFor(() => expect(calls).toBeGreaterThan(before))
+  })
+
+  it('opens the create form as a preview that sends nothing to the API', async () => {
+    listApi([tenant(1)])
+    const writes: string[] = []
+    server.events.on('request:start', ({ request }) => {
+      if (request.method !== 'GET') writes.push(`${request.method} ${new URL(request.url).pathname}`)
+    })
+    renderRoute('/tenants')
+    await screen.findByText('T1 · tenant-1')
+
+    await userEvent.click(screen.getByRole('button', { name: 'New tenant' }))
+    const form = await screen.findByRole('dialog')
+    expect(within(form).getByText('Who they are')).toBeInTheDocument()
+    await userEvent.type(within(form).getByLabelText('Name'), 'Test Ministry')
+    await userEvent.type(within(form).getByLabelText('Code'), 'TMIN')
+    await userEvent.type(within(form).getByLabelText('Owner name'), 'Aishath Leena')
+    await userEvent.type(within(form).getByLabelText('Owner email'), 'leena@example.test')
+
+    await userEvent.click(within(form).getByRole('button', { name: 'Save as draft' }))
+    expect(await screen.findByText(/Preview only: nothing was saved/)).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(writes).toEqual([])
+    server.events.removeAllListeners()
   })
 
   it('keeps the design prototype at /tenants-prototype until this list is accepted', async () => {

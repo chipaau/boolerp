@@ -82,7 +82,19 @@ const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
  * Calendar are included, so nothing on a later step can block it. Everything the API does not take
  * yet (plan, apps, geography, parent, extra admins) is saved to the fixture profile afterwards.
  */
-export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => void; onProvisioned: (p: Provisioned) => void }) {
+export function AddTenantWizard({
+  onClose,
+  onProvisioned,
+  preview = false,
+}: {
+  onClose: () => void
+  onProvisioned: (p: Provisioned) => void
+  /**
+   * Opened from the API-backed list before creating exists (F3): the form works, but "Create tenant"
+   * and "Save as draft" save nothing, not even to the prototype's fixtures, and say so.
+   */
+  preview?: boolean
+}) {
   const toast = useToast()
   const user = useCurrentUser()
   const { create: saveProfile } = useTenantProfileActions()
@@ -212,6 +224,10 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
       owner_email: f.ownerEmail.trim(),
       owner_name: f.ownerName.trim(),
     }
+    if (preview) {
+      toast('Preview only: nothing was saved. Creating tenants comes next (F3).', { ok: false })
+      return onClose()
+    }
     // Fixtures only (F2f): this used to POST /api/v1/tenants. Creating a tenant for real — the
     // endpoint, the form, and the API's field errors on it — is F3, in the new list.
     saveProfile(profileFrom(input.slug, input.name, 'Active'))
@@ -220,6 +236,10 @@ export function AddTenantWizard({ onClose, onProvisioned }: { onClose: () => voi
   }
 
   const saveDraft = () => {
+    if (preview) {
+      toast('Preview only: nothing was saved. Creating tenants comes next (F3).', { ok: false })
+      return onClose()
+    }
     const name = f.name.trim() || 'Untitled tenant'
     const slug = f.slug.trim() || slugify(name) || `draft-${Date.now()}`
     saveProfile(profileFrom(slug, name, 'Draft'))
