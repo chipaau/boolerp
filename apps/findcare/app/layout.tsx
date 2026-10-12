@@ -1,25 +1,34 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
+import { Inter } from 'next/font/google'
+import { Suspense } from 'react'
+import type { ReactNode } from 'react'
+import { Header } from '@/components/shell/header'
+import { Glows } from '@/components/shell/page'
+import { TabBar } from '@/components/shell/tab-bar'
 import './globals.css'
 
+// Inter 400/500/600 only, self-hosted by Next; globals.css reads it as --font-inter.
+const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-inter', display: 'swap' })
+
 export const metadata: Metadata = {
-  title: 'FindCare',
-  description: 'FindCare — the public side.',
+  title: { default: 'FindCare', template: '%s · FindCare' },
+  description: 'Find a doctor, service or clinic in the Maldives, book a time, and manage your family’s visits.',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const viewport: Viewport = { themeColor: '#fbf5f2' }
+
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        {/* Lato, Bool's typeface, standing in until FindCare's own design chooses one (C190);
-            the weights match packages/ui so the shared primitives render as they were drawn. */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="min-h-svh bg-background text-foreground antialiased">{children}</body>
+    <html lang="en" className={inter.variable}>
+      <body className="min-h-svh antialiased">
+        <Glows />
+        {/* The header, tab bar and pages read the URL's search params, which need a Suspense boundary. */}
+        <Suspense>
+          <Header />
+          {children}
+          <TabBar />
+        </Suspense>
+      </body>
     </html>
   )
 }
