@@ -5,26 +5,26 @@ import type { ReactNode } from 'react'
 import gsap from 'gsap'
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin'
 import { useGSAP } from '@gsap/react'
-import { DEPTH, LAND_DURATION, RATE, TIMING, buildFlight } from './flight'
+import { ARRIVE, DESCENT, FRAME, LAND, LAND_GROWTH, RATE, SCENE_TIMING, buildFlight, smoothThrough } from './flight'
 import type { FlightBox } from './flight'
-import type { BeePose } from './bee'
 
 gsap.registerPlugin(useGSAP, MotionPathPlugin)
 
-type Clip = Exclude<BeePose, 'rest'>
-
-/** How long the opening waits for its clips before the hero simply settles without them. */
+/** How long the opening waits for its clips before the hero simply stays as rendered. */
 const CLIP_WAIT_MS = 1500
+/** The crossfade from the flying bee to the landing clip. */
+const HANDOFF = 0.15
 
 /**
  * The hero's one client piece: it wraps the server-rendered hero and plays the opening once.
- * Everything it animates is already on the page in its final state; html[data-hero-motion]
- * (set by the inline script in hero.tsx, styled in globals.css) holds the opening state until
- * the timeline takes over, and "done" releases it.
+ * Everything it animates is already on the page in its final state (the bee landed, the copy
+ * shown); html[data-hero-motion] (set by the inline script in hero.tsx, styled in globals.css)
+ * holds the opening state until the timeline takes over, and "done" releases it. The headline,
+ * navigation and dashboard are never held: the opening adds to the hero, it never gates it.
  *
- * Desktop flies the full path, tablet the same faster, mobile only the landing. Reduced motion,
- * data saver, clips that are not ready in time, or a breakpoint change after the opening all
- * leave the hero as rendered.
+ * Desktop flies the full route, tablet the same faster, mobile only the landing. Reduced motion,
+ * data saver, clips that are not ready in time, or a breakpoint change after the opening leave
+ * the hero as rendered. Only transforms and opacity are animated.
  */
 export function HeroMotion({ children, className }: { children: ReactNode; className?: string }) {
   const scope = useRef<HTMLDivElement>(null)
@@ -36,30 +36,31 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       if (!hero) return
       const html = document.documentElement
       const q = gsap.utils.selector(hero)
-      const bee = q('[data-bee]')[0] as HTMLElement | undefined
-      const scene = q('[data-hero-scene]')[0] as HTMLElement | undefined
-      const focus = q('[data-hero-focus]')
+      const one = <T extends Element>(sel: string) => hero.querySelector<T>(sel) ?? undefined
+      const scene = one<HTMLElement>('[data-hero-scene]')
+      const air = one<HTMLElement>('[data-bee-air]')
+      const landed = one<HTMLElement>('[data-bee-landed]')
+      const target = one<HTMLElement>('[data-bee-landing-target]')
+      const shadow = one<HTMLElement>('[data-bee-shadow]')
+      const airClip = one<HTMLVideoElement>('[data-bee-clip="air"]')
+      const landClip = one<HTMLVideoElement>('[data-bee-clip="land"]')
+      const rest = one<HTMLElement>('[data-bee-rest]')
+      const stage = one<HTMLElement>('[data-hero-stage]')
+      const display = one<HTMLElement>('[data-tablet-display]')
       const reveals = q('[data-hero-reveal]')
 
       const finish = () => {
         played.current = true
         html.dataset.heroMotion = 'done'
       }
-      // no flight: bring the hero into focus quickly and stop
+      // no flight: show the copy and the landed bee, and stop
       const settle = () => {
-        gsap.to(focus, { opacity: 0, duration: 0.5, ease: 'sine.out' })
-        gsap.to(reveals, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', onComplete: finish })
+        gsap.to([landed, ...reveals], { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', onComplete: finish })
+        gsap.to(shadow ?? [], { opacity: 0.18, duration: 0.5 })
+        gsap.to(stage ?? [], { filter: 'blur(0px)', scale: 1, duration: 0.5, ease: 'sine.out' })
+        gsap.to(display ?? [], { opacity: 1, filter: 'blur(0px)', duration: 0.5, delay: 0.2 })
       }
-      if (!bee || !scene) return finish()
-
-      const video = (clip: Clip) => q(`[data-clip="${clip}"]`)[0] as HTMLVideoElement
-      const pose = (p: BeePose) => ({ attr: { 'data-pose': p } })
-      const play = (clip: Clip, rate: number, tl: gsap.core.Timeline) => () => {
-        const v = video(clip)
-        v.currentTime = 0
-        v.playbackRate = rate * tl.timeScale()
-        void v.play().catch(() => {})
-      }
+      if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !stage || !display) return finish()
 
       const mm = gsap.matchMedia()
       mm.add(
@@ -76,73 +77,119 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           if (reduce || saveData) return settle()
 
           let alive = true
-          const needed: Clip[] = mobile ? ['land'] : ['fly', 'swoop', 'land']
+          const clips = mobile ? [landClip] : [airClip, landClip]
+          clips.forEach((v) => (v.src = clipSrc(v.dataset.beeClip!)))
           // a named add() is not run now: it returns the function, bound to this media context
           const start = ctx.add('start', () => {
-              if (!alive) return
-              const tl = gsap.timeline({ onComplete: finish })
-              if (tablet) tl.timeScale(1.2)
-              if (mobile) landing(tl)
-              else flight(tl, measure(scene, bee))
-            })
-          ready(needed.map(video), CLIP_WAIT_MS).then(() => start(), () => alive && settle())
+            if (!alive) return
+            const tl = gsap.timeline({ onComplete: finish })
+            if (tablet) tl.timeScale(1.2)
+            if (mobile) {
+              landing(tl, 0.6)
+              surroundings(tl, { focused: 1.2, screen: [0.8, 2] })
+            } else {
+              flight(tl, measure(scene, air, target))
+              surroundings(tl, SCENE_TIMING)
+            }
+            // the supporting copy settles in while the bee is still in the air
+            tl.to(reveals, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1 }, mobile ? 0.2 : 1.2)
+          })
+          ready(clips, CLIP_WAIT_MS).then(
+            () => start(),
+            () => alive && settle(),
+          )
           return () => {
             alive = false
-            needed.forEach((clip) => video(clip).pause())
+            clips.forEach((v) => v.pause())
           }
-        }
+        },
       )
 
-      /** Mobile: the bee is already over the stone; the landing clip brings it down. */
-      function landing(tl: gsap.core.Timeline) {
-        tl.set(bee!, { opacity: 1, ...pose('land') }, 0)
-          .call(play('land', RATE.land, tl), [], 0)
-          .to(focus, { opacity: 0, duration: 0.8, ease: 'sine.out' }, 0.2)
-          .to(reveals, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.06 }, 0.3)
-          .set(bee!, pose('rest'), LAND_DURATION)
+      // clips play at the timeline's speed, so tablet's faster flight keeps them in step
+      const play = (v: HTMLVideoElement, rate: number, tl: gsap.core.Timeline) => () => {
+        v.currentTime = 0
+        v.playbackRate = rate * tl.timeScale()
+        void v.play().catch(() => {})
       }
 
+      /** The landing clip at the target from `at`, the shadow firming up as the feet touch, then the still. */
+      function landing(tl: gsap.core.Timeline, at: number) {
+        const touch = at + LAND.touchdown
+        const end = at + LAND.duration
+        tl.set(rest!, { opacity: 0 }, 0)
+          // held at one size while the clip's bee grows as it comes in (flight.ts, LAND_GROWTH)
+          .set(landed!, { transformOrigin: `50% ${FRAME.feetY * 100}%`, scale: 1 / LAND_GROWTH.from }, 0)
+          .to(landed!, { scale: 1, duration: LAND_GROWTH.end - LAND_GROWTH.start, ease: 'none' }, at + LAND_GROWTH.start)
+          .set(landClip!, { opacity: 1 }, at)
+          .call(play(landClip!, RATE, tl), [], at)
+          .to(landed!, { opacity: 1, duration: HANDOFF, ease: 'none' }, at)
+          .fromTo(shadow!, { opacity: 0.1, scale: 0.85 }, { opacity: 0.18, scale: 1, duration: 0.35, ease: 'sine.out' }, touch - 0.15)
+          // the still is the clip's last frame, so the swap is invisible; it frees the decoder
+          .set(rest!, { opacity: 1 }, end)
+          .set(landClip!, { opacity: 0 }, end)
+      }
+
+      /**
+       * The scene around the bee: it comes into focus, then the tablet's screen wakes: the
+       * dashboard brightens from dark and sharpens. Blur is the one property here that is not a
+       * transform or opacity; it runs briefly, on the stage layer and the screen only.
+       */
+      function surroundings(tl: gsap.core.Timeline, t: { focused: number; screen: [number, number] }) {
+        const [on, sharp] = t.screen
+        tl.fromTo(stage!, { filter: `blur(${SCENE_TIMING.blur}px)`, scale: 1.03 }, { filter: 'blur(0px)', scale: 1, duration: t.focused, ease: 'sine.out' }, 0)
+          .fromTo(display!, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, duration: (sharp - on) * 0.6, ease: 'sine.out' }, on)
+          .to(display!, { filter: 'blur(0px)', duration: sharp - on, ease: 'power2.out' }, on)
+      }
+
+      /**
+       * The flight: one smooth curve through the marks (flight.ts), flown with one easing over
+       * its whole length so the speed only ever eases off, gliding to a stop as it lands (the marks
+       * shape the curve; their times set depth and drift). No rotation: the footage carries the
+       * bee's orientation. Then the landing.
+       */
       function flight(tl: gsap.core.Timeline, box: FlightBox) {
-        const path = buildFlight(box)
-        const T = TIMING
-        const facing = q('[data-bee-facing]')
+        const marks = buildFlight(box)
+        const times = marks.map((m) => m.t)
+        const raw = MotionPathPlugin.arrayToRawPath(marks.map((m) => m.point), { curviness: 1 })
+        MotionPathPlugin.cacheRawPathMeasurements(raw)
+        const at = (p: number) => MotionPathPlugin.getPositionOnPath(raw, Math.min(1, Math.max(0, p)))
+        const glide = gsap.parseEase('power1.out')
+        const progress = (t: number) => glide(Math.min(1, t / ARRIVE))
+        const depth = smoothThrough(times, marks.map((m) => m.scale), 0)
+        const life = smoothThrough(times, marks.map((m) => m.life), 0)
 
-        tl.set(bee!, { ...path.start, opacity: 1, scale: DEPTH.entry, rotation: -3, ...pose('fly') }, 0)
-          .set(facing, { scaleX: -1 }, 0) // the clips face left; mirror for the crossing
-          .call(play('fly', RATE.fly, tl), [], 0)
+        const setX = gsap.quickSetter(air!, 'x', 'px')
+        const setY = gsap.quickSetter(air!, 'y', 'px')
+        const setScale = gsap.quickSetter(air!, 'scale')
+        const clock = { t: 0 }
+        const draw = () => {
+          const t = clock.t
+          const p = at(progress(t))
+          const l = life(t)
+          setX(p.x + l * 2.5 * Math.sin(t * 2 * Math.PI * 0.9))
+          setY(p.y + l * 2 * Math.sin(t * 2 * Math.PI * 1.3 + 1))
+          setScale(depth(t))
+        }
 
-          // 1 · far away, left → right
-          .to(bee!, { motionPath: { path: path.crossing, curviness: 1.2 }, duration: T.crossEnd, ease: 'sine.inOut' }, 0)
-          .to(bee!, { scale: DEPTH.crossing, rotation: -5, duration: T.crossEnd, ease: 'sine.inOut' }, 0)
-
-          // 2 · bank: a short hook while it turns to face left (the flip reads as the turn)
-          .to(bee!, { motionPath: { path: path.bank, curviness: 1.5 }, duration: T.bankEnd - T.crossEnd, ease: 'sine.inOut' }, T.crossEnd)
-          .to(facing, { scaleX: 1, duration: T.bankEnd - T.crossEnd, ease: 'sine.inOut' }, T.crossEnd)
-          .to(bee!, { scale: DEPTH.bank, rotation: 2, duration: T.bankEnd - T.crossEnd }, T.crossEnd)
-
-          // 3 · the swoop: toward the camera, turning to look at it, largest in the middle
-          .set(bee!, pose('swoop'), T.bankEnd)
-          .call(play('swoop', RATE.swoop, tl), [], T.bankEnd)
-          .to(bee!, { motionPath: { path: path.swoop, curviness: 1.3 }, duration: T.closest - T.bankEnd, ease: 'sine.in' }, T.bankEnd)
-          .to(bee!, { scale: DEPTH.closest, rotation: 0, duration: T.closest - T.bankEnd, ease: 'sine.inOut' }, T.bankEnd)
-
-          // 4 · down to the stone, shrinking back to life size; the landing clip finishes it
-          .to(bee!, { motionPath: { path: path.descent, curviness: 1 }, duration: T.arrive - T.closest, ease: 'power2.out' }, T.closest)
-          .to(bee!, { scale: DEPTH.landed, duration: T.arrive - T.closest, ease: 'power2.out' }, T.closest)
-          .set(bee!, pose('land'), T.land)
-          .call(play('land', RATE.land, tl), [], T.land)
-          .set(bee!, pose('rest'), T.land + LAND_DURATION)
-
-          // focus pull, and the page settling in around the landing
-          .to(focus, { opacity: 0, duration: T.focus[1] - T.focus[0], ease: 'sine.inOut' }, T.focus[0])
-          .to(q('[data-hero-reveal="copy"]'), { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.08 }, 2.4)
-          .to(q('[data-hero-reveal="dashboard"]'), { opacity: 1, duration: 0.9, ease: 'sine.out' }, 2.6)
-          .to(q('[data-hero-reveal="cta"]'), { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 3.0)
+        // placed by its feet, scaled about its centre (so it grows evenly toward the camera); it starts
+        // off-screen, so it flies in rather than fading in
+        tl.set(air!, { xPercent: -50, yPercent: -FRAME.feetY * 100, transformOrigin: '50% 50%', opacity: 1 }, 0)
+          .set(shadow!, { opacity: 0 }, 0)
+          .call(draw, [], 0)
+          // the airborne clip already has RATE built into its frames; the landing clip is played at it
+          .call(play(airClip!, 1, tl), [], 0)
+          .to(clock, { t: ARRIVE, duration: ARRIVE, ease: 'none', onUpdate: draw }, 0)
+          // the shadow appears as the bee drifts down, growing as it nears
+          .fromTo(shadow!, { opacity: 0, scale: 0.6 }, { opacity: 0.1, scale: 0.85, duration: ARRIVE - DESCENT, ease: 'sine.in' }, DESCENT)
+          // hand over: the landing clip continues the same footage where the flying bee is
+          .to(air!, { opacity: 0, duration: HANDOFF, ease: 'none' }, ARRIVE)
+          .call(() => airClip!.pause(), [], ARRIVE + HANDOFF)
+        landing(tl, ARRIVE)
       }
 
       return () => mm.revert()
     },
-    { scope }
+    { scope },
   )
 
   return (
@@ -150,6 +197,16 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       {children}
     </div>
   )
+}
+
+/**
+ * The clips are transparent video: VP9 with alpha in WebM for Chromium and Firefox, HEVC with alpha
+ * for WebKit, which plays WebM without its alpha. Every iOS browser is WebKit, and none of them
+ * says "Chrome" in its user agent, so this test covers them too.
+ */
+function clipSrc(name: string) {
+  const webkit = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+  return `/hero/bee/bee-${name}.${webkit ? 'mp4' : 'webm'}`
 }
 
 /** Starts loading the clips; resolves once each can play through, rejects after `ms` or on error. */
@@ -164,16 +221,15 @@ function ready(videos: HTMLVideoElement[], ms: number) {
           v.addEventListener('error', () => reject(new Error('clip failed')), { once: true })
           v.load()
         })
-      })
+      }),
     ),
     new Promise<never>((_, reject) => setTimeout(() => reject(new Error('clips too slow')), ms)),
   ])
 }
 
-/** Scene size and the bee's resting feet within it, measured with no transform applied. */
-function measure(scene: HTMLElement, bee: HTMLElement): FlightBox {
-  gsap.set(bee, { clearProps: 'transform' })
+/** The scene's size, the landed feet in it and the bee's frame width, measured untransformed. */
+function measure(scene: HTMLElement, air: HTMLElement, target: HTMLElement): FlightBox {
   const s = scene.getBoundingClientRect()
-  const target = (bee.parentElement as HTMLElement).getBoundingClientRect() // the landing target point
-  return { width: s.width, height: s.height, home: { x: target.left - s.left, y: target.top - s.top } }
+  const t = target.getBoundingClientRect()
+  return { width: s.width, height: s.height, feet: { x: t.left - s.left, y: t.top - s.top }, frame: air.offsetWidth }
 }
