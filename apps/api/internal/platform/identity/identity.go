@@ -9,6 +9,7 @@ package identity
 import (
 	"context"
 	"embed"
+	"errors"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -50,11 +51,15 @@ type Settings struct {
 	KratosAdminURL string // Kratos's admin API, internal network only
 	HydraAdminURL  string // Hydra's admin API, internal network only
 	HydraPublicURL string // Hydra's issuer, for /userinfo (C157); unused by seeds
+	// PortraitsURL is where the built-in portraits are served, such as
+	// http://identity.bool.test/portraits/ (C196); empty offers none.
+	PortraitsURL string
 }
 
 // Module is the identity module.
 type Module struct {
-	service *application.Service
+	service      *application.Service
+	portraitsURL string
 }
 
 // New returns the module over the database (a pool or a transaction).
@@ -64,7 +69,7 @@ func New(db store.DB, s Settings, client *http.Client, logger *slog.Logger) *Mod
 		kratos.NewAccounts(s.KratosAdminURL, client),
 		hydra.NewLogins(s.HydraAdminURL, client, logger),
 		hydra.NewProfiles(s.HydraPublicURL, client),
-	)}
+	), portraitsURL: s.PortraitsURL}
 }
 
 // Errors of User and Register.
@@ -105,6 +110,43 @@ func (m *Module) AddSignIn(ctx context.Context, kratosIdentityID, password, goog
 // Recover returns a one-time link and code to set the account's password.
 func (m *Module) Recover(ctx context.Context, kratosIdentityID string) (Recovery, error) {
 	return m.service.Recover(ctx, kratosIdentityID)
+}
+
+// Portrait is a built-in picture a person may choose, at its address.
+type Portrait struct {
+	ID  string
+	URL string
+}
+
+// Portraits are the pictures a person may choose (C196), none when the module
+// has no PortraitsURL.
+func (m *Module) Portraits() []Portrait {
+	var out []Portrait
+	for _, p := range domain.Portraits {
+		if u, ok := domain.PortraitURL(m.portraitsURL, p.ID); ok {
+			out = append(out, Portrait{ID: p.ID, URL: u})
+		}
+	}
+	return out
+}
+
+// ErrUnknownPortrait: SetPortrait was given an ID that is not one of Portraits.
+var ErrUnknownPortrait = errors.New("identity: no such portrait")
+
+// SetPortrait makes portraitID the person's picture, or goes back to initials
+// when it is empty (C196). The picture lives on their Kratos account, so every
+// app shows it; their user is refreshed at once. An unknown ID gets
+// ErrUnknownPortrait; a person who has not registered, ErrNotFound.
+func (m *Module) SetPortrait(ctx context.Context, kratosIdentityID, portraitID string) (User, error) {
+	pictureURL := ""
+	if portraitID != "" {
+		u, ok := domain.PortraitURL(m.portraitsURL, portraitID)
+		if !ok {
+			return User{}, ErrUnknownPortrait
+		}
+		pictureURL = u
+	}
+	return m.service.SetPicture(ctx, kratosIdentityID, pictureURL)
 }
 
 // Recovery is a one-time recovery link and code.

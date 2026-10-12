@@ -38,6 +38,7 @@ type fakeAccounts struct {
 	deactivated []string
 	created     []domain.NewAccount
 	signIns     []string
+	pictures    []string
 }
 
 func (f *fakeAccounts) Deactivate(_ context.Context, id string) error {
@@ -126,6 +127,20 @@ func (f *fakeAccounts) Recover(_ context.Context, id string, ttl time.Duration) 
 		return domain.Recovery{}, f.err
 	}
 	return domain.Recovery{Link: "link-" + id, Code: "123456", ExpiresAt: time.Unix(0, 0).Add(ttl)}, nil
+}
+
+func (f *fakeAccounts) SetPicture(_ context.Context, id, pictureURL string) (domain.Account, error) {
+	if f.err != nil {
+		return domain.Account{}, f.err
+	}
+	a, ok := f.accounts[id]
+	if !ok {
+		return domain.Account{}, ErrNotFound
+	}
+	a.AvatarURL = pictureURL
+	f.accounts[id] = a
+	f.pictures = append(f.pictures, id+"|"+pictureURL)
+	return a, nil
 }
 
 func setup() (*Service, *fakeUsers, *fakeAccounts) {
@@ -310,4 +325,43 @@ func TestRecoverIsValidForAnHour(t *testing.T) {
 	accounts.err = errors.New("kratos down")
 	_, err = s.Recover(t.Context(), "k1")
 	assert.Error(t, err)
+}
+
+func TestSetPictureWritesTheAccountThenRefreshesTheUser(t *testing.T) {
+	s, users, accounts := setup()
+	_, err := s.Register(t.Context(), "k1", "aisha-token")
+	require.NoError(t, err)
+
+	u, err := s.SetPicture(t.Context(), "k1", "http://identity.bool.test/portraits/portrait-2.jpg")
+	require.NoError(t, err)
+	assert.Equal(t, "http://identity.bool.test/portraits/portrait-2.jpg", u.AvatarURL)
+	assert.Equal(t, u, users.byKratos["k1"], "the user shows it at once")
+	assert.Equal(t, []string{"k1|http://identity.bool.test/portraits/portrait-2.jpg"}, accounts.pictures)
+
+	u, err = s.SetPicture(t.Context(), "k1", "")
+	require.NoError(t, err)
+	assert.Empty(t, u.AvatarURL, "back to initials")
+}
+
+func TestSetPictureRefusesWhatIsNotAWebAddress(t *testing.T) {
+	s, _, accounts := setup()
+	_, err := s.SetPicture(t.Context(), "k1", "javascript:alert(1)")
+	require.ErrorIs(t, err, ErrInvalidPicture)
+	assert.Empty(t, accounts.pictures, "nothing is written")
+}
+
+func TestSetPictureNeedsAUser(t *testing.T) {
+	s, _, accounts := setup()
+	_, err := s.SetPicture(t.Context(), "k1", "")
+	require.ErrorIs(t, err, ErrNotFound)
+	assert.Empty(t, accounts.pictures, "nothing is written before the person registers")
+}
+
+func TestSetPicturePassesOnAKratosFailure(t *testing.T) {
+	s, _, accounts := setup()
+	_, err := s.Register(t.Context(), "k1", "aisha-token")
+	require.NoError(t, err)
+	accounts.err = errors.New("kratos down")
+	_, err = s.SetPicture(t.Context(), "k1", "")
+	require.Error(t, err)
 }

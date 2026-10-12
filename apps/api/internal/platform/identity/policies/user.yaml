@@ -1,4 +1,5 @@
-# identity:user (C154): a person's own user record, as GET /api/auth/me shows it.
+# identity:user (C154): a person's own user record, as GET /api/auth/me shows it;
+# update changes their picture (PUT /api/auth/me/photo, C196).
 # Users are global, not tenant data, so there is no tenant check (C150 applies to
 # tenant resources); the rule is attribute-based: the record is the caller's own.
 apiVersion: api.cerbos.dev/v1
@@ -11,7 +12,7 @@ resourcePolicy:
     resourceSchema:
       ref: cerbos:///identity/user.json
   rules:
-    - actions: ["view"]
+    - actions: ["view", "update"]
       effect: EFFECT_ALLOW
       roles: ["user"]
       condition:

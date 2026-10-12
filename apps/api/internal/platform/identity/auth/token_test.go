@@ -23,7 +23,8 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 )
 
-// usersFunc adapts a lookup function to Users; registering is not expected.
+// usersFunc adapts a lookup function to Users; registering and changing a
+// picture are not expected.
 type usersFunc func(ctx context.Context, subject string) (identity.User, error)
 
 func (f usersFunc) User(ctx context.Context, subject string) (identity.User, error) {
@@ -32,6 +33,12 @@ func (f usersFunc) User(ctx context.Context, subject string) (identity.User, err
 
 func (usersFunc) Register(context.Context, string, string) (identity.User, error) {
 	return identity.User{}, errors.New("unexpected register")
+}
+
+func (usersFunc) Portraits() []identity.Portrait { return nil }
+
+func (usersFunc) SetPortrait(context.Context, string, string) (identity.User, error) {
+	return identity.User{}, errors.New("unexpected set portrait")
 }
 
 // knownUser finds the same user for account-1.

@@ -188,6 +188,7 @@ func TestLoadInvalid(t *testing.T) {
 		{"max conns zero", []string{"APP_DB_MAX_CONNS=0"}, "APP_DB_MAX_CONNS", ""},
 		{"max conns too many", []string{"APP_DB_MAX_CONNS=1001"}, "APP_DB_MAX_CONNS", "1001"},
 		{"redis host empty", []string{"APP_REDIS_HOST="}, "APP_REDIS_HOST", ""},
+		{"portraits URL not http", []string{"APP_IDENTITY_PORTRAITS_URL=ftp://s3cret/"}, "APP_IDENTITY_PORTRAITS_URL", "s3cret"},
 		{"redis port not a number", []string{"APP_REDIS_PORT=s3cret"}, "APP_REDIS_PORT: invalid int", "s3cret"},
 		{"redis DB too large", []string{"APP_REDIS_DB=16"}, "APP_REDIS_DB", ""},
 		{"redis TLS not a bool", []string{"APP_REDIS_TLS=s3cret"}, "APP_REDIS_TLS: invalid bool", "s3cret"},
@@ -282,7 +283,7 @@ func TestEveryFieldHasAVariable(t *testing.T) {
 	for path, variable := range api.byPath {
 		assert.Regexp(t, `^APP_[A-Z_]+$`, variable, path)
 	}
-	assert.Len(t, api.byPath, 35, "update this count when adding a setting")
+	assert.Len(t, api.byPath, 36, "update this count when adding a setting")
 
 	migrate := variables(reflect.TypeFor[Migrate]())
 	for path, variable := range migrate.byPath {

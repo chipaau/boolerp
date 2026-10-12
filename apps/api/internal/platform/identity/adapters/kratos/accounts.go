@@ -209,6 +209,35 @@ func (a *Accounts) Deactivate(ctx context.Context, kratosIdentityID string) erro
 	return nil
 }
 
+// SetPicture implements application.Accounts with a JSON Patch on the picture
+// trait alone, so a concurrent change to another trait is not overwritten (an
+// update would send the whole identity back), and returns the account as Kratos
+// saved it. Setting one is a single "add" (it replaces one already there).
+// Kratos refuses to remove a trait that is not there, so clearing reads the
+// account first and leaves an absent picture alone. Kratos validates the value
+// against the account's schema.
+func (a *Accounts) SetPicture(ctx context.Context, kratosIdentityID, pictureURL string) (domain.Account, error) {
+	patch := ory.JsonPatch{Op: "add", Path: "/traits/picture", Value: pictureURL}
+	if pictureURL == "" {
+		current, err := a.Get(ctx, kratosIdentityID)
+		if err != nil || current.AvatarURL == "" {
+			return current, err
+		}
+		patch = ory.JsonPatch{Op: "remove", Path: "/traits/picture"}
+	}
+	identity, resp, err := a.api.IdentityAPI.PatchIdentity(ctx, kratosIdentityID).JsonPatch([]ory.JsonPatch{patch}).Execute()
+	if resp != nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusNotFound {
+			return domain.Account{}, application.ErrNotFound
+		}
+	}
+	if err != nil {
+		return domain.Account{}, errors.New("kratos: setting the picture failed")
+	}
+	return account(identity), nil
+}
+
 func text(v any) string {
 	s, _ := v.(string)
 	return s

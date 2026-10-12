@@ -3,11 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Sign-in, the signed-in user, and sign-out through the app's backend-for-frontend (docs/platform/bff-frontend.md).",
+  "description": "Sign-in, the signed-in user (with their photo), and sign-out through the app's backend-for-frontend (docs/platform/bff-frontend.md).",
   "exports": {
     ".": "./src/index.ts"
   },
   "devDependencies": {
+    "@tanstack/react-query": "^5.104.1",
     "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5"
   }
 }

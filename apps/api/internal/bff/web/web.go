@@ -60,11 +60,12 @@ type Handler struct {
 }
 
 // New reads the app's files from fsys, computes their ETags, and builds the
-// Content-Security-Policy from index.html's inline scripts. formTargets are
-// origins a form submission may redirect to besides this one: the login
-// service, where sign-out continues (C101), since browsers apply form-action to
-// the redirects after a submission too.
-func New(fsys fs.FS, formTargets ...string) (*Handler, error) {
+// Content-Security-Policy from index.html's inline scripts. loginService is the
+// login service's origin: a form submission may redirect there besides this
+// one, where sign-out continues (C101), since browsers apply form-action to the
+// redirects after a submission too; and people's pictures are served there, the
+// portraits they choose (C196).
+func New(fsys fs.FS, loginService ...string) (*Handler, error) {
 	h := &Handler{files: map[string]file{}}
 	err := fs.WalkDir(fsys, ".", func(name string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -86,7 +87,7 @@ func New(fsys fs.FS, formTargets ...string) (*Handler, error) {
 		return nil, errors.New("web: the app has no index.html")
 	}
 	h.index = index
-	h.csp = policy(inlineScriptHashes(index.content), formTargets)
+	h.csp = policy(inlineScriptHashes(index.content), loginService)
 	return h, nil
 }
 
@@ -141,15 +142,16 @@ func inlineScriptHashes(html []byte) []string {
 
 // policy is the Content-Security-Policy (C99). Google Fonts are allowed until
 // the apps self-host Lato, as their index.html notes.
-func policy(scriptHashes, formTargets []string) string {
+func policy(scriptHashes, loginService []string) string {
 	script := strings.Join(append([]string{"'self'"}, scriptHashes...), " ")
-	form := strings.Join(append([]string{"'self'"}, formTargets...), " ")
+	form := strings.Join(append([]string{"'self'"}, loginService...), " ")
+	img := strings.Join(append([]string{"'self'", "data:"}, loginService...), " ")
 	return strings.Join([]string{
 		"default-src 'self'",
 		"script-src " + script,
 		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 		"font-src 'self' https://fonts.gstatic.com",
-		"img-src 'self' data:",
+		"img-src " + img,
 		"connect-src 'self'",
 		"object-src 'none'",
 		"base-uri 'self'",

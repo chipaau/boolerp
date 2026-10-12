@@ -73,6 +73,7 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 		KratosAdminURL: cfg.Identity.KratosAdminURL,
 		HydraAdminURL:  cfg.Identity.HydraAdminURL,
 		HydraPublicURL: cfg.Auth.Issuer,
+		PortraitsURL:   cfg.Identity.PortraitsURL,
 	}, d.HTTPClient, d.Logger)
 
 	// Authorization asks Cerbos (C152, C155). The connection lives as long as the

@@ -4,22 +4,33 @@ import { ToastProvider } from '@workspace/ui/components/toast'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { SiteHeader } from '@/components/layout/site-header'
 import { UserProvider } from '@/components/layout/user-context'
-import { currentUser, signIn } from '@workspace/session'
+import { useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { meQuery, signIn } from '@workspace/session'
+import type { Me } from '@workspace/session'
 import { useCurrentApp } from '@/lib/apps'
 
 // Authenticated workspace layout: session guard + the shell chrome (header over a sidebar area).
 export const Route = createFileRoute('/_app')({
-  loader: async () => {
+  loader: async ({ context }) => {
     // No session → the BFF's sign-in, returning here afterwards.
-    const me = await currentUser()
+    const me = await context.queryClient.ensureQueryData(meQuery())
     if (!me) return signIn()
-    return { user: { name: me.displayName || me.email, email: me.email } }
   },
   component: AppLayout,
 })
 
+// The person comes from the session query, so a photo changed in the other app shows when this
+// tab is focused again (C196); a session that has ended goes back through sign-in.
+const toUser = (me: Me) => ({ name: me.displayName || me.email, email: me.email, photo: me.avatarUrl })
+
 function AppLayout() {
-  const { user } = Route.useLoaderData()
+  const me = useQuery(meQuery()).data
+  useEffect(() => {
+    if (me === null) void signIn()
+  }, [me])
+  if (!me) return null
+  const user = toUser(me)
   return (
     <UserProvider user={user}>
       <ToastProvider>

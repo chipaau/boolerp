@@ -262,3 +262,53 @@ func TestAddSignInDoesNotResendAGoogleSignInTheAccountHas(t *testing.T) {
 	assert.Contains(t, credentials, "password")
 	assert.NotContains(t, credentials, "oidc", "Kratos refuses a duplicate Google sign-in")
 }
+
+func TestSetPicturePatchesOnlyThePictureTrait(t *testing.T) {
+	var patches []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/admin/identities/k1":
+			_, _ = w.Write([]byte(`{"id":"k1","schema_id":"registration","schema_url":"x","state":"active",
+				"traits":{"email":"a@b.test","picture":"https://lh3.googleusercontent.com/a/aisha"}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/admin/identities/plain":
+			_, _ = w.Write([]byte(`{"id":"plain","schema_id":"registration","schema_url":"x","state":"active","traits":{"email":"p@b.test"}}`))
+		case r.Method == http.MethodPatch && r.URL.Path == "/admin/identities/k1":
+			b, _ := io.ReadAll(r.Body)
+			patches = append(patches, string(b))
+			_, _ = w.Write([]byte(`{"id":"k1","schema_id":"registration","schema_url":"x","state":"active",
+				"traits":{"email":"a@b.test","picture":"http://identity.bool.test/portraits/portrait-2.jpg"}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/admin/identities/refused":
+			_, _ = w.Write([]byte(`{"id":"refused","schema_id":"registration","schema_url":"x","state":"active","traits":{}}`))
+		case r.URL.Path == "/admin/identities/refused":
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":{"code":400,"message":"s3cret-detail"}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":{"code":404,"message":"s3cret-detail"}}`))
+		}
+	}))
+	t.Cleanup(srv.Close)
+	accounts := NewAccounts(srv.URL, srv.Client())
+
+	saved, err := accounts.SetPicture(t.Context(), "k1", "http://identity.bool.test/portraits/portrait-2.jpg")
+	require.NoError(t, err)
+	assert.Equal(t, "http://identity.bool.test/portraits/portrait-2.jpg", saved.AvatarURL, "the account as Kratos saved it")
+	_, err = accounts.SetPicture(t.Context(), "k1", "")
+	require.NoError(t, err)
+	require.Len(t, patches, 2)
+	assert.JSONEq(t, `[{"op":"add","path":"/traits/picture","value":"http://identity.bool.test/portraits/portrait-2.jpg"}]`, patches[0])
+	assert.JSONEq(t, `[{"op":"remove","path":"/traits/picture"}]`, patches[1])
+
+	plain, err := accounts.SetPicture(t.Context(), "plain", "")
+	require.NoError(t, err, "no picture to remove is nothing to do")
+	assert.Equal(t, "p@b.test", plain.Email, "the account is still returned")
+	assert.Len(t, patches, 2)
+
+	_, err = accounts.SetPicture(t.Context(), "missing", "")
+	assert.ErrorIs(t, err, application.ErrNotFound)
+
+	_, err = accounts.SetPicture(t.Context(), "refused", "http://identity.bool.test/portraits/portrait-2.jpg")
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "s3cret")
+}

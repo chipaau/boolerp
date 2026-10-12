@@ -203,6 +203,21 @@ account, C101) gets 401; a picture that is not an `http(s)` address is dropped. 
 token whose `sub` is its own `client_id` (Hydra's `client_credentials`) is a client
 acting for itself, with no account: Cerbos denies it.
 
+**Choosing a picture (C196).** A person's picture lives on their Kratos account, so every app
+shows the same one: it reaches the user through the copy each sign-in makes. `GET
+/api/auth/me/portraits` lists the built-in portraits (`id` and `url`, served by the login service
+at `APP_IDENTITY_PORTRAITS_URL`); `PUT /api/auth/me/photo` with `{"portrait": "<id>"}`, or `""` for
+initials, writes the `picture` trait through Kratos's admin API with a JSON Patch on that trait
+alone (a `remove` only when one is set, since Kratos refuses to remove a missing trait), then
+refreshes the user and answers like `GET /api/auth/me`. Clients send an ID, never an address, so a
+picture is always one the platform serves; an unknown ID gets 422. Cerbos decides first:
+`identity:user` `update` of the caller's own user. Kratos maps Google's profile only when the
+account is created, so a later Google sign-in never replaces a chosen picture. Both apps read the
+person through one query (`meQuery` in `@workspace/session`) that is fetched again whenever the
+tab regains focus, so a picture changed in one app shows in the other on returning to it; the app
+where it changed shows it at once (end to end: `e2e/tests/photo.spec.ts`). Uploads wait for
+object storage.
+
 **Reads never write (C157).** The `Authenticate` middleware
 (`internal/platform/identity/auth`, C125) verifies the token, looks up the subject's
 user, and keeps the caller (token and user) in the request context (`auth.FromContext`,
@@ -223,8 +238,9 @@ Compose secret. Browsers reach its public API at `http://identity.bool.test/krat
 the admin API (`http://kratos:4434`) is only on the internal network.
 
 - **Accounts:** a new account has one email (`traits.email`), a contact phone, an optional
-  name, and an optional picture (`traits.picture`, an `http(s)` address filled only from
-  Google's `picture` claim; the login service sends it as a hidden field, never typed)
+  name, and an optional picture (`traits.picture`, an `http(s)` address: filled from
+  Google's `picture` claim when the account is created, where the login service sends it as a
+  hidden field, never typed; or one of the built-in portraits the person chooses, C196)
   (`registration.schema.json`). Extra emails are added through the admin API as
   verified, into `traits.additional_emails`, switching the account to
   `account.schema.json`; self-service settings can change the password and link

@@ -109,6 +109,7 @@ func TestFormsMayContinueAtTheLoginService(t *testing.T) {
 	require.NoError(t, err)
 	csp := get(t, h, "/", nil).Header().Get("Content-Security-Policy")
 	assert.Contains(t, csp, "form-action 'self' http://identity.bool.test;")
+	assert.Contains(t, csp, "img-src 'self' data: http://identity.bool.test;", "the portraits are served there (C196)")
 }
 
 func TestTheEmbeddedAppLoads(t *testing.T) {
