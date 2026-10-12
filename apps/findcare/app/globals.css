@@ -1,22 +1,279 @@
 /*
- * FindCare's theme layer (C190). FindCare has its own design: the shared package supplies the
- * primitives (Card, Button, …) and the Tailwind @theme mapping those components compile against,
- * and this file owns the values they resolve to.
+ * FindCare's theme layer (C190). The shared package supplies the primitives (Dialog, Popover, Menu…)
+ * and the Tailwind @theme mapping they compile against; this file owns the values they resolve to,
+ * and FindCare's own tokens. Values come from FindCare's design system
+ * (.design/Clinic booking design system/tokens): a warm blush page, plum-black ink, one indigo
+ * action colour, frosted-glass surfaces, Inter.
  *
- * Bool's tokens are imported first and stand in until FindCare's design is drawn, so the app
- * renders in the meantime. Each FindCare token added to the :root block below replaces one. No
- * colour or typeface is invented here, because none has been decided — when the design lands this
- * block is where it goes, never packages/ui, which stays Bool's single source of truth for the
- * workspace, admin and website.
+ * FindCare's tokens never go in packages/ui, which stays Bool's for the workspace, admin and website.
  */
-@import "@workspace/ui/globals.css";
+@import '@workspace/ui/globals.css';
 
 /* scan this app's own source (the shared UI package is scanned by its own globals.css) */
 @source "../";
 
 :root {
-  /* FindCare's tokens, each overriding the Bool value imported above.
-     The design is not yet decided (C190); this one value is a placeholder, set to see the
-     override working, and is not a choice about what colour FindCare is. */
-  --background: #e3f0fa; /* light blue · placeholder, not FindCare's design */
+  /* ink — plum-black text */
+  --ink-900: #1e0a18;
+  --ink-700: #4b4248;
+  --ink-600: #6e6470;
+  --ink-500: #8b8089;
+  --ink-400: #a79ba6;
+  --ink-300: #b7adb5;
+
+  /* indigo — the one action colour */
+  --indigo-950: #18142a;
+  --indigo-900: #2a2548;
+  --indigo-700: #3a3566;
+  --indigo-500: #6c66a2;
+  --indigo-300: #c7bcee;
+  --indigo-100: #e6ddf6;
+  --indigo-50: #f1eef8;
+
+  /* blush — the warm paper page */
+  --blush-50: #fffcfa;
+  --blush-100: #fbf5f2;
+  --blush-200: #f4ece8;
+  --rose-400: #d2689e; /* signal dot: unread, offers */
+
+  /* one tint per specialty, [bg, fg]: same specialty, same tint, everywhere; never for selection */
+  --tint-mint-bg: #d9f0e6;
+  --tint-mint-fg: #2e7458;
+  --tint-peach-bg: #fde6da;
+  --tint-peach-fg: #a4522e;
+  --tint-lilac-bg: #e7e2f7;
+  --tint-lilac-fg: #5b4b9a;
+  --tint-butter-bg: #fbf0cc;
+  --tint-butter-fg: #86681a;
+  --tint-sky-bg: #dcebfa;
+  --tint-sky-fg: #2d63a0;
+  --tint-blue-bg: #e1eaf4;
+  --tint-blue-fg: #4a6890;
+
+  /* semantic */
+  --success-bg: #d9f0e6;
+  --success-fg: #2e7458;
+  --warning-bg: #fbf6e4;
+  --warning-fg: #5e4a12;
+  --warning-strong: #86681a;
+  --warning-dot: #e0a93a;
+  --info-bg: #e7e2f7;
+  --info-fg: #3a3566;
+  --danger: #b2364f;
+  --danger-hover: #962b42;
+  --danger-bg: #fbe4e8;
+
+  /* hairlines & washes: ink at low alpha, never hard borders */
+  --line-1: rgba(30, 10, 24, 0.06);
+  --line-2: rgba(30, 10, 24, 0.07);
+  --line-3: rgba(30, 10, 24, 0.12);
+  --line-4: rgba(30, 10, 24, 0.14);
+  --wash-1: rgba(30, 10, 24, 0.035);
+  --wash-2: rgba(30, 10, 24, 0.04);
+  --wash-3: rgba(30, 10, 24, 0.05);
+
+  /* glass */
+  --glass: rgba(255, 255, 255, 0.7);
+  --glass-strong: rgba(255, 255, 255, 0.92);
+  --glass-tabbar: rgba(251, 245, 242, 0.9);
+  --blur-glass: blur(18px) saturate(1.2);
+
+  /* elevation: violet-tinted, wide, low-opacity; the glass rim is an inset 1px white */
+  --shadow-card: inset 0 0 0 1px rgba(255, 255, 255, 0.95), 0 14px 34px rgba(106, 92, 176, 0.08);
+  --shadow-soft: 0 6px 18px rgba(106, 92, 176, 0.08);
+  --shadow-soft-hover: 0 8px 22px rgba(106, 92, 176, 0.14);
+  --shadow-nav-active: 0 2px 8px rgba(106, 92, 176, 0.12);
+  --shadow-popover: inset 0 0 0 1px rgba(30, 10, 24, 0.06), 0 20px 50px rgba(42, 37, 72, 0.16);
+  --shadow-dialog: 0 30px 80px rgba(42, 37, 72, 0.25);
+  --shadow-banner: 0 14px 34px rgba(42, 37, 72, 0.22);
+  --shadow-tabbar: 0 -1px 0 rgba(30, 10, 24, 0.07), 0 -10px 30px rgba(106, 92, 176, 0.08);
+  --ring-outline: inset 0 0 0 1px rgba(30, 10, 24, 0.14);
+  --ring-outline-hover: inset 0 0 0 1px rgba(30, 10, 24, 0.22);
+  --ring-avatar: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 0 0 4px rgba(108, 102, 162, 0.35);
+
+  --page-gradient: radial-gradient(ellipse 80% 60% at 55% 20%, #fffcfa 0%, #fbf5f2 55%, #f4ece8 100%);
+  --glow-lilac: radial-gradient(closest-side, rgba(199, 188, 238, 0.34), rgba(199, 188, 238, 0));
+  --glow-rose: radial-gradient(closest-side, rgba(242, 196, 200, 0.26), rgba(242, 196, 200, 0));
+
+  /* the sticky header's height, which full-screen pages subtract */
+  --header-h: 64px;
+  --page-max: 1240px;
+  --page-pad: clamp(16px, 4vw, 28px);
+  /* where the page's content column starts: the side padding, inside a centred 1240px column */
+  --page-inset: max(var(--page-pad), calc((100vw - var(--page-max)) / 2 + var(--page-pad)));
+
+  /* the shared tokens, set to FindCare's values so shared primitives render in FindCare's design */
+  --background: var(--blush-100);
+  --foreground: var(--ink-900);
+  --card: var(--glass);
+  --card-foreground: var(--ink-900);
+  --popover: rgba(255, 255, 255, 0.97);
+  --popover-foreground: var(--ink-900);
+  --text-body: var(--ink-700);
+  --muted-foreground: var(--ink-600);
+  --faint: var(--ink-500);
+  --placeholder: var(--ink-400);
+  --disabled-foreground: var(--ink-300);
+  --primary: var(--indigo-900);
+  --primary-foreground: #ffffff;
+  --ring: var(--indigo-500);
+  --link: var(--indigo-900);
+  --link-hover: var(--indigo-500);
+  --destructive: var(--danger);
+  --tooltip: var(--indigo-900);
+  --scrim: rgba(30, 10, 24, 0.3);
+  --shadow-overlay: var(--shadow-dialog);
+  --shadow-floating: var(--shadow-popover);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+@theme inline {
+  /* Inter in three weights: 400 body, 500 controls, 600 headings (the shared theme maps Lato's) */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  --color-ink-900: var(--ink-900);
+  --color-ink-700: var(--ink-700);
+  --color-ink-600: var(--ink-600);
+  --color-ink-500: var(--ink-500);
+  --color-ink-400: var(--ink-400);
+  --color-ink-300: var(--ink-300);
+  --color-indigo-950: var(--indigo-950);
+  --color-indigo-900: var(--indigo-900);
+  --color-indigo-700: var(--indigo-700);
+  --color-indigo-500: var(--indigo-500);
+  --color-indigo-300: var(--indigo-300);
+  --color-indigo-100: var(--indigo-100);
+  --color-indigo-50: var(--indigo-50);
+  --color-blush-50: var(--blush-50);
+  --color-blush-100: var(--blush-100);
+  --color-blush-200: var(--blush-200);
+  --color-rose-400: var(--rose-400);
+  --color-success-bg: var(--success-bg);
+  --color-success-fg: var(--success-fg);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-fg: var(--warning-fg);
+  --color-warning-strong: var(--warning-strong);
+  --color-warning-dot: var(--warning-dot);
+  --color-info-bg: var(--info-bg);
+  --color-info-fg: var(--info-fg);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-bg: var(--danger-bg);
+  --color-line-1: var(--line-1);
+  --color-line-2: var(--line-2);
+  --color-line-3: var(--line-3);
+  --color-wash-1: var(--wash-1);
+  --color-wash-2: var(--wash-2);
+  --color-wash-3: var(--wash-3);
+  --color-glass: var(--glass);
+  --color-glass-strong: var(--glass-strong);
+  --color-glass-tabbar: var(--glass-tabbar);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-soft: var(--shadow-soft);
+  --shadow-soft-hover: var(--shadow-soft-hover);
+  --shadow-nav-active: var(--shadow-nav-active);
+  --shadow-popover: var(--shadow-popover);
+  --shadow-dialog: var(--shadow-dialog);
+  --shadow-banner: var(--shadow-banner);
+  --shadow-tabbar: var(--shadow-tabbar);
+  --shadow-outline: var(--ring-outline);
+  --shadow-outline-hover: var(--ring-outline-hover);
+  --shadow-avatar: var(--ring-avatar);
+}
+
+/* frosted glass: white 70%, blurred, with the inset rim and the soft violet shadow */
+@utility glass {
+  background: var(--glass);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+  box-shadow: var(--shadow-card);
+}
+
+/* tracked uppercase micro-labels (overlines; named eyebrow because Tailwind's overline draws a line) and primary CTA labels */
+@utility eyebrow {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+@utility cta-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+@utility wordmark {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+}
+
+/* Hover, one rule per kind (design readme): glass brightens to 92% white, quiet controls get a 4% ink
+   wash, outlines strengthen to 22%. Primary darkens one step (hover:bg-indigo-950) and links turn
+   indigo-500; nothing lifts or scales. */
+@utility hover-glass {
+  &:hover {
+    background-color: var(--glass-strong);
+  }
+}
+
+@utility hover-ghost {
+  &:hover {
+    background-color: var(--wash-2);
+  }
+}
+
+@utility hover-outline {
+  &:hover {
+    box-shadow: var(--ring-outline-hover);
+  }
+}
+
+@utility page {
+  width: 100%;
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding-inline: var(--page-pad);
+}
+
+@keyframes fc-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* menus, dialogs and messages arrive with a short fade and a small rise; nothing bounces */
+@utility animate-fc-rise {
+  animation: fc-rise 0.18s ease both;
+}
+
+@media (min-width: 760px) {
+  :root {
+    --header-h: 72px;
+  }
+}
+
+@layer base {
+  /* full-bleed sections (w-screen) include the scrollbar's width; never let that scroll sideways */
+  html {
+    overflow-x: clip;
+  }
+
+  body {
+    background: var(--page-gradient);
+    background-attachment: fixed;
+    color: var(--ink-900);
+    font-variant-numeric: tabular-nums;
+  }
 }
