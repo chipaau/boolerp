@@ -156,8 +156,8 @@ services:
       - traefik.http.routers.erp-workspace.service=erp-workspace
       - traefik.http.services.erp-workspace.loadbalancer.server.port=3000
 
-  # Bool's own marketing site (apps/website) at the bool.test apex and its www. Those two are
-  # Bool's hosts, never a tenant's, so they are claimed above the workspace's *.test catch-all
+  # Bool's own marketing site (apps/website) at the bool.test apex and its www, and at
+  # website.bool.test for development (C189). They are Bool's hosts, never a tenant's, so they are claimed above the workspace's *.test catch-all
   # the way admin.bool.test and identity.bool.test already are — without this the catch-all
   # answered the apex with the tenant workspace. The priority has to clear bff-workspace's
   # catch-all too (3 = the same *.test regexp with /auth and /api): at 2 the tenant BFF answered
@@ -170,7 +170,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      - "traefik.http.routers.erp-website.rule=Host(`bool.test`) || Host(`www.bool.test`)"
+      - "traefik.http.routers.erp-website.rule=Host(`bool.test`) || Host(`www.bool.test`) || Host(`website.bool.test`)"
       - traefik.http.routers.erp-website.entrypoints=web
       - traefik.http.routers.erp-website.priority=5
       - traefik.http.routers.erp-website.service=erp-website
