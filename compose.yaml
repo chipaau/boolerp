@@ -22,7 +22,8 @@ x-node: &node
     - /w/packages/api/node_modules
     - /w/packages/api-client/node_modules
     # pnpm's content-addressable store also needs to be off the bind mount: hard-linking large
-    # packages through the host bind mount (osxfs/virtiofs) corrupts the store silently.
+    # packages through the host bind mount (osxfs/virtiofs) corrupts the store silently. The dev
+    # image points pnpm here (pnpm_config_store_dir, docker/node.Dockerfile), so the services share it.
     - pnpm-store:/w/.pnpm-store
 
 # One BFF program, one service per instance (C90, C96, C97): bff-workspace and bff-admin
