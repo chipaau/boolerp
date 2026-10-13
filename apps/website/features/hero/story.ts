@@ -171,10 +171,10 @@ export function scrollStory(p: StoryParts) {
     camReset?.kill()
     if (on) camFrame = requestAnimationFrame(frame)
     else {
-      if (spot) gsap.to(spot, { opacity: 0, duration: 0.15, overwrite: true })
-      // the whole screen again, ready for next time, once the recording has faded out: resetting it
+      if (spot) gsap.set(spot, { opacity: 0, overwrite: true }) // gone with the recording, in the same cut
+      // the whole screen again, ready for next time, once the recording is hidden: resetting it
       // while it still shows would jump the shot
-      camReset = gsap.delayedCall(0.35, () => {
+      camReset = gsap.delayedCall(0.05, () => {
         Object.assign(cam, { x: 0.5, y: 0.5, s: 1 })
         camera.style.transform = ''
         lastShot = undefined
@@ -244,7 +244,8 @@ export function scrollStory(p: StoryParts) {
   const tl = gsap.timeline({ defaults: { ease: 'none' } })
   // linear: the page's glide between resting points does the easing (glideTo)
   tl.to(move, { e: 1, duration: settledAt, ease: 'none', onUpdate: place }, 0)
-    .to(fade, { autoAlpha: 0, y: -24, duration: settledAt * 0.5, ease: 'power1.in' }, 0)
+    // the copy steps back early, and (scrolling back) returns only once the tablet has cleared it
+    .to(fade, { autoAlpha: 0, y: -24, duration: settledAt * 0.25, ease: 'power1.in' }, 0)
     .fromTo(captions, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.05 }, settledAt * 0.92)
     // the close: the tablet steps back into the hero and the captions go, the recording still playing
     .to(move, { c: 1, duration: 1 - closeAt, ease: 'none', onUpdate: place }, closeAt)
@@ -293,8 +294,10 @@ export function scrollStory(p: StoryParts) {
       const settled = pr >= settledAt * 0.97
       if (settled !== live) {
         live = settled
-        // in gently; out quickly, before the dashboard beneath (another screen) can show through it
-        gsap.to(video, { opacity: settled ? 1 : 0, duration: settled ? 0.5 : 0.2, ease: 'sine.out', overwrite: true })
+        // in gently; out in one cut: the dashboard beneath is the same morning, a little differently
+        // framed, so any fade between them reads as a smeared double image
+        if (settled) gsap.to(video, { opacity: 1, duration: 0.5, ease: 'sine.out', overwrite: true })
+        else gsap.set(video, { opacity: 0, overwrite: true })
         play(settled)
         filming(settled)
         if (!settled) narrated = false
