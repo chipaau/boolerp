@@ -21,14 +21,15 @@ const MOTION_GATE = `try{if(!matchMedia('(prefers-reduced-motion: reduce)').matc
  * Layers, bottom to top: glow · copy · tablet and landed bee · trail and flying bee, on the page's cream. The
  * headline and navigation are sharp and readable from the first paint. From lg the scene fills the
  * hero and the copy sits on its calm left side; below lg the copy comes first and the scene is
- * cropped to the tablet.
+ * cropped to the tablet. From 2xl (large monitors) the hero takes most of the screen's height, with
+ * the copy and the scene centred in it, so it owns the first view; laptops keep its natural height.
  */
 export function Hero() {
   return (
     <>
       <script dangerouslySetInnerHTML={{ __html: MOTION_GATE }} />
-      <HeroMotion className="relative isolate grid overflow-hidden bg-background">
-        <div className="relative order-2 overflow-hidden lg:order-none lg:[grid-area:1/1]">
+      <HeroMotion className="relative isolate grid overflow-hidden bg-background 2xl:min-h-[min(92svh,64rem)]">
+        <div className="relative order-2 overflow-hidden lg:order-none lg:flex lg:items-center lg:[grid-area:1/1]">
           <Scene />
         </div>
 
