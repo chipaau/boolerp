@@ -3,15 +3,34 @@ import recording from './demo-chapters.json'
 /**
  * The product demo the tablet plays once the scroll story brings it to the centre: a scripted
  * recording of the workspace (scripts/demo-recording, which also writes demo-chapters.json), in
- * chapters. Each chapter has a caption beside the tablet; scrolling moves from one to the next, the
- * recording jumps to it and loops it while it is on screen.
+ * chapters. It plays on its own, start to end and round again, each chapter's caption under the
+ * tablet as it plays. Nothing of it loads until the story starts.
  */
 export const DEMO = {
+  // 2560×1600, and 1600×1000 (-sm) for screens that do not need the larger one (scripts/demo-recording/run.sh)
   mp4: '/hero/demo/demo.mp4',
   webm: '/hero/demo/demo.webm',
+  mp4Small: '/hero/demo/demo-sm.mp4',
+  webmSmall: '/hero/demo/demo-sm.webm',
   poster: '/hero/demo/poster.jpg',
   duration: recording.duration,
 } as const
+
+/**
+ * Points the video at the recording: the smaller encode when the screen will show it at no more
+ * than about its width in device pixels (`need`: the screen's width on the tablet, in device
+ * pixels, with any zoom), the larger otherwise; WebM (VP9, about a third lighter) where the browser
+ * plays it, else MP4 (H.264, Safari).
+ */
+export function loadDemo(video: HTMLVideoElement, need: number) {
+  if (video.src) return
+  const small = need <= 1700
+  const webm = video.canPlayType('video/webm; codecs="vp9"') !== ''
+  video.poster = DEMO.poster
+  video.src = small ? (webm ? DEMO.webmSmall : DEMO.mp4Small) : webm ? DEMO.webm : DEMO.mp4
+  video.preload = 'auto'
+  video.load()
+}
 
 const CAPTIONS: Record<string, { title: string; body: string }> = {
   home: { title: 'Your day, at a glance', body: 'What is due, who you are meeting and what needs you, the moment you sign in.' },

@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   title: 'Bool ERP — one system for your institution',
   description:
     'Multi-tenant ERP for Maldivian councils, ministries, health facilities, and companies. Inventory, HR, procurement, and performance — as cloud SaaS or self-hosted.',
+  // the same mark as the other Bool apps (identity, workspace, admin)
+  icons: { icon: '/favicon.png?v=4' },
 }
 
 export default function RootLayout({

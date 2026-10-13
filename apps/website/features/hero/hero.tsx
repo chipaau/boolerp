@@ -171,18 +171,16 @@ function StoryCaptions() {
 }
 
 /**
- * The story's close (story.ts): as the tablet steps back into the hero, the next step comes in
- * under it. Hidden until then; desktop only.
+ * The story's close (story.ts): as the tablet steps back into the hero, one next step comes in
+ * under it: having just watched the product, a demo of it for their own institution. Hidden until
+ * then; desktop only.
  */
 function StoryCta() {
   return (
-    <div data-story-cta="" className="invisible absolute inset-x-0 top-[89%] z-40 hidden justify-center gap-3 opacity-0 lg:flex">
-      <Button size="lg" variant="brand" className={CTA} render={<a href="#get-started" />}>
-        Start with Bool
-        <ButtonArrow className={CTA_ARROW} />
-      </Button>
-      <Button size="lg" variant="outline" render={<a href="#contact" />}>
+    <div data-story-cta="" className="invisible absolute inset-x-0 top-[89%] z-40 hidden justify-center opacity-0 lg:flex">
+      <Button size="lg" variant="brand" className={CTA} render={<a href="#contact" />}>
         Book a demo
+        <ButtonArrow className={CTA_ARROW} />
       </Button>
     </div>
   )

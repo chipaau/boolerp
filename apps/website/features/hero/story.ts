@@ -1,7 +1,7 @@
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Lenis from 'lenis'
-import { CAMERA, CHAPTERS, DEMO } from './demo'
+import { CAMERA, CHAPTERS, loadDemo } from './demo'
 import { TABLET } from './scene'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -67,6 +67,7 @@ export function storyPerch(tablet: HTMLElement) {
  */
 export function scrollStory(p: StoryParts) {
   const { hero, scene, tablet, fade, video, camera, captions, cta } = p
+  const html = document.documentElement
   const items = gsap.utils.toArray<HTMLElement>(captions.querySelectorAll('[data-story-caption]'))
   const dots = gsap.utils.toArray<HTMLElement>(captions.querySelectorAll('[data-story-dot]'))
 
@@ -163,16 +164,21 @@ export function scrollStory(p: StoryParts) {
     camera.style.transform = `translate(${(0.5 - cam.s * cx) * 100}%, ${(0.5 - cam.s * cy) * 100}%) scale(${cam.s})`
     camFrame = requestAnimationFrame(frame)
   }
+  let camReset: gsap.core.Tween | undefined
   const filming = (on: boolean) => {
     cancelAnimationFrame(camFrame)
     camLast = 0
+    camReset?.kill()
     if (on) camFrame = requestAnimationFrame(frame)
     else {
-      // the whole screen again, ready for next time
-      Object.assign(cam, { x: 0.5, y: 0.5, s: 1 })
-      camera.style.transform = ''
-      lastShot = undefined
-      if (spot) gsap.set(spot, { opacity: 0 })
+      if (spot) gsap.to(spot, { opacity: 0, duration: 0.15, overwrite: true })
+      // the whole screen again, ready for next time, once the recording has faded out: resetting it
+      // while it still shows would jump the shot
+      camReset = gsap.delayedCall(0.35, () => {
+        Object.assign(cam, { x: 0.5, y: 0.5, s: 1 })
+        camera.style.transform = ''
+        lastShot = undefined
+      })
     }
   }
 
@@ -206,13 +212,8 @@ export function scrollStory(p: StoryParts) {
     if (live) show(chapterAt(video.currentTime))
   }
   video.addEventListener('timeupdate', follow)
-  const wake = () => {
-    if (!video.src) {
-      video.src = DEMO.mp4
-      video.preload = 'auto'
-      video.load()
-    }
-  }
+  // the screen at its largest (the tablet settled), in device pixels, with room for the camera's zoom
+  const wake = () => loadDemo(video, Math.min(innerWidth * SETTLED.width, innerHeight * SETTLED.height * TABLET.aspect) * devicePixelRatio * 1.2)
   /** Starts the recording (where it was, if it was stopped part way), or stops it. */
   const play = (on: boolean) => {
     if (!on) return video.pause()
@@ -283,10 +284,17 @@ export function scrollStory(p: StoryParts) {
       last = { progress: pr, velocity: self.getVelocity() }
       if (pr > 0.002) wake()
       // the recording fades in on the screen as the tablet settles and plays; out (and paused) if it moves back
+      // while the story is under way (pinned), the site's header keeps out of it (site-header.tsx)
+      const inStory = pr > 0.002 && pr < 0.998
+      if (inStory !== (html.dataset.story === 'on')) {
+        if (inStory) html.dataset.story = 'on'
+        else delete html.dataset.story
+      }
       const settled = pr >= settledAt * 0.97
       if (settled !== live) {
         live = settled
-        gsap.to(video, { opacity: settled ? 1 : 0, duration: 0.5, ease: 'sine.out', overwrite: true })
+        // in gently; out quickly, before the dashboard beneath (another screen) can show through it
+        gsap.to(video, { opacity: settled ? 1 : 0, duration: settled ? 0.5 : 0.2, ease: 'sine.out', overwrite: true })
         play(settled)
         filming(settled)
         if (!settled) narrated = false
@@ -306,6 +314,7 @@ export function scrollStory(p: StoryParts) {
   p.tour?.addEventListener('click', tour)
 
   return () => {
+    delete html.dataset.story
     p.tour?.removeEventListener('click', tour)
     trigger.kill()
     tl.kill()
@@ -352,10 +361,9 @@ export function compactStory(p: CompactParts) {
   const play = (on: boolean) => {
     if (on === playing) return
     playing = on
-    if (on && !video.src) {
-      video.src = DEMO.mp4
+    if (on) {
+      loadDemo(video, tablet.getBoundingClientRect().width * devicePixelRatio) // no zoom here
       video.loop = true
-      video.load()
     }
     gsap.to(video, { opacity: on ? 1 : 0, duration: 0.5, ease: 'sine.out', overwrite: true })
     gsap.to(caption, { autoAlpha: on ? 1 : 0, duration: 0.4, overwrite: true })

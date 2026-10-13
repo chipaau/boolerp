@@ -29,16 +29,24 @@ docker run --rm --network proxy \
 
 echo "encoding…"
 mkdir -p "$web/public/hero/demo"
-# 30fps at 2560×1600, sharp UI text: H.264 for every browser, VP9 for those that prefer it; the first
-# frame is the poster
+# 30fps, sharp UI text, in two sizes: 2560×1600 for large high-density screens (a settled tablet on
+# a 1920-wide Retina display is about 2600 device pixels across, and the camera zooms in), and
+# 1600×1000 for phones and standard-density screens (demo.ts picks). Each as H.264 for every browser
+# and VP9 for those that play it, both encoded from the captured frames (not one from the other);
+# the first frame is the poster.
 docker run --rm -v "$work:/w" -w /w --entrypoint sh \
   linuxserver/ffmpeg:7.1.1@sha256:aea59a11c54291ac456bb2d67000445e5a8994f70bc3d96cdc29f022fbbf89fb -c '
   set -e
-  ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -vf "fps=30,scale=2560:1600:flags=lanczos,format=yuv420p" \
-    -c:v libx264 -preset slow -crf 22 -tune stillimage -movflags +faststart -an demo.mp4
-  ffmpeg -v error -y -i demo.mp4 -c:v libvpx-vp9 -b:v 0 -crf 34 -row-mt 1 -deadline good -cpu-used 2 -an demo.webm
+  for size in 2560:1600: 1600:1000:-sm; do
+    dims=${size%:*}; suffix=${size##*:}
+    vf="fps=30,scale=${dims}:flags=lanczos,format=yuv420p"
+    ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -vf "$vf" \
+      -c:v libx264 -preset slow -crf 22 -tune stillimage -movflags +faststart -an "demo${suffix}.mp4"
+    ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -vf "$vf" \
+      -c:v libvpx-vp9 -b:v 0 -crf 34 -row-mt 1 -deadline good -cpu-used 2 -an "demo${suffix}.webm"
+  done
   ffmpeg -v error -y -i demo.mp4 -frames:v 1 -q:v 3 poster.jpg'
-cp "$work/demo.mp4" "$work/demo.webm" "$work/poster.jpg" "$web/public/hero/demo/"
+cp "$work"/demo.mp4 "$work"/demo.webm "$work"/demo-sm.mp4 "$work"/demo-sm.webm "$work/poster.jpg" "$web/public/hero/demo/"
 # the chapter times the hero's captions follow (features/hero/demo.ts)
 cp "$work/chapters.json" "$web/features/hero/demo-chapters.json"
 ls -la "$web/public/hero/demo"

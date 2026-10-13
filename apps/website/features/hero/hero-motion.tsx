@@ -115,7 +115,8 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
         else toastTl?.resume()
       }
       const startToasts = () => {
-        if (toastTl || !toasts.length) return
+        // desktop only: the cards are hidden below lg, and their hexagon lifts would play to no one
+        if (toastTl || !toasts.length || !matchMedia('(min-width: 1024px)').matches) return
         if (matchMedia('(prefers-reduced-motion: reduce)').matches) return void gsap.set(toasts[0], { autoAlpha: 1 })
         toastTl = gsap.timeline({ repeat: -1 })
         toasts.forEach((el) => {
@@ -149,6 +150,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
         played.current = true
         html.dataset.heroMotion = 'done'
         startToasts()
+        loadTakeoff()
       }
       // no flight: show the copy and the landed bee, and stop
       const settle = () => {
@@ -217,10 +219,19 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
         gsap.set(shadow!, { opacity: SHADOW_OPACITY, scale: 1 })
       }
 
-      function storyOn() {
-        if (!takeoffClip || !demo || !camera || !captions || !cta || !slab) return
+      /**
+       * The take-off clip, for when the story sends the bee away: loaded once the opening is done,
+       * so it never competes with the opening's own clips (finish, storyOn). Desktop only.
+       */
+      function loadTakeoff() {
+        if (!takeoffClip || takeoffClip.src || !matchMedia('(min-width: 1024px)').matches) return
         takeoffClip.src = clipSrc('takeoff')
         takeoffClip.preload = 'auto'
+      }
+
+      function storyOn() {
+        if (!takeoffClip || !demo || !camera || !captions || !cta || !slab) return
+        if (played.current) loadTakeoff()
         const smoothOff = matchMedia('(pointer: fine)').matches ? smoothScroll() : () => {}
         const storyStop = scrollStory({
           hero: hero!,

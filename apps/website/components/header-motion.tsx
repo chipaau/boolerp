@@ -65,6 +65,8 @@ export function HeaderMotion({ className, children }: { className?: string; chil
       className={cn(
         'group/header fixed inset-x-0 top-0 z-50 transition-[translate,background-color] duration-300 ease-out',
         'data-[hidden=true]:-translate-y-full data-[floating=true]:bg-background/85 data-[floating=true]:backdrop-blur-md',
+        // and out of the way while the hero's scroll story is under way (story.ts sets data-story)
+        '[html[data-story=on]_&]:-translate-y-full',
         className,
       )}
     >

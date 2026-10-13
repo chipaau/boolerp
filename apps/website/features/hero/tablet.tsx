@@ -1,7 +1,6 @@
 import Image from 'next/image'
 import type { CSSProperties } from 'react'
 import { HEX_PATH, HEX_VIEWBOX } from '@workspace/ui/components/hexagon'
-import { DEMO } from './demo'
 import { APP_TILES, DASHBOARD, TABLET, TODAY_CELL, onScreen } from './scene'
 
 /**
@@ -42,9 +41,9 @@ export function Tablet({ focus }: { focus: 'soft' | 'sharp' }) {
           {focus === 'sharp' && (
             <>
               <LiveParts />
-              {/* the product demo, played here by the scroll story (story.ts); loaded only when it starts */}
+              {/* the product demo, played here by the scroll story (story.ts); it and its poster load only when the story starts (demo.ts) */}
               <div data-demo-camera="" className="absolute inset-0 origin-top-left">
-                <video data-demo-video="" muted playsInline preload="none" poster={DEMO.poster} className="absolute inset-0 size-full object-cover object-top opacity-0" />
+                <video data-demo-video="" muted playsInline preload="none" className="absolute inset-0 size-full object-cover object-top opacity-0" />
                 {/* the spotlight: the part of the screen the caption is about, the rest gently dimmed */}
                 <div data-demo-spot="" aria-hidden="true" className="demo-spot" />
               </div>

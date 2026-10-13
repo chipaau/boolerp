@@ -16,6 +16,12 @@ const IDENTITY = process.env.DEMO_IDENTITY ?? 'http://identity.bool.test'
 const EMAIL = process.env.DEMO_EMAIL ?? 'mariyam@bool.mv'
 const PASSWORD = process.env.DEMO_PASSWORD ?? 'password'
 const OUT = process.env.DEMO_OUT ?? '/out'
+// The moment the take happens in: the same morning the hero's dashboard image shows (Thursday 23 July,
+// in the Maldives), so the recording greets, dates and fills the calendar the way the tablet did a
+// moment before it, and every take is the same day whenever it is recorded. The clock is frozen at
+// this time for the page's scripts; timers and animations run as usual.
+const TIME = process.env.DEMO_TIME ?? '2026-07-23T09:12:00+05:00'
+const ZONE = process.env.DEMO_ZONE ?? 'Indian/Maldives'
 
 // 16:10, the hero tablet's screen; 1536×960 CSS pixels captured at 2× (3072×1920) and encoded at
 // 2560×1600, so the interface stays crisp when the tablet nearly fills a high-density screen.
@@ -51,7 +57,7 @@ const STAGE = `
 `
 
 const browser = await chromium.launch()
-const context = await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE, reducedMotion: 'no-preference' })
+const context = await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE, reducedMotion: 'no-preference', timezoneId: ZONE })
 const page = await context.newPage()
 
 // Sign in and open every page the demo visits once, so nothing compiles or loads during the take.
@@ -77,6 +83,7 @@ for (const path of ['/inventory', '/calendar', '/control-centre', '/']) {
   await page.waitForLoadState('networkidle').catch(() => {})
 }
 await context.addInitScript(STAGE)
+await context.clock.setFixedTime(new Date(TIME))
 await page.goto(`${BASE}/`)
 await page.waitForLoadState('networkidle').catch(() => {})
 await page.waitForTimeout(1500)
@@ -88,18 +95,28 @@ await rm(frames, { recursive: true, force: true })
 await mkdir(frames, { recursive: true })
 const cdp = await context.newCDPSession(page)
 const shots = []
+const writes = []
 let start = 0
-cdp.on('Page.screencastFrame', async ({ data, metadata, sessionId }) => {
+cdp.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
+  // acknowledged first, so the browser sends the next frame while this one is written (waiting for
+  // the disk would lower the capture's frame rate and make the cursor stutter)
+  cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {})
   const name = `${String(shots.length).padStart(5, '0')}.jpg`
   shots.push({ name, t: metadata.timestamp })
-  await writeFile(`${frames}/${name}`, Buffer.from(data, 'base64'))
-  await cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {})
+  writes.push(writeFile(`${frames}/${name}`, Buffer.from(data, 'base64')))
 })
 
 // ── the take ─────────────────────────────────────────────────────────────────────────────────
 let mouse = { x: VIEW.width * 0.62, y: VIEW.height * 0.55 }
 const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2)
 const pause = (ms) => page.waitForTimeout(ms)
+/** A seeded random (mulberry32): the typing's uneven rhythm, the same in every take. */
+const random = ((seed) => () => {
+  seed = (seed + 0x6d2b79f5) | 0
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+})(23)
 
 /** Moves the cursor to a point (or the middle of an element) in a smooth, eased arc. */
 async function glide(target, ms = 700) {
@@ -125,7 +142,7 @@ async function click(target, ms) {
 async function type(text) {
   for (const ch of text) {
     await page.keyboard.type(ch)
-    await pause(55 + Math.random() * 45)
+    await pause(55 + random() * 45)
   }
 }
 
@@ -240,6 +257,7 @@ await pause(2500)
 
 await cdp.send('Page.stopScreencast')
 await pause(300)
+await Promise.all(writes)
 await browser.close()
 
 // ── timings ──────────────────────────────────────────────────────────────────────────────────
