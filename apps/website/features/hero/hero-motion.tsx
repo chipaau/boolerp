@@ -47,7 +47,8 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       const rest = one<HTMLElement>('[data-bee-rest]')
       const sharp = one<HTMLElement>('[data-tablet="sharp"]')
       const glow = one<HTMLElement>('[data-today-glow]')
-      const tiles = q('[data-app-tile]')
+      const tiles = q('[data-live-tile="app"]')
+      const today = one<HTMLElement>('[data-live-tile="today"] [data-live-tile-face]')
       const underline = one<SVGPathElement>('[data-hero-underline]')
       const tilt = one<HTMLElement>('[data-hero-tilt]')
       const trail = one<SVGSVGElement>('[data-bee-trail]')
@@ -89,7 +90,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
         gsap.to(sharp ?? [], { opacity: 1, duration: 0.5, ease: 'sine.out' })
         gsap.to(underline ?? [], { strokeDashoffset: 0, duration: 0.5 })
       }
-      if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !sharp || !glow || !underline || !trail || !trailDots || !trailReveal) return finish()
+      if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !sharp || !glow || !today || !underline || !trail || !trailDots || !trailReveal) return finish()
 
       const mm = gsap.matchMedia()
       mm.add(
@@ -120,8 +121,8 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
               flight(tl, measure(hero, scene, air, target))
               focus(tl, SCENE_TIMING.focus)
             }
-            // the headline's stroke draws on as the bee passes over it
-            tl.to(underline!, { strokeDashoffset: 0, duration: 0.7, ease: 'power2.inOut' }, mobile ? 0.4 : 0.9)
+            // the headline's stroke draws on from left to right as the bee crosses above it
+            tl.to(underline!, { strokeDashoffset: 0, duration: mobile ? 1 : 1.5, ease: 'sine.inOut' }, mobile ? 0.4 : 0.5)
             // the supporting copy settles in while the bee is still in the air
             tl.to(reveals, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1 }, mobile ? 0.2 : 1.2)
           })
@@ -162,15 +163,16 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       }
 
       /**
-       * The dashboard comes alive once the bee is down: app hexagons lift toward the viewer and
-       * settle in a scattered order (flight.ts, liftOrder), each over a softening shadow, while
-       * today's cell in the heat map glows a few times. Transforms and opacity only; then it rests.
+       * The dashboard comes alive once the bee is down: app hexagons lift gently toward the viewer
+       * and settle, now and then in a scattered order (flight.ts, liftOrder), each over a softening
+       * shadow, while today's cell in the heat map lifts a little in a light glow. Transforms and
+       * opacity only; then it rests.
        */
       function alive(tl: gsap.core.Timeline, at: number) {
         const A = ALIVE
         liftOrder(tiles.length, A.lifts).forEach((i, k) => {
-          const face = tiles[i].querySelector('[data-app-tile-face]')
-          const under = tiles[i].querySelector('[data-app-tile-shadow]')
+          const face = tiles[i].querySelector('[data-live-tile-face]')
+          const under = tiles[i].querySelector('[data-live-tile-shadow]')
           const t = at + k * A.gap + Math.random() * A.jitter
           const down = t + A.rise + A.hold
           tl.to(face, { scale: A.scale, yPercent: A.lift, duration: A.rise, ease: 'power2.out', overwrite: 'auto' }, t)
@@ -178,7 +180,9 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
             .to(face, { scale: 1, yPercent: 0, duration: A.fall, ease: 'power2.inOut' }, down)
             .to(under, { opacity: 0, scale: 1, duration: A.fall, ease: 'power2.inOut' }, down)
         })
-        tl.fromTo(glow!, { opacity: 0 }, { opacity: 1, duration: 0.7, ease: 'sine.inOut', yoyo: true, repeat: A.glowPulses * 2 - 1 }, at)
+        const beat = { duration: A.today.beat, ease: 'sine.inOut', yoyo: true, repeat: A.today.pulses * 2 - 1 }
+        tl.fromTo(today!, { scale: 1, yPercent: 0 }, { scale: A.today.scale, yPercent: A.today.lift, ...beat }, at)
+          .fromTo(glow!, { opacity: 0 }, { opacity: 1, ...beat }, at)
       }
 
       /** The tablet comes into focus: its sharp copy fades in over the blurred one (tablet.tsx). */

@@ -90,12 +90,12 @@ function Scene() {
   return (
     <div
       data-hero-scene=""
-      className="relative -ml-[52%] aspect-[1527/881] w-[155%] [--bee-w:16cqw] [container-type:inline-size] sm:-ml-[40%] sm:w-[138%] lg:ml-auto lg:w-[min(calc(100%-max(1.5rem,calc((100%-80rem)/2+1.5rem))),96rem,88%)]"
+      className="relative -ml-[59%] aspect-[1398/820] w-[155%] [--bee-w:15cqw] [container-type:inline-size] sm:-ml-[51%] sm:w-[138%] lg:mx-auto lg:w-[min(calc(100%-3rem),77rem)]"
     >
       {/* the soft light the tablet floats in, gathered in the brand's hexagon behind it */}
       <div aria-hidden="true" className="hero-glow absolute" />
-      <Hexagon size="34cqw" className="absolute left-[49.2%] top-[27.3%] text-hex-decor-to opacity-70 blur-[2.5cqw]" />
-      <div data-hero-tilt="" className="pointer-events-none absolute inset-0 z-30 origin-[65.6%_56.8%]">
+      <Hexagon size="34cqw" className="absolute left-[53.7%] top-[25.9%] text-hex-decor-to opacity-70 blur-[2.5cqw]" />
+      <div data-hero-tilt="" className="pointer-events-none absolute inset-0 z-30 origin-[70.1%_54.9%]">
         <Tablet focus="soft" />
         <Tablet focus="sharp" />
         <div data-bee-landing-target="" className="absolute" style={LANDING}>

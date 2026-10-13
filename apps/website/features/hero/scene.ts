@@ -1,40 +1,45 @@
 /**
- * Geometry of the hero scene: a 1527×881 stage holding the floating tablet and the bee's landing
- * spot. From lg the stage runs from the edge of the screen leftward, as wide as the space from the
- * content's left edge (the header's max-w-7xl less its padding) but never more than 88% of the
- * screen or 96rem, so the tablet breaks out past the content column on the right like the
- * reference, and on narrower screens steps back to keep clear of the copy. Below lg it is widened and cropped to the
- * tablet. Everything is a share of the stage's width (cqw on the stage container) or a percentage,
- * so it stays in proportion without script. The bee flies beyond the stage, in from the screen's edge.
+ * Geometry of the hero scene: a 1398×820 stage holding the floating tablet and the bee's landing
+ * spot. From lg the stage is the page's content column (the header's max-w-7xl less its padding),
+ * so the tablet's right edge lines up with the header and the content below at every width; below
+ * lg it is widened and cropped to the tablet. Everything is a share of the stage's width (cqw on
+ * the stage container) or a percentage, so it stays in proportion without script. The bee flies
+ * beyond the stage, in from the edge of the screen.
  */
-export const STAGE = { width: 1527, height: 881 } as const
+export const STAGE = { width: 1398, height: 820 } as const
 
 /** The workspace Home, exported from the design, shown on the tablet (served as is, so its parts can reuse it). */
 export const DASHBOARD = { src: '/hero/dashboard.webp', width: 2000, height: 1215 } as const
 
 /**
- * The tablet: a 1.55:1 slab anchored at its top-left corner and laid back in space where the
- * reference has it: its top level with the eyebrow, its left side just past the copy, its right
- * corner near the screen's edge (corners at 622,190 · 1496,253 · 1394,843 · 494,714 on the stage). The
+ * The tablet: a 1.55:1 slab anchored at its top-left corner and laid back in space at the
+ * reference's angle, its top level with the eyebrow, its right corner on the content's right edge
+ * and as large as fits beside the copy (corners at 662,190 · 1396,243 · 1310,739 · 554,630 on the
+ * stage). The
  * projective map is written as rotate3d + perspective + a linear matrix because those accept
  * lengths, and a perspective in cqw scales with the stage where a matrix3d would not.
  * `bezel` is the glass edge around the screen, as a share of the tablet's width.
+ *
+ * `raster`: a tilted 3D element is painted at its layout size and then warped, which softens the
+ * dashboard. The tablet is laid out `raster` times larger and scaled back down in the same
+ * transform, so the browser paints it with that many times the pixels and stays sharp.
  */
 export const TABLET = {
   aspect: 1.55,
-  bezel: 0.009,
-  left: '40.733%',
-  top: '21.566%',
-  width: '56.974cqw',
+  bezel: 0.006,
+  raster: 2,
+  left: '47.342%',
+  top: '23.171%',
+  width: '62.232cqw',
   transform:
-    'matrix(1.07191, 0.20106, -0.11455, 0.97878, 0, 0) perspective(303.497cqw) rotate3d(0.52102, -0.85354, 0, 40deg)',
+    'matrix(0.90041, 0.16889, -0.09622, 0.82217, 0, 0) perspective(331.502cqw) rotate3d(0.52102, -0.85354, 0, 40deg)',
 } as const
 
 /**
  * Where the bee lands: just in front of the tablet's bottom edge near its left corner, so the lower half
  * of the bee stands clear of the tablet and the upper half overlaps it.
  */
-export const LANDING = { left: '42.093%', top: '86.443%' } as const
+export const LANDING = { left: '48.589%', top: '81.735%' } as const
 
 /**
  * Parts of the dashboard that come alive after the landing, measured on the image (px): the app
@@ -53,7 +58,7 @@ export const APP_TILES = {
     [1729, 1015], // Procurement
   ],
 } as const
-export const TODAY_CELL = { centre: [919.5, 335.5], size: { w: 34, h: 36 } } as const
+export const TODAY_CELL = { centre: [919.5, 335.5], size: { w: 40, h: 43 } } as const // with its outline
 
 /**
  * Where a box on the dashboard image (px) falls on the tablet's screen, in percentages of the

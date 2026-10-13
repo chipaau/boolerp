@@ -21,8 +21,8 @@ export function Tablet({ focus }: { focus: 'soft' | 'sharp' }) {
         style={{
           left: TABLET.left,
           top: TABLET.top,
-          width: TABLET.width,
-          transform: TABLET.transform,
+          width: `calc(${TABLET.width} * ${TABLET.raster})`,
+          transform: `${TABLET.transform} scale(${1 / TABLET.raster})`,
           aspectRatio: TABLET.aspect,
           padding: `${TABLET.bezel * 100}%`,
         }}
@@ -57,37 +57,45 @@ const HEX_MASK = `url("data:image/svg+xml,${encodeURIComponent(
 )}") center / 100% 100% no-repeat`
 
 /**
- * The app hexagons, each a copy of its own patch of the dashboard image cut to the hexagon and laid
- * exactly over it (invisible at rest), so the opening can lift them one by one; and a warm glow
- * under the heat map's darkest cell. Static and aligned without script; hero-motion.tsx animates them.
+ * The parts of the dashboard that come alive after the landing: the app hexagons, and today's cell
+ * in the heat map over a light glow. Each is a copy of its own patch of the dashboard image, cut to
+ * the brand hexagon and laid exactly over it, so at rest nothing shows and the opening can lift it.
+ * Aligned without script; hero-motion.tsx animates them.
  */
 function LiveParts() {
   const { w, h } = APP_TILES.size
-  const glow = onScreen(TODAY_CELL.centre[0], TODAY_CELL.centre[1], TODAY_CELL.size.w * 2.6, TODAY_CELL.size.h * 2.6)
+  const [tx, ty] = TODAY_CELL.centre
+  const today = onScreen(tx, ty, TODAY_CELL.size.w, TODAY_CELL.size.h)
+  const glow = onScreen(tx, ty, TODAY_CELL.size.w * 2.4, TODAY_CELL.size.h * 2.4)
   return (
     <div aria-hidden="true" className="absolute inset-0">
       <div data-today-glow="" className="today-glow absolute" style={percent(glow)} />
-      {APP_TILES.centres.map(([cx, cy]) => {
-        const box = onScreen(cx, cy, w, h)
-        return (
-          <div key={`${cx},${cy}`} data-app-tile="" className="absolute" style={percent(box)}>
-            <div data-app-tile-shadow="" className="app-tile-shadow" />
-            <div data-app-tile-face="" className="absolute inset-0 overflow-hidden" style={{ mask: HEX_MASK }}>
-              {/* the whole screen's image, offset so this tile's patch shows through */}
-              <div
-                className="absolute bg-cover bg-top"
-                style={{
-                  backgroundImage: `url(${DASHBOARD.src})`,
-                  left: `${(-box.left / box.width) * 100}%`,
-                  top: `${(-box.top / box.height) * 100}%`,
-                  width: `${(100 / box.width) * 100}%`,
-                  height: `${(100 / box.height) * 100}%`,
-                }}
-              />
-            </div>
-          </div>
-        )
-      })}
+      <LiveTile kind="today" box={today} />
+      {APP_TILES.centres.map(([cx, cy]) => (
+        <LiveTile key={`${cx},${cy}`} kind="app" box={onScreen(cx, cy, w, h)} />
+      ))}
+    </div>
+  )
+}
+
+/** One patch of the dashboard, cut to a hexagon over its own soft shadow. */
+function LiveTile({ kind, box }: { kind: 'app' | 'today'; box: ReturnType<typeof onScreen> }) {
+  return (
+    <div data-live-tile={kind} className="absolute" style={percent(box)}>
+      {kind === 'app' && <div data-live-tile-shadow="" className="app-tile-shadow" />}
+      <div data-live-tile-face="" className="absolute inset-0 overflow-hidden" style={{ mask: HEX_MASK }}>
+        {/* the whole screen's image, offset so this tile's patch shows through */}
+        <div
+          className="absolute bg-cover bg-top"
+          style={{
+            backgroundImage: `url(${DASHBOARD.src})`,
+            left: `${(-box.left / box.width) * 100}%`,
+            top: `${(-box.top / box.height) * 100}%`,
+            width: `${(100 / box.width) * 100}%`,
+            height: `${(100 / box.height) * 100}%`,
+          }}
+        />
+      </div>
     </div>
   )
 }

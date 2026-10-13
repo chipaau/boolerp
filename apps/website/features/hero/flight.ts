@@ -58,7 +58,7 @@ type Mark = {
 export const MARKS: Mark[] = [
   { t: 0, at: [-0.1, 0.2], scale: 0.48, life: 0 }, // off-screen left (FlightBox.enter), in the band between the navigation and the headline
   { t: 1.4, at: [0.33, 0.2], scale: 0.58, life: 0 }, // gliding in above the copy, facing right
-  { t: 2.3, at: [0.4, 0.55], scale: 0.82, life: 0 }, // past the copy, curving down toward the tablet's front edge
+  { t: 2.3, at: [0.44, 0.55], scale: 0.82, life: 0 }, // past the copy, curving down toward the tablet's front edge
   { t: 73 / 24, at: 'land', scale: 1, life: 0 }, // where the landing clip begins, just above the tablet's bottom edge
 ]
 
@@ -120,11 +120,24 @@ export function smoothThrough(xs: number[], ys: number[], endSlope?: number) {
 export const SCENE_TIMING = { focus: [2.2, 3.6] as const }
 
 /**
- * After the landing the dashboard comes alive for a few seconds: app hexagons lift toward the
- * viewer and settle, one after another in no set order, while today's cell in the heat map glows.
- * Seconds, except `scale` (the lifted size) and `lift` (how far up, in % of the tile's height).
+ * After the landing the dashboard comes alive for a few seconds: app hexagons lift gently toward
+ * the viewer and settle, now and then and in no set order, while today's cell in the heat map
+ * lifts a little in a light glow. Seconds, except `scale` (the lifted size) and `lift` (how far
+ * up, in % of the tile's height; at most (scale - 1) / 2, so the lifted copy still covers the
+ * tile beneath it).
  */
-export const ALIVE = { delay: 0.35, lifts: 11, gap: 0.26, jitter: 0.18, rise: 0.35, hold: 0.25, fall: 0.5, scale: 1.12, lift: -6, glowPulses: 3 } as const
+export const ALIVE = {
+  delay: 0.35,
+  lifts: 8,
+  gap: 0.6,
+  jitter: 0.35,
+  rise: 0.45,
+  hold: 0.35,
+  fall: 0.7,
+  scale: 1.05,
+  lift: -2.5,
+  today: { scale: 1.15, lift: -4, pulses: 2, beat: 0.65 },
+} as const
 
 /**
  * The order the tiles lift in: `count` picks from `tiles`, at random, never repeating one of the
