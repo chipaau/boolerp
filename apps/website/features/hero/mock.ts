@@ -1,10 +1,9 @@
 // UI fixtures — marketing content for the homepage, not live data
-import { Box, ChartNoAxesColumn, ListChecks, ShoppingCart } from 'lucide-react'
+import avatar1 from '@workspace/assets/avatars/avatar-1.jpg'
+import avatar2 from '@workspace/assets/avatars/avatar-2.jpg'
+import avatar3 from '@workspace/assets/avatars/avatar-3.jpg'
+import avatar4 from '@workspace/assets/avatars/avatar-4.webp'
+import avatar5 from '@workspace/assets/avatars/avatar-5.jpg'
 
-/** The apps named under the calls to action, two to a line: the workspace's main apps. */
-export const HERO_APPS = [
-  { icon: Box, name: 'Inventory', with: '& Assets' },
-  { icon: ListChecks, name: 'Tasks', with: '& Notes' },
-  { icon: ShoppingCart, name: 'Procurement', with: '& Orders' },
-  { icon: ChartNoAxesColumn, name: 'Analytics', with: '& Reports' },
-]
+/** The faces in the trust row under the calls to action. */
+export const TRUST_AVATARS = [avatar1, avatar2, avatar3, avatar4, avatar5]

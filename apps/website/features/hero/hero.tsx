@@ -1,9 +1,10 @@
+import Image from 'next/image'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Hexagon } from '@workspace/ui/components/hexagon'
 import { CTA, CTA_ARROW } from '@/components/cta'
 import { BeeAirborne, BeeLanded, BeeTrail } from './bee'
 import { HeroMotion } from './hero-motion'
-import { HERO_APPS } from './mock'
+import { TRUST_AVATARS } from './mock'
 import { Tablet } from './tablet'
 import { HeroToasts } from './toasts'
 import { CHAPTERS } from './demo'
@@ -60,19 +61,19 @@ export function Hero() {
                 Book a demo
               </Button>
             </div>
-            {/* the apps, by name: a grid of two on phones, one row with hairline dividers from sm */}
-            <ul data-hero-reveal="copy" className="mt-11 grid grid-cols-2 gap-x-6 gap-y-4 sm:flex sm:w-max sm:items-center sm:gap-0 sm:divide-x sm:divide-border">
-              {HERO_APPS.map(({ icon: Icon, name, with: also }) => (
-                <li key={name} className="flex items-center gap-2 sm:px-4 sm:first:pl-0 sm:last:pr-0 2xl:px-5">
-                  <Icon aria-hidden="true" strokeWidth={1.5} className="size-4 shrink-0 text-foreground/60" />
-                  <span className="whitespace-nowrap text-xs leading-[1.3] text-foreground/65">
-                    {name}
-                    <br />
-                    {also}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {/* who uses it: a few faces and the teams they come from */}
+            <div data-hero-reveal="copy" className="mt-10 flex items-center gap-5">
+              <span className="flex -space-x-2.5">
+                {TRUST_AVATARS.map((src, i) => (
+                  <Image key={i} src={src} alt="" sizes="40px" className="size-10 rounded-full object-cover ring-2 ring-background" />
+                ))}
+              </span>
+              <span className="border-l border-border pl-5 text-sm leading-snug text-muted-foreground">
+                Trusted by teams across
+                <br />
+                operations, finance and procurement.
+              </span>
+            </div>
           </div>
         </div>
 

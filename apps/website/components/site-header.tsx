@@ -35,7 +35,7 @@ export function SiteHeader({ className }: { className?: string }) {
           ))}
         </nav>
         <div className="ml-auto flex items-center lg:ml-0">
-          <Button variant="outline" render={<a href="#sign-in" />}>
+          <Button render={<a href="#sign-in" />}>
             Sign in
           </Button>
           {/* hidden (and inert) while the hero's buttons are on screen */}
