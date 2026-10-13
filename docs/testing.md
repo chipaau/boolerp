@@ -94,9 +94,11 @@ EDITION=full e2e/run.sh
 to Traefik), with its dependencies in the `erp-e2e-node-modules` volume. The suite uses one worker and one account, and runs in CI
 (C109). Before the tests, `e2e/warm.sh` opens the pages the suite reaches first, so the
 development servers have compiled them before a test is timed. App journeys (the app
-projects) start signed in: a `signed-in` setup project signs in once and saves the browser
-state, so they do not sign in before every test; the platform tests (sign-in, sign-out)
-still use fresh browsers (C127).
+projects) and the admin console's journeys (the `admin` project, `e2e/tests/admin/`) start
+signed in: a `signed-in` setup project signs in once and saves the browser state, so they
+reach their app through the login service's session instead of submitting the login form in
+every test, which kept the suite near the login service's limit of 10 a minute (C112); the
+platform tests (sign-in, sign-out) still use fresh browsers (C127).
 
 See [employee scope](hrms/employees.md) and [execution](platform/execution.md).
 
