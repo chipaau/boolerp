@@ -58,7 +58,7 @@ type Mark = {
 export const MARKS: Mark[] = [
   { t: 0, at: [-0.1, 0.2], scale: 0.48, life: 0 }, // off-screen left (FlightBox.enter), in the band between the navigation and the headline
   { t: 1.4, at: [0.33, 0.2], scale: 0.58, life: 0 }, // gliding in above the copy, facing right
-  { t: 2.3, at: [0.47, 0.52], scale: 0.82, life: 0 }, // past the copy, curving down toward the tablet's front edge
+  { t: 2.3, at: [0.4, 0.55], scale: 0.82, life: 0 }, // past the copy, curving down toward the tablet's front edge
   { t: 73 / 24, at: 'land', scale: 1, life: 0 }, // where the landing clip begins, just above the tablet's bottom edge
 ]
 

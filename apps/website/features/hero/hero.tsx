@@ -33,9 +33,9 @@ export function Hero() {
         </div>
 
         <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-10 pt-24 lg:[grid-area:1/1] lg:self-center lg:py-0 lg:pt-20">
-          <div className="max-w-xl lg:max-w-[40%]">
+          <div className="max-w-xl lg:max-w-[36%]">
             <p className="text-overline tracking-[0.28em] text-muted-foreground">One workspace. Multiple apps.</p>
-            <h1 className="mt-5 text-balance text-[clamp(2.5rem,3.7vw,4rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
+            <h1 className="mt-5 text-balance text-[clamp(2.5rem,3.5vw,4rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
               One workspace for{' '}
               <span className="relative inline-block">
                 everything
@@ -90,12 +90,12 @@ function Scene() {
   return (
     <div
       data-hero-scene=""
-      className="relative -ml-[50%] aspect-[1672/880] w-[155%] [--bee-w:17cqw] [container-type:inline-size] sm:-ml-[38%] sm:w-[138%] lg:mx-auto lg:w-[min(calc(100%-3rem),77rem)]"
+      className="relative -ml-[52%] aspect-[1527/881] w-[155%] [--bee-w:16cqw] [container-type:inline-size] sm:-ml-[40%] sm:w-[138%] lg:ml-auto lg:w-[min(calc(100%-max(1.5rem,calc((100%-80rem)/2+1.5rem))),96rem,88%)]"
     >
       {/* the soft light the tablet floats in, gathered in the brand's hexagon behind it */}
       <div aria-hidden="true" className="hero-glow absolute" />
-      <Hexagon size="34cqw" className="absolute left-[56%] top-[20%] text-hex-decor-to opacity-70 blur-[2.5cqw]" />
-      <div data-hero-tilt="" className="pointer-events-none absolute inset-0 z-30 origin-[72.7%_52.7%]">
+      <Hexagon size="34cqw" className="absolute left-[49.2%] top-[27.3%] text-hex-decor-to opacity-70 blur-[2.5cqw]" />
+      <div data-hero-tilt="" className="pointer-events-none absolute inset-0 z-30 origin-[65.6%_56.8%]">
         <Tablet focus="soft" />
         <Tablet focus="sharp" />
         <div data-bee-landing-target="" className="absolute" style={LANDING}>

@@ -108,9 +108,9 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
 /* the shadow it casts on the ground below, soft and to the right of the light */
 .tablet-shadow {
   position: absolute;
-  left: 47.5%;
-  top: 79%;
-  width: 44cqw;
+  left: 37.8%;
+  top: 81%;
+  width: 48cqw;
   height: 6cqw;
   rotate: 7deg;
   border-radius: 50%;
@@ -123,5 +123,5 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
    content column's edge never shows) */
 .hero-glow {
   inset: -25%;
-  background: radial-gradient(34% 44% at 65.3% 52%, rgb(255 251 244 / 0.95), rgb(255 251 244 / 0) 72%);
+  background: radial-gradient(34% 44% at 60.4% 54.5%, rgb(255 251 244 / 0.95), rgb(255 251 244 / 0) 72%);
 }
