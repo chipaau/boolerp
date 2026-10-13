@@ -1,9 +1,12 @@
 import { expect, test } from '@playwright/test'
-import { ADMIN, openSignedIn } from './helpers'
+import { ADMIN, openSignedIn } from '../helpers'
 
 // F2g: the admin console's tenants list (C174, C179), end to end against the sample tenants seeded
 // in development (apps/api/internal/platform/tenancy/seeds/sample_tenants.csv). The e2e account is a
 // member of the operator tenant with Viewer (C177), which is the standing this surface requires.
+//
+// It runs in the `admin` project, from the signed-in state (playwright.config.ts): openSignedIn
+// reaches the console through the login service's session, without the login form.
 //
 // The assertions name seeded tenants rather than counts wherever a count would break the moment
 // someone adds a sample. The few that do use a count read it from the page's own summary line.
