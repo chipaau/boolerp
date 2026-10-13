@@ -45,8 +45,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       const airClip = one<HTMLVideoElement>('[data-bee-clip="air"]')
       const landClip = one<HTMLVideoElement>('[data-bee-clip="land"]')
       const rest = one<HTMLElement>('[data-bee-rest]')
-      const stage = one<HTMLElement>('[data-hero-stage]')
-      const display = one<HTMLElement>('[data-tablet-display]')
+      const sharp = one<HTMLElement>('[data-tablet="sharp"]')
       const reveals = q('[data-hero-reveal]')
 
       const finish = () => {
@@ -57,10 +56,9 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       const settle = () => {
         gsap.to([landed, ...reveals], { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', onComplete: finish })
         gsap.to(shadow ?? [], { opacity: 0.18, duration: 0.5 })
-        gsap.to(stage ?? [], { filter: 'blur(0px)', scale: 1, duration: 0.5, ease: 'sine.out' })
-        gsap.to(display ?? [], { opacity: 1, filter: 'blur(0px)', duration: 0.5, delay: 0.2 })
+        gsap.to(sharp ?? [], { opacity: 1, duration: 0.5, ease: 'sine.out' })
       }
-      if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !stage || !display) return finish()
+      if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !sharp) return finish()
 
       const mm = gsap.matchMedia()
       mm.add(
@@ -86,10 +84,10 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
             if (tablet) tl.timeScale(1.2)
             if (mobile) {
               landing(tl, 0.6)
-              surroundings(tl, { focused: 1.2, screen: [0.8, 2] })
+              focus(tl, [0.8, 2])
             } else {
               flight(tl, measure(scene, air, target))
-              surroundings(tl, SCENE_TIMING)
+              focus(tl, SCENE_TIMING.focus)
             }
             // the supporting copy settles in while the bee is still in the air
             tl.to(reveals, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1 }, mobile ? 0.2 : 1.2)
@@ -129,16 +127,9 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           .set(landClip!, { opacity: 0 }, end)
       }
 
-      /**
-       * The scene around the bee: it comes into focus, then the tablet's screen wakes: the
-       * dashboard brightens from dark and sharpens. Blur is the one property here that is not a
-       * transform or opacity; it runs briefly, on the stage layer and the screen only.
-       */
-      function surroundings(tl: gsap.core.Timeline, t: { focused: number; screen: [number, number] }) {
-        const [on, sharp] = t.screen
-        tl.fromTo(stage!, { filter: `blur(${SCENE_TIMING.blur}px)`, scale: 1.03 }, { filter: 'blur(0px)', scale: 1, duration: t.focused, ease: 'sine.out' }, 0)
-          .fromTo(display!, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, duration: (sharp - on) * 0.6, ease: 'sine.out' }, on)
-          .to(display!, { filter: 'blur(0px)', duration: sharp - on, ease: 'power2.out' }, on)
+      /** The tablet comes into focus: its sharp copy fades in over the blurred one (tablet.tsx). */
+      function focus(tl: gsap.core.Timeline, [from, to]: readonly [number, number]) {
+        tl.to(sharp!, { opacity: 1, duration: to - from, ease: 'sine.inOut' }, from)
       }
 
       /**

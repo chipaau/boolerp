@@ -40,133 +40,66 @@ html[data-hero-motion="pending"] {
   [data-bee-shadow] {
     animation: hero-fallback-shadow 0.6s 8s forwards;
   }
-  /* the scene starts out of focus, with the tablet's screen dark */
-  [data-hero-stage] {
-    filter: blur(12px);
-    transform: scale(1.03);
-    animation: hero-fallback-focus 0.6s 8s forwards;
-  }
-  [data-tablet-display] {
+  /* the tablet starts out of focus: its sharp copy waits over the blurred one (tablet.tsx) */
+  [data-tablet="sharp"] {
     opacity: 0;
-    filter: blur(8px);
-    animation: hero-fallback-screen 0.6s 8.6s forwards;
-  }
-}
-@keyframes hero-fallback-focus {
-  to {
-    filter: blur(0);
-    transform: none;
-  }
-}
-@keyframes hero-fallback-screen {
-  to {
-    opacity: 1;
-    filter: blur(0);
+    animation: hero-fallback 0.6s 8s forwards;
   }
 }
 
 /*
-  The tablet on the plinth (features/hero/tablet.tsx): a neutral silver tablet in landscape, leaning
-  back on a slim stand, in CSS 3D. Sized by --tw (its width), seen from just above the plinth and
-  turned slightly so its screen faces the copy and tipped so its top edge rises to the right, like
-  the reference photograph. Only its screen changes during the opening (opacity and a brief blur).
+  The floating tablet (features/hero/tablet.tsx): frosted glass with a champagne edge, laid back in
+  space by the transform in scene.ts, over a soft shadow on the ground. The blurred copy exists only
+  while the opening is pending; it is blurred once, never animated.
 */
+[data-tablet="soft"] {
+  display: none;
+  filter: blur(1.1cqw);
+}
+html[data-hero-motion="pending"] [data-tablet="soft"] {
+  display: block;
+}
+[data-tablet="sharp"] {
+  will-change: opacity;
+}
 .tablet {
   position: absolute;
-  width: var(--tw);
-  height: calc(var(--tw) * 0.8);
-  perspective: calc(var(--tw) * 4);
-  perspective-origin: 40% 60%;
-}
-.tablet-world {
-  position: absolute;
-  left: 50%;
-  top: 86%;
-  transform-style: preserve-3d;
-  transform: rotateZ(-3deg) rotateY(-12deg);
-}
-.tablet-body,
-.tablet-body > *,
-.tablet-stand {
-  position: absolute;
-  transform-style: preserve-3d;
-}
-/* the tablet stands on its bottom edge, leaning back 8° against the stand */
-.tablet-body {
-  width: var(--tw);
-  height: calc(var(--tw) * 0.68);
-  left: calc(var(--tw) * -0.5);
-  top: calc(var(--tw) * -0.68);
-  transform-origin: 50% 100%;
-  transform: rotateX(-8deg);
-}
-.tablet-screen,
-.tablet-back {
-  inset: 0;
-  border-radius: calc(var(--tw) * 0.036);
-  backface-visibility: hidden;
+  aspect-ratio: 1.45;
+  transform-origin: 0 0;
+  padding: 2.6%;
+  border-radius: 6% / 8.7%;
+  background: linear-gradient(140deg, rgb(255 255 255 / 0.78), rgb(248 241 230 / 0.6) 50%, rgb(240 226 204 / 0.72));
+  box-shadow:
+    inset 0 0 0 0.1cqw rgb(255 255 255 / 0.9),
+    inset 0 -0.3cqw 0.8cqw rgb(205 176 132 / 0.25),
+    0 0 0 0.07cqw rgb(206 178 136 / 0.5),
+    0 0.22cqw 0 rgb(230 212 184 / 0.85),
+    0 1.2cqw 2.4cqw -0.6cqw rgb(150 112 64 / 0.22);
 }
 .tablet-screen {
-  transform: translateZ(1px);
-  padding: calc(var(--tw) * 0.018);
-  background: #0b0b0c;
-  /* the aluminium edge around the glass */
-  box-shadow:
-    0 0 0 calc(var(--tw) * 0.004) #b9bdc2,
-    0 0 0 calc(var(--tw) * 0.006) #8d9197;
-}
-.tablet-display {
-  position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border-radius: calc(var(--tw) * 0.02);
-  background: #111;
+  border-radius: 3.2% / 4.6%;
+  background: #fff;
+  box-shadow: 0 0 0 0.06cqw rgb(190 168 136 / 0.45);
 }
-.tablet-display::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(115deg, rgb(255 255 255 / 0.16) 0%, rgb(255 255 255 / 0) 36%);
-}
-.tablet-back {
-  transform: rotateY(180deg) translateZ(1px);
-  background: radial-gradient(ellipse at 50% 45%, #eef0f2 0%, #d8dbdf 55%, #c4c8cd 100%);
-}
-/* the stand: a slim aluminium plate behind, holding it up */
-.tablet-stand {
-  width: calc(var(--tw) * 0.34);
-  height: calc(var(--tw) * 0.36);
-  left: calc(var(--tw) * -0.17);
-  top: calc(var(--tw) * -0.36);
-  transform-origin: 50% 100%;
-  transform: translateZ(calc(var(--tw) * -0.16)) rotateX(26deg);
-  border-radius: calc(var(--tw) * 0.012);
-  background: linear-gradient(180deg, #c9ccd1, #9fa3a9);
-}
+/* the shadow it casts on the ground below, soft and to the right of the light */
 .tablet-shadow {
   position: absolute;
-  inset: 78% 6% 10% 4%;
+  left: 44%;
+  top: 86%;
+  width: 52cqw;
+  height: 7cqw;
+  rotate: 7deg;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(80 58 32 / 0.4), rgb(80 58 32 / 0));
-  filter: blur(calc(var(--tw) * 0.012));
+  background: radial-gradient(closest-side, rgb(120 88 48 / 0.22), rgb(120 88 48 / 0));
+  filter: blur(1.2cqw);
 }
 
-/*
-  The hero's room (features/hero/hero.tsx): warm window light from the upper right with two soft
-  beams across the cream, a warmer floor, and the window's shadow falling across the plinth. Static;
-  the opening only blurs and sharpens the stage they sit in.
-*/
-.hero-light {
+/* the warm light the hero sits in: brightest behind the tablet, fading to the page's cream */
+.hero-glow {
   background:
-    radial-gradient(55% 65% at 80% 16%, rgb(255 250 240 / 0.95), rgb(255 250 240 / 0) 70%),
-    linear-gradient(118deg, transparent 28%, rgb(255 255 255 / 0.4) 36%, transparent 44%, transparent 52%, rgb(255 255 255 / 0.3) 58%, transparent 65%),
-    linear-gradient(180deg, transparent 62%, rgb(218 196 165 / 0.35) 100%);
-  filter: blur(18px);
-}
-.hero-plinth-shade {
-  background: repeating-linear-gradient(118deg, transparent 0 8%, rgb(110 80 48 / 0.24) 8% 14%, transparent 14% 22%);
-  mask-size: 100% 100%;
-  mask-repeat: no-repeat;
-  filter: blur(5px);
+    radial-gradient(48% 62% at 70% 55%, rgb(255 251 244 / 0.95), rgb(255 251 244 / 0) 72%),
+    radial-gradient(70% 80% at 85% 100%, rgb(238 222 198 / 0.45), rgb(238 222 198 / 0) 70%);
 }

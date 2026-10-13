@@ -2,9 +2,9 @@
  * The bee's flight, as data and pure functions (no DOM, no GSAP) so the route can be tuned or
  * tested on its own; hero-motion.tsx measures the page and plays it.
  *
- * One gentle arc: in from the left, facing right the whole way, gliding down past the copy and
- * slowing onto the plinth beside the tablet, where the landing clip finishes the touchdown. Its
- * speed only eases off, reaching zero as it lands.
+ * One gentle arc: in from the left above the headline, facing right the whole way, coming closer
+ * and slowing onto the tablet's top edge, where the landing clip finishes the touchdown. Its speed
+ * only eases off, reaching zero as it lands.
  *
  * Both clips come from one take, mirrored so the bee faces right: its own forward flight (the
  * airborne clip, 3.04 s, lengthened by playing part of it back and forward again; centred, its own
@@ -52,10 +52,10 @@ type Mark = {
 }
 
 export const MARKS: Mark[] = [
-  { t: 0, at: [-0.1, 0.205], scale: 0.48, life: 0 }, // off-screen left, in the band between the navigation and the headline
-  { t: 1.4, at: [0.33, 0.205], scale: 0.58, life: 0 }, // gliding in, facing right
-  { t: 2.3, at: [0.45, 0.42], scale: 0.82, life: 0 }, // past the copy, curving down
-  { t: 73 / 24, at: 'land', scale: 1, life: 0 }, // where the landing clip begins
+  { t: 0, at: [-0.1, 0.25], scale: 0.5, life: 0 }, // off-screen left, in the band between the navigation and the headline
+  { t: 1.4, at: [0.3, 0.21], scale: 0.62, life: 0 }, // gliding in above the copy, facing right
+  { t: 2.3, at: [0.47, 0.23], scale: 0.85, life: 0 }, // past the copy, dipping toward the tablet
+  { t: 73 / 24, at: 'land', scale: 1, life: 0 }, // where the landing clip begins, just above the tablet's edge
 ]
 
 /** When the flying bee hands over to the landing clip. */
@@ -108,13 +108,5 @@ export function smoothThrough(xs: number[], ys: number[], endSlope?: number) {
   }
 }
 
-/**
- * The scene around the flight: out of focus at first and coming into focus as the bee glides in,
- * and the tablet's screen waking and coming into focus as the bee lands beside it. Seconds on the
- * flight's timeline.
- */
-export const SCENE_TIMING = {
-  blur: 12, // px, at first paint
-  focused: 2.4, // the room in focus by here
-  screen: [2.2, 3.8] as [number, number], // the tablet's screen wakes and sharpens
-}
+/** The tablet comes into focus as the bee comes in and settles on it (seconds on the flight's timeline). */
+export const SCENE_TIMING = { focus: [2.2, 3.6] as const }
