@@ -1,5 +1,6 @@
 import { Button } from '@workspace/ui/components/button'
 import { SiteHeader } from '@/components/site-header'
+import { Apps } from '@/features/apps/apps'
 import { Hero } from '@/features/hero/hero'
 import {
   Card,
@@ -8,18 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@workspace/ui/components/card'
-
-const modules = [
-  { name: 'Inventory', dv: 'ސްޓޮކް', desc: 'Stock, stores, and asset tracking across sites and sub-tenants.' },
-  { name: 'HRMS', dv: 'އެޗްއާރު', desc: 'People, positions, attendance, and payroll-ready records.' },
-  { name: 'Procurement', dv: 'ޕްރޮކިއުމަންޓް', desc: 'Requests, quotations, and purchase orders with gapless numbering.' },
-  { name: 'Performance', dv: 'ޕާފޯމަންސް', desc: 'Targets, indicators, and reporting for oversight bodies.' },
-  {
-    name: 'Control Centre',
-    dv: 'ކޮންޓްރޯލް ސެންޓަރ',
-    desc: 'The tenant’s own admin: users, roles, org units, sites, and settings.',
-  },
-]
 
 export default function Home() {
   return (
@@ -30,30 +19,7 @@ export default function Home() {
       <main>
         <Hero />
 
-        {/* Modules */}
-        <section id="modules" className="border-t border-border/60 bg-muted/20">
-          <div className="mx-auto max-w-6xl px-6 py-20">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-semibold tracking-tight">One platform, every department</h2>
-              <p className="mt-3 text-muted-foreground">
-                Modules that share one source of truth, with parent-tenant aggregation for oversight.
-              </p>
-            </div>
-            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {modules.map((m) => (
-                <Card key={m.name}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>{m.name}</span>
-                      <span className="text-sm font-normal text-muted-foreground">{m.dv}</span>
-                    </CardTitle>
-                    <CardDescription>{m.desc}</CardDescription>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
+        <Apps />
 
         {/* Deployment */}
         <section id="deployment" className="border-t border-border/60">

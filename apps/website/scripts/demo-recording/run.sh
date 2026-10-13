@@ -19,6 +19,25 @@ if [ -z "$TRAEFIK_IP" ]; then
   exit 1
 fi
 
+# `./run.sh screens`: still screens for the app grid (screens.mjs) instead of the recording
+if [ "${1:-}" = "screens" ]; then
+  docker run --rm --network proxy \
+    --add-host="male-city.bool.test:${TRAEFIK_IP}" --add-host="identity.bool.test:${TRAEFIK_IP}" \
+    -e DEMO_EMAIL -e DEMO_PASSWORD \
+    -v "$(pwd):/rec" -w /rec -v erp-demo-recording-node-modules:/rec/node_modules -v "$work:/out" \
+    mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27 \
+    sh -c 'test -d node_modules/@playwright || npm install --no-save --no-package-lock --no-audit --no-fund >/dev/null; exec node screens.mjs'
+  mkdir -p "$web/public/apps"
+  # WebP at 1600px wide: the largest a card shows them on a high-density screen
+  docker run --rm -v "$work:/w" -w /w --entrypoint sh \
+    linuxserver/ffmpeg:7.1.1@sha256:aea59a11c54291ac456bb2d67000445e5a8994f70bc3d96cdc29f022fbbf89fb -c '
+    set -e
+    for f in *.png; do ffmpeg -v error -y -i "$f" -vf "scale=1600:-1:flags=lanczos" -c:v libwebp -quality 86 "${f%.png}.webp"; done'
+  cp "$work"/*.webp "$web/public/apps/"
+  ls -la "$web/public/apps"
+  exit 0
+fi
+
 echo "recording…"
 docker run --rm --network proxy \
   --add-host="male-city.bool.test:${TRAEFIK_IP}" --add-host="identity.bool.test:${TRAEFIK_IP}" \
