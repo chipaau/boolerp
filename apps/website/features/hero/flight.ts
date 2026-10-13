@@ -2,8 +2,8 @@
  * The bee's flight, as data and pure functions (no DOM, no GSAP) so the route can be tuned or
  * tested on its own; hero-motion.tsx measures the page and plays it.
  *
- * One gentle arc: in from the left above the headline, facing right the whole way, coming closer
- * and slowing onto the tablet's top edge, where the landing clip finishes the touchdown. Its speed
+ * One gentle arc: in from the left above the headline, facing right the whole way, gliding down past
+ * the copy and slowing onto the tablet's bottom edge, where the landing clip finishes the touchdown. Its speed
  * only eases off, reaching zero as it lands.
  *
  * Both clips come from one take, mirrored so the bee faces right: its own forward flight (the
@@ -52,14 +52,17 @@ type Mark = {
 }
 
 export const MARKS: Mark[] = [
-  { t: 0, at: [-0.1, 0.25], scale: 0.5, life: 0 }, // off-screen left, in the band between the navigation and the headline
-  { t: 1.4, at: [0.3, 0.21], scale: 0.62, life: 0 }, // gliding in above the copy, facing right
-  { t: 2.3, at: [0.47, 0.23], scale: 0.85, life: 0 }, // past the copy, dipping toward the tablet
-  { t: 73 / 24, at: 'land', scale: 1, life: 0 }, // where the landing clip begins, just above the tablet's edge
+  { t: 0, at: [-0.1, 0.205], scale: 0.48, life: 0 }, // off-screen left, in the band between the navigation and the headline
+  { t: 1.4, at: [0.33, 0.205], scale: 0.58, life: 0 }, // gliding in above the copy, facing right
+  { t: 2.3, at: [0.45, 0.42], scale: 0.82, life: 0 }, // past the copy, curving down toward the tablet's front edge
+  { t: 73 / 24, at: 'land', scale: 1, life: 0 }, // where the landing clip begins, just above the tablet's bottom edge
 ]
 
 /** When the flying bee hands over to the landing clip. */
 export const ARRIVE = MARKS[MARKS.length - 1].t
+/** The contact shadow under the landed bee's feet, at rest (bee.tsx; mirrored in globals.css). */
+export const SHADOW_OPACITY = 0.34
+
 /** When the descent starts (the contact shadow fades in from here). */
 export const DESCENT = 2.2
 

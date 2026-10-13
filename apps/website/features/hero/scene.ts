@@ -22,5 +22,5 @@ export const TABLET = {
     'matrix(1.08175, 0.19011, -0.10154, 0.90938, 0, 0) perspective(281.998cqw) rotate3d(0.49588, -0.86839, 0, 40deg)',
 } as const
 
-/** Where the bee lands: on the tablet's top edge, a fifth of the way along (that point mapped through TABLET). */
-export const LANDING = { left: '55.306%', top: '28.887%' } as const
+/** Where the bee lands: on the tablet's bottom edge, near its left corner (that point mapped through TABLET). */
+export const LANDING = { left: '47.115%', top: '83.906%' } as const

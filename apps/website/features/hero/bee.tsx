@@ -20,7 +20,7 @@ export function BeeLanded() {
       <div
         data-bee-shadow=""
         aria-hidden="true"
-        className="pointer-events-none absolute h-[calc(var(--bee-w)*0.07)] w-[calc(var(--bee-w)*0.5)] -translate-x-1/2 -translate-y-1/2 rounded-[50%] opacity-[0.18] [background:radial-gradient(closest-side,rgb(48_34_16),rgb(48_34_16/0))]"
+        className="pointer-events-none absolute h-[calc(var(--bee-w)*0.075)] w-[calc(var(--bee-w)*0.56)] -translate-x-1/2 -translate-y-[40%] rounded-[50%] opacity-[0.34] [background:radial-gradient(closest-side,rgb(52_36_16),rgb(52_36_16/0.45)_45%,rgb(52_36_16/0))]"
       />
       <div
         data-bee-landed=""

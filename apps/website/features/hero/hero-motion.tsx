@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import gsap from 'gsap'
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin'
 import { useGSAP } from '@gsap/react'
-import { ARRIVE, DESCENT, FRAME, LAND, LAND_GROWTH, RATE, SCENE_TIMING, buildFlight, smoothThrough } from './flight'
+import { ARRIVE, DESCENT, FRAME, LAND, LAND_GROWTH, RATE, SCENE_TIMING, SHADOW_OPACITY, buildFlight, smoothThrough } from './flight'
 import type { FlightBox } from './flight'
 
 gsap.registerPlugin(useGSAP, MotionPathPlugin)
@@ -55,7 +55,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       // no flight: show the copy and the landed bee, and stop
       const settle = () => {
         gsap.to([landed, ...reveals], { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', onComplete: finish })
-        gsap.to(shadow ?? [], { opacity: 0.18, duration: 0.5 })
+        gsap.to(shadow ?? [], { opacity: SHADOW_OPACITY, duration: 0.5 })
         gsap.to(sharp ?? [], { opacity: 1, duration: 0.5, ease: 'sine.out' })
       }
       if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !sharp) return finish()
@@ -121,7 +121,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           .set(landClip!, { opacity: 1 }, at)
           .call(play(landClip!, RATE, tl), [], at)
           .to(landed!, { opacity: 1, duration: HANDOFF, ease: 'none' }, at)
-          .fromTo(shadow!, { opacity: 0.1, scale: 0.85 }, { opacity: 0.18, scale: 1, duration: 0.35, ease: 'sine.out' }, touch - 0.15)
+          .fromTo(shadow!, { opacity: SHADOW_OPACITY * 0.5, scale: 0.8 }, { opacity: SHADOW_OPACITY, scale: 1, duration: 0.35, ease: 'sine.out' }, touch - 0.15)
           // the still is the clip's last frame, so the swap is invisible; it frees the decoder
           .set(rest!, { opacity: 1 }, end)
           .set(landClip!, { opacity: 0 }, end)
@@ -171,7 +171,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           .call(play(airClip!, 1, tl), [], 0)
           .to(clock, { t: ARRIVE, duration: ARRIVE, ease: 'none', onUpdate: draw }, 0)
           // the shadow appears as the bee drifts down, growing as it nears
-          .fromTo(shadow!, { opacity: 0, scale: 0.6 }, { opacity: 0.1, scale: 0.85, duration: ARRIVE - DESCENT, ease: 'sine.in' }, DESCENT)
+          .fromTo(shadow!, { opacity: 0, scale: 0.5 }, { opacity: SHADOW_OPACITY * 0.5, scale: 0.8, duration: ARRIVE - DESCENT, ease: 'sine.in' }, DESCENT)
           // hand over: the landing clip continues the same footage where the flying bee is
           .to(air!, { opacity: 0, duration: HANDOFF, ease: 'none' }, ARRIVE)
           .call(() => airClip!.pause(), [], ARRIVE + HANDOFF)

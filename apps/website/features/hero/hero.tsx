@@ -15,7 +15,7 @@ const MOTION_GATE = `try{if(!matchMedia('(prefers-reduced-motion: reduce)').matc
 /**
  * The homepage hero. A server component: the tablet with the real dashboard on its screen, the copy
  * and the landed bee are all in the HTML, finished; HeroMotion (the only client code) plays the
- * opening on top: the bee flies in and lands on the tablet's top edge as the tablet comes into focus.
+ * opening on top: the bee flies in and lands on the tablet's bottom edge as the tablet comes into focus.
  *
  * Layers, bottom to top: glow · tablet · landed bee · copy · flying bee, on the page's cream. The
  * headline and navigation are sharp and readable from the first paint. From lg the scene fills the
@@ -80,13 +80,13 @@ function Scene() {
   return (
     <div
       data-hero-scene=""
-      className="relative -ml-[50%] aspect-[1672/941] w-[155%] [--bee-w:15cqw] [container-type:inline-size] sm:-ml-[38%] sm:w-[138%] lg:ml-0 lg:w-full"
+      className="relative -ml-[50%] aspect-[1672/941] w-[155%] [--bee-w:19cqw] [container-type:inline-size] sm:-ml-[38%] sm:w-[138%] lg:ml-0 lg:w-full"
     >
       {/* the soft light the tablet floats in */}
       <div aria-hidden="true" className="hero-glow absolute inset-0" />
       <Tablet focus="soft" />
       <Tablet focus="sharp" />
-      {/* the bee: landed on the tablet's top edge, and its flight above everything else in the scene */}
+      {/* the bee: landed on the tablet's bottom edge, and its flight above everything else in the scene */}
       <div className="pointer-events-none absolute inset-0 z-30">
         <div data-bee-landing-target="" className="absolute" style={LANDING}>
           <BeeLanded />
