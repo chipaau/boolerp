@@ -118,3 +118,24 @@ export function smoothThrough(xs: number[], ys: number[], endSlope?: number) {
 
 /** The tablet comes into focus as the bee comes in and settles on it (seconds on the flight's timeline). */
 export const SCENE_TIMING = { focus: [2.2, 3.6] as const }
+
+/**
+ * After the landing the dashboard comes alive for a few seconds: app hexagons lift toward the
+ * viewer and settle, one after another in no set order, while today's cell in the heat map glows.
+ * Seconds, except `scale` (the lifted size) and `lift` (how far up, in % of the tile's height).
+ */
+export const ALIVE = { delay: 0.35, lifts: 11, gap: 0.26, jitter: 0.18, rise: 0.35, hold: 0.25, fall: 0.5, scale: 1.12, lift: -6, glowPulses: 3 } as const
+
+/**
+ * The order the tiles lift in: `count` picks from `tiles`, at random, never repeating one of the
+ * last three, so no tile lifts again before it has settled. `random` is injectable for tests.
+ */
+export function liftOrder(tiles: number, count: number, random: () => number = Math.random) {
+  const order: number[] = []
+  while (order.length < count) {
+    const recent = order.slice(-3)
+    const pool = Array.from({ length: tiles }, (_, i) => i).filter((i) => !recent.includes(i))
+    order.push(pool[Math.floor(random() * pool.length)])
+  }
+  return order
+}

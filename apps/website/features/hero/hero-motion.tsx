@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import gsap from 'gsap'
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin'
 import { useGSAP } from '@gsap/react'
-import { ARRIVE, DESCENT, FRAME, LAND, LAND_GROWTH, RATE, SCENE_TIMING, SHADOW_OPACITY, buildFlight, smoothThrough } from './flight'
+import { ALIVE, ARRIVE, DESCENT, FRAME, LAND, LAND_GROWTH, RATE, SCENE_TIMING, SHADOW_OPACITY, buildFlight, liftOrder, smoothThrough } from './flight'
 import type { FlightBox } from './flight'
 
 gsap.registerPlugin(useGSAP, MotionPathPlugin)
@@ -46,7 +46,8 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       const landClip = one<HTMLVideoElement>('[data-bee-clip="land"]')
       const rest = one<HTMLElement>('[data-bee-rest]')
       const sharp = one<HTMLElement>('[data-tablet="sharp"]')
-      const toast = one<HTMLElement>('[data-tablet-toast]')
+      const glow = one<HTMLElement>('[data-today-glow]')
+      const tiles = q('[data-app-tile]')
       const underline = one<SVGPathElement>('[data-hero-underline]')
       const tilt = one<HTMLElement>('[data-hero-tilt]')
       const trail = one<SVGSVGElement>('[data-bee-trail]')
@@ -86,10 +87,9 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
         gsap.to([landed, ...reveals], { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', onComplete: finish })
         gsap.to(shadow ?? [], { opacity: SHADOW_OPACITY, duration: 0.5 })
         gsap.to(sharp ?? [], { opacity: 1, duration: 0.5, ease: 'sine.out' })
-        gsap.to(toast ?? [], { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: 'power2.out' })
         gsap.to(underline ?? [], { strokeDashoffset: 0, duration: 0.5 })
       }
-      if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !sharp || !toast || !underline || !trail || !trailDots || !trailReveal) return finish()
+      if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !sharp || !glow || !underline || !trail || !trailDots || !trailReveal) return finish()
 
       const mm = gsap.matchMedia()
       mm.add(
@@ -155,11 +155,30 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           .call(play(landClip!, RATE, tl), [], at)
           .to(landed!, { opacity: 1, duration: HANDOFF, ease: 'none' }, at)
           .fromTo(shadow!, { opacity: SHADOW_OPACITY * 0.5, scale: 0.8 }, { opacity: SHADOW_OPACITY, scale: 1, duration: 0.35, ease: 'sine.out' }, touch - 0.15)
-          // the landing gets the work done: the tablet shows its notification
-          .to(toast!, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: 'back.out(1.7)' }, touch + 0.25)
           // the still is the clip's last frame, so the swap is invisible; it frees the decoder
           .set(rest!, { opacity: 1 }, end)
           .set(landClip!, { opacity: 0 }, end)
+        alive(tl, touch + ALIVE.delay)
+      }
+
+      /**
+       * The dashboard comes alive once the bee is down: app hexagons lift toward the viewer and
+       * settle in a scattered order (flight.ts, liftOrder), each over a softening shadow, while
+       * today's cell in the heat map glows a few times. Transforms and opacity only; then it rests.
+       */
+      function alive(tl: gsap.core.Timeline, at: number) {
+        const A = ALIVE
+        liftOrder(tiles.length, A.lifts).forEach((i, k) => {
+          const face = tiles[i].querySelector('[data-app-tile-face]')
+          const under = tiles[i].querySelector('[data-app-tile-shadow]')
+          const t = at + k * A.gap + Math.random() * A.jitter
+          const down = t + A.rise + A.hold
+          tl.to(face, { scale: A.scale, yPercent: A.lift, duration: A.rise, ease: 'power2.out', overwrite: 'auto' }, t)
+            .to(under, { opacity: 1, scale: 1.1, duration: A.rise, ease: 'power2.out', overwrite: 'auto' }, t)
+            .to(face, { scale: 1, yPercent: 0, duration: A.fall, ease: 'power2.inOut' }, down)
+            .to(under, { opacity: 0, scale: 1, duration: A.fall, ease: 'power2.inOut' }, down)
+        })
+        tl.fromTo(glow!, { opacity: 0 }, { opacity: 1, duration: 0.7, ease: 'sine.inOut', yoyo: true, repeat: A.glowPulses * 2 - 1 }, at)
       }
 
       /** The tablet comes into focus: its sharp copy fades in over the blurred one (tablet.tsx). */
