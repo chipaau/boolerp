@@ -10,8 +10,8 @@ import { FRAME } from './flight'
  * - `BeeAirborne` is the flying bee, in scene coordinates; hero-motion.tsx moves it and gives the
  *   clips their source (WebM with alpha, or HEVC with alpha on Safari), so nothing loads until the
  *   opening plays.
- * - `BeeTrail` is the dotted path the bee leaves behind it, like the bee in the app icons; it is
- *   drawn and faded during the opening only, and is empty otherwise.
+ * - `BeeTrail` is a short dotted tail behind the flying bee, like the bee in the app icons: it
+ *   follows the bee and disappears behind it, during the opening only, and is empty otherwise.
  */
 const BOX = 'pointer-events-none absolute aspect-[640/520] w-(--bee-w)'
 const FILL = 'absolute inset-0 size-full select-none'
@@ -49,7 +49,7 @@ export function BeeTrail() {
   return (
     <svg data-bee-trail="" aria-hidden="true" className="absolute inset-0 size-full overflow-visible">
       <defs>
-        {/* the part of the trail flown so far (hero-motion.tsx moves its dash as the bee advances) */}
+        {/* the stretch just behind the bee (hero-motion.tsx slides this one dash along as it flies) */}
         <mask id="bee-trail-flown" maskUnits="userSpaceOnUse">
           <path data-bee-trail-reveal="" fill="none" stroke="white" strokeWidth="16" />
         </mask>

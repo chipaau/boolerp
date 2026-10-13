@@ -109,7 +109,7 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
 .tablet-shadow {
   position: absolute;
   left: 47.5%;
-  top: 82%;
+  top: 79%;
   width: 44cqw;
   height: 6cqw;
   rotate: 7deg;
@@ -123,5 +123,5 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
    content column's edge never shows) */
 .hero-glow {
   inset: -25%;
-  background: radial-gradient(34% 44% at 65.3% 54%, rgb(255 251 244 / 0.95), rgb(255 251 244 / 0) 72%);
+  background: radial-gradient(34% 44% at 65.3% 52%, rgb(255 251 244 / 0.95), rgb(255 251 244 / 0) 72%);
 }

@@ -188,8 +188,9 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
         const setY = gsap.quickSetter(air!, 'y', 'px')
         const setScale = gsap.quickSetter(air!, 'scale')
 
-        // the dotted trail follows the bee's body (a little above and behind its feet), revealed up
-        // to where the bee is by sliding a solid dash in the trail's mask
+        // the dotted tail follows the bee's body (a little above and behind its feet): one solid dash
+        // in the trail's mask, a sixth of the route long, slides along just behind the bee, so the
+        // dots appear behind it and disappear again as it moves on
         const frameH = box.frame / FRAME.aspect
         const behind = { x: -box.frame * 0.14, y: -(FRAME.feetY - 0.5) * frameH * 0.7 }
         const trailRaw = MotionPathPlugin.arrayToRawPath(marks.map((m) => ({ x: m.point.x + behind.x, y: m.point.y + behind.y })), { curviness: 1 })
@@ -197,13 +198,14 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
         gsap.set(trail!, { attr: { viewBox: `0 0 ${box.width} ${box.height}` } })
         gsap.set([trailDots!, trailReveal!], { attr: { d: trailPath } })
         const trailLength = trailReveal!.getTotalLength()
-        gsap.set(trailReveal!, { strokeDasharray: `${trailLength} ${trailLength}`, strokeDashoffset: trailLength })
+        const tail = trailLength / 6
+        gsap.set(trailReveal!, { strokeDasharray: `${tail} ${trailLength * 2}`, strokeDashoffset: tail })
         const setTrail = gsap.quickSetter(trailReveal!, 'strokeDashoffset')
 
         const clock = { t: 0 }
         const draw = () => {
           const t = clock.t
-          setTrail(trailLength * (1 - progress(t)))
+          setTrail(tail - trailLength * progress(t))
           const p = at(progress(t))
           const l = life(t)
           setX(p.x + l * 2.5 * Math.sin(t * 2 * Math.PI * 0.9))
@@ -224,8 +226,8 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           // hand over: the landing clip continues the same footage where the flying bee is
           .to(air!, { opacity: 0, duration: HANDOFF, ease: 'none' }, ARRIVE)
           .call(() => airClip!.pause(), [], ARRIVE + HANDOFF)
-          // the trail lingers a moment after the bee lands, then fades
-          .fromTo(trail!, { opacity: 1 }, { opacity: 0, duration: 1.2, ease: 'sine.in' }, ARRIVE + 0.5)
+          // what is left of the tail fades as the bee settles
+          .fromTo(trail!, { opacity: 1 }, { opacity: 0, duration: 0.5, ease: 'sine.in' }, ARRIVE - 0.3)
         landing(tl, ARRIVE)
       }
 
