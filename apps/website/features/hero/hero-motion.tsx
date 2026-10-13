@@ -31,7 +31,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
   const played = useRef(false)
 
   useGSAP(
-    () => {
+    (_, contextSafe) => {
       const hero = scope.current
       if (!hero) return
       const html = document.documentElement
@@ -46,9 +46,38 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       const landClip = one<HTMLVideoElement>('[data-bee-clip="land"]')
       const rest = one<HTMLElement>('[data-bee-rest]')
       const sharp = one<HTMLElement>('[data-tablet="sharp"]')
+      const toast = one<HTMLElement>('[data-tablet-toast]')
+      const underline = one<SVGPathElement>('[data-hero-underline]')
+      const tilt = one<HTMLElement>('[data-hero-tilt]')
+      const trail = one<SVGSVGElement>('[data-bee-trail]')
+      const trailDots = one<SVGPathElement>('[data-bee-trail-dots]')
+      const trailReveal = one<SVGPathElement>('[data-bee-trail-reveal]')
       const reveals = q('[data-hero-reveal]')
 
+      // after the opening, on a desktop pointer, the tablet (and the bee on it) leans toward the cursor
+      let untilt = () => {}
+      const enableTilt = contextSafe!(() => {
+        const fine = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 1024px) and (prefers-reduced-motion: no-preference)')
+        if (!tilt || !fine.matches) return
+        gsap.set(tilt, { transformPerspective: 1600 })
+        const toY = gsap.quickTo(tilt, 'rotationY', { duration: 0.9, ease: 'power3.out' })
+        const toX = gsap.quickTo(tilt, 'rotationX', { duration: 0.9, ease: 'power3.out' })
+        const move = contextSafe!((e: PointerEvent) => {
+          const r = hero.getBoundingClientRect()
+          toY(((e.clientX - r.left) / r.width - 0.5) * 6)
+          toX(-((e.clientY - r.top) / r.height - 0.5) * 4)
+        })
+        const leave = contextSafe!(() => (toY(0), toX(0)))
+        hero.addEventListener('pointermove', move)
+        hero.addEventListener('pointerleave', leave)
+        untilt = () => {
+          hero.removeEventListener('pointermove', move)
+          hero.removeEventListener('pointerleave', leave)
+        }
+      })
+
       const finish = () => {
+        if (!played.current) enableTilt()
         played.current = true
         html.dataset.heroMotion = 'done'
       }
@@ -57,8 +86,10 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
         gsap.to([landed, ...reveals], { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', onComplete: finish })
         gsap.to(shadow ?? [], { opacity: SHADOW_OPACITY, duration: 0.5 })
         gsap.to(sharp ?? [], { opacity: 1, duration: 0.5, ease: 'sine.out' })
+        gsap.to(toast ?? [], { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: 'power2.out' })
+        gsap.to(underline ?? [], { strokeDashoffset: 0, duration: 0.5 })
       }
-      if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !sharp) return finish()
+      if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !sharp || !toast || !underline || !trail || !trailDots || !trailReveal) return finish()
 
       const mm = gsap.matchMedia()
       mm.add(
@@ -86,9 +117,11 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
               landing(tl, 0.6)
               focus(tl, [0.8, 2])
             } else {
-              flight(tl, measure(scene, air, target))
+              flight(tl, measure(hero, scene, air, target))
               focus(tl, SCENE_TIMING.focus)
             }
+            // the headline's stroke draws on as the bee passes over it
+            tl.to(underline!, { strokeDashoffset: 0, duration: 0.7, ease: 'power2.inOut' }, mobile ? 0.4 : 0.9)
             // the supporting copy settles in while the bee is still in the air
             tl.to(reveals, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1 }, mobile ? 0.2 : 1.2)
           })
@@ -122,6 +155,8 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           .call(play(landClip!, RATE, tl), [], at)
           .to(landed!, { opacity: 1, duration: HANDOFF, ease: 'none' }, at)
           .fromTo(shadow!, { opacity: SHADOW_OPACITY * 0.5, scale: 0.8 }, { opacity: SHADOW_OPACITY, scale: 1, duration: 0.35, ease: 'sine.out' }, touch - 0.15)
+          // the landing gets the work done: the tablet shows its notification
+          .to(toast!, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: 'back.out(1.7)' }, touch + 0.25)
           // the still is the clip's last frame, so the swap is invisible; it frees the decoder
           .set(rest!, { opacity: 1 }, end)
           .set(landClip!, { opacity: 0 }, end)
@@ -152,9 +187,23 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
         const setX = gsap.quickSetter(air!, 'x', 'px')
         const setY = gsap.quickSetter(air!, 'y', 'px')
         const setScale = gsap.quickSetter(air!, 'scale')
+
+        // the dotted trail follows the bee's body (a little above and behind its feet), revealed up
+        // to where the bee is by sliding a solid dash in the trail's mask
+        const frameH = box.frame / FRAME.aspect
+        const behind = { x: -box.frame * 0.14, y: -(FRAME.feetY - 0.5) * frameH * 0.7 }
+        const trailRaw = MotionPathPlugin.arrayToRawPath(marks.map((m) => ({ x: m.point.x + behind.x, y: m.point.y + behind.y })), { curviness: 1 })
+        const trailPath = MotionPathPlugin.rawPathToString(trailRaw)
+        gsap.set(trail!, { attr: { viewBox: `0 0 ${box.width} ${box.height}` } })
+        gsap.set([trailDots!, trailReveal!], { attr: { d: trailPath } })
+        const trailLength = trailReveal!.getTotalLength()
+        gsap.set(trailReveal!, { strokeDasharray: `${trailLength} ${trailLength}`, strokeDashoffset: trailLength })
+        const setTrail = gsap.quickSetter(trailReveal!, 'strokeDashoffset')
+
         const clock = { t: 0 }
         const draw = () => {
           const t = clock.t
+          setTrail(trailLength * (1 - progress(t)))
           const p = at(progress(t))
           const l = life(t)
           setX(p.x + l * 2.5 * Math.sin(t * 2 * Math.PI * 0.9))
@@ -175,10 +224,15 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           // hand over: the landing clip continues the same footage where the flying bee is
           .to(air!, { opacity: 0, duration: HANDOFF, ease: 'none' }, ARRIVE)
           .call(() => airClip!.pause(), [], ARRIVE + HANDOFF)
+          // the trail lingers a moment after the bee lands, then fades
+          .fromTo(trail!, { opacity: 1 }, { opacity: 0, duration: 1.2, ease: 'sine.in' }, ARRIVE + 0.5)
         landing(tl, ARRIVE)
       }
 
-      return () => mm.revert()
+      return () => {
+        untilt()
+        mm.revert()
+      }
     },
     { scope },
   )
@@ -218,9 +272,9 @@ function ready(videos: HTMLVideoElement[], ms: number) {
   ])
 }
 
-/** The scene's size, the landed feet in it and the bee's frame width, measured untransformed. */
-function measure(scene: HTMLElement, air: HTMLElement, target: HTMLElement): FlightBox {
+/** The scene's size, the landed feet in it, the bee's frame width and the screen's left edge, measured untransformed. */
+function measure(hero: HTMLElement, scene: HTMLElement, air: HTMLElement, target: HTMLElement): FlightBox {
   const s = scene.getBoundingClientRect()
   const t = target.getBoundingClientRect()
-  return { width: s.width, height: s.height, feet: { x: t.left - s.left, y: t.top - s.top }, frame: air.offsetWidth }
+  return { width: s.width, height: s.height, feet: { x: t.left - s.left, y: t.top - s.top }, frame: air.offsetWidth, enter: hero.getBoundingClientRect().left - s.left }
 }

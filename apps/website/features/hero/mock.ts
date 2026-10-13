@@ -5,5 +5,8 @@ import avatar3 from '@workspace/assets/avatars/avatar-3.jpg'
 import avatar4 from '@workspace/assets/avatars/avatar-4.webp'
 import avatar5 from '@workspace/assets/avatars/avatar-5.jpg'
 
+/** The notification the tablet shows as the bee lands on it. */
+export const LANDING_TOAST = { title: 'Purchase order approved', meta: 'PO-2041 · just now' }
+
 /** The faces in the trust row under the calls to action. */
 export const TRUST_AVATARS = [avatar1, avatar2, avatar3, avatar4, avatar5]

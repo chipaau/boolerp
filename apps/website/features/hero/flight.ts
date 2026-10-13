@@ -14,8 +14,12 @@
 
 export type Point = { x: number; y: number }
 
-/** The scene the bee flies over, the landed bee's feet in it (px from its top-left), and the bee's frame width. */
-export type FlightBox = { width: number; height: number; feet: Point; frame: number }
+/**
+ * The scene the bee flies over, the landed bee's feet in it (px from its top-left), the bee's frame
+ * width, and the screen's left edge in scene px (the stage can be narrower than the screen; the bee
+ * comes in from beyond the screen's edge, not the stage's).
+ */
+export type FlightBox = { width: number; height: number; feet: Point; frame: number; enter: number }
 
 /** The bee's frame (every clip and the still): 640×520, the landed body centred, feet 70.6% down. */
 export const FRAME = { aspect: 640 / 520, feetY: 0.7058 } as const
@@ -52,9 +56,9 @@ type Mark = {
 }
 
 export const MARKS: Mark[] = [
-  { t: 0, at: [-0.1, 0.205], scale: 0.48, life: 0 }, // off-screen left, in the band between the navigation and the headline
-  { t: 1.4, at: [0.33, 0.205], scale: 0.58, life: 0 }, // gliding in above the copy, facing right
-  { t: 2.3, at: [0.45, 0.42], scale: 0.82, life: 0 }, // past the copy, curving down toward the tablet's front edge
+  { t: 0, at: [-0.1, 0.2], scale: 0.48, life: 0 }, // off-screen left (FlightBox.enter), in the band between the navigation and the headline
+  { t: 1.4, at: [0.33, 0.2], scale: 0.58, life: 0 }, // gliding in above the copy, facing right
+  { t: 2.3, at: [0.47, 0.52], scale: 0.82, life: 0 }, // past the copy, curving down toward the tablet's front edge
   { t: 73 / 24, at: 'land', scale: 1, life: 0 }, // where the landing clip begins, just above the tablet's bottom edge
 ]
 
@@ -67,14 +71,15 @@ export const SHADOW_OPACITY = 0.34
 export const DESCENT = 2.2
 
 /** The marks in scene pixels (the bee's feet). */
-export function buildFlight({ width: w, height: h, feet, frame }: FlightBox) {
+export function buildFlight({ width: w, height: h, feet, frame, enter }: FlightBox) {
   const frameH = frame / FRAME.aspect
   // where the landing clip's bee first appears: its offset from the landed bee, enlarged about the
   // feet like the landed bee is (LAND_GROWTH), and placed by the feet like the flying bee
   const k = 1 / LAND_GROWTH.from
   const centreToFeet = (FRAME.feetY - 0.5) * frameH
   const land: Point = { x: feet.x + k * LAND_START.x * frame, y: feet.y + k * LAND_START.y * frameH - (k - 1) * centreToFeet }
-  return MARKS.map((m) => ({ ...m, point: m.at === 'land' ? land : { x: m.at[0] * w, y: m.at[1] * h } }))
+  const x = (fx: number, i: number) => (i === 0 ? Math.min(fx * w, enter - frame * 0.6) : fx * w)
+  return MARKS.map((m, i) => ({ ...m, point: m.at === 'land' ? land : { x: x(m.at[0], i), y: m.at[1] * h } }))
 }
 
 /**

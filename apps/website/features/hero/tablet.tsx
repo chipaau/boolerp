@@ -1,4 +1,6 @@
 import Image from 'next/image'
+import { Check } from 'lucide-react'
+import { LANDING_TOAST } from './mock'
 import { DASHBOARD, TABLET } from './scene'
 
 /**
@@ -8,6 +10,8 @@ import { DASHBOARD, TABLET } from './scene'
  * The opening brings it into focus by crossfading two copies rather than animating a blur: the
  * `soft` copy is blurred once and only exists while the opening is pending, and the `sharp` copy
  * fades in over it as the bee lands. Opacity is all that animates, so the browser never re-blurs.
+ * The sharp copy also carries the notification that slides in at touchdown: the bee's landing is
+ * the moment the work gets done.
  */
 export function Tablet({ focus }: { focus: 'soft' | 'sharp' }) {
   return (
@@ -24,8 +28,28 @@ export function Tablet({ focus }: { focus: 'soft' | 'sharp' }) {
             sizes="55vw"
             className="size-full object-cover object-top"
           />
+          {focus === 'sharp' && <Toast />}
         </div>
       </div>
+    </div>
+  )
+}
+
+/** A product notification, sized in stage units (cqw) so it scales and tilts with the tablet. */
+function Toast() {
+  return (
+    <div
+      data-tablet-toast=""
+      role="status"
+      className="absolute bottom-[5%] right-[3.5%] flex items-center gap-[0.9cqw] rounded-[0.9cqw] bg-card py-[0.8cqw] pl-[0.8cqw] pr-[1.6cqw] shadow-floating"
+    >
+      <span className="grid size-[2.2cqw] place-items-center rounded-full bg-sage-soft text-sage-soft-foreground">
+        <Check className="size-[1.25cqw]" strokeWidth={2.5} />
+      </span>
+      <span className="leading-tight">
+        <span className="block text-[1.25cqw] font-bold text-foreground">{LANDING_TOAST.title}</span>
+        <span className="block text-[1cqw] text-muted-foreground">{LANDING_TOAST.meta}</span>
+      </span>
     </div>
   )
 }

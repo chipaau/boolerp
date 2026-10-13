@@ -1,7 +1,8 @@
 import Image from 'next/image'
 import { Play } from 'lucide-react'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
-import { BeeAirborne, BeeLanded } from './bee'
+import { Hexagon } from '@workspace/ui/components/hexagon'
+import { BeeAirborne, BeeLanded, BeeTrail } from './bee'
 import { HeroMotion } from './hero-motion'
 import { TRUST_AVATARS } from './mock'
 import { Tablet } from './tablet'
@@ -17,7 +18,7 @@ const MOTION_GATE = `try{if(!matchMedia('(prefers-reduced-motion: reduce)').matc
  * and the landed bee are all in the HTML, finished; HeroMotion (the only client code) plays the
  * opening on top: the bee flies in and lands on the tablet's bottom edge as the tablet comes into focus.
  *
- * Layers, bottom to top: glow · tablet · landed bee · copy · flying bee, on the page's cream. The
+ * Layers, bottom to top: glow · copy · tablet and landed bee · trail and flying bee, on the page's cream. The
  * headline and navigation are sharp and readable from the first paint. From lg the scene fills the
  * hero and the copy sits on its calm left side; below lg the copy comes first and the scene is
  * cropped to the tablet.
@@ -31,11 +32,19 @@ export function Hero() {
           <Scene />
         </div>
 
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-10 pt-28 lg:[grid-area:1/1] lg:self-center lg:pb-0 lg:pt-16">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-10 pt-24 lg:[grid-area:1/1] lg:self-center lg:py-0 lg:pt-12">
           <div className="max-w-xl lg:max-w-[34%]">
             <p className="text-overline tracking-[0.28em] text-muted-foreground">One workspace. Multiple apps.</p>
             <h1 className="mt-5 text-balance text-[clamp(2.5rem,4.2vw,4.25rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
-              One workspace for everything your team runs.
+              One workspace for{' '}
+              <span className="relative inline-block">
+                everything
+                {/* a hand-drawn amber stroke, drawn on as the bee passes over */}
+                <svg aria-hidden="true" viewBox="0 0 200 20" preserveAspectRatio="none" className="absolute -bottom-[0.14em] left-0 h-[0.28em] w-full overflow-visible">
+                  <path data-hero-underline="" d="M3 13 C 52 5, 118 3, 197 9" pathLength={1} fill="none" stroke="var(--brand-soft)" strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                </svg>
+              </span>{' '}
+              your team runs.
             </h1>
             <p data-hero-reveal="copy" className="mt-6 max-w-md text-pretty text-[clamp(1.05rem,1.4vw,1.3rem)] leading-snug text-muted-foreground">
               Tasks, inventory, assets, procurement, notes and analytics. Connected in one workspace.
@@ -73,24 +82,28 @@ export function Hero() {
 }
 
 /**
- * The stage: the tablet floating in a warm glow, brought into focus by the opening, and the bee's
- * layer above (kept sharp, outside the focus pull).
+ * The stage: the tablet floating in a warm glow, brought into focus by the opening, with the landed
+ * bee on its edge, both in one layer that leans gently toward the pointer once the opening is done;
+ * above them the flying bee and its trail (kept sharp, outside the focus pull).
  */
 function Scene() {
   return (
     <div
       data-hero-scene=""
-      className="relative -ml-[50%] aspect-[1672/941] w-[155%] [--bee-w:19cqw] [container-type:inline-size] sm:-ml-[38%] sm:w-[138%] lg:ml-0 lg:w-full"
+      className="relative -ml-[50%] aspect-[1672/880] w-[155%] [--bee-w:17cqw] [container-type:inline-size] sm:-ml-[38%] sm:w-[138%] lg:mx-auto lg:w-[min(calc(100%-3rem),77rem)]"
     >
-      {/* the soft light the tablet floats in */}
-      <div aria-hidden="true" className="hero-glow absolute inset-0" />
-      <Tablet focus="soft" />
-      <Tablet focus="sharp" />
-      {/* the bee: landed on the tablet's bottom edge, and its flight above everything else in the scene */}
-      <div className="pointer-events-none absolute inset-0 z-30">
+      {/* the soft light the tablet floats in, gathered in the brand's hexagon behind it */}
+      <div aria-hidden="true" className="hero-glow absolute" />
+      <Hexagon size="34cqw" className="absolute left-[56%] top-[23%] text-hex-decor-to opacity-70 blur-[2.5cqw]" />
+      <div data-hero-tilt="" className="pointer-events-none absolute inset-0 z-30 origin-[72.7%_55.7%]">
+        <Tablet focus="soft" />
+        <Tablet focus="sharp" />
         <div data-bee-landing-target="" className="absolute" style={LANDING}>
           <BeeLanded />
         </div>
+      </div>
+      <div className="pointer-events-none absolute inset-0 z-30">
+        <BeeTrail />
         <BeeAirborne />
       </div>
     </div>
