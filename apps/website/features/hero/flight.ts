@@ -120,15 +120,16 @@ export function smoothThrough(xs: number[], ys: number[], endSlope?: number) {
 export const SCENE_TIMING = { focus: [2.2, 3.6] as const }
 
 /**
- * After the landing the dashboard comes alive for a few seconds: app hexagons lift gently toward
- * the viewer and settle, now and then and in no set order, while today's cell in the heat map
- * lifts a little in a light glow. Seconds, except `scale` (the lifted size) and `lift` (how far
+ * After the landing the dashboard comes alive: a few app hexagons lift gently toward the viewer and
+ * settle, in no set order, while today's cell in the heat map lifts a little in a light glow; from
+ * then on the notifications (toasts.tsx) lift each app's hexagon as they come in, so the random
+ * lifts stay short. Seconds, except `scale` (the lifted size) and `lift` (how far
  * up, in % of the tile's height; at most (scale - 1) / 2, so the lifted copy still covers the
  * tile beneath it).
  */
 export const ALIVE = {
   delay: 0.35,
-  lifts: 8,
+  lifts: 3,
   gap: 0.6,
   jitter: 0.35,
   rise: 0.45,

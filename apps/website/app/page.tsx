@@ -24,8 +24,8 @@ const modules = [
 export default function Home() {
   return (
     <>
-      {/* over the hero photo */}
-      <SiteHeader className="absolute inset-x-0 top-0" />
+      {/* over the hero, fixed: it steps aside while the visitor scrolls down */}
+      <SiteHeader />
 
       <main>
         <Hero />

@@ -26,11 +26,13 @@ export const DASHBOARD = { src: '/hero/dashboard.webp', width: 2000, height: 121
  */
 export const TABLET = {
   aspect: 1.55,
-  bezel: 0.0095,
+  bezel: 0.013,
   raster: 2,
   left: '47.342%',
   top: '23.171%',
   width: '62.232cqw',
+  /** The lay-back, in parts the scroll story (story.ts) can unwind to flat: perspective in cqw. */
+  tilt: { matrix: [0.90041, 0.16889, -0.09622, 0.82217], perspective: 331.502, axis: [0.52102, -0.85354, 0], angle: 40 },
   transform:
     'matrix(0.90041, 0.16889, -0.09622, 0.82217, 0, 0) perspective(331.502cqw) rotate3d(0.52102, -0.85354, 0, 40deg)',
 } as const

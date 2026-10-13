@@ -7,6 +7,7 @@ import { MotionPathPlugin } from 'gsap/MotionPathPlugin'
 import { useGSAP } from '@gsap/react'
 import { ALIVE, ARRIVE, DESCENT, FRAME, LAND, LAND_GROWTH, RATE, SCENE_TIMING, SHADOW_OPACITY, buildFlight, liftOrder, smoothThrough } from './flight'
 import type { FlightBox } from './flight'
+import { compactStory, scrollStory, smoothScroll, storyPerch } from './story'
 
 gsap.registerPlugin(useGSAP, MotionPathPlugin)
 
@@ -25,13 +26,17 @@ const HANDOFF = 0.15
  * Desktop flies the full route, tablet the same faster, mobile only the landing. Reduced motion,
  * data saver, clips that are not ready in time, or a breakpoint change after the opening leave
  * the hero as rendered. Only transforms and opacity are animated.
+ *
+ * On desktop the hero then becomes the scroll story (story.ts): as the visitor scrolls, the bee
+ * takes off and flies away, and the tablet comes to the centre to play the product demo; back at
+ * the top, the bee flies in and lands again.
  */
 export function HeroMotion({ children, className }: { children: ReactNode; className?: string }) {
   const scope = useRef<HTMLDivElement>(null)
   const played = useRef(false)
 
   useGSAP(
-    (_, contextSafe) => {
+    () => {
       const hero = scope.current
       if (!hero) return
       const html = document.documentElement
@@ -56,33 +61,94 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       const trailDots = one<SVGPathElement>('[data-bee-trail-dots]')
       const trailReveal = one<SVGPathElement>('[data-bee-trail-reveal]')
       const reveals = q('[data-hero-reveal]')
+      const takeoffClip = one<HTMLVideoElement>('[data-bee-clip="takeoff"]')
+      const demo = one<HTMLVideoElement>('[data-demo-video]')
+      const camera = one<HTMLElement>('[data-demo-camera]')
+      const captions = one<HTMLElement>('[data-story-captions]')
+      const cta = one<HTMLElement>('[data-story-cta]')
+      const cue = one<HTMLElement>('[data-scroll-cue]')
+      const compactCaption = one<HTMLElement>('[data-compact-captions]')
+      const slab = one<HTMLElement>('[data-tablet="sharp"] .tablet')
+      const storyFade = [...q('[data-story-fade]'), ...q('[data-tablet="sharp"] .tablet-shadow')]
 
-      // after the opening, on a desktop pointer, the tablet (and the bee on it) leans toward the cursor
+      // after the opening, on a desktop pointer, the tablet (and the bee on it) leans toward the cursor.
+      // Not a contextSafe function: it is also called while the matchMedia handler runs, and a
+      // context's function run inside another context links the two both ways (GSAP then recurses
+      // forever when either is reverted). Its tweens are killed in the cleanup instead.
       let untilt = () => {}
-      const enableTilt = contextSafe!(() => {
+      const enableTilt = () => {
+        untilt()
         const fine = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 1024px) and (prefers-reduced-motion: no-preference)')
         if (!tilt || !fine.matches) return
         gsap.set(tilt, { transformPerspective: 1600 })
         const toY = gsap.quickTo(tilt, 'rotationY', { duration: 0.9, ease: 'power3.out' })
         const toX = gsap.quickTo(tilt, 'rotationX', { duration: 0.9, ease: 'power3.out' })
-        const move = contextSafe!((e: PointerEvent) => {
+        const move = (e: PointerEvent) => {
           const r = hero.getBoundingClientRect()
           toY(((e.clientX - r.left) / r.width - 0.5) * 6)
           toX(-((e.clientY - r.top) / r.height - 0.5) * 4)
-        })
-        const leave = contextSafe!(() => (toY(0), toX(0)))
+        }
+        const leave = () => (toY(0), toX(0))
         hero.addEventListener('pointermove', move)
         hero.addEventListener('pointerleave', leave)
         untilt = () => {
           hero.removeEventListener('pointermove', move)
           hero.removeEventListener('pointerleave', leave)
+          gsap.killTweensOf(tilt)
+          untilt = () => {}
         }
-      })
+      }
+
+      // once the hero is at rest, the notifications take turns over the tablet's corner (toasts.tsx),
+      // each one's app hexagon on the dashboard lifting while it shows; with reduced motion the
+      // first simply stays
+      const toasts = q('[data-hero-toast]')
+      const toastsWrap = one<HTMLElement>('[data-hero-toasts]')
+      let toastTl: gsap.core.Timeline | undefined
+      /** The notifications step aside at once while the story runs (paused), and carry on back at the top. */
+      let toastsOut = false
+      const toastsAside = (out: boolean) => {
+        if (out === toastsOut || !toastsWrap) return
+        toastsOut = out
+        gsap.to(toastsWrap, { autoAlpha: out ? 0 : 1, duration: out ? 0.2 : 0.5, ease: 'sine.out', overwrite: true })
+        if (out) toastTl?.pause()
+        else toastTl?.resume()
+      }
+      const startToasts = () => {
+        if (toastTl || !toasts.length) return
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return void gsap.set(toasts[0], { autoAlpha: 1 })
+        toastTl = gsap.timeline({ repeat: -1 })
+        toasts.forEach((el) => {
+          const tile = tiles[Number((el as HTMLElement).dataset.tile)]
+          const face = tile?.querySelector('[data-live-tile-face]')
+          const under = tile?.querySelector('[data-live-tile-shadow]')
+          // lengths doubled: the tablet is laid out at twice its size (scene.ts, raster)
+          const dim = 'drop-shadow(0 0 0cqw rgb(240 154 67 / 0))'
+          const lit = 'drop-shadow(0 0 1.8cqw rgb(252 196 128 / 0.6))'
+          const at = toastTl!.duration()
+          toastTl!
+            .fromTo(el, { autoAlpha: 0, y: 14, scale: 0.97 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.6, ease: 'power3.out' }, at)
+            .to(el, { autoAlpha: 0, y: -8, duration: 0.45, ease: 'power2.in' }, at + 4.2)
+            .to({}, { duration: 1.6 })
+          // the app it came from answers on the dashboard: up as the card arrives, down as it goes
+          // (higher than the opening's gentle lifts, and lit amber from behind, so it reads at a glance)
+          if (tile && face && under) {
+            toastTl!
+              .to(face, { scale: 1.14, yPercent: -7, duration: 0.55, ease: 'back.out(2)' }, at + 0.15)
+              .to(under, { opacity: 1, scale: 1.18, duration: 0.55, ease: 'power2.out' }, at + 0.15)
+              .fromTo(tile, { filter: dim }, { filter: lit, duration: 0.6, ease: 'sine.out' }, at + 0.15)
+              .to(face, { scale: 1, yPercent: 0, duration: ALIVE.fall, ease: 'power2.inOut' }, at + 4.1)
+              .to(under, { opacity: 0, scale: 1, duration: ALIVE.fall, ease: 'power2.inOut' }, at + 4.1)
+              .to(tile, { filter: dim, duration: ALIVE.fall, ease: 'sine.inOut' }, at + 4.1)
+          }
+        })
+      }
 
       const finish = () => {
         if (!played.current) enableTilt()
         played.current = true
         html.dataset.heroMotion = 'done'
+        startToasts()
       }
       // no flight: show the copy and the landed bee, and stop
       const settle = () => {
@@ -93,6 +159,217 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       }
       if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !sharp || !glow || !today || !underline || !trail || !trailDots || !trailReveal) return finish()
 
+      // ── the scroll story's bee ───────────────────────────────────────────────────────────────
+      // The story says where the bee belongs (story.ts, onBee): on the hero's tablet at the top, away
+      // while the tablet moves and the first chapters play, and on the big tablet's corner for the
+      // last chapter, as the narrator. This moves it there from wherever it is, one trip at a time.
+      //
+      // It flies the way it faces: it leaves toward the side it faces (up and away) and comes back
+      // from there facing the other way, so it lands facing back; the clips (all facing right) are
+      // mirrored for a bee facing left. A perch is a point on the page for its feet: the landing
+      // target is moved there, so the landed bee, its shadow and every trip measure from it.
+      type Spot = 'hero' | 'away' | 'story'
+      let opening: gsap.core.Timeline | undefined
+      let at: Spot | 'opening' = 'opening' // where it is, or is landing
+      let moving = false
+      let want: Spot = 'hero'
+      let hurry = 1
+      let beeTl: gsap.core.Timeline | undefined
+      let facing: 1 | -1 = 1
+      let storyOff = () => {}
+      const face = (dir: 1 | -1) => {
+        facing = dir
+        gsap.set([airClip!, landClip!, takeoffClip!, rest!], { scaleX: dir })
+      }
+      /** Puts the landing target (and with it the landed bee) on a perch: the hero's own spot, or the big tablet's corner. */
+      const perch = (spot: 'hero' | 'story', glide = 0) => {
+        let to = { x: 0, y: 0 }
+        if (spot === 'story') {
+          const now = { x: Number(gsap.getProperty(target!, 'x')), y: Number(gsap.getProperty(target!, 'y')) }
+          const here = target!.getBoundingClientRect()
+          const corner = storyPerch(slab!)
+          to = { x: now.x + corner.x - here.left, y: now.y + corner.y - here.top }
+        }
+        if (glide) gsap.to(target!, { ...to, duration: glide, ease: 'power2.out', overwrite: true })
+        else gsap.set(target!, to)
+      }
+      /** The arc between the perch and off-screen on the side the bee faces, from the feet out. */
+      const route = (box: FlightBox, dir: 1 | -1) => {
+        const { width: w, height: h, feet } = box
+        const side = (dx: number) => feet.x + dir * dx
+        return [
+          { x: side(w * 0.03), y: feet.y - h * 0.06 },
+          { x: side(w * 0.2), y: feet.y - h * 0.32 },
+          { x: dir > 0 ? w * 1.15 : -w * 0.15, y: -h * 0.25 },
+        ]
+      }
+      const box = () => measure(hero!, scene!, air!, target!)
+      /** Stops any trip and stands the bee on the hero's tablet, facing as it first landed. */
+      const homeBee = () => {
+        beeTl?.kill()
+        ;[airClip!, landClip!, takeoffClip].forEach((v) => v?.pause())
+        moving = false
+        at = want = 'hero'
+        face(1)
+        perch('hero')
+        gsap.set([air!, airClip!, landClip!, takeoffClip ?? []], { opacity: 0 })
+        gsap.set([landed!, rest!], { opacity: 1, scale: 1 })
+        gsap.set(shadow!, { opacity: SHADOW_OPACITY, scale: 1 })
+      }
+
+      function storyOn() {
+        if (!takeoffClip || !demo || !camera || !captions || !cta || !slab) return
+        takeoffClip.src = clipSrc('takeoff')
+        takeoffClip.preload = 'auto'
+        const smoothOff = matchMedia('(pointer: fine)').matches ? smoothScroll() : () => {}
+        const storyStop = scrollStory({
+          hero: hero!,
+          scene: scene!,
+          tablet: slab,
+          fade: storyFade,
+          video: demo,
+          camera,
+          captions,
+          cta,
+          tour: cue,
+          // standing on the big tablet as it steps back: it moves with it
+          onTabletMove: () => {
+            if (at === 'story' && !moving) perch('story')
+          },
+          onBee: (spot, scroll) => {
+            toastsAside(scroll.progress > 0.002)
+            // leaving while the visitor scrolls on fast, or once the tablet is well on its way: hurry
+            // (the story always moves the tablet briskly now, so it never leaves slowly)
+            hurry = Math.min(3, Math.max(1.8, Math.abs(scroll.velocity) / 900, scroll.progress > scroll.settledAt * 0.4 ? 2.5 : 1))
+            if (moving && at === 'away') beeTl?.timeScale(hurry), (takeoffClip!.playbackRate = hurry)
+            if (spot !== want) {
+              want = spot
+              next()
+            }
+          },
+        })
+        storyOff = () => (storyStop(), smoothOff())
+      }
+
+      /**
+       * Starts the next trip toward where the bee belongs, if it is not there or on its way. A plain
+       * function, like enableTilt: the story's triggers can call it while their matchMedia context is
+       * being reverted. The trip's timeline is killed in the cleanup.
+       */
+      function next() {
+        if (at === 'opening') {
+          if (want === 'hero') return
+          // the visitor scrolled before it landed: finish the opening now (its end calls next() again)
+          opening?.progress(1)
+          if (at !== 'opening') return
+          at = 'hero'
+        }
+        if (moving) {
+          if (at === want) return // already on its way there
+          // heading somewhere it is no longer wanted: turn round
+          if (at === 'away') return comeBack(want as 'hero' | 'story')
+          return turnBack()
+        }
+        if (at === want) return
+        if (want === 'away' || at !== 'away') return takeOff()
+        comeBack(want)
+      }
+      const arrived = (spot: Spot) => () => {
+        moving = false
+        at = spot
+        if (spot === 'hero') enableTilt()
+        // the tablet may have moved while it was landing: settle onto the corner where it is now
+        if (spot === 'story') perch('story', 0.35)
+        next()
+      }
+
+      /** The bee lifts off its perch (the landing clip run backwards) and flies away the way it faces. */
+      function takeOff() {
+        moving = true
+        at = 'away'
+        if (tilt) {
+          untilt()
+          gsap.to(tilt, { rotationX: 0, rotationY: 0, duration: 0.4, ease: 'power2.out' })
+        }
+        const b = box()
+        // the clip opens with the bee still standing as its wings start (the landing, backwards);
+        // the tablet is already moving by then, so it starts as the wings are up and leaves at once
+        const skip = 0.3
+        const away = (takeoffClip!.duration || 76 / 24) - skip
+        beeTl?.kill()
+        beeTl = gsap.timeline({ onComplete: () => (takeoffClip!.pause(), arrived('away')()) })
+        beeTl
+          .set(air!, { xPercent: -50, yPercent: -FRAME.feetY * 100, transformOrigin: '50% 50%', x: b.feet.x, y: b.feet.y, scale: 1, opacity: 1 }, 0)
+          .set(airClip!, { opacity: 0 }, 0)
+          .set(takeoffClip!, { opacity: 1 }, 0)
+          .call(() => {
+            takeoffClip!.currentTime = skip
+            takeoffClip!.playbackRate = hurry
+            void takeoffClip!.play().catch(() => {})
+          }, [], 0)
+          .set(landed!, { opacity: 0 }, 0.05)
+          .to(shadow!, { opacity: 0, scale: 0.6, duration: 0.25, ease: 'sine.out' }, 0)
+          // up off the edge and away the way it faces, a little smaller as it goes
+          .to(air!, { motionPath: { path: route(b, facing), curviness: 1.2 }, duration: away, ease: 'sine.in' }, 0.05)
+          .to(air!, { scale: 0.82, duration: away, ease: 'power1.in' }, 0.05)
+          .set(air!, { opacity: 0 }, away + 0.05)
+        beeTl.timeScale(hurry)
+      }
+
+      /** On its way in but no longer wanted there: it turns round and flies back out the way it came. */
+      function turnBack() {
+        beeTl?.kill()
+        landClip!.pause()
+        face((-facing) as 1 | -1)
+        const out = route(box(), facing).slice(1)
+        moving = true
+        at = 'away'
+        beeTl = gsap.timeline({ onComplete: () => (airClip!.pause(), arrived('away')()) })
+        beeTl
+          .set(landed!, { opacity: 0 }, 0)
+          .set([airClip!, air!], { opacity: 1 }, 0)
+          .to(shadow!, { opacity: 0, duration: 0.3 }, 0)
+          .to(air!, { motionPath: { path: out, curviness: 1.2 }, duration: 1.6, ease: 'power2.in' }, 0)
+          .to(air!, { scale: 0.6, duration: 1.6, ease: 'power1.in' }, 0)
+          .set(air!, { opacity: 0 }, 1.6)
+      }
+
+      /** The bee comes back from where it flew off, facing the perch, glides in along the same arc and lands. */
+      function comeBack(to: 'hero' | 'story') {
+        beeTl?.kill()
+        takeoffClip!.pause()
+        perch(to)
+        const b = box()
+        const from = facing
+        face((-from) as 1 | -1) // it turns round to come back
+        // the arc back, from off-screen to where the landing clip's bee begins (flight.ts)
+        const handoff = buildFlight(b).at(-1)!.point
+        const path = route(b, from).reverse().slice(1).concat([{ x: handoff.x, y: handoff.y }])
+        const start = route(b, from).at(-1)!
+        const glide = Math.max(2.2, Math.min(ARRIVE, airClip!.duration || ARRIVE))
+        moving = true
+        at = to
+        beeTl = gsap.timeline()
+        beeTl
+          .set(takeoffClip!, { opacity: 0 }, 0)
+          .set(airClip!, { opacity: 1 }, 0)
+          .set(air!, { xPercent: -50, yPercent: -FRAME.feetY * 100, transformOrigin: '50% 50%', x: start.x, y: start.y, scale: 0.6, opacity: 1 }, 0)
+          .call(() => {
+            airClip!.currentTime = Math.max(0, (airClip!.duration || ARRIVE) - glide)
+            airClip!.playbackRate = 1
+            void airClip!.play().catch(() => {})
+          }, [], 0)
+          .to(air!, { motionPath: { path, curviness: 1.2 }, duration: glide, ease: 'power1.out' }, 0)
+          .to(air!, { scale: 1, duration: glide, ease: 'power1.out' }, 0)
+          .fromTo(shadow!, { opacity: 0, scale: 0.5 }, { opacity: SHADOW_OPACITY * 0.5, scale: 0.8, duration: 0.8, ease: 'sine.in' }, glide - 0.8)
+          .to(air!, { opacity: 0, duration: HANDOFF, ease: 'none' }, glide)
+          .call(() => airClip!.pause(), [], glide + HANDOFF)
+        // on the big tablet the dashboard's lifts would be hidden under the recording: just the landing
+        landing(beeTl, glide, to === 'hero')
+        // down and settled (the dashboard's lifts that follow do not hold it)
+        beeTl.call(arrived(to), [], glide + LAND.duration)
+      }
+
       const mm = gsap.matchMedia()
       mm.add(
         {
@@ -102,18 +379,32 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           desktop: '(min-width: 1024px)', // the handler runs only when some condition matches
         },
         (ctx) => {
-          const { reduce, mobile, tablet } = ctx.conditions as Record<string, boolean>
+          const { reduce, mobile, tablet, desktop } = ctx.conditions as Record<string, boolean>
           const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData
-          if (played.current) return finish()
-          if (reduce || saveData) return settle()
+          if (reduce || saveData) return played.current ? finish() : settle()
+
+          const story = () => {
+            if (desktop) storyOn()
+            else if (demo && compactCaption && slab) storyOff = compactStory({ scene: scene!, tablet: slab, video: demo, caption: compactCaption, bee: [landed!, shadow!] })
+          }
+          // back on a breakpoint after the opening has played: the bee starts again on the hero's
+          // tablet, wherever it was when the last breakpoint's story was torn down
+          if (played.current) {
+            homeBee()
+            story()
+            finish()
+            return () => storyOff()
+          }
 
           let alive = true
           const clips = mobile ? [landClip] : [airClip, landClip]
+          story()
           clips.forEach((v) => (v.src = clipSrc(v.dataset.beeClip!)))
           // a named add() is not run now: it returns the function, bound to this media context
           const start = ctx.add('start', () => {
             if (!alive) return
-            const tl = gsap.timeline({ onComplete: finish })
+            const tl = gsap.timeline({ onComplete: () => (at === 'opening' && ((at = 'hero'), next()), finish()) })
+            opening = tl
             if (tablet) tl.timeScale(1.2)
             if (mobile) {
               landing(tl, 0.6)
@@ -134,6 +425,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           return () => {
             alive = false
             clips.forEach((v) => v.pause())
+            storyOff()
           }
         },
       )
@@ -146,7 +438,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       }
 
       /** The landing clip at the target from `at`, the shadow firming up as the feet touch, then the still. */
-      function landing(tl: gsap.core.Timeline, at: number) {
+      function landing(tl: gsap.core.Timeline, at: number, lifts = true) {
         const touch = at + LAND.touchdown
         const end = at + LAND.duration
         tl.set(rest!, { opacity: 0 }, 0)
@@ -156,11 +448,16 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           .set(landClip!, { opacity: 1 }, at)
           .call(play(landClip!, RATE, tl), [], at)
           .to(landed!, { opacity: 1, duration: HANDOFF, ease: 'none' }, at)
-          .fromTo(shadow!, { opacity: SHADOW_OPACITY * 0.5, scale: 0.8 }, { opacity: SHADOW_OPACITY, scale: 1, duration: 0.35, ease: 'sine.out' }, touch - 0.15)
+          // not rendered early: built at the start of a trip home, its start would show the shadow on the perch while the bee is still far away
+          .fromTo(shadow!, { opacity: SHADOW_OPACITY * 0.5, scale: 0.8 }, { opacity: SHADOW_OPACITY, scale: 1, duration: 0.35, ease: 'sine.out', immediateRender: false }, touch - 0.15)
           // the still is the clip's last frame, so the swap is invisible; it frees the decoder
           .set(rest!, { opacity: 1 }, end)
           .set(landClip!, { opacity: 0 }, end)
-        alive(tl, touch + ALIVE.delay)
+        if (lifts) {
+          alive(tl, touch + ALIVE.delay)
+          // and the first notification arrives a second after the feet touch (startToasts, above)
+          tl.call(startToasts, [], touch + 1)
+        }
       }
 
       /**
@@ -219,7 +516,8 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
         const behind = { x: -box.frame * 0.14, y: -(FRAME.feetY - 0.5) * frameH * 0.7 }
         const trailRaw = MotionPathPlugin.arrayToRawPath(marks.map((m) => ({ x: m.point.x + behind.x, y: m.point.y + behind.y })), { curviness: 1 })
         const trailPath = MotionPathPlugin.rawPathToString(trailRaw)
-        gsap.set(trail!, { attr: { viewBox: `0 0 ${box.width} ${box.height}` } })
+        // set directly, not through GSAP: a breakpoint change reverts GSAP's sets, and an empty viewBox is an error
+        trail!.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`)
         gsap.set([trailDots!, trailReveal!], { attr: { d: trailPath } })
         const trailLength = trailReveal!.getTotalLength()
         const tail = trailLength / 6
@@ -257,6 +555,8 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
 
       return () => {
         untilt()
+        beeTl?.kill()
+        toastTl?.kill()
         mm.revert()
       }
     },

@@ -1,11 +1,12 @@
-import Image from 'next/image'
-import { Play } from 'lucide-react'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Hexagon } from '@workspace/ui/components/hexagon'
+import { CTA, CTA_ARROW } from '@/components/cta'
 import { BeeAirborne, BeeLanded, BeeTrail } from './bee'
 import { HeroMotion } from './hero-motion'
-import { TRUST_AVATARS } from './mock'
+import { HERO_APPS } from './mock'
 import { Tablet } from './tablet'
+import { HeroToasts } from './toasts'
+import { CHAPTERS } from './demo'
 import { LANDING } from './scene'
 
 // Runs before the hero paints: unless the visitor prefers reduced motion, hold the opening state
@@ -19,24 +20,24 @@ const MOTION_GATE = `try{if(!matchMedia('(prefers-reduced-motion: reduce)').matc
  * opening on top: the bee flies in and lands on the tablet's bottom edge as the tablet comes into focus.
  *
  * Layers, bottom to top: glow · copy · tablet and landed bee · trail and flying bee, on the page's cream. The
- * headline and navigation are sharp and readable from the first paint. From lg the scene fills the
- * hero and the copy sits on its calm left side; below lg the copy comes first and the scene is
- * cropped to the tablet. From 2xl (large monitors) the page's content column widens from 80rem to
+ * headline and navigation are sharp and readable from the first paint. From lg the hero is at
+ * least the screen's height (the scroll story pins it), the scene fills it and the copy sits on its
+ * calm left side; below lg the copy comes first and the scene is cropped to the tablet. From 2xl (large monitors) the page's content column widens from 80rem to
  * 88rem, with the header, and the scene and type grow with it.
  */
 export function Hero() {
   return (
     <>
       <script dangerouslySetInnerHTML={{ __html: MOTION_GATE }} />
-      <HeroMotion className="relative isolate grid overflow-hidden bg-background">
+      <HeroMotion className="relative isolate grid overflow-hidden bg-background lg:min-h-svh">
         <div className="relative order-2 overflow-hidden lg:order-none lg:flex lg:items-center lg:[grid-area:1/1]">
           <Scene />
         </div>
 
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-6 2xl:max-w-[88rem] pb-10 pt-24 lg:[grid-area:1/1] lg:self-center lg:py-0 lg:pt-20">
-          <div className="max-w-xl lg:max-w-[36%]">
+        <div data-story-fade="" className="relative z-10 mx-auto w-full max-w-7xl px-6 2xl:max-w-[88rem] pb-10 pt-24 lg:[grid-area:1/1] lg:self-center lg:py-0 lg:pt-4">
+          <div className="max-w-xl lg:max-w-[38%]">
             <p className="text-overline tracking-[0.28em] text-muted-foreground">One workspace. Multiple apps.</p>
-            <h1 className="mt-5 text-balance text-[clamp(2.25rem,3.1vw,3.75rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
+            <h1 className="mt-5 text-balance text-[clamp(2.5rem,min(3.9vw,7svh),4.75rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
               One workspace for{' '}
               <span className="relative inline-block">
                 everything
@@ -47,43 +48,50 @@ export function Hero() {
               </span>{' '}
               your team runs.
             </h1>
-            <p data-hero-reveal="copy" className="mt-6 max-w-md text-pretty text-[clamp(1rem,1.2vw,1.25rem)] leading-snug text-muted-foreground">
+            <p data-hero-reveal="copy" className="mt-6 max-w-lg text-pretty text-[clamp(1.0625rem,min(1.35vw,2.45svh),1.375rem)] leading-snug text-muted-foreground">
               Tasks, inventory, assets, procurement, notes and analytics. Connected in one workspace.
             </p>
             <div data-hero-reveal="cta" className="mt-9 flex flex-wrap items-center gap-3">
-              <Button size="lg" render={<a href="#get-started" />}>
+              <Button size="lg" variant="brand" className={CTA} render={<a href="#get-started" />}>
                 Get started
-                <ButtonArrow />
+                <ButtonArrow className={CTA_ARROW} />
               </Button>
-              <Button size="lg" variant="outline" render={<a href="#how-it-works" />}>
-                <span className="grid size-7 place-items-center rounded-full bg-card">
-                  <Play className="size-3.5 fill-current" />
-                </span>
-                See how it works
+              <Button size="lg" variant="outline" render={<a href="#contact" />}>
+                Book a demo
               </Button>
             </div>
-            <div data-hero-reveal="copy" className="mt-10 flex items-center gap-5">
-              <span className="flex -space-x-2.5">
-                {TRUST_AVATARS.map((src, i) => (
-                  <Image key={i} src={src} alt="" sizes="40px" className="size-10 rounded-full object-cover ring-2 ring-background" />
-                ))}
-              </span>
-              <span className="border-l border-border pl-5 text-sm leading-snug text-muted-foreground">
-                Trusted by teams across
-                <br />
-                operations, finance and procurement.
-              </span>
-            </div>
+            {/* the apps, by name: a grid of two on phones, one row with hairline dividers from sm */}
+            <ul data-hero-reveal="copy" className="mt-11 grid grid-cols-2 gap-x-6 gap-y-4 sm:flex sm:w-max sm:items-center sm:gap-0 sm:divide-x sm:divide-border">
+              {HERO_APPS.map(({ icon: Icon, name, with: also }) => (
+                <li key={name} className="flex items-center gap-2 sm:px-4 sm:first:pl-0 sm:last:pr-0 2xl:px-5">
+                  <Icon aria-hidden="true" strokeWidth={1.5} className="size-4 shrink-0 text-foreground/60" />
+                  <span className="whitespace-nowrap text-xs leading-[1.3] text-foreground/65">
+                    {name}
+                    <br />
+                    {also}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
+        <ScrollCue />
+        <StoryCaptions />
+        <StoryCta />
+        <CompactCaptions />
       </HeroMotion>
     </>
   )
 }
 
 /**
- * The stage: the tablet floating in a warm glow, brought into focus by the opening, with the landed
+ * The stage: from lg it is the content column, or larger where the screen is tall enough for it, so
+ * the tablet fills the height under the header (about 80% of it) rather than leaving the first view
+ * half empty on a laptop; it never outgrows the window and stops at 108rem. It is raised so the
+ * tablet (in the stage's lower part) is centred under the header rather than the stage itself.
+ *
+ * The tablet floating in a warm glow, brought into focus by the opening, with the landed
  * bee on its edge, both in one layer that leans gently toward the pointer once the opening is done;
  * above them the flying bee and its trail (kept sharp, outside the focus pull).
  */
@@ -91,11 +99,11 @@ function Scene() {
   return (
     <div
       data-hero-scene=""
-      className="relative -ml-[59%] aspect-[1398/820] w-[155%] [--bee-w:15cqw] [container-type:inline-size] sm:-ml-[51%] sm:w-[138%] lg:mx-auto lg:w-[min(calc(100%-3rem),77rem)] 2xl:w-[min(calc(100%-3rem),85rem)]"
+      className="relative -ml-[59%] aspect-[1398/820] w-[155%] [--bee-w:15cqw] [container-type:inline-size] sm:-ml-[51%] sm:w-[138%] lg:mx-auto lg:w-[max(min(calc(100%-3rem),77rem),min(calc((100svh-6rem)*1.98),calc(100vw-1rem),108rem))] lg:translate-y-[calc(0.5rem-7.5%)] 2xl:w-[max(min(calc(100%-3rem),85rem),min(calc((100svh-6rem)*1.98),calc(100vw-1rem),108rem))]"
     >
       {/* the soft light the tablet floats in, gathered in the brand's hexagon behind it */}
-      <div aria-hidden="true" className="hero-glow absolute" />
-      <Hexagon size="34cqw" className="absolute left-[53.7%] top-[25.9%] text-hex-decor-to opacity-70 blur-[2.5cqw]" />
+      <div data-story-fade="" aria-hidden="true" className="hero-glow absolute" />
+      <Hexagon data-story-fade="" size="34cqw" className="absolute left-[53.7%] top-[25.9%] text-hex-decor-to opacity-70 blur-[2.5cqw]" />
       <div data-hero-tilt="" className="pointer-events-none absolute inset-0 z-30 origin-[70.1%_54.9%]">
         <Tablet focus="soft" />
         <Tablet focus="sharp" />
@@ -103,10 +111,95 @@ function Scene() {
           <BeeLanded />
         </div>
       </div>
+      <HeroToasts />
       <div className="pointer-events-none absolute inset-0 z-30">
         <BeeTrail />
         <BeeAirborne />
       </div>
     </div>
+  )
+}
+
+/**
+ * At the foot of the first view (the window's, since the hero can be a little taller), centred: a drop of amber running down a hairline under the words,
+ * to say the hero goes on; clicked, it glides into the story (story.ts). It goes as the story
+ * starts; desktop only.
+ */
+function ScrollCue() {
+  return (
+    <div data-story-fade="" className="pointer-events-none absolute inset-x-0 top-[calc(100svh-5.75rem)] z-20 hidden justify-center lg:flex">
+      <button
+        type="button"
+        data-scroll-cue=""
+        data-hero-reveal="copy"
+        className="group pointer-events-auto flex flex-col items-center gap-3 rounded-full px-4 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span className="text-overline tracking-[0.28em] text-muted-foreground transition-colors group-hover:text-foreground">Scroll to explore</span>
+        <span aria-hidden="true" className="relative h-10 w-px bg-foreground/15">
+          <span className="scroll-cue-drop absolute -left-0.5 top-0 size-[5px] rounded-full bg-(--brand-soft)" />
+        </span>
+      </button>
+    </div>
+  )
+}
+
+/**
+ * The scroll story's captions (story.ts): one per chapter of the product demo, under the tablet
+ * once it has come to the centre (placed from the screen's height: the hero is pinned at the top),
+ * with a short progress bar. Hidden until the story reaches them; desktop only.
+ */
+function StoryCaptions() {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-[98svh] z-40 hidden -translate-y-full lg:block">
+      <div data-story-captions="" className="invisible mx-auto grid w-full max-w-4xl justify-items-center px-6 text-center opacity-0">
+        {CHAPTERS.map((c) => (
+          <p key={c.id} data-story-caption="" className="invisible text-base opacity-0 [grid-area:1/1]">
+            <span className="font-medium text-foreground">{c.title}.</span> <span className="text-muted-foreground">{c.body}</span>
+          </p>
+        ))}
+        {/* the chapters as hairlines, the current one wider and filling as it plays */}
+        <div aria-hidden="true" className="mt-4 flex items-center gap-1.5">
+          {CHAPTERS.map((c) => (
+            <span key={c.id} data-story-dot="" className="relative h-[3px] w-4 overflow-hidden rounded-full bg-foreground/10">
+              <span className="absolute inset-0 origin-left scale-x-0 rounded-full bg-(--brand-soft)" />
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The story's close (story.ts): as the tablet steps back into the hero, the next step comes in
+ * under it. Hidden until then; desktop only.
+ */
+function StoryCta() {
+  return (
+    <div data-story-cta="" className="invisible absolute inset-x-0 top-[89%] z-40 hidden justify-center gap-3 opacity-0 lg:flex">
+      <Button size="lg" variant="brand" className={CTA} render={<a href="#get-started" />}>
+        Start with Bool
+        <ButtonArrow className={CTA_ARROW} />
+      </Button>
+      <Button size="lg" variant="outline" render={<a href="#contact" />}>
+        Book a demo
+      </Button>
+    </div>
+  )
+}
+
+/**
+ * Phones and tablets: one line under the scene naming the chapter the recording is in (story.ts,
+ * compactStory). Hidden until the recording plays.
+ */
+function CompactCaptions() {
+  return (
+    <p data-compact-captions="" className="invisible order-3 mx-auto -mt-2 max-w-md px-6 pb-10 text-center text-sm opacity-0 lg:hidden">
+      {CHAPTERS.map((c, i) => (
+        <span key={c.id} data-compact-caption="" hidden={i > 0}>
+          <span className="font-medium text-foreground">{c.title}.</span> <span className="text-muted-foreground">{c.body}</span>
+        </span>
+      ))}
+    </p>
   )
 }

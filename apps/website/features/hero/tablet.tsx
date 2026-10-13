@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import type { CSSProperties } from 'react'
 import { HEX_PATH, HEX_VIEWBOX } from '@workspace/ui/components/hexagon'
+import { DEMO } from './demo'
 import { APP_TILES, DASHBOARD, TABLET, TODAY_CELL, onScreen } from './scene'
 
 /**
@@ -10,7 +11,8 @@ import { APP_TILES, DASHBOARD, TABLET, TODAY_CELL, onScreen } from './scene'
  * The opening brings it into focus by crossfading two copies rather than animating a blur: the
  * `soft` copy is blurred once and only exists while the opening is pending, and the `sharp` copy
  * fades in over it as the bee lands. Opacity is all that animates, so the browser never re-blurs.
- * The sharp copy also carries the parts of the dashboard that come alive after the landing.
+ * The sharp copy also carries the parts of the dashboard that come alive after the landing, and the
+ * product demo the scroll story plays on its screen.
  */
 export function Tablet({ focus }: { focus: 'soft' | 'sharp' }) {
   return (
@@ -37,7 +39,19 @@ export function Tablet({ focus }: { focus: 'soft' | 'sharp' }) {
             unoptimized // the app tiles reuse this exact file, so it must be one URL
             className="size-full object-cover object-top"
           />
-          {focus === 'sharp' && <LiveParts />}
+          {focus === 'sharp' && (
+            <>
+              <LiveParts />
+              {/* the product demo, played here by the scroll story (story.ts); loaded only when it starts */}
+              <div data-demo-camera="" className="absolute inset-0 origin-top-left">
+                <video data-demo-video="" muted playsInline preload="none" poster={DEMO.poster} className="absolute inset-0 size-full object-cover object-top opacity-0" />
+                {/* the spotlight: the part of the screen the caption is about, the rest gently dimmed */}
+                <div data-demo-spot="" aria-hidden="true" className="demo-spot" />
+              </div>
+              {/* a soft reflection on the glass, sliding across as the tablet turns (story.ts sets --glare) */}
+              <div aria-hidden="true" className="tablet-glare" />
+            </>
+          )}
         </div>
       </div>
     </div>

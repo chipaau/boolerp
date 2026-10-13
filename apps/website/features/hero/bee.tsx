@@ -9,7 +9,7 @@ import { FRAME } from './flight'
  *   opening, and a soft contact shadow under the feet.
  * - `BeeAirborne` is the flying bee, in scene coordinates; hero-motion.tsx moves it and gives the
  *   clips their source (WebM with alpha, or HEVC with alpha on Safari), so nothing loads until the
- *   opening plays.
+ *   opening plays. It also carries the take-off, for when the scroll story sends it away.
  * - `BeeTrail` is a short dotted tail behind the flying bee, like the bee in the app icons: it
  *   follows the bee and disappears behind it, during the opening only, and is empty otherwise.
  */
@@ -41,6 +41,8 @@ export function BeeAirborne() {
   return (
     <div data-bee-air="" aria-hidden="true" className={`${BOX} left-0 top-0 opacity-0 will-change-transform`}>
       <video data-bee-clip="air" muted playsInline preload="none" className={FILL} />
+      {/* the take-off, for the scroll story (the landing run backwards into the flight run backwards) */}
+      <video data-bee-clip="takeoff" muted playsInline preload="none" className={`${FILL} opacity-0`} />
     </div>
   )
 }

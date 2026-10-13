@@ -2,7 +2,8 @@ import Image from 'next/image'
 import { ChevronDown } from 'lucide-react'
 import logo from '@workspace/assets/logos/bool-logo.png'
 import { Button } from '@workspace/ui/components/button'
-import { cn } from '@workspace/ui/lib/utils'
+import { CTA } from './cta'
+import { HeaderMotion } from './header-motion'
 
 const NAV = [
   { label: 'Product', href: '#product', menu: true },
@@ -12,10 +13,14 @@ const NAV = [
   { label: 'About', href: '#about' },
 ]
 
-/** The site's top bar: brand, sections, and the two ways in. */
+/**
+ * The site's top bar: brand, sections, and the ways in. Sign in is always there; Get started joins
+ * it once the hero's own buttons have scrolled away, so the page never offers two at once
+ * (HeaderMotion, which also moves the bar aside while the visitor scrolls down).
+ */
 export function SiteHeader({ className }: { className?: string }) {
   return (
-    <header className={cn('relative z-40', className)}>
+    <HeaderMotion className={className}>
       <div className="mx-auto flex h-20 max-w-7xl items-center gap-8 px-6 2xl:max-w-[88rem]">
         <a href="/" className="flex items-center gap-2.5 text-[1.6rem] font-bold tracking-[-0.03em] text-foreground">
           <Image src={logo} alt="" priority className="h-9 w-auto" />
@@ -29,14 +34,21 @@ export function SiteHeader({ className }: { className?: string }) {
             </a>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-2 lg:ml-0">
-          <Button variant="ghost" className="hidden sm:inline-flex" render={<a href="#sign-in" />}>
+        <div className="ml-auto flex items-center lg:ml-0">
+          <Button variant="outline" render={<a href="#sign-in" />}>
             Sign in
           </Button>
-          {/* the hero carries the one arrow button; this is its quieter twin */}
-          <Button render={<a href="#get-started" />}>Get started</Button>
+          {/* hidden (and inert) while the hero's buttons are on screen */}
+          <span
+            data-header-cta=""
+            className="-my-2 grid max-w-0 overflow-hidden py-2 opacity-0 transition-[max-width,opacity,margin] duration-300 ease-out group-data-[cta=true]/header:ml-2 group-data-[cta=true]/header:max-w-48 group-data-[cta=true]/header:opacity-100"
+          >
+            <Button variant="brand" className={CTA} render={<a href="#get-started" />}>
+              Get started
+            </Button>
+          </span>
         </div>
       </div>
-    </header>
+    </HeaderMotion>
   )
 }

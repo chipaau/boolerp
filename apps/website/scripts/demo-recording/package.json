@@ -1,0 +1,9 @@
+{
+  "name": "website-demo-recording",
+  "private": true,
+  "type": "module",
+  "description": "Records the hero's product demo from the running workspace (run.sh). Not part of the website build.",
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
