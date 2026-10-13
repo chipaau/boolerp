@@ -7,7 +7,7 @@ ARG APP
 ARG EDITION=full
 
 # The app's `vite build`, with the same Node and pnpm as development (node.Dockerfile).
-FROM node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80 AS app
+FROM node:26-alpine@sha256:143494b1da2945f061539253adc65e4f1569ddf07da2d384c022c791a9d90a4a AS app
 ARG APP
 ARG EDITION
 RUN test -n "$APP" || (echo "build with --build-arg APP=workspace|admin" >&2 && exit 1)
