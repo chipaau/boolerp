@@ -35,18 +35,18 @@ export function Hero() {
         <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-10 pt-24 lg:[grid-area:1/1] lg:self-center lg:py-0 lg:pt-20">
           <div className="max-w-xl lg:max-w-[36%]">
             <p className="text-overline tracking-[0.28em] text-muted-foreground">One workspace. Multiple apps.</p>
-            <h1 className="mt-5 text-balance text-[clamp(2.5rem,3.5vw,4rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
+            <h1 className="mt-5 text-balance text-[clamp(2.25rem,3.1vw,3.5rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
               One workspace for{' '}
               <span className="relative inline-block">
                 everything
-                {/* a hand-drawn amber stroke, drawn on as the bee passes over */}
-                <svg aria-hidden="true" viewBox="0 0 200 20" preserveAspectRatio="none" className="absolute -bottom-[0.14em] left-0 h-[0.28em] w-full overflow-visible">
-                  <path data-hero-underline="" d="M3 13 C 52 5, 118 3, 197 9" pathLength={1} fill="none" stroke="var(--brand-soft)" strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                {/* a hand-drawn amber stroke, wiped on from left to right as the bee passes over */}
+                <svg data-hero-underline="" aria-hidden="true" viewBox="0 0 200 20" preserveAspectRatio="none" className="absolute -bottom-[0.14em] left-0 h-[0.28em] w-full overflow-visible">
+                  <path d="M3 13 C 52 5, 118 3, 197 9" fill="none" stroke="var(--brand-soft)" strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
                 </svg>
               </span>{' '}
               your team runs.
             </h1>
-            <p data-hero-reveal="copy" className="mt-6 max-w-md text-pretty text-[clamp(1.05rem,1.4vw,1.3rem)] leading-snug text-muted-foreground">
+            <p data-hero-reveal="copy" className="mt-6 max-w-md text-pretty text-[clamp(1rem,1.2vw,1.15rem)] leading-snug text-muted-foreground">
               Tasks, inventory, assets, procurement, notes and analytics. Connected in one workspace.
             </p>
             <div data-hero-reveal="cta" className="mt-9 flex flex-wrap items-center gap-3">

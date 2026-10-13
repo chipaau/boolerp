@@ -45,16 +45,16 @@ html[data-hero-motion="pending"] {
     opacity: 0;
     animation: hero-fallback 0.6s 8s forwards;
   }
-  /* the headline's stroke, not drawn yet */
+  /* the headline's stroke, not drawn yet: clipped away from the right (the insets past its edges
+     keep the round caps) */
   [data-hero-underline] {
-    stroke-dasharray: 1;
-    stroke-dashoffset: 1;
+    clip-path: inset(-50% 105% -50% -5%);
     animation: hero-fallback-draw 0.6s 8s forwards;
   }
 }
 @keyframes hero-fallback-draw {
   to {
-    stroke-dashoffset: 0;
+    clip-path: inset(-50% -5% -50% -5%);
   }
 }
 

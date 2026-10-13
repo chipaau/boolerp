@@ -26,7 +26,7 @@ export const DASHBOARD = { src: '/hero/dashboard.webp', width: 2000, height: 121
  */
 export const TABLET = {
   aspect: 1.55,
-  bezel: 0.006,
+  bezel: 0.0078,
   raster: 2,
   left: '47.342%',
   top: '23.171%',
