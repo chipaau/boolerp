@@ -16,7 +16,7 @@ const NAV = [
 export function SiteHeader({ className }: { className?: string }) {
   return (
     <header className={cn('relative z-40', className)}>
-      <div className="mx-auto flex h-20 max-w-7xl items-center gap-8 px-6">
+      <div className="mx-auto flex h-20 max-w-7xl items-center gap-8 px-6 2xl:max-w-[88rem]">
         <a href="/" className="flex items-center gap-2.5 text-[1.6rem] font-bold tracking-[-0.03em] text-foreground">
           <Image src={logo} alt="" priority className="h-9 w-auto" />
           Bool

@@ -21,22 +21,22 @@ const MOTION_GATE = `try{if(!matchMedia('(prefers-reduced-motion: reduce)').matc
  * Layers, bottom to top: glow · copy · tablet and landed bee · trail and flying bee, on the page's cream. The
  * headline and navigation are sharp and readable from the first paint. From lg the scene fills the
  * hero and the copy sits on its calm left side; below lg the copy comes first and the scene is
- * cropped to the tablet. From 2xl (large monitors) the hero takes most of the screen's height, with
- * the copy and the scene centred in it, so it owns the first view; laptops keep its natural height.
+ * cropped to the tablet. From 2xl (large monitors) the page's content column widens from 80rem to
+ * 88rem, with the header, and the scene and type grow with it.
  */
 export function Hero() {
   return (
     <>
       <script dangerouslySetInnerHTML={{ __html: MOTION_GATE }} />
-      <HeroMotion className="relative isolate grid overflow-hidden bg-background 2xl:min-h-[min(92svh,64rem)]">
+      <HeroMotion className="relative isolate grid overflow-hidden bg-background">
         <div className="relative order-2 overflow-hidden lg:order-none lg:flex lg:items-center lg:[grid-area:1/1]">
           <Scene />
         </div>
 
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-10 pt-24 lg:[grid-area:1/1] lg:self-center lg:py-0 lg:pt-20">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-6 2xl:max-w-[88rem] pb-10 pt-24 lg:[grid-area:1/1] lg:self-center lg:py-0 lg:pt-20">
           <div className="max-w-xl lg:max-w-[36%]">
             <p className="text-overline tracking-[0.28em] text-muted-foreground">One workspace. Multiple apps.</p>
-            <h1 className="mt-5 text-balance text-[clamp(2.25rem,3.1vw,3.5rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
+            <h1 className="mt-5 text-balance text-[clamp(2.25rem,3.1vw,3.75rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
               One workspace for{' '}
               <span className="relative inline-block">
                 everything
@@ -47,7 +47,7 @@ export function Hero() {
               </span>{' '}
               your team runs.
             </h1>
-            <p data-hero-reveal="copy" className="mt-6 max-w-md text-pretty text-[clamp(1rem,1.2vw,1.15rem)] leading-snug text-muted-foreground">
+            <p data-hero-reveal="copy" className="mt-6 max-w-md text-pretty text-[clamp(1rem,1.2vw,1.25rem)] leading-snug text-muted-foreground">
               Tasks, inventory, assets, procurement, notes and analytics. Connected in one workspace.
             </p>
             <div data-hero-reveal="cta" className="mt-9 flex flex-wrap items-center gap-3">
@@ -91,7 +91,7 @@ function Scene() {
   return (
     <div
       data-hero-scene=""
-      className="relative -ml-[59%] aspect-[1398/820] w-[155%] [--bee-w:15cqw] [container-type:inline-size] sm:-ml-[51%] sm:w-[138%] lg:mx-auto lg:w-[min(calc(100%-3rem),77rem)]"
+      className="relative -ml-[59%] aspect-[1398/820] w-[155%] [--bee-w:15cqw] [container-type:inline-size] sm:-ml-[51%] sm:w-[138%] lg:mx-auto lg:w-[min(calc(100%-3rem),77rem)] 2xl:w-[min(calc(100%-3rem),85rem)]"
     >
       {/* the soft light the tablet floats in, gathered in the brand's hexagon behind it */}
       <div aria-hidden="true" className="hero-glow absolute" />

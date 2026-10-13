@@ -1,7 +1,7 @@
 /**
  * Geometry of the hero scene: a 1398×820 stage holding the floating tablet and the bee's landing
- * spot. From lg the stage is the page's content column (the header's max-w-7xl less its padding),
- * so the tablet's right edge lines up with the header and the content below at every width; below
+ * spot. From lg the stage is the page's content column (the header's max-w-7xl, 88rem from 2xl,
+ * less its padding), so the tablet's right edge lines up with the header at every width; below
  * lg it is widened and cropped to the tablet. Everything is a share of the stage's width (cqw on
  * the stage container) or a percentage, so it stays in proportion without script. The bee flies
  * beyond the stage, in from the edge of the screen.
