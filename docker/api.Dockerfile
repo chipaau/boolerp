@@ -1,5 +1,5 @@
 # Production image: the API and the migration command from the same release.
-FROM golang:1.27-alpine@sha256:85dc1069ac644ea3c527b177303a406eb3358192816cd7f9e5848eb658851673 AS build
+FROM golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
 WORKDIR /w/apps/api
 # Dependencies first, so source changes reuse the downloaded-module layer.
 COPY apps/api/go.mod apps/api/go.sum ./
