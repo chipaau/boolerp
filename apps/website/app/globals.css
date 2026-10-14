@@ -289,14 +289,17 @@ html.lenis body {
   filter: contrast(1.06) saturate(1.12);
 }
 
-/* the header's sections (components/nav-links.tsx): the hand-drawn stroke wiped on from the left
-   under the item the pointer is on (or that has focus), and back off when it leaves */
+/* the header's sections (components/nav-links.tsx): the hand-drawn stroke under the item the
+   pointer is on. Once the menu's script runs (data-live) its hexagon draws the strokes; until then,
+   or without script, a plain wipe on hover and focus */
 .nav-stroke {
   clip-path: inset(-50% 105% -50% -5%);
+}
+nav:not([data-live]) .nav-stroke {
   transition: clip-path 0.35s var(--ease-bool);
 }
-.nav-item:hover .nav-stroke,
-.nav-item:focus-visible .nav-stroke {
+nav:not([data-live]) .nav-item:hover .nav-stroke,
+nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
   clip-path: inset(-50% -5% -50% -5%);
 }
 @media (prefers-reduced-motion: reduce) {
