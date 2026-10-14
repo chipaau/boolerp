@@ -13,8 +13,8 @@ gsap.registerPlugin(ScrollTrigger)
  */
 export const STORY = { move: 1.1, hold: 0.16, close: 0.7 } as const
 
-/** The tablet at the end of its move: centred, flat, as large as fits above the captions (viewport shares). */
-const SETTLED = { width: 0.94, height: 0.85, top: 0.025 } as const
+/** The tablet at the end of its move: centred, flat, as large as fits above the captions, with even room above it and between it and them (viewport shares). */
+const SETTLED = { width: 0.94, height: 0.8, top: 0.05 } as const
 
 export type StoryParts = {
   hero: HTMLElement

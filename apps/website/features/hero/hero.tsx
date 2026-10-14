@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { HandStroke } from '@/components/hand-stroke'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Hexagon } from '@workspace/ui/components/hexagon'
 import { CTA, CTA_ARROW } from '@/components/cta'
@@ -44,10 +45,8 @@ export function Hero() {
               One workspace for{' '}
               <span className="relative inline-block">
                 everything
-                {/* a hand-drawn amber stroke, wiped on from left to right as the bee passes over */}
-                <svg data-hero-underline="" aria-hidden="true" viewBox="0 0 200 20" preserveAspectRatio="none" className="absolute -bottom-[0.14em] left-0 h-[0.28em] w-full overflow-visible">
-                  <path d="M3 13 C 52 5, 118 3, 197 9" fill="none" stroke="var(--brand-soft)" strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-                </svg>
+                {/* the hand-drawn amber stroke, wiped on from left to right as the bee passes over */}
+                <HandStroke data-hero-underline="" />
               </span>{' '}
               your team runs.
             </h1>

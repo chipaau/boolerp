@@ -92,10 +92,21 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
     inset 0 0 0.12cqw 0.1cqw rgb(255 255 255 / 0.95),
     inset 0.16cqw 0.22cqw 0.36cqw rgb(255 255 255 / 0.9),
     inset -0.16cqw -0.22cqw 0.44cqw rgb(206 192 172 / 0.35),
-    0 0 0 0.05cqw rgb(168 148 118 / 0.28),
+    0 0 0 0.05cqw rgb(168 148 118 / 0.28);
+}
+/* its warm shadows on the cream page: on their own layer, so the scroll story can fade them as it lifts
+   the tablet onto the dark backdrop, where warm shadows read as an orange glow */
+.tablet-rest {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
     0 0 0.24cqw 0.08cqw rgb(206 186 156 / 0.4),
     0 0.2cqw 0.2cqw rgb(230 216 196 / 0.7),
     0 2.4cqw 4.8cqw -1.2cqw rgb(150 112 64 / 0.22);
+  opacity: calc(1 - var(--lift, 0));
+  will-change: opacity;
 }
 /* the scroll story's lift (story.ts sets --lift, 0 at rest to 1 at the centre): a close contact
    shadow and a wide, soft one, so the tablet floats off the page. Drawn once at full strength on its
@@ -105,9 +116,10 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
+  /* neutral, not warm: by the time it is lifted it stands on the dark backdrop */
   box-shadow:
-    0 1cqw 2cqw rgb(110 76 36 / 0.18),
-    0 4cqw 10cqw -1cqw rgb(110 76 36 / 0.4);
+    0 1cqw 2cqw rgb(0 0 0 / 0.22),
+    0 4cqw 10cqw -1cqw rgb(0 0 0 / 0.45);
   opacity: var(--lift, 0);
   will-change: opacity;
 }
@@ -178,6 +190,9 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
   border-radius: inherit;
   pointer-events: none;
   mix-blend-mode: screen;
+  /* it gives way as the tablet lifts to the centre: a white band across the playing recording washes it out */
+  opacity: calc(1 - var(--lift, 0) * 0.9);
+  will-change: opacity;
 }
 .tablet-glare-band {
   position: absolute;
@@ -199,7 +214,7 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
   border-radius: 1.4% / 2.2%;
   /* the rest of the screen dimmed a little, and a hairline of warm light with a soft glow round the part in focus */
   box-shadow:
-    0 0 0 200vmax rgb(46 34 20 / 0.1),
+    0 0 0 200vmax rgb(46 34 20 / 0.06),
     0 0 0 0.08cqw rgb(240 154 67 / 0.4),
     0 0 1.6cqw 0.1cqw rgb(240 154 67 / 0.14);
 }
@@ -266,4 +281,26 @@ html.lenis body {
 }
 .lenis.lenis-stopped {
   overflow: hidden;
+}
+
+/* the recording on the tablet: a touch more contrast and colour, so its cream screens keep their
+   life against the dark backdrop */
+[data-demo-video] {
+  filter: contrast(1.06) saturate(1.12);
+}
+
+/* the header's sections (components/nav-links.tsx): the hand-drawn stroke wiped on from the left
+   under the item the pointer is on (or that has focus), and back off when it leaves */
+.nav-stroke {
+  clip-path: inset(-50% 105% -50% -5%);
+  transition: clip-path 0.35s var(--ease-bool);
+}
+.nav-item:hover .nav-stroke,
+.nav-item:focus-visible .nav-stroke {
+  clip-path: inset(-50% -5% -50% -5%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-stroke {
+    transition: none;
+  }
 }

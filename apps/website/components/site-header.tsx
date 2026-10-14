@@ -1,17 +1,9 @@
 import Image from 'next/image'
-import { ChevronDown } from 'lucide-react'
 import logo from '@workspace/assets/logos/bool-logo.png'
 import { Button } from '@workspace/ui/components/button'
 import { CTA } from './cta'
 import { HeaderMotion } from './header-motion'
-
-const NAV = [
-  { label: 'Product', href: '#product', menu: true },
-  { label: 'Solutions', href: '#solutions' },
-  { label: 'Resources', href: '#resources' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'About', href: '#about' },
-]
+import { NavLinks } from './nav-links'
 
 /**
  * The site's top bar: brand, sections, and the ways in. Sign in is always there; Get started joins
@@ -26,14 +18,7 @@ export function SiteHeader({ className }: { className?: string }) {
           <Image src={logo} alt="" priority className="h-9 w-auto" />
           Bool
         </a>
-        <nav aria-label="Main" className="mx-auto hidden items-center gap-9 text-[15px] text-body lg:flex">
-          {NAV.map((item) => (
-            <a key={item.label} href={item.href} className="flex items-center gap-1.5 transition-colors hover:text-foreground">
-              {item.label}
-              {item.menu && <ChevronDown className="size-4" strokeWidth={1.7} />}
-            </a>
-          ))}
-        </nav>
+        <NavLinks />
         <div className="ml-auto flex items-center lg:ml-0">
           <Button render={<a href="#sign-in" />}>
             Sign in

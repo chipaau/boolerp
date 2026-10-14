@@ -29,6 +29,7 @@ export function Tablet({ focus }: { focus: 'soft' | 'sharp' }) {
         }}
       >
         {/* the scroll story's lift: its shadow on its own layer, faded by --lift (story.ts), never repainted */}
+        <div aria-hidden="true" className="tablet-rest" />
         <div aria-hidden="true" className="tablet-lift" />
         <div className="tablet-screen">
           <Image
