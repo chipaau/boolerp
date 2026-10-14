@@ -17,6 +17,12 @@ const NAV = [
   { label: 'About', href: '#about' },
 ]
 
+/**
+ * Timing (seconds). Hover feedback should be mostly there within about 0.3 s and done by about 0.6 s,
+ * so the stroke under a new item arrives about 0.6 s after the pointer does.
+ */
+const T = { gather: 0.2, jump: 0.3, drop: 0.22, draw: 0.3, leave: 0.22 } as const
+
 // a stroke's reveal (a clip-path wipe; the insets past its edges keep the round caps)
 const HIDDEN = 'inset(-50% 105% -50% -5%)' // nothing left of it, gathered at its start
 const DRAWN = 'inset(-50% -5% -50% -5%)'
@@ -67,17 +73,17 @@ export function NavLinks() {
 
   /** The stroke draws itself back into the hexagon, which re-forms at `at` (one of the stroke's ends). */
   const gather = (t: gsap.core.Timeline, label: HTMLElement, toEnd: boolean, at: Point) => {
-    t.to(strokeOf(label), { clipPath: toEnd ? GATHERED_END : HIDDEN, duration: 0.28, ease: 'power2.in' }, 0)
+    t.to(strokeOf(label), { clipPath: toEnd ? GATHERED_END : HIDDEN, duration: T.gather, ease: 'power2.in' }, 0)
       .set(hex.current, { x: at.x, y: at.y, rotation: 0, scaleX: 1.9, scaleY: 0.32, autoAlpha: 0 }, 0)
-      .to(hex.current, { autoAlpha: 1, scaleX: 1, scaleY: 1, duration: 0.2, ease: 'back.out(2)' }, 0.18)
-      .set(strokeOf(label), { clipPath: HIDDEN }, 0.3)
-    return 0.36
+      .to(hex.current, { autoAlpha: 1, scaleX: 1, scaleY: 1, duration: T.gather * 0.7, ease: 'back.out(2)' }, T.gather * 0.5)
+      .set(strokeOf(label), { clipPath: HIDDEN }, T.gather)
+    return T.gather
   }
   /** The hexagon lands at the start of `label`'s baseline, splats flat and runs out as its stroke. */
   const splat = (t: gsap.core.Timeline, label: HTMLElement, at: number) => {
-    t.to(hex.current, { scaleX: 1.9, scaleY: 0.32, duration: 0.12, ease: 'power2.out' }, at)
-      .fromTo(strokeOf(label), { clipPath: HIDDEN }, { clipPath: DRAWN, duration: 0.42, ease: 'power2.out' }, at + 0.04)
-      .to(hex.current, { autoAlpha: 0, duration: 0.14, ease: 'power1.out' }, at + 0.06)
+    t.to(hex.current, { scaleX: 1.9, scaleY: 0.32, duration: 0.08, ease: 'power2.out' }, at)
+      .fromTo(strokeOf(label), { clipPath: HIDDEN }, { clipPath: DRAWN, duration: T.draw, ease: 'power2.out' }, at + 0.02)
+      .to(hex.current, { autoAlpha: 0, duration: 0.1, ease: 'power1.out' }, at + 0.04)
   }
 
   const go = contextSafe((label: HTMLElement | null) => {
@@ -104,19 +110,19 @@ export function NavLinks() {
         start = toEnd ? e.end : e.start
         at = gather(t, from, toEnd, start)
       } else if (from) {
-        t.to(strokeOf(from), { clipPath: HIDDEN, duration: 0.2, ease: 'power1.out' }, 0)
+        t.to(strokeOf(from), { clipPath: HIDDEN, duration: T.gather, ease: 'power1.out' }, 0)
       }
       const hop = Math.min(16, 6 + Math.abs(to.x - start.x) * 0.06)
-      t.to(hex.current, { x: to.x, duration: 0.42, ease: 'power1.inOut' }, at)
-        .to(hex.current, { keyframes: { y: [start.y, Math.min(start.y, to.y) - hop, to.y], easeEach: 'sine.inOut' }, duration: 0.42, ease: 'none' }, at)
-        .to(hex.current, { rotation: `+=${to.x > start.x ? 60 : -60}`, duration: 0.42, ease: 'power1.inOut' }, at)
-      at += 0.42
+      t.to(hex.current, { x: to.x, duration: T.jump, ease: 'power1.inOut' }, at)
+        .to(hex.current, { keyframes: { y: [start.y, Math.min(start.y, to.y) - hop, to.y], easeEach: 'sine.inOut' }, duration: T.jump, ease: 'none' }, at)
+        .to(hex.current, { rotation: `+=${to.x > start.x ? 60 : -60}`, duration: T.jump, ease: 'power1.inOut' }, at)
+      at += T.jump
     } else {
       // the first item: the hexagon drops onto it
       t.set(hex.current, { x: to.x, y: to.y - 16, rotation: 0, scaleX: 1, scaleY: 1, autoAlpha: 0 }, 0)
-        .to(hex.current, { autoAlpha: 1, duration: 0.12, ease: 'none' }, 0)
-        .to(hex.current, { y: to.y, duration: 0.3, ease: 'power2.in' }, 0)
-      at = 0.3
+        .to(hex.current, { autoAlpha: 1, duration: 0.1, ease: 'none' }, 0)
+        .to(hex.current, { y: to.y, duration: T.drop, ease: 'power2.in' }, 0)
+      at = T.drop
     }
     splat(t, label, at)
   })
@@ -132,8 +138,8 @@ export function NavLinks() {
     tl.current = t
     let at = 0
     if (!inFlight()) at = gather(t, from, false, ends(from).start)
-    else t.to(strokeOf(from), { clipPath: HIDDEN, duration: 0.2, ease: 'power1.out' }, 0)
-    t.to(hex.current, { y: '-=14', autoAlpha: 0, duration: 0.3, ease: 'power2.in' }, at)
+    else t.to(strokeOf(from), { clipPath: HIDDEN, duration: T.gather, ease: 'power1.out' }, 0)
+    t.to(hex.current, { y: '-=14', autoAlpha: 0, duration: T.leave, ease: 'power2.in' }, at)
   })
 
   const labelOf = (e: { currentTarget: HTMLElement }) => e.currentTarget.querySelector<HTMLElement>('[data-nav-label]')
