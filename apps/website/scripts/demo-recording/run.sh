@@ -5,6 +5,15 @@
 # seeded (docker compose run --rm seed). Everything runs in containers: the take in Playwright's
 # image on the shared proxy network (the *.bool.test hosts mapped to Traefik, as e2e/run.sh does),
 # the encode in an ffmpeg image. Re-run whenever the workspace's screens change.
+#
+# Where to record: on the fastest machine available, ideally a Mac (run ./run.sh in its terminal).
+# The take is captured at a true 2x (3072x1920), and how many of those frames a second the machine
+# can send decides how smooth the cursor is; record.mjs plays the take DEMO_SLOW times slower
+# (default 2.5) and times it back, to make up for a slow machine. On a fast one, lower it
+# (DEMO_SLOW=1.5 ./run.sh): the page's own animations then run nearer their real speed (a palette's
+# fade, slowed, is captured in more frames and lingers). Keep the browser Chromium: Playwright's WebKit
+# has no screencast, only a heavily compressed video, and Chrome and Safari draw the workspace alike.
+# On Windows (Git Bash) the docker volume paths below get mangled; run it from WSL or a Mac.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 web=$(cd ../.. && pwd)
