@@ -3,7 +3,8 @@
 # The container joins the shared `proxy` network and maps the *.bool.test hosts the suite uses to
 # Traefik's current address there (resolved each run, never hardcoded). Its dependencies
 # (package.json) are installed in the container, into the erp-e2e-node-modules volume, on the
-# first run. EDITION picks which apps' specs run (apps/workspace/editions/<name>.ts, default full). Extra arguments go to `playwright test`,
+# first run and again whenever package.json changes (such as a Playwright bump, which must match
+# the image below). EDITION picks which apps' specs run (apps/workspace/editions/<name>.ts, default full). Extra arguments go to `playwright test`,
 # e.g. ./run.sh --project control-centre.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -33,8 +34,9 @@ cid=$(docker create \
   -e EDITION="${EDITION:-full}" \
   -v "$(pwd)/..:/repo" -w /repo/e2e \
   -v erp-e2e-node-modules:/repo/e2e/node_modules \
-  mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27 \
-  sh -c 'test -x node_modules/.bin/playwright || npm install --no-save --no-package-lock --no-audit --no-fund >/dev/null
+  mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f \
+  sh -c 'cmp -s package.json node_modules/.installed-package.json ||
+  { npm install --no-save --no-package-lock --no-audit --no-fund >/dev/null && cp package.json node_modules/.installed-package.json; }
 exec ./node_modules/.bin/playwright test "$@"' playwright "$@")
 status=0
 docker start -a "$cid" || status=$?
