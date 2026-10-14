@@ -1,6 +1,6 @@
 # Dev tooling image: Node 26 + pnpm 12 baked in, so containers don't re-download
 # pnpm via corepack on every start. Used by the JS dev services (app, admin, website).
-FROM node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80
+FROM node:26-alpine@sha256:143494b1da2945f061539253adc65e4f1569ddf07da2d384c022c791a9d90a4a
 
 # Node 26 no longer ships Corepack by default — install it explicitly, then activate the pinned
 # pnpm at build time so `pnpm` is instantly available at runtime.
