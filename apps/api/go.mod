@@ -5,13 +5,13 @@ go 1.27.1
 require (
 	github.com/alexedwards/scs/goredisstore v0.0.0-20251002162104-209de6e426de
 	github.com/alexedwards/scs/v2 v2.9.0
-	github.com/alicebob/miniredis/v2 v2.39.0
+	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/brianvoe/gofakeit/v7 v7.17.1
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/cerbos/cerbos-sdk-go v0.4.5
 	github.com/cerbos/cerbos/api/genpb v0.56.0
 	github.com/coreos/go-oidc/v3 v3.21.0
-	github.com/exaring/otelpgx v0.12.1
+	github.com/exaring/otelpgx v0.13.0
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-chi/cors v1.2.2
 	github.com/go-chi/httplog/v3 v3.5.0
@@ -20,7 +20,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/ory/client-go v1.22.79
+	github.com/ory/client-go v1.22.81
 	github.com/peterhellberg/link v1.2.0
 	github.com/pressly/goose/v3 v3.28.0
 	github.com/redis/go-redis/extra/redisotel/v9 v9.23.0
