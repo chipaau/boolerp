@@ -53,15 +53,18 @@ mkdir -p "$web/public/hero/demo"
 # 1600×1000 for phones and standard-density screens (demo.ts picks). Each as H.264 for every browser
 # and VP9 for those that play it, both encoded from the captured frames (not one from the other);
 # the first frame is the poster.
+# Standard (TV) range, tagged BT.709: the frames are full-range PNGs, and a full-range VP9 stream is
+# refused by Chrome's hardware decoder on Windows (PIPELINE_ERROR_DECODE: the recording never plays).
 docker run --rm -v "$work:/w" -w /w --entrypoint sh \
   linuxserver/ffmpeg:7.1.1@sha256:aea59a11c54291ac456bb2d67000445e5a8994f70bc3d96cdc29f022fbbf89fb -c '
   set -e
+  color="-color_range tv -colorspace bt709 -color_primaries bt709 -color_trc bt709"
   for size in 2560:1600: 1600:1000:-sm; do
     dims=${size%:*}; suffix=${size##*:}
-    vf="fps=30,scale=${dims}:flags=lanczos,format=yuv420p"
-    ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -vf "$vf" \
+    vf="fps=30,scale=${dims}:flags=lanczos:out_range=tv:out_color_matrix=bt709,format=yuv420p"
+    ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -vf "$vf" $color \
       -c:v libx264 -preset slow -crf 22 -tune stillimage -movflags +faststart -an "demo${suffix}.mp4"
-    ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -vf "$vf" \
+    ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -vf "$vf" $color \
       -c:v libvpx-vp9 -b:v 0 -crf 34 -row-mt 1 -deadline good -cpu-used 2 -an "demo${suffix}.webm"
   done
   ffmpeg -v error -y -i demo.mp4 -frames:v 1 -q:v 3 poster.jpg'
