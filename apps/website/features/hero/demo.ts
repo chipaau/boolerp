@@ -17,14 +17,14 @@ export const DEMO = {
 } as const
 
 /**
- * Points the video at the recording: the smaller encode when the screen will show it at no more
- * than about its width in device pixels (`need`: the screen's width on the tablet, in device
- * pixels, with any zoom), the larger otherwise; WebM (VP9, about a third lighter) where the browser
- * plays it, else MP4 (H.264, Safari).
+ * Points the video at the recording: the smaller encode only when the screen will show it well
+ * under its 1600px width (`need`: the screen's width on the tablet, in device pixels, with any
+ * zoom), since UI text softens quickly once a video is scaled up; the larger otherwise. WebM (VP9,
+ * about a third lighter) where the browser plays it, else MP4 (H.264, Safari).
  */
 export function loadDemo(video: HTMLVideoElement, need: number) {
   if (video.src) return
-  const small = need <= 1700
+  const small = need <= 1300
   const webm = video.canPlayType('video/webm; codecs="vp9"') !== ''
   video.poster = DEMO.poster
   video.src = small ? (webm ? DEMO.webmSmall : DEMO.mp4Small) : webm ? DEMO.webm : DEMO.mp4
@@ -35,6 +35,7 @@ export function loadDemo(video: HTMLVideoElement, need: number) {
 const CAPTIONS: Record<string, { title: string; body: string }> = {
   home: { title: 'Your day, at a glance', body: 'What is due, who you are meeting and what needs you, the moment you sign in.' },
   inventory: { title: 'Stock that flags itself', body: 'Low stock, overdue orders and waiting approvals surface before they become problems.' },
+  theme: { title: 'Easy on the eyes, day or night', body: 'Light or dark, every app follows the theme you choose.' },
   calendar: { title: 'Meetings in a few keystrokes', body: 'Find a room, invite the team and send. No back-and-forth.' },
   'control-centre': { title: 'Set up once, used everywhere', body: 'Sites, people and approval chains live in one place that every app reads.' },
 }

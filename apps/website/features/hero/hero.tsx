@@ -147,13 +147,18 @@ function ScrollCue() {
 
 /**
  * The scroll story's captions (story.ts): one per chapter of the product demo, under the tablet
- * once it has come to the centre (placed from the screen's height: the hero is pinned at the top),
+ * once it has come to the centre, in a dark glass bar laid over the bottom of its screen (placed
+ * from the screen's height: the hero is pinned at the top, and the settled tablet nearly fills it),
  * with a short progress bar. Hidden until the story reaches them; desktop only.
  */
 function StoryCaptions() {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[98svh] z-40 hidden -translate-y-full lg:block">
-      <div data-story-captions="" className="invisible mx-auto grid w-full max-w-4xl justify-items-center px-6 text-center opacity-0">
+    <div className="pointer-events-none absolute inset-x-0 top-[93svh] z-40 hidden -translate-y-full px-6 lg:block">
+      {/* solid rather than backdrop-blurred: a blur over playing video costs every frame */}
+      <div
+        data-story-captions=""
+        className="invisible mx-auto grid w-fit max-w-[min(56rem,100%)] justify-items-center rounded-2xl bg-[rgb(24_22_20/0.84)] px-6 pb-3 pt-3.5 text-center opacity-0 shadow-[0_10px_30px_rgb(0_0_0/0.28)] ring-1 ring-white/10"
+      >
         {CHAPTERS.map((c) => (
           <p key={c.id} data-story-caption="" className="invisible text-base opacity-0 [grid-area:1/1]">
             {/* light on the story's dark backdrop */}
@@ -161,7 +166,7 @@ function StoryCaptions() {
           </p>
         ))}
         {/* the chapters as hairlines, the current one wider and filling as it plays */}
-        <div aria-hidden="true" className="mt-4 flex items-center gap-1.5">
+        <div aria-hidden="true" className="mt-3 flex items-center gap-1.5">
           {CHAPTERS.map((c) => (
             <span key={c.id} data-story-dot="" className="relative h-[3px] w-4 overflow-hidden rounded-full bg-surface-inverted-foreground/15">
               <span className="absolute inset-0 origin-left scale-x-0 rounded-full bg-(--brand-soft)" />

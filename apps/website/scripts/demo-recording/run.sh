@@ -52,7 +52,9 @@ mkdir -p "$web/public/hero/demo"
 # a 1920-wide Retina display is about 2600 device pixels across, and the camera zooms in), and
 # 1600×1000 for phones and standard-density screens (demo.ts picks). Each as H.264 for every browser
 # and VP9 for those that play it, both encoded from the captured frames (not one from the other);
-# the first frame is the poster.
+# the first frame is the poster. Tuned for screen content at quality that keeps small UI text and
+# hairlines crisp (VP9 crf 24 with its screen tuning, H.264 crf 18): a little over twice the size of
+# a general-purpose encode, and the recording only loads once the story starts.
 # Standard (TV) range, tagged BT.709: the frames are full-range PNGs, and a full-range VP9 stream is
 # refused by Chrome's hardware decoder on Windows (PIPELINE_ERROR_DECODE: the recording never plays).
 docker run --rm -v "$work:/w" -w /w --entrypoint sh \
@@ -63,9 +65,9 @@ docker run --rm -v "$work:/w" -w /w --entrypoint sh \
     dims=${size%:*}; suffix=${size##*:}
     vf="fps=30,scale=${dims}:flags=lanczos:out_range=tv:out_color_matrix=bt709,format=yuv420p"
     ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -vf "$vf" $color \
-      -c:v libx264 -preset slow -crf 22 -tune stillimage -movflags +faststart -an "demo${suffix}.mp4"
+      -c:v libx264 -preset slow -crf 18 -tune stillimage -movflags +faststart -an "demo${suffix}.mp4"
     ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -vf "$vf" $color \
-      -c:v libvpx-vp9 -b:v 0 -crf 34 -row-mt 1 -deadline good -cpu-used 2 -an "demo${suffix}.webm"
+      -c:v libvpx-vp9 -b:v 0 -crf 24 -tune-content screen -row-mt 1 -deadline good -cpu-used 1 -an "demo${suffix}.webm"
   done
   ffmpeg -v error -y -i demo.mp4 -frames:v 1 -q:v 3 poster.jpg'
 cp "$work"/demo.mp4 "$work"/demo.webm "$work"/demo-sm.mp4 "$work"/demo-sm.webm "$work/poster.jpg" "$web/public/hero/demo/"

@@ -27,6 +27,10 @@ const ZONE = process.env.DEMO_ZONE ?? 'Indian/Maldives'
 // 2560×1600, so the interface stays crisp when the tablet nearly fills a high-density screen.
 const VIEW = { width: 1536, height: 960 }
 const SCALE = 2
+// The take runs this many times slower than it plays: the cursor, the typing, every pause and the
+// page's own animations. A true-2× frame takes the browser long enough to send that capture manages
+// about 8 a second; slowed 2.5× and sped back up in the timings, that is about 20 a second of video.
+const SLOW = Number(process.env.DEMO_SLOW ?? 2.5)
 
 /** The visible cursor and click ripple (a headless browser draws none), and no development overlays. */
 const STAGE = `
@@ -56,8 +60,12 @@ const STAGE = `
   })
 `
 
-const browser = await chromium.launch()
-const context = await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE, reducedMotion: 'no-preference', timezoneId: ZONE })
+// the scale forced on the browser itself: Chrome's screencast ignores a context's deviceScaleFactor
+// and sends CSS-pixel frames (1536 wide), which the 2560 encode then had to upscale; with the flag
+// the frames are true 2× (3072×1920) while the page still lays out at 1536
+const browser = await chromium.launch({ args: [`--force-device-scale-factor=${SCALE}`] })
+// light to begin with, whatever the machine prefers: the take switches to dark itself (chapter 'theme')
+const context = await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE, reducedMotion: 'no-preference', timezoneId: ZONE, colorScheme: 'light' })
 const page = await context.newPage()
 
 // Sign in and open every page the demo visits once, so nothing compiles or loads during the take.
@@ -109,7 +117,7 @@ cdp.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
 // ── the take ─────────────────────────────────────────────────────────────────────────────────
 let mouse = { x: VIEW.width * 0.62, y: VIEW.height * 0.55 }
 const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2)
-const pause = (ms) => page.waitForTimeout(ms)
+const pause = (ms) => page.waitForTimeout(ms * SLOW) // in the recording's time
 /** A seeded random (mulberry32): the typing's uneven rhythm, the same in every take. */
 const random = ((seed) => () => {
   seed = (seed + 0x6d2b79f5) | 0
@@ -118,17 +126,23 @@ const random = ((seed) => () => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296
 })(23)
 
-/** Moves the cursor to a point (or the middle of an element) in a smooth, eased arc. */
+/**
+ * Moves the cursor to a point (or the middle of an element) in a smooth, eased arc, taking `ms` of
+ * real time: each step is placed by the time elapsed, not counted, so a slower machine (each step
+ * takes longer to send) makes the glide coarser, never longer.
+ */
 async function glide(target, ms = 700) {
   const box = typeof target.boundingBox === 'function' ? await target.boundingBox() : null
   const to = box ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : target
   const from = { ...mouse }
   const lift = Math.min(40, Math.hypot(to.x - from.x, to.y - from.y) * 0.08)
-  const steps = Math.max(8, Math.round(ms / 16))
-  for (let i = 1; i <= steps; i++) {
-    const k = ease(i / steps)
+  const began = Date.now()
+  for (;;) {
+    const p = Math.min(1, (Date.now() - began) / (ms * SLOW))
+    const k = ease(p)
     await page.mouse.move(from.x + (to.x - from.x) * k, from.y + (to.y - from.y) * k - Math.sin(Math.PI * k) * lift)
-    await pause(16)
+    if (p >= 1) break
+    await page.waitForTimeout(12)
   }
   mouse = to
 }
@@ -139,10 +153,13 @@ async function click(target, ms) {
   await pause(90)
   await page.mouse.up()
 }
+/** Types with a person's uneven rhythm, each key at its time from the start (so it is the same pace on any machine). */
 async function type(text) {
+  let due = Date.now()
   for (const ch of text) {
     await page.keyboard.type(ch)
-    await pause(55 + random() * 45)
+    due += (55 + random() * 45) * SLOW
+    await page.waitForTimeout(Math.max(0, due - Date.now()))
   }
 }
 
@@ -171,12 +188,20 @@ async function cutTo(go, ready) {
   await page.waitForLoadState('networkidle').catch(() => {})
   await pause(300)
   await page.mouse.move(mouse.x, mouse.y) // the reloaded page draws its cursor where the pointer is
+  await slowAnimations() // the new document's animations run at the take's pace too
   await pause(80)
   cuts.push({ from, to: Date.now() })
 }
 
+/** The page's own animations (transitions, keyframes) at the take's pace, so they play right when sped up. */
+async function slowAnimations() {
+  await cdp.send('Animation.enable').catch(() => {})
+  await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 / SLOW }).catch(() => {})
+}
+await slowAnimations()
 await page.mouse.move(mouse.x, mouse.y)
-await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 92, maxWidth: VIEW.width * SCALE, maxHeight: VIEW.height * SCALE, everyNthFrame: 1 })
+// JPEG at high quality (100 makes the browser send frames slowly enough to stutter the cursor)
+await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 95, maxWidth: VIEW.width * SCALE, maxHeight: VIEW.height * SCALE, everyNthFrame: 1 })
 start = Date.now()
 
 // 1 · Home: the day at a glance, and what needs you
@@ -213,7 +238,20 @@ await camera(null)
 await click(page.getByRole('link', { name: 'Low stock' }).first(), 800)
 await pause(1500)
 
-// 3 · Calendar: a meeting in a few keystrokes
+// 3 · Light or dark: the whole workspace switches theme, live, and the rest of the take is dark
+// (the theme lives in this browser's storage only; the account is untouched)
+const toggle = page.getByRole('button', { name: 'Switch to dark mode' })
+await camera(toggle, 1.2)
+await glide(toggle, 900)
+chapter('theme')
+await pause(500)
+await click(toggle, 120)
+await pause(1300)
+await camera(null)
+await glide({ x: VIEW.width * 0.5, y: VIEW.height * 0.55 }, 1100)
+await pause(1500)
+
+// 4 · Calendar: a meeting in a few keystrokes
 await page.keyboard.press('ControlOrMeta+k')
 await pause(500)
 await type('Calendar')
@@ -234,7 +272,7 @@ await click(page.getByRole('button', { name: 'Send invites' }), 900)
 await camera(null)
 await pause(1500)
 
-// 4 · Control Centre: set up once, used everywhere
+// 5 · Control Centre: set up once, used everywhere
 await page.keyboard.press('ControlOrMeta+k')
 await pause(500)
 await type('Control')
@@ -266,7 +304,8 @@ await browser.close()
 // dropped and everything after it moves earlier by the cut's length.
 const cutBefore = (ms) => cuts.reduce((sum, c) => sum + Math.max(0, Math.min(ms, c.to) - c.from), 0)
 const inCut = (ms) => cuts.some((c) => ms > c.from && ms < c.to)
-const kept = shots.filter((s) => !inCut(s.t * 1000)).map((s) => ({ ...s, at: s.t * 1000 - cutBefore(s.t * 1000) }))
+// …and then everything is divided by SLOW: the take's time back to the recording's playing time
+const kept = shots.filter((s) => !inCut(s.t * 1000)).map((s) => ({ ...s, at: (s.t * 1000 - cutBefore(s.t * 1000)) / SLOW }))
 const t0 = kept[0].at
 const lines = ['ffconcat version 1.0']
 kept.forEach((s, i) => {
@@ -276,11 +315,12 @@ kept.forEach((s, i) => {
 lines.push(`file 'frames/${kept[kept.length - 1].name}'`)
 await writeFile(`${OUT}/frames.ffconcat`, lines.join('\n') + '\n')
 // chapter times on the recording's clock (its first frame is 0)
-const marks = chapters.map((c) => ({ id: c.id, start: Math.max(0, +((c.at - cutBefore(c.at) - t0) / 1000).toFixed(2)) }))
+const playing = (ms) => (ms - cutBefore(ms)) / SLOW // a moment of the take, on the recording's clock (ms)
+const marks = chapters.map((c) => ({ id: c.id, start: Math.max(0, +((playing(c.at) - t0) / 1000).toFixed(2)) }))
 // the encoded length: the last frame is held for half a second
 const duration = +((kept[kept.length - 1].at - t0 + 500) / 1000).toFixed(2)
 const camera_ = shots_.map((c) => ({
-  t: Math.max(0, +((c.at - cutBefore(c.at) - t0) / 1000).toFixed(2)),
+  t: Math.max(0, +((playing(c.at) - t0) / 1000).toFixed(2)),
   x: +c.x.toFixed(4),
   y: +c.y.toFixed(4),
   scale: c.scale,
