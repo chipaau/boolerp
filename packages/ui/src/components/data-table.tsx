@@ -1,5 +1,13 @@
 import * as React from "react"
-import { type ColumnDef, type SortingState, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table"
+import {
+  type ColumnDef,
+  type RowData,
+  type SortingState,
+  flexRender,
+  rowSortingFeature,
+  tableFeatures,
+  useTable,
+} from "@tanstack/react-table"
 import { ChevronRight, Lock, RefreshCw } from "lucide-react"
 
 import { cn } from "@workspace/ui/lib/utils"
@@ -27,11 +35,19 @@ export type DataTableColumnMeta = {
 }
 
 /**
+ * The TanStack Table features the list table uses (v9 declares them up front): sorting only, in
+ * manual mode. Pagination and filtering are the API's, driven by the caller (C174), so the table
+ * needs neither feature; the core row model is built in.
+ */
+const dataTableFeatures = tableFeatures({ rowSortingFeature })
+export type DataTableFeatures = typeof dataTableFeatures
+
+/**
  * A column: a TanStack Table column definition. A sortable one sets `enableSorting`, an `id` that
  * is the API's sort field, and an accessor (`accessorKey` or `accessorFn`): TanStack Table sorts
  * only columns with one, even in manual mode.
  */
-export type DataTableColumn<T> = ColumnDef<T, unknown> & { meta?: DataTableColumnMeta }
+export type DataTableColumn<T extends RowData> = ColumnDef<DataTableFeatures, T, unknown> & { meta?: DataTableColumnMeta }
 
 /** A failed first load as the table shows it (an ApiError fits). */
 export type DataTableError = { message: string; forbidden?: boolean; requestId?: string }
@@ -57,7 +73,7 @@ const MAX_PAGE_SIZE = 100
  * forbidden state, other errors with the request reference and a retry (C185: a first load's
  * error is the screen's), and a quiet indicator while refetching.
  */
-export function DataTable<T>({
+export function DataTable<T extends RowData>({
   columns,
   data,
   total,
@@ -106,14 +122,12 @@ export function DataTable<T>({
   className?: string
 }) {
   const sorting = React.useMemo(() => parseSort(sort), [sort])
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data: data ?? [],
     columns,
-    getCoreRowModel: getCoreRowModel(),
     getRowId,
-    manualPagination: true,
     manualSorting: true,
-    manualFiltering: true,
     enableMultiSort: false,
     state: { sorting },
     onSortingChange: (updater) => onSortChange(formatSort(typeof updater === "function" ? updater(sorting) : updater)),
@@ -157,7 +171,7 @@ export function DataTable<T>({
     body = isLoading
       ? Array.from({ length: Math.min(pageSize, 8) }, (_, i) => (
           <TableRow key={i} className="hover:bg-transparent" data-testid="data-table-skeleton">
-            {table.getVisibleLeafColumns().map((c) => (
+            {table.getAllLeafColumns().map((c) => (
               <TableCell key={c.id} className={shown(c.columnDef.meta as DataTableColumnMeta | undefined)}>
                 <Skeleton className="h-4 w-3/4" />
               </TableCell>
@@ -192,7 +206,7 @@ export function DataTable<T>({
         className={cn(onRowClick && "group cursor-pointer")}
         onClick={onRowClick ? () => onRowClick(row.original) : undefined}
       >
-        {row.getVisibleCells().map((cell) => {
+        {row.getAllCells().map((cell) => {
           const meta = cell.column.columnDef.meta as DataTableColumnMeta | undefined
           return (
             <TableCell key={cell.id} align={meta?.align} className={shown(meta)}>
