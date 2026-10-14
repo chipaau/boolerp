@@ -28,6 +28,8 @@ export function Tablet({ focus }: { focus: 'soft' | 'sharp' }) {
           padding: `${TABLET.bezel * 100}%`,
         }}
       >
+        {/* the scroll story's lift: its shadow on its own layer, faded by --lift (story.ts), never repainted */}
+        <div aria-hidden="true" className="tablet-lift" />
         <div className="tablet-screen">
           <Image
             src={DASHBOARD.src}
@@ -42,13 +44,15 @@ export function Tablet({ focus }: { focus: 'soft' | 'sharp' }) {
             <>
               <LiveParts />
               {/* the product demo, played here by the scroll story (story.ts); it and its poster load only when the story starts (demo.ts) */}
-              <div data-demo-camera="" className="absolute inset-0 origin-top-left">
+              <div data-demo-camera="" className="absolute inset-0 origin-top-left will-change-transform">
                 <video data-demo-video="" muted playsInline preload="none" className="absolute inset-0 size-full object-cover object-top opacity-0" />
                 {/* the spotlight: the part of the screen the caption is about, the rest gently dimmed */}
                 <div data-demo-spot="" aria-hidden="true" className="demo-spot" />
               </div>
               {/* a soft reflection on the glass, sliding across as the tablet turns (story.ts sets --glare) */}
-              <div aria-hidden="true" className="tablet-glare" />
+              <div aria-hidden="true" className="tablet-glare">
+                <div className="tablet-glare-band" />
+              </div>
             </>
           )}
         </div>

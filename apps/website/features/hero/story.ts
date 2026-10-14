@@ -24,6 +24,7 @@ export type StoryParts = {
   video: HTMLVideoElement
   camera: HTMLElement // the wrapper the recording zooms in
   captions: HTMLElement
+  backdrop: HTMLElement // the dark grey behind the story, faded in as the tablet comes forward
   cta: HTMLElement // the call to action that comes in at the close
   tour?: HTMLElement | null // clicked, glides into the story's first chapter (the hero's scroll cue)
   /**
@@ -66,7 +67,7 @@ export function storyPerch(tablet: HTMLElement) {
  * Returns a cleanup.
  */
 export function scrollStory(p: StoryParts) {
-  const { hero, scene, tablet, fade, video, camera, captions, cta } = p
+  const { hero, scene, tablet, fade, video, camera, captions, backdrop, cta } = p
   const html = document.documentElement
   const items = gsap.utils.toArray<HTMLElement>(captions.querySelectorAll('[data-story-caption]'))
   const dots = gsap.utils.toArray<HTMLElement>(captions.querySelectorAll('[data-story-dot]'))
@@ -246,10 +247,14 @@ export function scrollStory(p: StoryParts) {
   tl.to(move, { e: 1, duration: settledAt, ease: 'none', onUpdate: place }, 0)
     // the copy steps back early, and (scrolling back) returns only once the tablet has cleared it
     .to(fade, { autoAlpha: 0, y: -24, duration: settledAt * 0.25, ease: 'power1.in' }, 0)
+    // the room darkens behind the tablet as it comes forward, so the recording plays on dark grey
+    .to(backdrop, { autoAlpha: 1, duration: settledAt * 0.7, ease: 'power1.inOut' }, settledAt * 0.15)
     .fromTo(captions, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.05 }, settledAt * 0.92)
     // the close: the tablet steps back into the hero and the captions go, the recording still playing
     .to(move, { c: 1, duration: 1 - closeAt, ease: 'none', onUpdate: place }, closeAt)
     .to(captions, { autoAlpha: 0, y: 12, duration: (1 - closeAt) * 0.5, ease: 'power1.in' }, closeAt)
+    // and the room brightens back to the page's cream as it steps back into the hero
+    .to(backdrop, { autoAlpha: 0, duration: (1 - closeAt) * 0.7, ease: 'power1.inOut' }, closeAt)
     // and the next step comes in under it
     .fromTo(cta, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: (1 - closeAt) * 0.5, ease: 'power2.out' }, closeAt + (1 - closeAt) * 0.45)
 

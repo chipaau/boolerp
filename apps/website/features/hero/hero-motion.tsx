@@ -66,6 +66,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       const camera = one<HTMLElement>('[data-demo-camera]')
       const captions = one<HTMLElement>('[data-story-captions]')
       const cta = one<HTMLElement>('[data-story-cta]')
+      const backdrop = one<HTMLElement>('[data-story-backdrop]')
       const cue = one<HTMLElement>('[data-scroll-cue]')
       const compactCaption = one<HTMLElement>('[data-compact-captions]')
       const slab = one<HTMLElement>('[data-tablet="sharp"] .tablet')
@@ -230,7 +231,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       }
 
       function storyOn() {
-        if (!takeoffClip || !demo || !camera || !captions || !cta || !slab) return
+        if (!takeoffClip || !demo || !camera || !captions || !cta || !backdrop || !slab) return
         if (played.current) loadTakeoff()
         const smoothOff = matchMedia('(pointer: fine)').matches ? smoothScroll() : () => {}
         const storyStop = scrollStory({
@@ -241,6 +242,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           video: demo,
           camera,
           captions,
+          backdrop,
           cta,
           tour: cue,
           // standing on the big tablet as it steps back: it moves with it

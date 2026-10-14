@@ -31,6 +31,8 @@ export function Hero() {
     <>
       <script dangerouslySetInnerHTML={{ __html: MOTION_GATE }} />
       <HeroMotion className="relative isolate grid overflow-hidden bg-background lg:min-h-svh">
+        {/* the scroll story's room: dark grey behind the playing tablet, faded in as it comes forward (story.ts) */}
+        <div data-story-backdrop="" aria-hidden="true" className="pointer-events-none invisible fixed inset-0 -z-10 bg-surface-inverted opacity-0" />
         <div className="relative order-2 overflow-hidden lg:order-none lg:flex lg:items-center lg:[grid-area:1/1]">
           <Scene />
         </div>
@@ -155,13 +157,14 @@ function StoryCaptions() {
       <div data-story-captions="" className="invisible mx-auto grid w-full max-w-4xl justify-items-center px-6 text-center opacity-0">
         {CHAPTERS.map((c) => (
           <p key={c.id} data-story-caption="" className="invisible text-base opacity-0 [grid-area:1/1]">
-            <span className="font-medium text-foreground">{c.title}.</span> <span className="text-muted-foreground">{c.body}</span>
+            {/* light on the story's dark backdrop */}
+            <span className="font-medium text-surface-inverted-foreground">{c.title}.</span> <span className="text-surface-inverted-foreground/65">{c.body}</span>
           </p>
         ))}
         {/* the chapters as hairlines, the current one wider and filling as it plays */}
         <div aria-hidden="true" className="mt-4 flex items-center gap-1.5">
           {CHAPTERS.map((c) => (
-            <span key={c.id} data-story-dot="" className="relative h-[3px] w-4 overflow-hidden rounded-full bg-foreground/10">
+            <span key={c.id} data-story-dot="" className="relative h-[3px] w-4 overflow-hidden rounded-full bg-surface-inverted-foreground/15">
               <span className="absolute inset-0 origin-left scale-x-0 rounded-full bg-(--brand-soft)" />
             </span>
           ))}

@@ -77,6 +77,9 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
   /* aspect-ratio and padding (the glass edge) come from TABLET in scene.ts */
   position: absolute;
   transform-origin: 0 0;
+  /* the scroll story moves and grows it every frame: painted once (laid out at TABLET.raster, so
+     sharp up to that much growth) and only moved by the GPU after that, never repainted per frame */
+  will-change: transform;
   border-radius: 4% / 5.8%;
   /* warm white glass, lighter than the cream page so the slab stands off it but softer than the
      screen, which stays the brightest thing on it: a light sheen across it, a bright rim inside,
@@ -92,11 +95,21 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
     0 0 0 0.05cqw rgb(168 148 118 / 0.28),
     0 0 0.24cqw 0.08cqw rgb(206 186 156 / 0.4),
     0 0.2cqw 0.2cqw rgb(230 216 196 / 0.7),
-    0 2.4cqw 4.8cqw -1.2cqw rgb(150 112 64 / 0.22),
-    /* the scroll story's lift (story.ts sets --lift, 0 at rest to 1 at the centre): a close contact
-       shadow and a wide, soft one, so the tablet floats off the page */
-    0 calc(var(--lift, 0) * 1cqw) calc(var(--lift, 0) * 2cqw) rgb(110 76 36 / calc(var(--lift, 0) * 0.18)),
-    0 calc(var(--lift, 0) * 4cqw) calc(var(--lift, 0) * 10cqw) calc(var(--lift, 0) * -1cqw) rgb(110 76 36 / calc(var(--lift, 0) * 0.4));
+    0 2.4cqw 4.8cqw -1.2cqw rgb(150 112 64 / 0.22);
+}
+/* the scroll story's lift (story.ts sets --lift, 0 at rest to 1 at the centre): a close contact
+   shadow and a wide, soft one, so the tablet floats off the page. Drawn once at full strength on its
+   own layer and faded, because a shadow that changes is repainted every frame */
+.tablet-lift {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    0 1cqw 2cqw rgb(110 76 36 / 0.18),
+    0 4cqw 10cqw -1cqw rgb(110 76 36 / 0.4);
+  opacity: var(--lift, 0);
+  will-change: opacity;
 }
 .tablet-screen {
   position: relative; /* the dashboard's live parts are placed on the screen, not the glass around it */
@@ -155,15 +168,25 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
 }
 
 /* the reflection on the tablet's glass: a soft band of light whose place follows --glare (0 as the
-   tablet lies back, 1 as it faces the viewer; set by the scroll story), so the slab reads as glass */
+   tablet lies back, 1 as it faces the viewer; set by the scroll story), so the slab reads as glass.
+   The band is drawn once, 2.6 screens wide, and slid across (a transform) rather than moved inside
+   its background, which would repaint it every frame */
 .tablet-glare {
   position: absolute;
   inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(112deg, rgb(255 255 255 / 0) 30%, rgb(255 255 255 / 0.2) 44%, rgb(255 255 255 / 0.06) 50%, rgb(255 255 255 / 0) 62%);
-  background-size: 260% 100%;
-  background-position: calc(100% - var(--glare, 0) * 85%) 0;
   mix-blend-mode: screen;
+}
+.tablet-glare-band {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 260%;
+  background: linear-gradient(112deg, rgb(255 255 255 / 0) 30%, rgb(255 255 255 / 0.2) 44%, rgb(255 255 255 / 0.06) 50%, rgb(255 255 255 / 0) 62%);
+  /* the same place a 260% background at x = 100% - glare × 85% would put it */
+  transform: translateX(calc(-61.54% * (1 - var(--glare, 0) * 0.85)));
+  will-change: transform;
 }
 
 /* the recording's spotlight (story.ts places it on the part of the screen the caption is about):
@@ -172,6 +195,7 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
   position: absolute;
   pointer-events: none;
   opacity: 0;
+  will-change: opacity;
   border-radius: 1.4% / 2.2%;
   /* the rest of the screen dimmed a little, and a hairline of warm light with a soft glow round the part in focus */
   box-shadow:
