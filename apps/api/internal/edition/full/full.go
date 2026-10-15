@@ -61,6 +61,7 @@ var Roles = []authorization.Role{authorization.AdminAdministrator, authorization
 var Policies = []authorization.ModulePolicies{
 	{Name: "authorization", FS: authorization.Policies()},
 	{Name: "identity", FS: identity.Policies()},
+	{Name: "reference", FS: reference.Policies()},
 	{Name: "tenancy", FS: tenancy.Policies()},
 }
 
@@ -108,6 +109,7 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/tenant", tenancyModule.Routes(services))
 		r.Route("/tenants", tenancyModule.TenantsRoutes(services))
+		r.Group(reference.New(d.Pool, d.Logger).Routes(services))
 	})
 	return nil
 }

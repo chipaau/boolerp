@@ -20,10 +20,15 @@ type ListSpec struct {
 	Sorts       []string            // fields sort may name, such as "name", "createdAt"
 	DefaultSort string              // such as "name" or "-createdAt"
 	Filters     map[string][]string // filter name → allowed values (nil: any non-blank value)
+	Required    []string            // filters the request must give, such as a legal form's country
 	Search      bool                // whether q is accepted
+	// The page size when none is given, and the most a request may ask for; zero means
+	// DefaultPageSize and MaxPageSize. A short reference list may allow more than the
+	// usual maximum so it arrives in one page (C68 allows a per-endpoint maximum).
+	DefaultPageSize, MaxPageSize int
 }
 
-// The page size limits (C68).
+// The usual page size limits (C68).
 const (
 	DefaultPageSize = 25
 	MaxPageSize     = 100
@@ -59,7 +64,14 @@ func ParseList(w http.ResponseWriter, r *http.Request, spec ListSpec) (List, boo
 }
 
 func parseList(q url.Values, spec ListSpec) (List, []problem.FieldError) {
-	l := List{Page: 1, PageSize: DefaultPageSize, Filters: map[string]string{}}
+	defaultSize, maxSize := DefaultPageSize, MaxPageSize
+	if spec.DefaultPageSize > 0 {
+		defaultSize = spec.DefaultPageSize
+	}
+	if spec.MaxPageSize > 0 {
+		maxSize = spec.MaxPageSize
+	}
+	l := List{Page: 1, PageSize: defaultSize, Filters: map[string]string{}}
 	var errs []problem.FieldError
 	bad := func(param, code, detail string) {
 		errs = append(errs, problem.FieldError{Parameter: param, Code: code, Detail: detail})
@@ -90,8 +102,8 @@ func parseList(q url.Values, spec ListSpec) (List, []problem.FieldError) {
 			switch {
 			case err != nil || n < 1:
 				bad(name, "min", "must be a whole number of at least 1")
-			case n > MaxPageSize:
-				bad(name, "max", "must be at most "+strconv.Itoa(MaxPageSize))
+			case n > maxSize:
+				bad(name, "max", "must be at most "+strconv.Itoa(maxSize))
 			default:
 				l.PageSize = n
 			}
@@ -126,6 +138,11 @@ func parseList(q url.Values, spec ListSpec) (List, []problem.FieldError) {
 			default:
 				l.Filters[name] = v
 			}
+		}
+	}
+	for _, name := range spec.Required {
+		if _, given := q[name]; !given {
+			bad(name, "required", "is required")
 		}
 	}
 	if l.Sort == nil {

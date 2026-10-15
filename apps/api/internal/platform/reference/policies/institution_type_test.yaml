@@ -1,0 +1,24 @@
+# Tests for reference:institution_type (C151), run by cerbos compile in CI.
+name: ReferenceInstitutionType
+principals:
+  operator_member:
+    id: 0192f6a0-0000-7000-8000-00000000b001
+    roles: ["member"]
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000bb, in_operator_tenant: true }
+  customer_member:
+    id: 0192f6a0-0000-7000-8000-00000000a001
+    roles: ["member"]
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000aa, in_operator_tenant: false }
+resources:
+  list:
+    kind: "reference:institution_type"
+    id: list
+tests:
+  - name: Operator members list the institution types; customer members do not yet
+    input:
+      principals: [operator_member, customer_member]
+      resources: [list]
+      actions: [list]
+    expected:
+      - { principal: operator_member, resource: list, actions: { list: EFFECT_ALLOW } }
+      - { principal: customer_member, resource: list, actions: { list: EFFECT_DENY } }

@@ -95,6 +95,36 @@ func TestParseListWritesOneProblemForEveryBadParameter(t *testing.T) {
 	assert.Equal(t, 2, l.Page)
 }
 
+func TestParseListUsesTheListsOwnPageSizes(t *testing.T) {
+	long := ListSpec{Sorts: []string{"name"}, DefaultSort: "name", DefaultPageSize: 300, MaxPageSize: 300}
+	l, errs := parseList(url.Values{}, long)
+	require.Empty(t, errs)
+	assert.Equal(t, 300, l.PageSize, "its own default")
+
+	q, _ := url.ParseQuery("pageSize=250")
+	l, errs = parseList(q, long)
+	require.Empty(t, errs)
+	assert.Equal(t, 250, l.PageSize, "above the usual maximum, within its own")
+
+	q, _ = url.ParseQuery("pageSize=301")
+	_, errs = parseList(q, long)
+	require.Len(t, errs, 1)
+	assert.Equal(t, problem.FieldError{Parameter: "pageSize", Code: "max", Detail: "must be at most 300"}, errs[0])
+}
+
+func TestParseListRequiresItsRequiredFilters(t *testing.T) {
+	byCountry := ListSpec{Sorts: []string{"name"}, DefaultSort: "name",
+		Filters: map[string][]string{"country": nil}, Required: []string{"country"}}
+	_, errs := parseList(url.Values{}, byCountry)
+	require.Len(t, errs, 1)
+	assert.Equal(t, problem.FieldError{Parameter: "country", Code: "required", Detail: "is required"}, errs[0])
+
+	q, _ := url.ParseQuery("country=MV")
+	l, errs := parseList(q, byCountry)
+	require.Empty(t, errs)
+	assert.Equal(t, "MV", l.Filters["country"])
+}
+
 func TestEscape(t *testing.T) {
 	assert.Equal(t, `50\% off\_now \\`, Escape(`50% off_now \`))
 }
