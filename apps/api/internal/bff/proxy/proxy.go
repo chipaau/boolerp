@@ -20,6 +20,7 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/bff/session"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/requestid"
 )
 
 // RefreshBefore is how long before the access token expires the proxy refreshes
@@ -77,6 +78,10 @@ func New(api *url.URL, transport http.RoundTripper, sessions *session.Sessions, 
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			logger.WarnContext(r.Context(), "forwarding to the API failed", "error", err)
+			// No answer from the API: the reference is this BFF's own request ID again.
+			if id := requestid.FromContext(r.Context()); id != "" {
+				w.Header().Set(requestid.Header, id)
+			}
 			problem.Error(w, r, http.StatusBadGateway, "The service is unavailable right now.")
 		},
 	}
@@ -121,6 +126,9 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		in.Tokens = tokens
 	}
+	// The API's answer carries the API's request ID, the one its problem's instance and
+	// logs name; this BFF's own would make two, so the forwarded answer keeps only the API's.
+	w.Header().Del(requestid.Header)
 	p.reverse.ServeHTTP(w, r.WithContext(context.WithValue(ctx, tokenKey{}, in.Tokens.Access)))
 }
 

@@ -219,7 +219,7 @@ describe('the tenants list', () => {
     await waitFor(() => expect(seen.length).toBeGreaterThan(lists), { timeout: 3000 })
   })
 
-  it('shows the API’s refusal on its fields, and what no field can show in a banner', async () => {
+  it('shows the API’s refusal on its fields with a toast, and what no field can show in a banner', async () => {
     listApi([tenant(1)])
     referenceApi()
     server.use(
@@ -227,6 +227,7 @@ describe('the tenants list', () => {
         HttpResponse.json(
           {
             type: 'https://bool.mv/problems/validation-error', title: 'Unprocessable Content', status: 422,
+            detail: 'The request has 2 invalid fields.',
             instance: 'urn:uuid:0192f6a0-0000-7000-8000-0000000000aa',
             errors: [
               { pointer: '#/slug', code: 'unique', detail: 'is already used by Tenant 1' },
@@ -254,11 +255,34 @@ describe('the tenants list', () => {
     const banner = within(form).getByText('It could not be saved').closest('[role="alert"]') as HTMLElement
     expect(banner).toHaveTextContent('registrationAuthority: is not taken here')
     expect(banner).toHaveTextContent('Reference 0192f6a0-0000-7000-8000-0000000000aa')
+    expect(await screen.findByText(/^The request has 2 invalid fields./)).toBeInTheDocument() // the toast (C185)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 
     // Editing the field clears the API's error on it (C176).
     await userEvent.type(within(form).getByLabelText('Slug'), '-2')
     expect(within(form).queryByText('is already used by Tenant 1')).not.toBeInTheDocument()
+  })
+
+  it('shows invalid values on their fields with a toast, and sends nothing', async () => {
+    listApi([tenant(1)])
+    referenceApi()
+    let sent = false
+    server.use(http.post('/api/v1/tenants', () => ((sent = true), HttpResponse.json({}, { status: 500 }))))
+    renderRoute('/tenants')
+    await screen.findByText('T1 · tenant-1')
+    await userEvent.click(screen.getByRole('button', { name: 'New tenant' }))
+    const form = await screen.findByRole('dialog')
+    await userEvent.type(within(form).getByLabelText('Name'), 'Tenant One')
+    await userEvent.type(within(form).getByLabelText('Phone'), '12ab')
+
+    await userEvent.click(within(form).getByRole('button', { name: 'Continue' }))
+    expect(await screen.findByText(/^Tenant details still needs a valid code, the country/)).toBeInTheDocument()
+    // Every field the toast names shows its error, touched or not.
+    for (const label of ['Code', 'Country', 'Legal form', 'Time zone', 'Institution types', 'Phone'])
+      await waitFor(() => expect(within(form).getByLabelText(label)).toHaveAttribute('aria-invalid', 'true'))
+    expect(within(form).getAllByText('is required')).toHaveLength(3)
+    expect(within(form).getByLabelText('Name')).not.toHaveAttribute('aria-invalid')
+    expect(sent).toBe(false)
   })
 
   it('says so when the caller may not create tenants', async () => {

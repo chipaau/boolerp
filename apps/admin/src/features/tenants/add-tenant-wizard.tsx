@@ -124,7 +124,7 @@ export function AddTenantWizard({
         toast(`${tenant.name} created`)
         onCreated(tenant)
       } catch {
-        // A 422 is on the form; anything else went through the one error policy (C185).
+        // The one error policy toasted it (C185); a 422 is also on the fields and banner.
       }
     },
   })
@@ -165,11 +165,18 @@ export function AddTenantWizard({
   // Creating needs step 1 only (C197); the later steps can be finished on the details page.
   const ready = complete(0)
 
-  /** Toasts what step `i` is missing and returns true when it cannot be passed. */
+  /**
+   * Toasts what step `i` is missing and returns true when it cannot be passed; for step 1 it also
+   * shows each error on its field, touching them all as a submit does (the form is step 1's).
+   */
   const blocked = (i: number) => {
     const m = missing(i)
     if (!m.length) return false
     toast(`${STEPS[i].title} still needs ${m.join(', ')}.`, { ok: false })
+    if (i === 0) {
+      void form.validateAllFields('submit')
+      void form.validate('submit')
+    }
     return true
   }
   /** Back is always allowed; forward only past complete steps (lands on the first incomplete one). */

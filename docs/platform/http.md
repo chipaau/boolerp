@@ -60,6 +60,9 @@ wrapper described in the target contract below.
 - `internal/platform/requestid` wraps `go-chi/traceid` (C33, C34). Every request
   after the liveness check gets a new UUIDv7, returned in `X-Request-Id`; any
   inbound `X-Request-Id` is deleted first, so clients cannot choose IDs.
+  A BFF forwarding to the API answers with the API's `X-Request-Id` alone, the ID
+  its problem's `instance` and logs name; the BFF's own ID stays on the answers the
+  BFF writes itself (401, 502) (C213).
   `requestid.FromContext(ctx)` exposes it, and the logger's handler adds it as
   `request_id` to every record logged with the request's context.
 - `go-chi/httplog/v3` writes one record per request using OpenTelemetry attribute
