@@ -13,12 +13,11 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
+	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/adapters/store"
 )
 
 // DB is what the seeder needs: a pool, or a transaction in tests (C79).
-type DB interface {
-	Begin(ctx context.Context) (pgx.Tx, error)
-}
+type DB = actor.Beginner
 
 // Tenant is a tenant a seeder creates: its legal form by country and code, its
 // primary institution type by code.
@@ -107,8 +106,7 @@ func (o *Operator) create(ctx context.Context, tx pgx.Tx) (string, error) {
 		// No row back means the legal form is missing: the reference seed files run first.
 		return "", fmt.Errorf("create the operator (legal form %s/%s): %w", t.Country, t.LegalForm, err)
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
-		VALUES ($1, $2, true)`, id, t.PrimaryType); err != nil {
+	if err := store.InsertInstitutionType(ctx, tx, id, t.PrimaryType, true); err != nil {
 		return "", fmt.Errorf("the operator's primary type %s: %w", t.PrimaryType, err)
 	}
 	return id, nil

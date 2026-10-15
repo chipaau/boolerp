@@ -21,7 +21,7 @@ type Querier interface {
 // query every module's store builds on.
 //
 //	q := postgres.ListQuery{From: "countries c", Sorts: map[string]string{"name": "c.name"}, Key: "c.code"}
-//	q.Where("c.active_to IS NULL")
+//	q.Where("is_current(c.active_from, c.active_to)")
 //	q.Search(l.Q, "c.name", "c.code")
 //	total, err := q.Run(ctx, db, l, "c.code, c.name", func(rows pgx.Rows, total *int) error { … })
 type ListQuery struct {

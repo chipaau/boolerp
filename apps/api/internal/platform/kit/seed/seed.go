@@ -37,6 +37,21 @@ type Env struct {
 	Logger *slog.Logger
 }
 
+// DevOnly reports whether env is local development. Outside it, it logs that what is
+// seeded only in development was skipped and reports false, so a seeder whose data must
+// exist only there (sample data, the team's public-password accounts) starts with
+//
+//	if !env.DevOnly(ctx, "sample tenants") {
+//		return nil
+//	}
+func (e Env) DevOnly(ctx context.Context, what string) bool {
+	if e.Environment == "dev" {
+		return true
+	}
+	e.Logger.InfoContext(ctx, what+" are seeded only in dev; skipped")
+	return false
+}
+
 // fakeSeed fixes the generated data across runs.
 const fakeSeed = 1
 

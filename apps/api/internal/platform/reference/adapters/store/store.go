@@ -8,7 +8,8 @@ import "github.com/boolmv/erp/apps/api/internal/platform/kit/postgres"
 // Querier is what the store needs: the pool, or a transaction in tests (C79).
 type Querier = postgres.Querier
 
-// current keeps the rows still in use: not retired, or retired only in the future.
+// current keeps the rows in use now: started, and not retired or retired only in the
+// future (the database's is_current).
 func current(alias string) string {
-	return "(" + alias + ".active_to IS NULL OR " + alias + ".active_to > now())"
+	return "is_current(" + alias + ".active_from, " + alias + ".active_to)"
 }

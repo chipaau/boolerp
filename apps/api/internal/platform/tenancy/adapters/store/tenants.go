@@ -113,7 +113,7 @@ func TurnOnDefaultApps(ctx context.Context, tx pgx.Tx, tenant string) error {
 		INSERT INTO tenant_apps (tenant_id, app_key, activated_by)
 		SELECT $1, key, nullif(current_setting('app.actor_user_id', true), '')::uuid
 		  FROM apps
-		 WHERE is_default AND active_to IS NULL
+		 WHERE is_default AND is_current(active_from, active_to)
 		 ORDER BY key`, tenant)
 	return err
 }
@@ -159,4 +159,18 @@ func ParentAllowed(ctx context.Context, tx pgx.Tx, id string) (bool, error) {
 	err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM tenants WHERE id = $1 AND NOT is_operator
 		AND status <> 'archived')`, id).Scan(&ok)
 	return ok, err
+}
+
+// OperatorID returns the operator tenant's id; pgx.ErrNoRows when there is none yet.
+func OperatorID(ctx context.Context, tx pgx.Tx) (string, error) {
+	var id string
+	err := tx.QueryRow(ctx, `SELECT id::text FROM tenants WHERE is_operator`).Scan(&id)
+	return id, err
+}
+
+// TenantIDBySlug returns the id of the tenant with slug; pgx.ErrNoRows when there is none.
+func TenantIDBySlug(ctx context.Context, tx pgx.Tx, slug string) (string, error) {
+	var id string
+	err := tx.QueryRow(ctx, `SELECT id::text FROM tenants WHERE slug = $1`, slug).Scan(&id)
+	return id, err
 }

@@ -70,3 +70,24 @@ func TestFeatureOnlyACountryInUseIsCurrent(t *testing.T) {
 		assert.Equal(t, want, ok, code)
 	}
 }
+
+// is_current is the one meaning of "current" (C211): started, and not ended or ending
+// only in the future.
+func TestFeatureIsCurrentMeansStartedAndNotYetEnded(t *testing.T) {
+	tx := testdb.Tx(t)
+	for name, c := range map[string]struct {
+		from, to string
+		want     bool
+	}{
+		"open-ended":        {"now() - interval '1 day'", "NULL", true},
+		"ends later":        {"now() - interval '1 day'", "now() + interval '1 day'", true},
+		"ended":             {"now() - interval '2 days'", "now() - interval '1 day'", false},
+		"ends right now":    {"now() - interval '1 day'", "now()", false},
+		"starts later":      {"now() + interval '1 day'", "NULL", false},
+		"started right now": {"now()", "NULL", true},
+	} {
+		var got bool
+		require.NoError(t, tx.QueryRow(t.Context(), `SELECT is_current(`+c.from+`, `+c.to+`)`).Scan(&got), name)
+		assert.Equal(t, c.want, got, name)
+	}
+}

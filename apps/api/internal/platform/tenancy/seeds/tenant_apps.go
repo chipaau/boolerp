@@ -8,6 +8,7 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
+	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/adapters/store"
 )
 
 // TenantApps turns apps on for tenants (C166), as the table owner: the operator tenant's
@@ -39,8 +40,7 @@ func (s *TenantApps) Name() string { return s.name }
 
 // Run implements seed.Seeder, in one transaction.
 func (s *TenantApps) Run(ctx context.Context, env seed.Env) error {
-	if s.devOnly && env.Environment != "dev" {
-		env.Logger.InfoContext(ctx, "sample apps are seeded only in dev; skipped")
+	if s.devOnly && !env.DevOnly(ctx, "sample apps") {
 		return nil
 	}
 	var created, existing int
@@ -78,8 +78,8 @@ func (s *TenantApps) Run(ctx context.Context, env seed.Env) error {
 // tenants returns the ids of the tenants to seed.
 func (s *TenantApps) tenants(ctx context.Context, tx pgx.Tx) ([]string, error) {
 	if s.slugs == nil {
-		var id string
-		if err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE is_operator`).Scan(&id); err != nil {
+		id, err := store.OperatorID(ctx, tx)
+		if err != nil {
 			// tenancy.operator, a seed file, runs first.
 			return nil, fmt.Errorf("find the operator: %w", err)
 		}
@@ -87,8 +87,8 @@ func (s *TenantApps) tenants(ctx context.Context, tx pgx.Tx) ([]string, error) {
 	}
 	ids := make([]string, 0, len(s.slugs))
 	for _, slug := range s.slugs {
-		var id string
-		if err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, slug).Scan(&id); err != nil {
+		id, err := store.TenantIDBySlug(ctx, tx, slug)
+		if err != nil {
 			// tenancy.sample_tenants runs first.
 			return nil, fmt.Errorf("sample tenant %s: %w", slug, err)
 		}

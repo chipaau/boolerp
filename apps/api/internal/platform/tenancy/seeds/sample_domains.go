@@ -10,6 +10,7 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
+	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/adapters/store"
 )
 
 //go:embed sample_domains.csv
@@ -75,8 +76,7 @@ func (*SampleDomains) Name() string { return "tenancy.sample_domains" }
 
 // Run implements seed.Seeder, in one transaction.
 func (s *SampleDomains) Run(ctx context.Context, env seed.Env) error {
-	if env.Environment != "dev" {
-		env.Logger.InfoContext(ctx, "sample domains are seeded only in dev; skipped")
+	if !env.DevOnly(ctx, "sample domains") {
 		return nil
 	}
 	domains, err := ParseSampleDomains(s.data)
@@ -96,8 +96,8 @@ func (s *SampleDomains) Run(ctx context.Context, env seed.Env) error {
 				existing++
 				continue
 			}
-			var tenantID string
-			if err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, d.Tenant).Scan(&tenantID); err != nil {
+			tenantID, err := store.TenantIDBySlug(ctx, tx, d.Tenant)
+			if err != nil {
 				return fmt.Errorf("sample domain %s: tenant %s: %w", d.Host, d.Tenant, err)
 			}
 			// A partial unique index cannot be deferred: unflag the old primary first.

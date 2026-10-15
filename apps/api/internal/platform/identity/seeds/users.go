@@ -41,10 +41,8 @@ func (*Users) Name() string { return "identity.users" }
 
 // Run implements seed.Seeder.
 func (u *Users) Run(ctx context.Context, env seed.Env) error {
-	if env.Environment != "dev" {
-		// The team accounts' password is public, so they exist only in local
-		// development.
-		env.Logger.InfoContext(ctx, "team accounts are seeded only in dev; skipped")
+	// The team accounts' password is public, so they exist only in local development.
+	if !env.DevOnly(ctx, "team accounts") {
 		return nil
 	}
 	var created, existing int

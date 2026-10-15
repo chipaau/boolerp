@@ -84,4 +84,4 @@ SELECT audit.enable('tenant_apps');
 CREATE VIEW tenant_apps_on WITH (security_invoker = true) AS
     SELECT DISTINCT tenant_id, app_key
       FROM tenant_apps
-     WHERE active_from <= now() AND active_to IS NULL;
+     WHERE is_current(active_from, active_to);

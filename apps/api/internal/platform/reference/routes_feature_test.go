@@ -16,8 +16,8 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/platform"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
-	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization/authztest"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 	"github.com/boolmv/erp/apps/api/internal/platform/reference"

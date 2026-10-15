@@ -9,6 +9,7 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
+	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/adapters/store"
 )
 
 // Member is a person a seeder makes an active member of a tenant, found by their
@@ -50,8 +51,8 @@ func (*OperatorMembers) Name() string { return "tenancy.operator_members" }
 // Run implements seed.Seeder, in one transaction.
 func (s *OperatorMembers) Run(ctx context.Context, env seed.Env) error {
 	return actor.Tx(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
-		var tenantID string
-		if err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE is_operator`).Scan(&tenantID); err != nil {
+		tenantID, err := store.OperatorID(ctx, tx)
+		if err != nil {
 			// tenancy.operator, a seed file, runs first.
 			return fmt.Errorf("find the operator: %w", err)
 		}
@@ -99,8 +100,7 @@ func (*SampleMembers) Name() string { return "tenancy.sample_members" }
 
 // Run implements seed.Seeder, in one transaction.
 func (s *SampleMembers) Run(ctx context.Context, env seed.Env) error {
-	if env.Environment != "dev" {
-		env.Logger.InfoContext(ctx, "sample members are seeded only in dev; skipped")
+	if !env.DevOnly(ctx, "sample members") {
 		return nil
 	}
 	samples, err := ParseSamples(s.data)
@@ -118,8 +118,8 @@ func (s *SampleMembers) Run(ctx context.Context, env seed.Env) error {
 	return actor.Tx(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
 		var created, existing int
 		for _, g := range grants {
-			var tenantID string
-			if err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, g.Tenant).Scan(&tenantID); err != nil {
+			tenantID, err := store.TenantIDBySlug(ctx, tx, g.Tenant)
+			if err != nil {
 				// tenancy.sample_tenants runs first.
 				return fmt.Errorf("sample member of %s: %w", g.Tenant, err)
 			}
@@ -136,8 +136,8 @@ func (s *SampleMembers) Run(ctx context.Context, env seed.Env) error {
 			if len(sample.Types) == 0 {
 				continue
 			}
-			var tenantID string
-			if err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, sample.Slug).Scan(&tenantID); err != nil {
+			tenantID, err := store.TenantIDBySlug(ctx, tx, sample.Slug)
+			if err != nil {
 				return fmt.Errorf("sample %s: %w", sample.Slug, err)
 			}
 			ok, err := activateIfReady(ctx, tx, tenantID)

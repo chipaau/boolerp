@@ -11,6 +11,7 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
+	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/adapters/store"
 )
 
 //go:embed sample_tenants.csv
@@ -102,8 +103,7 @@ func (*Samples) Name() string { return "tenancy.sample_tenants" }
 // Run implements seed.Seeder, in one transaction: the rule that an active tenant
 // has a primary type is checked at its commit.
 func (s *Samples) Run(ctx context.Context, env seed.Env) error {
-	if env.Environment != "dev" {
-		env.Logger.InfoContext(ctx, "sample tenants are seeded only in dev; skipped")
+	if !env.DevOnly(ctx, "sample tenants") {
 		return nil
 	}
 	samples, err := ParseSamples(s.data)
@@ -114,8 +114,7 @@ func (s *Samples) Run(ctx context.Context, env seed.Env) error {
 	// One transaction, attributed to the seeder in the audit (C164).
 	err = actor.Tx(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
 		for _, sm := range samples {
-			var id string
-			err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, sm.Slug).Scan(&id)
+			id, err := store.TenantIDBySlug(ctx, tx, sm.Slug)
 			switch {
 			case err == nil:
 				existing++
@@ -159,8 +158,7 @@ func createSample(ctx context.Context, tx pgx.Tx, sm Sample) (string, error) {
 		return "", fmt.Errorf("sample %s (legal form %q): %w", sm.Slug, sm.LegalForm, err)
 	}
 	for i, typ := range sm.Types {
-		if _, err := tx.Exec(ctx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
-			VALUES ($1, $2, $3)`, id, typ, i == 0); err != nil {
+		if err := store.InsertInstitutionType(ctx, tx, id, typ, i == 0); err != nil {
 			return "", fmt.Errorf("sample %s type %s: %w", sm.Slug, typ, err)
 		}
 	}
