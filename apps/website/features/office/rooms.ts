@@ -10,6 +10,8 @@ export type Room = {
   id: string
   title: string
   body: string
+  /** Small labels on the app's row, like the reference's disciplines. */
+  tags: string[]
   icon: LucideIcon
   /** The room's footprint, walls included, traced on the drawing. */
   outline: Point[]
@@ -24,6 +26,7 @@ export type Room = {
 export const ROOMS: Room[] = [
   {
     id: 'inventory',
+    tags: ['Stock', 'Stores', 'Suppliers'],
     title: 'Inventory',
     body: 'Stock, stores and suppliers, counted where they sit. Low stock flags itself before anyone runs out.',
     icon: Boxes,
@@ -33,6 +36,7 @@ export const ROOMS: Room[] = [
   },
   {
     id: 'requests',
+    tags: ['Goods', 'Services', 'Purchases'],
     title: 'Requests',
     body: 'Goods, services and purchases asked for, approved and delivered in one place, with every step on record.',
     icon: FileCheck2,
@@ -43,6 +47,7 @@ export const ROOMS: Room[] = [
   },
   {
     id: 'assets',
+    tags: ['Devices', 'Furniture', 'Checks'],
     title: 'Assets',
     body: 'Every laptop, desk and chair: who has it, where it is, and when it was last checked.',
     icon: Laptop,
@@ -52,6 +57,7 @@ export const ROOMS: Room[] = [
   },
   {
     id: 'calendar',
+    tags: ['Rooms', 'People', 'Invites'],
     title: 'Calendar',
     body: 'Rooms and people in one diary. Find a free room, invite the team, and the room is held.',
     icon: CalendarDays,
@@ -61,6 +67,7 @@ export const ROOMS: Room[] = [
   },
   {
     id: 'control-centre',
+    tags: ['Sites', 'Roles', 'Approvals'],
     title: 'Control Centre',
     body: 'Sites, people and approval chains, set up once in one office, and every app follows them.',
     icon: Settings2,

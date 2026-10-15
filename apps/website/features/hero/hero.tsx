@@ -32,6 +32,8 @@ export function Hero() {
     <>
       <script dangerouslySetInnerHTML={{ __html: MOTION_GATE }} />
       <HeroMotion className="relative isolate grid overflow-hidden bg-background lg:min-h-svh">
+        {/* the drafting paper the next section is drawn on, under the hero too */}
+        <div aria-hidden="true" className="office-grid pointer-events-none absolute inset-0 -z-10" />
         {/* the scroll story's room: dark grey behind the playing tablet, faded in as it comes forward (story.ts) */}
         <div data-story-backdrop="" aria-hidden="true" className="pointer-events-none invisible fixed inset-0 -z-10 bg-surface-inverted opacity-0">
           {/* the drafting paper the next section is drawn on, here in light lines */}
