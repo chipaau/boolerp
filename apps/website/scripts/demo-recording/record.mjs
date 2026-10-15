@@ -327,4 +327,41 @@ const camera_ = shots_.map((c) => ({
   box: c.box && c.box.map((v) => +v.toFixed(4)),
 }))
 await writeFile(`${OUT}/chapters.json`, JSON.stringify({ duration, chapters: marks, camera: camera_ }, null, 2) + '\n')
+
+// The camera, rendered into the recording: from the moment each shot starts, the view moves to it
+// in 0.9s, easing in and out, and then holds exactly still (so the frames between moves are
+// identical and compress to almost nothing), never showing past the capture's edges. Written as one
+// ffmpeg zoompan filter (camera.vf) that run.sh renders from the full-resolution frames, so a
+// zoomed shot is made of real detail rather than enlarged pixels, and the page plays a flat video.
+// Each coordinate is a piecewise expression of the frame's time `it`.
+const MOVE = 0.9
+const shotsAt = camera_.length ? camera_ : [{ t: 0, x: 0.5, y: 0.5, scale: 1 }]
+const view = { x: 0.5, y: 0.5, s: 1 }
+const eased = (k) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, k)))
+const pieces = shotsAt.map((shot, i) => {
+  const from = { ...view }
+  // where the view has got to when the next shot begins (there, unless the next one comes sooner than MOVE)
+  const next = shotsAt[i + 1]
+  const k = next ? eased((next.t - shot.t) / MOVE) : 1
+  view.x = from.x + (shot.x - from.x) * k
+  view.y = from.y + (shot.y - from.y) * k
+  view.s = from.s + (shot.scale - from.s) * k
+  const ease = (goal, start) => `(${start.toFixed(5)}+(${(goal - start).toFixed(5)})*(0.5-0.5*cos(PI*min(1,max(0,(it-${shot.t})/${MOVE})))))`
+  return { begins: shot.t, x: ease(shot.x, from.x), y: ease(shot.y, from.y), s: ease(shot.scale, from.s) }
+})
+// nested front to back: if(lt(it,t1), piece0, if(lt(it,t2), piece1, ... pieceN)); inside the
+// filter's quotes, so the commas need no escaping
+const chain = (key) => {
+  let expr = pieces[pieces.length - 1][key]
+  for (let i = pieces.length - 2; i >= 0; i--) expr = `if(lt(it,${pieces[i + 1].begins}),${pieces[i][key]},${expr})`
+  return expr
+}
+const z = chain('s')
+// the view's centre, kept so the zoomed view stays inside the frame; zoompan wants the top-left corner, in input pixels
+const cx = `min(1-1/(2*zoom),max(1/(2*zoom),${chain('x')}))`
+const cy = `min(1-1/(2*zoom),max(1/(2*zoom),${chain('y')}))`
+await writeFile(
+  `${OUT}/camera.vf`,
+  `fps=30,zoompan=z='${z}':x='(${cx})*iw-iw/zoom/2':y='(${cy})*ih-ih/zoom/2':d=1:fps=30:s=2560x1600\n`,
+)
 console.log(`captured ${shots.length} frames, kept ${kept.length}; chapters`, marks)

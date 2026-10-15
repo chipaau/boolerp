@@ -45,11 +45,8 @@ export function Tablet({ focus }: { focus: 'soft' | 'sharp' }) {
             <>
               <LiveParts />
               {/* the product demo, played here by the scroll story (story.ts); it and its poster load only when the story starts (demo.ts) */}
-              <div data-demo-camera="" className="absolute inset-0 origin-top-left will-change-transform">
-                <video data-demo-video="" muted playsInline preload="none" className="absolute inset-0 size-full object-cover object-top opacity-0" />
-                {/* the spotlight: the part of the screen the caption is about, the rest gently dimmed */}
-                <div data-demo-spot="" aria-hidden="true" className="demo-spot" />
-              </div>
+              {/* its camera moves are in the video itself (scripts/demo-recording/run.sh), so nothing scales it here */}
+              <video data-demo-video="" muted playsInline preload="none" className="absolute inset-0 size-full object-cover object-top opacity-0" />
               {/* a soft reflection on the glass, sliding across as the tablet turns (story.ts sets --glare) */}
               <div aria-hidden="true" className="tablet-glare">
                 <div className="tablet-glare-band" />
@@ -100,6 +97,9 @@ function LiveParts() {
 function LiveTile({ kind, box }: { kind: 'app' | 'today'; box: ReturnType<typeof onScreen> }) {
   return (
     <div data-live-tile={kind} className="absolute" style={percent(box)}>
+      {/* the glow a notification lights behind its app (hero-motion.tsx): opacity only, never a filter, which
+          would repaint the tile as its own rectangle inside the tilted tablet and show its edges */}
+      {kind === 'app' && <div data-live-tile-glow="" className="app-tile-glow" />}
       {kind === 'app' && <div data-live-tile-shadow="" className="app-tile-shadow" />}
       <div data-live-tile-face="" className="absolute inset-0 overflow-hidden" style={{ mask: HEX_MASK }}>
         {/* the whole screen's image, offset so this tile's patch shows through */}

@@ -1,7 +1,7 @@
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Lenis from 'lenis'
-import { CAMERA, CHAPTERS, loadDemo } from './demo'
+import { CHAPTERS, loadDemo } from './demo'
 import { TABLET } from './scene'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -14,11 +14,10 @@ gsap.registerPlugin(ScrollTrigger)
 export const STORY = { move: 1.1, hold: 0.16, close: 0.7 } as const
 
 /**
- * The tablet at the end of its move: centred, flat and nearly filling the screen (the captions sit
- * in a bar over the bottom of its screen), with an even sliver of the dark room above and below
- * (viewport shares).
+ * The tablet at the end of its move: centred, flat and as large as fits above the captions, which
+ * sit as plain text on the dark room under it, like subtitles under a screen (viewport shares).
  */
-const SETTLED = { width: 0.96, height: 0.95, top: 0.025 } as const
+const SETTLED = { width: 0.96, height: 0.84, top: 0.025 } as const
 
 export type StoryParts = {
   hero: HTMLElement
@@ -26,7 +25,6 @@ export type StoryParts = {
   tablet: HTMLElement // the sharp tablet's slab (.tablet)
   fade: Element[] // what steps back as the tablet comes forward: the copy, the glow, the ground shadow
   video: HTMLVideoElement
-  camera: HTMLElement // the wrapper the recording zooms in
   captions: HTMLElement
   backdrop: HTMLElement // the dark grey behind the story, faded in as the tablet comes forward
   cta: HTMLElement // the call to action that comes in at the close
@@ -57,9 +55,9 @@ export function storyPerch(tablet: HTMLElement) {
  * round again, the captions following its chapters. Scrolling on while it plays is a short hold; the
  * story does not wait for the recording. Transforms and opacity only.
  *
- * While the recording plays, the screen's camera eases in on what each moment is about (the shots
- * the recording script marked). When the visitor stops scrolling, the story settles on the nearest
- * resting point.
+ * The recording carries its own camera: it eases in on what each moment is about (the shots the
+ * recording script marked), rendered into the video. A scroll carries the page on to the next resting
+ * point.
  *
  * Once the recording reaches its last chapter the bee comes to the tablet's corner to narrate, and
  * stays. At the end the tablet steps back into the hero, still playing, and settles lower, so the
@@ -71,7 +69,7 @@ export function storyPerch(tablet: HTMLElement) {
  * Returns a cleanup.
  */
 export function scrollStory(p: StoryParts) {
-  const { hero, scene, tablet, fade, video, camera, captions, backdrop, cta } = p
+  const { hero, scene, tablet, fade, video, captions, backdrop, cta } = p
   const html = document.documentElement
   const items = gsap.utils.toArray<HTMLElement>(captions.querySelectorAll('[data-story-caption]'))
   const dots = gsap.utils.toArray<HTMLElement>(captions.querySelectorAll('[data-story-dot]'))
@@ -128,63 +126,19 @@ export function scrollStory(p: StoryParts) {
     p.onTabletMove()
   }
 
-  // the camera inside the screen: eases toward the shot the recording is at (CAMERA, from the
-  // script), kept so the zoomed view never shows past the recording's edges
-  const cam = { x: 0.5, y: 0.5, s: 1 }
+  // while the recording plays, the current chapter's marker fills as it goes. (The camera's moves
+  // are in the recording itself, rendered from the full-resolution capture by
+  // scripts/demo-recording/run.sh, so the page never scales the video: zooms stay sharp and cheap.)
   let camFrame = 0
-  let camLast = 0
-  const shotAt = (t: number) => CAMERA.reduce((shot, c) => (c.t <= t ? c : shot), CAMERA[0])
-  const spot = camera.querySelector<HTMLElement>('[data-demo-spot]')
-  let lastShot: (typeof CAMERA)[number] | undefined
-  /** The spotlight follows the shot: placed while hidden, then faded in once the camera has moved. */
-  const light = (shot: (typeof CAMERA)[number]) => {
-    if (!spot || shot === lastShot) return
-    lastShot = shot
-    if (!shot.box) return void gsap.to(spot, { opacity: 0, duration: 0.35, ease: 'sine.out', overwrite: true })
-    const [x, y, w, h] = shot.box
-    // a little room round the part in focus, so the outline never runs over its content; kept on the screen
-    const left = Math.max(0.004, x - 0.016)
-    const top = Math.max(0.004, y - 0.022)
-    const right = Math.min(0.996, x + w + 0.016)
-    const bottom = Math.min(0.996, y + h + 0.022)
-    gsap.set(spot, { opacity: 0, left: `${left * 100}%`, top: `${top * 100}%`, width: `${(right - left) * 100}%`, height: `${(bottom - top) * 100}%` })
-    gsap.to(spot, { opacity: 1, duration: 0.6, delay: 0.45, ease: 'sine.inOut', overwrite: true })
-  }
-  const frame = (now: number) => {
-    const dt = Math.min(0.1, (now - (camLast || now)) / 1000)
-    camLast = now
-    const want = shotAt(video.currentTime)
-    light(want)
-    // the current chapter's marker fills as the chapter plays
+  const frame = () => {
     const c = CHAPTERS[chapter]
     const fill = dots[chapter]?.firstElementChild as HTMLElement | null | undefined
     if (c && fill) fill.style.transform = `scaleX(${Math.min(1, Math.max(0, (video.currentTime - c.start) / (c.end - c.start)))})`
-    const k = 1 - Math.exp(-dt / 0.55) // about half a second to settle on a new shot
-    cam.x += (want.x - cam.x) * k
-    cam.y += (want.y - cam.y) * k
-    cam.s += (want.scale - cam.s) * k
-    const half = 1 / (2 * cam.s)
-    const cx = Math.min(1 - half, Math.max(half, cam.x))
-    const cy = Math.min(1 - half, Math.max(half, cam.y))
-    camera.style.transform = `translate(${(0.5 - cam.s * cx) * 100}%, ${(0.5 - cam.s * cy) * 100}%) scale(${cam.s})`
     camFrame = requestAnimationFrame(frame)
   }
-  let camReset: gsap.core.Tween | undefined
   const filming = (on: boolean) => {
     cancelAnimationFrame(camFrame)
-    camLast = 0
-    camReset?.kill()
     if (on) camFrame = requestAnimationFrame(frame)
-    else {
-      if (spot) gsap.set(spot, { opacity: 0, overwrite: true }) // gone with the recording, in the same cut
-      // the whole screen again, ready for next time, once the recording is hidden: resetting it
-      // while it still shows would jump the shot
-      camReset = gsap.delayedCall(0.05, () => {
-        Object.assign(cam, { x: 0.5, y: 0.5, s: 1 })
-        camera.style.transform = ''
-        lastShot = undefined
-      })
-    }
   }
 
   // the recording: loaded once the story starts, then played on its own while the tablet is
@@ -217,8 +171,8 @@ export function scrollStory(p: StoryParts) {
     if (live) show(chapterAt(video.currentTime))
   }
   video.addEventListener('timeupdate', follow)
-  // the screen at its largest (the tablet settled), in device pixels, with room for the camera's zoom
-  const wake = () => loadDemo(video, Math.min(innerWidth * SETTLED.width, innerHeight * SETTLED.height * TABLET.aspect) * devicePixelRatio * 1.2)
+  // the screen at its largest (the tablet settled), in device pixels
+  const wake = () => loadDemo(video, Math.min(innerWidth * SETTLED.width, innerHeight * SETTLED.height * TABLET.aspect) * devicePixelRatio)
   /** Starts the recording (where it was, if it was stopped part way), or stops it. */
   const play = (on: boolean) => {
     if (!on) return video.pause()

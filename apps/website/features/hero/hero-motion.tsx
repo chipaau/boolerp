@@ -63,7 +63,6 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       const reveals = q('[data-hero-reveal]')
       const takeoffClip = one<HTMLVideoElement>('[data-bee-clip="takeoff"]')
       const demo = one<HTMLVideoElement>('[data-demo-video]')
-      const camera = one<HTMLElement>('[data-demo-camera]')
       const captions = one<HTMLElement>('[data-story-captions]')
       const cta = one<HTMLElement>('[data-story-cta]')
       const backdrop = one<HTMLElement>('[data-story-backdrop]')
@@ -124,9 +123,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           const tile = tiles[Number((el as HTMLElement).dataset.tile)]
           const face = tile?.querySelector('[data-live-tile-face]')
           const under = tile?.querySelector('[data-live-tile-shadow]')
-          // lengths doubled: the tablet is laid out at twice its size (scene.ts, raster)
-          const dim = 'drop-shadow(0 0 0cqw rgb(240 154 67 / 0))'
-          const lit = 'drop-shadow(0 0 1.8cqw rgb(252 196 128 / 0.6))'
+          const glow = tile?.querySelector('[data-live-tile-glow]')
           const at = toastTl!.duration()
           toastTl!
             .fromTo(el, { autoAlpha: 0, y: 14, scale: 0.97 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.6, ease: 'power3.out' }, at)
@@ -138,10 +135,10 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
             toastTl!
               .to(face, { scale: 1.14, yPercent: -7, duration: 0.55, ease: 'back.out(2)' }, at + 0.15)
               .to(under, { opacity: 1, scale: 1.18, duration: 0.55, ease: 'power2.out' }, at + 0.15)
-              .fromTo(tile, { filter: dim }, { filter: lit, duration: 0.6, ease: 'sine.out' }, at + 0.15)
+              .to(glow, { opacity: 1, duration: 0.6, ease: 'sine.out' }, at + 0.15)
               .to(face, { scale: 1, yPercent: 0, duration: ALIVE.fall, ease: 'power2.inOut' }, at + 4.1)
               .to(under, { opacity: 0, scale: 1, duration: ALIVE.fall, ease: 'power2.inOut' }, at + 4.1)
-              .to(tile, { filter: dim, duration: ALIVE.fall, ease: 'sine.inOut' }, at + 4.1)
+              .to(glow, { opacity: 0, duration: ALIVE.fall, ease: 'sine.inOut' }, at + 4.1)
           }
         })
       }
@@ -231,7 +228,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       }
 
       function storyOn() {
-        if (!takeoffClip || !demo || !camera || !captions || !cta || !backdrop || !slab) return
+        if (!takeoffClip || !demo || !captions || !cta || !backdrop || !slab) return
         if (played.current) loadTakeoff()
         const smoothOff = matchMedia('(pointer: fine)').matches ? smoothScroll() : () => {}
         const storyStop = scrollStory({
@@ -240,7 +237,6 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           tablet: slab,
           fade: storyFade,
           video: demo,
-          camera,
           captions,
           backdrop,
           cta,

@@ -146,21 +146,17 @@ function ScrollCue() {
 }
 
 /**
- * The scroll story's captions (story.ts): one per chapter of the product demo, under the tablet
- * once it has come to the centre, in a dark glass bar laid over the bottom of its screen (placed
- * from the screen's height: the hero is pinned at the top, and the settled tablet nearly fills it),
- * with a short progress bar. Hidden until the story reaches them; desktop only.
+ * The scroll story's captions (story.ts): one per chapter of the product demo, as plain light text
+ * on the dark room under the settled tablet (placed from the screen's height: the hero is pinned at
+ * the top), with a short progress bar. Hidden until the story reaches them; desktop only.
  */
 function StoryCaptions() {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[93svh] z-40 hidden -translate-y-full px-6 lg:block">
-      {/* solid rather than backdrop-blurred: a blur over playing video costs every frame */}
-      <div
-        data-story-captions=""
-        className="invisible mx-auto grid w-fit max-w-[min(56rem,100%)] justify-items-center rounded-2xl bg-[rgb(24_22_20/0.84)] px-6 pb-3 pt-3.5 text-center opacity-0 shadow-[0_10px_30px_rgb(0_0_0/0.28)] ring-1 ring-white/10"
-      >
+    <div className="pointer-events-none absolute inset-x-0 top-[88svh] z-40 hidden px-6 lg:block">
+      {/* plain text on the dark room under the tablet, like subtitles under a screen: nothing over the product */}
+      <div data-story-captions="" className="invisible mx-auto grid w-full max-w-4xl justify-items-center text-center opacity-0">
         {CHAPTERS.map((c) => (
-          <p key={c.id} data-story-caption="" className="invisible text-base opacity-0 [grid-area:1/1]">
+          <p key={c.id} data-story-caption="" className="invisible text-[1.0625rem] opacity-0 [grid-area:1/1]">
             {/* light on the story's dark backdrop */}
             <span className="font-medium text-surface-inverted-foreground">{c.title}.</span> <span className="text-surface-inverted-foreground/65">{c.body}</span>
           </p>

@@ -57,8 +57,9 @@ docker run --rm --network proxy \
 
 echo "encoding…"
 mkdir -p "$web/public/hero/demo"
-# 30fps, sharp UI text, in two sizes: 2560×1600 for large high-density screens (a settled tablet on
-# a 1920-wide Retina display is about 2600 device pixels across, and the camera zooms in), and
+# 30fps, sharp UI text, the camera's moves rendered in, in two sizes: 2560×1600 for large
+# high-density screens (a settled tablet on a 1920-wide Retina display is about 2600 device pixels
+# across), and
 # 1600×1000 for phones and standard-density screens (demo.ts picks). Each as H.264 for every browser
 # and VP9 for those that play it, both encoded from the captured frames (not one from the other);
 # the first frame is the poster. Tuned for screen content at quality that keeps small UI text and
@@ -70,12 +71,15 @@ docker run --rm -v "$work:/w" -w /w --entrypoint sh \
   linuxserver/ffmpeg:7.1.1@sha256:aea59a11c54291ac456bb2d67000445e5a8994f70bc3d96cdc29f022fbbf89fb -c '
   set -e
   color="-color_range tv -colorspace bt709 -color_primaries bt709 -color_trc bt709"
+  # the camera first, once: zoompan (camera.vf, from record.mjs) eases over the full-resolution
+  # capture at 30fps, into a lossless 2560x1600 intermediate every encode below starts from
+  ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -filter_script:v camera.vf -c:v ffv1 -pix_fmt bgr0 camera.mkv
   for size in 2560:1600: 1600:1000:-sm; do
     dims=${size%:*}; suffix=${size##*:}
-    vf="fps=30,scale=${dims}:flags=lanczos:out_range=tv:out_color_matrix=bt709,format=yuv420p"
-    ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -vf "$vf" $color \
+    vf="scale=${dims}:flags=lanczos:out_range=tv:out_color_matrix=bt709,format=yuv420p"
+    ffmpeg -v error -y -i camera.mkv -vf "$vf" $color \
       -c:v libx264 -preset slow -crf 18 -tune stillimage -movflags +faststart -an "demo${suffix}.mp4"
-    ffmpeg -v error -y -f concat -safe 0 -i frames.ffconcat -vf "$vf" $color \
+    ffmpeg -v error -y -i camera.mkv -vf "$vf" $color \
       -c:v libvpx-vp9 -b:v 0 -crf 24 -tune-content screen -row-mt 1 -deadline good -cpu-used 1 -an "demo${suffix}.webm"
   done
   ffmpeg -v error -y -i demo.mp4 -frames:v 1 -q:v 3 poster.jpg'

@@ -147,6 +147,12 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
   background: radial-gradient(closest-side, rgb(150 104 48 / 0.22), rgb(150 104 48 / 0));
   opacity: 0;
 }
+.app-tile-glow {
+  position: absolute;
+  inset: -28%;
+  background: radial-gradient(closest-side, rgb(252 196 128 / 0.55), rgb(252 196 128 / 0));
+  opacity: 0;
+}
 .today-glow {
   border-radius: 50%;
   background: radial-gradient(closest-side, rgb(255 196 120 / 0.5), rgb(255 196 120 / 0.18) 55%, rgb(255 196 120 / 0));
@@ -202,21 +208,6 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
   /* the same place a 260% background at x = 100% - glare × 85% would put it */
   transform: translateX(calc(-61.54% * (1 - var(--glare, 0) * 0.85)));
   will-change: transform;
-}
-
-/* the recording's spotlight (story.ts places it on the part of the screen the caption is about):
-   everything around it is dimmed a little, through one large soft shadow */
-.demo-spot {
-  position: absolute;
-  pointer-events: none;
-  opacity: 0;
-  will-change: opacity;
-  border-radius: 1.4% / 2.2%;
-  /* the rest of the screen dimmed a little, and a hairline of warm light with a soft glow round the part in focus */
-  box-shadow:
-    0 0 0 200vmax rgb(46 34 20 / 0.06),
-    0 0 0 0.08cqw rgb(240 154 67 / 0.4),
-    0 0 1.6cqw 0.1cqw rgb(240 154 67 / 0.14);
 }
 
 /* the hero's notifications (toasts.tsx): warm frosted glass like the tablet's frame, the tablet's
