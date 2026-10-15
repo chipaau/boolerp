@@ -330,14 +330,18 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
 - Invitations are refused once active and invited memberships reach the agreement's
   seat limit, when it has one.
 
-**Provisioning** — the design for F3; `POST /api/v1/tenants` does not exist yet, and the
-fields it accepts are not confirmed (see the open question below).
+**Provisioning** — the design for F3; `POST /api/v1/tenants` does not exist yet. Its
+request is confirmed (C197); the rest is open (see below).
 - One flow for every caller (an operator now; self-service sign-up and the self-hosted
   first run later).
-- The owner's Kratos account is found by email or created first (idempotent). Then one
-  database transaction creates the tenant, its default domain, the enabled apps, and the
-  owner membership. If it fails, the Kratos account is reused on retry (the previous
-  design claimed one transaction, but a Kratos account cannot be rolled back).
+- **Creating is step 1 only (C197):** one database transaction creates the tenant in
+  `provisioning` with its institution types (and whatever else the open questions below
+  add, such as its default domain). It calls no outside service, so it never half-succeeds.
+- **The owner comes afterwards:** their Kratos account is found by e-mail or created
+  (idempotent, reused on retry, since an account cannot be rolled back), then their owner
+  membership is written. **Activation** (`provisioning` to `active`) needs an invited or
+  active owner and a primary institution type: the operation answers with field errors, and
+  the database refuses the change at commit (C138, C197).
 - **Audit rows are not written by that transaction.** Every table carries an `audit.enable`
   trigger (C164), so the rows appear on their own; what the transaction must do is open
   through `tenant.Tx` or `actor.Tx`, which carry the actor the trigger records.
@@ -391,19 +395,18 @@ confirmation, the field list table by table (see
 [the data model's working agreement](../data-model/README.md)) before any migration or
 `erd.dbml` change.
 
-- **What the request accepts.** The tenant's own columns are settled (C116, above), and
-  `legal_form_id` and `timezone` are required at creation (C195); which of the other
-  columns provisioning requires rather than allows later is not. The admin console's
-  design prototype collects far more — plan, seats, address, contact, apps and modules,
-  several admins — and most of that has no table behind it.
+- ~~**What the request accepts.**~~ Decided (C197): step 1 of the wizard creates the tenant
+  (`provisioning`) from its own details and institution types; later steps and the
+  details page fill in the rest; no wizard state is stored.
 - **Whether the default domain is part of it.** The flow above creates one; `domains` is
   built (C158), but what host a new tenant gets, and whether the caller may choose it, is
   not written down.
 - **Which apps a new tenant starts with**, and what roles it starts with — see the role
   templates note under Apps above, which is the same open question from the other side.
-- **The owner.** Provisioning creates a membership for an owner, so it needs that person's
-  identity: whether the request carries an e-mail that may already exist, what happens when
-  it does, and how the invitation reaches them.
+- **The owner.** Not part of creating the tenant (C197): it is added afterwards, and
+  activation needs an invited or active owner (checked by the operation and by the
+  database). Still open: how an owner is added (an e-mail that may already have an account,
+  what happens when it does) and how the invitation reaches them.
 - **Idempotency.** The key is required above; where it is stored and how long it is honoured
   is not designed.
 
