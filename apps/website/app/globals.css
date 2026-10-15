@@ -361,21 +361,21 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 .office-route {
   fill: none;
   stroke-linecap: round;
-  stroke-dasharray: 2 12;
-  animation: office-march 1.2s linear infinite;
+  stroke-dasharray: 1 9;
+  animation: office-march 2.6s linear infinite;
 }
 .office-route-rest {
-  stroke: rgb(165 144 111 / 0.4);
-  stroke-width: 2;
+  stroke: rgb(165 144 111 / 0.35);
+  stroke-width: 1.25;
 }
 .office-route {
   stroke: #f0913a;
-  stroke-width: 2.5;
-  animation-duration: 0.7s;
+  stroke-width: 1.6;
+  animation-duration: 1.8s;
 }
 @keyframes office-march {
   to {
-    stroke-dashoffset: -14;
+    stroke-dashoffset: -10;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -392,8 +392,7 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 .office-item {
   --on: 1;
 }
-#workspace[data-live] .office-item,
-#local[data-live] .office-item {
+#workspace[data-live] .office-item {
   --on: 0;
 }
 .office-dot {
@@ -424,9 +423,9 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
   background-repeat: no-repeat;
   box-shadow: 0 0 0 1px rgb(168 148 118 / 0.22), 0 12px 28px -14px rgb(80 56 24 / 0.35);
 }
-/* the island chain (features/local): it fades out at the screen's top and bottom edges */
+/* the island chain (features/local): it starts under the title and fades out at the bottom edge */
 .local-chain {
-  mask-image: linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
+  mask-image: linear-gradient(to bottom, transparent 20%, black 34%, black 88%, transparent);
 }
 /* the island chain (features/local): little lights that blink on the islands, and soft swells on the sea */
 .local-light {

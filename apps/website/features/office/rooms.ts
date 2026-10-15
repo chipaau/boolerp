@@ -35,8 +35,6 @@ export type Room = {
   features: string[]
   /** The rooms that are this app's (one, or a few that work together). */
   tiles: Tile[]
-  /** A view of the real app: a screenshot and the box to show (px, on its 1600×1000 image). */
-  ui: { src: string; box: [number, number, number, number] }
 }
 
 // UI fixtures: marketing content, not live data
@@ -49,7 +47,6 @@ export const ROOMS: Room[] = [
     value: 'Know what you have, where it is, before anyone runs out.',
     features: ['Stock levels per site', 'Low-stock alerts', 'Receiving against orders', 'Transfers between stores'],
     tiles: [{ src: 'warehouse', angle: 234 }, { src: 'receiving', angle: 198 }, { src: 'transfer', angle: 162 }],
-    ui: { src: '/apps/inventory.webp', box: [284, 210, 1580, 900] },
   },
   {
     id: 'purchasing',
@@ -59,7 +56,6 @@ export const ROOMS: Room[] = [
     value: 'Purchase orders that start from approved requests, not emails.',
     features: ['Orders from approved requests', 'Supplier quotes', 'Delivery tracking'],
     tiles: [{ src: 'purchase', angle: -90 }],
-    ui: { src: '/apps/inventory.webp', box: [700, 420, 1580, 960] },
   },
   {
     id: 'requests',
@@ -69,7 +65,6 @@ export const ROOMS: Room[] = [
     value: 'Every ask approved, ordered and delivered on one record.',
     features: ['Goods and service requests', 'Approval chains', 'Status at every step'],
     tiles: [{ src: 'requests', angle: -54 }],
-    ui: { src: '/apps/home.webp', box: [40, 120, 1580, 960] },
   },
   {
     id: 'assets',
@@ -79,7 +74,6 @@ export const ROOMS: Room[] = [
     value: 'Who has what, where, and when it was last looked after.',
     features: ['Assigned to people and sites', 'Maintenance and checks', 'Full history'],
     tiles: [{ src: 'maintenance', angle: -18 }, { src: 'storage', angle: 18 }],
-    ui: { src: '/apps/directory.webp', box: [260, 200, 1580, 900] },
   },
   {
     id: 'reports',
@@ -89,7 +83,6 @@ export const ROOMS: Room[] = [
     value: 'The numbers from every app, without stitching spreadsheets.',
     features: ['Across every app', 'Pending and overdue', 'Export to Excel'],
     tiles: [{ src: 'analytics', angle: 54 }],
-    ui: { src: '/apps/home.webp', box: [40, 400, 1580, 960] },
   },
   {
     id: 'calendar',
@@ -99,7 +92,6 @@ export const ROOMS: Room[] = [
     value: 'Rooms, people and what was agreed, in one diary.',
     features: ['Room booking', 'Invites and replies', 'Shared notes'],
     tiles: [{ src: 'meeting', angle: 90 }, { src: 'notes', angle: 126 }],
-    ui: { src: '/apps/calendar.webp', box: [240, 140, 1580, 960] },
   },
 ]
 

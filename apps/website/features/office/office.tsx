@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
+import type { ReactNode } from 'react'
 import Image from 'next/image'
 import { Check } from 'lucide-react'
 import gsap from 'gsap'
@@ -14,50 +15,53 @@ gsap.registerPlugin(ScrollTrigger, useGSAP)
 
 const pct = (x: number, y: number) => ({ left: `${(x / STAGE.width) * 100}%`, top: `${(y / STAGE.height) * 100}%` })
 
-/** A view of the real app, cropped to the part worth seeing, at its own proportions. */
-function UiView({ ui }: { ui: Room['ui'] }) {
-  const [x0, y0, x1, y1] = ui.box
-  const w = x1 - x0
-  const h = y1 - y0
+/** Something a card lists, with an amber tick. */
+function Point({ children }: { children: ReactNode }) {
   return (
-    <div
-      aria-hidden="true"
-      className="office-ui w-full"
-      style={{
-        aspectRatio: `${w} / ${h}`,
-        backgroundImage: `url(${ui.src})`,
-        backgroundSize: `${(1600 / w) * 100}% auto`,
-        backgroundPosition: `${w < 1600 ? (x0 / (1600 - w)) * 100 : 0}% ${h < 1000 ? (y0 / (1000 - h)) * 100 : 0}%`,
-      }}
-    />
+    <li className="flex items-start gap-3 text-[16px] leading-snug text-foreground">
+      <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-(--brand)/12">
+        <Check className="size-3 text-(--brand)" strokeWidth={3} />
+      </span>
+      {children}
+    </li>
   )
 }
 
-/** The app's card: what it is, what it is worth, what it does, and a look at it. */
+/** The app's card: what it is, what it is worth, and what it does. */
 function RoomCard({ room }: { room: Room }) {
   return (
-    <article className="office-card p-5">
-      <header className="flex items-center gap-3">
-        <span className="grid size-11 place-items-center rounded-xl bg-(--brand)/10">
+    <article className="office-card p-7">
+      <header className="flex items-center gap-3.5">
+        <span className="grid size-12 place-items-center rounded-xl bg-(--brand)/10">
           <Image src={room.logo} alt="" className="h-7 w-8 object-contain" />
         </span>
         <div>
-          <h3 className="text-[19px] font-medium leading-tight text-foreground">{room.title}</h3>
-          <p className="mt-0.5 text-[10.5px] font-bold uppercase tracking-[0.16em] text-(--brand)">{room.tags.join(' · ')}</p>
+          <h3 className="text-[22px] font-medium leading-tight text-foreground">{room.title}</h3>
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-(--brand)">{room.tags.join(' · ')}</p>
         </div>
       </header>
-      <p className="mt-4 text-[15px] leading-snug text-foreground">{room.value}</p>
-      <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
+      <p className="mt-5 text-[18px] leading-snug text-foreground">{room.value}</p>
+      <ul className="mt-5 grid gap-3 border-t border-border/60 pt-5">
         {room.features.map((f) => (
-          <li key={f} className="flex items-center gap-2 text-[13px] text-body">
-            <Check className="size-3.5 shrink-0 text-(--brand)" strokeWidth={2.6} />
-            {f}
-          </li>
+          <Point key={f}>{f}</Point>
         ))}
       </ul>
-      <div className="mt-4">
-        <UiView ui={room.ui} />
-      </div>
+    </article>
+  )
+}
+
+/** The end of the story: what every app shares. */
+function SharedCard() {
+  return (
+    <article className="office-card p-7">
+      <h3 className="text-[22px] font-medium leading-tight text-foreground">Every app, one record</h3>
+      <p className="mt-3 text-[16px] leading-snug text-muted-foreground">Add an app and it already knows your organisation.</p>
+      <ul className="mt-5 grid gap-3 border-t border-border/60 pt-5">
+        <Point>One sign-in for every app</Point>
+        <Point>One set of people, sites and approvals</Point>
+        <Point>Records that follow the work from app to app</Point>
+        <Point>One audit trail across all of it</Point>
+      </ul>
     </article>
   )
 }
@@ -145,7 +149,7 @@ export function Office() {
           .to(q('[data-office-route]'), { autoAlpha: 1, duration: 0.3, stagger: 0.03 }, end + 0.05)
           .fromTo(q('[data-office-all]'), { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.3, ease: 'power2.out', immediateRender: false }, end + 0.15)
           .addLabel('all', end + 0.5)
-          .to({}, { duration: 0.35 })
+          .to({}, { duration: 0.15 })
 
         trigger.current = ScrollTrigger.create({
           trigger: section.current,
@@ -187,13 +191,8 @@ export function Office() {
                 <RoomCard room={room} />
               </div>
             ))}
-            <div data-office-all="" className="invisible self-center [grid-area:1/1]">
-              <p className="text-[clamp(1.25rem,1.6vw,1.6rem)] font-light leading-snug text-foreground">
-                One sign-in, one set of people and sites, one record.
-              </p>
-              <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
-                Add an app and it already knows your organisation: its people, its sites, and everything the other apps have recorded.
-              </p>
+            <div data-office-all="" className="invisible [grid-area:1/1]">
+              <SharedCard />
             </div>
           </div>
           {/* below lg: every app's card in turn, with its rooms */}
@@ -224,8 +223,8 @@ export function Office() {
                       <g data-office-route={r.id} className="invisible">
                         <path id={`walk-${t.src}`} d={d} className="office-route" vectorEffect="non-scaling-stroke" />
                         {/* a spark running in along the walkway */}
-                        <circle r="5" className="office-spark">
-                          <animateMotion dur="2.4s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear">
+                        <circle r="3" className="office-spark">
+                          <animateMotion dur="5s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear">
                             <mpath href={`#walk-${t.src}`} />
                           </animateMotion>
                         </circle>

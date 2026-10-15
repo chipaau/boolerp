@@ -69,7 +69,7 @@ const COMING: { app: string; icon: StaticImageData; body: string }[] = [
 
 export function Apps() {
   return (
-    <section id="product" className="relative bg-background py-24 lg:py-32">
+    <section id="product" className="relative bg-background py-24 lg:pb-32 lg:pt-12">
       <Rise className="mx-auto max-w-7xl px-6 2xl:max-w-[88rem]">
         <div data-rise="" className="max-w-2xl">
           <p className="text-overline tracking-[0.28em] text-muted-foreground">The apps</p>
