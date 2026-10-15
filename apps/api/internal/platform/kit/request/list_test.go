@@ -1,4 +1,4 @@
-package httpinput
+package request
 
 import (
 	"encoding/json"
@@ -127,22 +127,4 @@ func TestParseListRequiresItsRequiredFilters(t *testing.T) {
 
 func TestEscape(t *testing.T) {
 	assert.Equal(t, `50\% off\_now \\`, Escape(`50% off_now \`))
-}
-
-func TestWritePageAnswersTheEnvelope(t *testing.T) {
-	rec := httptest.NewRecorder()
-	WritePage(rec, httptest.NewRequest(http.MethodGet, "/", nil), List{Page: 2, PageSize: 10}, []string{"a", "b"}, 12)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
-	assert.JSONEq(t, `{"items": ["a", "b"], "page": 2, "pageSize": 10, "total": 12}`, rec.Body.String())
-}
-
-func TestWritePageAnswersNoItemsAsAnEmptyArray(t *testing.T) {
-	rec := httptest.NewRecorder()
-	WritePage[string](rec, httptest.NewRequest(http.MethodGet, "/", nil), List{Page: 3, PageSize: 10}, nil, 12)
-	assert.JSONEq(t, `{"items": [], "page": 3, "pageSize": 10, "total": 12}`, rec.Body.String())
-
-	var p Page[string]
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &p))
-	assert.Equal(t, Page[string]{Items: []string{}, Page: 3, PageSize: 10, Total: 12}, p)
 }

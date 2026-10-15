@@ -11,14 +11,14 @@ import (
 	// the same way whatever the host has installed (the API image has none).
 	_ "time/tzdata"
 
-	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/adapters/store"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
 )
@@ -54,7 +54,7 @@ func (m *Module) list(authz authorization.Authorizer) http.HandlerFunc {
 			authorization.WriteError(w, r, err)
 			return
 		}
-		l, ok := httpinput.ParseList(w, r, store.TenantListSpec)
+		l, ok := request.ParseList(w, r, store.TenantListSpec)
 		if !ok {
 			return
 		}
@@ -73,7 +73,7 @@ func (m *Module) list(authz authorization.Authorizer) http.HandlerFunc {
 		for i, t := range tenants {
 			items[i] = tenantItem(t)
 		}
-		httpinput.WritePage(w, r, l, items, total)
+		response.Page(w, r, l, items, total)
 	}
 }
 
@@ -102,7 +102,7 @@ type institutionTypeChoice struct {
 	Primary bool   `json:"primary"`
 }
 
-func init() { httpinput.RegisterStructValidation(validateCreateRequest, createRequest{}) }
+func init() { request.RegisterStructValidation(validateCreateRequest, createRequest{}) }
 
 // validateCreateRequest checks createRequest's rules that span fields or are tenancy's
 // knowledge without needing data (C208): a slug the platform does not use itself, and
@@ -139,7 +139,7 @@ func (m *Module) create(authz authorization.Authorizer) http.HandlerFunc {
 			return
 		}
 		var req createRequest
-		if !httpinput.Decode(w, r, &req) {
+		if !request.Decode(w, r, &req) {
 			return
 		}
 		n := NewTenant{
@@ -166,9 +166,7 @@ func (m *Module) create(authz authorization.Authorizer) http.HandlerFunc {
 			problem.Unavailable(w, r)
 			return
 		}
-		w.Header().Set("Location", "/api/v1/tenants/"+t.ID)
-		render.Status(r, http.StatusCreated)
-		render.JSON(w, r, tenantItem(t))
+		response.Created(w, r, "/api/v1/tenants/"+t.ID, tenantItem(t))
 	}
 }
 

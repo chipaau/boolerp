@@ -19,9 +19,9 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/observability"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/requestid"
 )
 
@@ -370,7 +370,7 @@ func TestRequestInputThroughTheRouter(t *testing.T) {
 	require.NoError(t, err)
 	router.Post("/api/v1/test-input", func(w http.ResponseWriter, r *http.Request) {
 		var b body
-		if !httpinput.Decode(w, r, &b) {
+		if !request.Decode(w, r, &b) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

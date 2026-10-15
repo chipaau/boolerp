@@ -10,7 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
 )
 
 // Querier is what the lists need: the pool, or a transaction in tests (C79).
@@ -41,7 +41,7 @@ func (q *query) arg(v any) string {
 
 // run reads a page with the total of matches (a window count), scanning each row with
 // scan; past the last page it counts the matches instead.
-func (q *query) run(ctx context.Context, db Querier, l httpinput.List, columns string,
+func (q *query) run(ctx context.Context, db Querier, l request.List, columns string,
 	scan func(rows pgx.Rows, total *int) error) (int, error) {
 	order := make([]string, 0, len(l.Sort)+1)
 	for _, f := range l.Sort {

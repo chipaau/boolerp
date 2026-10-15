@@ -48,7 +48,8 @@ apps/api/
         migrations/      history migrations.reference_version
       kit/               technical building blocks, no business meaning (C125)
         config/          settings grouped by concern (C44)
-        httpinput/       JSON request decoding and validation
+        request/         reading requests: JSON decoding and validation, list parameters (C210)
+        response/        writing success responses: OK, Created, NoContent, Page (C210)
         httpserver/      server limits and graceful shutdown (framework-agnostic)
         seed/            the Seeder interface, the runner, and the shared gofakeit generator (C118)
         observability/   slog logger and redaction, tracing, metrics

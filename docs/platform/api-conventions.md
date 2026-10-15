@@ -67,9 +67,9 @@ GET /api/v1/employees?page=3&pageSize=50
 ```
 
 - `page` starts at 1; `pageSize` has a per-endpoint default and a maximum (normally 100).
-- A handler reads the parameters with `httpinput.ParseList` and answers with
-  `httpinput.WritePage(w, list, items, total)`, the one writer of this envelope
-  (`httpinput.Page[T]`; no items is `[]`, never `null`).
+- A handler reads the parameters with `request.ParseList` and answers with
+  `response.Page(w, r, list, items, total)`, the one writer of this envelope
+  (`response.Paged[T]`; no items is `[]`, never `null`).
 - Values outside the allowed range are a 422 validation problem (below).
 
 Lists that grow without bound (for example the audit log, step 9, or event feeds) may
@@ -91,7 +91,7 @@ instead use cursor pagination as a documented exception:
 ## Request input and validation errors (C71–C74)
 
 Request bodies are Go structs with `json` and `validate` tags, decoded by
-`httpinput.Decode`, which writes the error response itself:
+`request.Decode`, which writes the error response itself:
 
 ```go
 type CreateEmployeeRequest struct { // illustration only; the employee model is D11
@@ -101,7 +101,7 @@ type CreateEmployeeRequest struct { // illustration only; the employee model is 
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	var req CreateEmployeeRequest
-	if !httpinput.Decode(w, r, &req) {
+	if !request.Decode(w, r, &req) {
 		return // 400, 413, 415, or 422 already written
 	}
 	// req is valid ...
@@ -136,19 +136,29 @@ submitted values:
   application layer and database constraints, which return `problem.ValidationError`;
   the response has the same format.
 
-**Writing JSON (C209):** every JSON response goes through go-chi/render: `render.JSON(w, r, v)`,
-with `render.Status(r, code)` before it for a status other than 200 (a create answers
-`201` with `Location`); lists through `httpinput.WritePage`, built on it. Problem responses
-keep `problem.Write` for their own content type. Decoding stays `httpinput.Decode`, for our
-validation and error format; render's binding is not used.
+**Writing responses (C209, C210):** every JSON response the API writes goes through
+package `response` (success) or `problem` (errors), never a hand-written encoder:
+
+| Answer | Call |
+| --- | --- |
+| `200` with the resource | `response.OK(w, r, v)` |
+| `201` with the new resource and its `Location` | `response.Created(w, r, location, v)` |
+| `204`, no body (a delete, an action with nothing to show) | `response.NoContent(w, r)` |
+| `200` with a page of a list | `response.Page(w, r, list, items, total)` |
+| An error | `problem.Error`, `problem.Unavailable`, `problem.WriteValidation`, or `authorization.WriteError` |
+
+`response` writes JSON through go-chi/render; `problem` keeps its own encoder for
+`application/problem+json`. Requests are read by package `request` (`request.Decode`,
+`request.ParseList`); render's binding is not used. Redirects, files, and proxied responses
+(the BFF) use the standard library.
 
 **Where each rule lives (C208):** the request holds every rule that needs no data; the
 module holds the rules that need data; the database guards them all.
 
 | Layer | Rules | How |
 | --- | --- | --- |
-| Request (the handler's struct) | Each field's shape and format, conditions between the request's fields (`required_if`, `excluded_unless`, …), and the module's own rules that need no data (reserved slugs, exactly one primary item, no duplicates) | `validate` tags; the shared formats `phone`, `slug`, `notblank` (and the validator's `timezone`, `email`, `uuid`, `datetime`, …); a struct-level rule beside the request, registered with `httpinput.RegisterStructValidation` from the module's package |
-| Module (the use case) | Rules that need data: existence and currency of what is referenced, uniqueness naming the holder, rules depending on another row, checked in the writing transaction | `problem.ValidationError`, built with `v.Add(path, code, detail)` and returned as `v.Err()` (nil when empty), or `problem.Invalid(path, code, detail)` for one field; the path is the field's JSON path (`institutionTypes/1/code`), turned into a pointer by `problem.Field`/`problem.Pointer`, which `httpinput` uses too |
+| Request (the handler's struct) | Each field's shape and format, conditions between the request's fields (`required_if`, `excluded_unless`, …), and the module's own rules that need no data (reserved slugs, exactly one primary item, no duplicates) | `validate` tags; the shared formats `phone`, `slug`, `notblank` (and the validator's `timezone`, `email`, `uuid`, `datetime`, …); a struct-level rule beside the request, registered with `request.RegisterStructValidation` from the module's package |
+| Module (the use case) | Rules that need data: existence and currency of what is referenced, uniqueness naming the holder, rules depending on another row, checked in the writing transaction | `problem.ValidationError`, built with `v.Add(path, code, detail)` and returned as `v.Err()` (nil when empty), or `problem.Invalid(path, code, detail)` for one field; the path is the field's JSON path (`institutionTypes/1/code`), turned into a pointer by `problem.Field`/`problem.Pointer`, which `request` uses too |
 | Database | Every rule a caller must not break, whoever calls | CHECK constraints, foreign keys, unique indexes, triggers, row-level security |
 
 A rule goes in the request only if the database also guards it, or it is purely about the
@@ -156,7 +166,7 @@ request's shape: callers other than HTTP (CLI commands, jobs, seeds) skip the re
 meet the database's error instead. A rule with no database guard that every caller must
 obey stays in the module too (a tenant's time zone). No tag queries the database: existence
 is checked in the writing transaction, through the owning module for another module's data
-(C134). A new shared format is registered only in `httpinput`, with its message.
+(C134). A new shared format is registered only in `request`, with its message.
 
 ## Contract and frontend types (C74, C183)
 

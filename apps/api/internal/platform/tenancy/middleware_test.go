@@ -119,8 +119,8 @@ func TestResolveTenantWhenTheLookupFails(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), "database down")
 }
 
-// request returns a request from user (none if "") in t (none if empty).
-func request(user string, t tenant.Tenant) *http.Request {
+// memberRequest returns a request from user (none if "") in t (none if empty).
+func memberRequest(user string, t tenant.Tenant) *http.Request {
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx := r.Context()
 	if user != "" {
@@ -137,10 +137,10 @@ func TestRequireMember(t *testing.T) {
 		r    *http.Request
 		want int
 	}{
-		"an active member":        {request("u-member", cityTenant), http.StatusNoContent},
-		"a person who is not one": {request("u-other", cityTenant), http.StatusNotFound},
-		"no tenant":               {request("u-member", tenant.Tenant{}), http.StatusNotFound},
-		"no person":               {request("", cityTenant), http.StatusNotFound},
+		"an active member":        {memberRequest("u-member", cityTenant), http.StatusNoContent},
+		"a person who is not one": {memberRequest("u-other", cityTenant), http.StatusNotFound},
+		"no tenant":               {memberRequest("u-member", tenant.Tenant{}), http.StatusNotFound},
+		"no person":               {memberRequest("", cityTenant), http.StatusNotFound},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var s seen
@@ -161,7 +161,7 @@ func TestRequireMemberWhenTheLookupFails(t *testing.T) {
 	l := lookups()
 	l.err = errors.New("database down")
 	rec := httptest.NewRecorder()
-	module(l).RequireMember((&seen{}).handler()).ServeHTTP(rec, request("u-member", cityTenant))
+	module(l).RequireMember((&seen{}).handler()).ServeHTTP(rec, memberRequest("u-member", cityTenant))
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 }
 
@@ -177,7 +177,7 @@ func TestRequireActiveTenant(t *testing.T) {
 			var s seen
 			rec := httptest.NewRecorder()
 			module(lookups()).RequireActiveTenant(s.handler()).ServeHTTP(rec,
-				request("u-member", tenant.Tenant{ID: "t-city", Status: status}))
+				memberRequest("u-member", tenant.Tenant{ID: "t-city", Status: status}))
 			if want == "" {
 				assert.Equal(t, http.StatusNoContent, rec.Code)
 				return
@@ -191,7 +191,7 @@ func TestRequireActiveTenant(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	module(lookups()).RequireActiveTenant((&seen{}).handler()).ServeHTTP(rec, request("u-member", tenant.Tenant{}))
+	module(lookups()).RequireActiveTenant((&seen{}).handler()).ServeHTTP(rec, memberRequest("u-member", tenant.Tenant{}))
 	assert.Equal(t, http.StatusNotFound, rec.Code, "no tenant")
 }
 

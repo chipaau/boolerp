@@ -5,11 +5,11 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
 )
 
 // CountryListSpec is what GET /api/v1/countries accepts: every country in one page.
-var CountryListSpec = httpinput.ListSpec{
+var CountryListSpec = request.ListSpec{
 	Sorts: []string{"name", "code"}, DefaultSort: "name", Search: true,
 	DefaultPageSize: 300, MaxPageSize: 300,
 }
@@ -19,11 +19,11 @@ type Country struct{ Code, Alpha3, Name, PhonePrefix string }
 
 // ListCountries reads one page of the current countries and how many match. q matches
 // the name or either code.
-func ListCountries(ctx context.Context, db Querier, l httpinput.List) ([]Country, int, error) {
+func ListCountries(ctx context.Context, db Querier, l request.List) ([]Country, int, error) {
 	q := query{from: "countries c", where: []string{current("c")},
 		sorts: map[string]string{"name": "c.name", "code": "c.code"}, key: "c.code"}
 	if l.Q != "" {
-		p := q.arg("%" + httpinput.Escape(l.Q) + "%")
+		p := q.arg("%" + request.Escape(l.Q) + "%")
 		q.where = append(q.where, "(c.name ILIKE "+p+" OR c.code ILIKE "+p+" OR c.alpha3 ILIKE "+p+")")
 	}
 	items := []Country{}

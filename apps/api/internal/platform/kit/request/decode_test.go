@@ -1,4 +1,4 @@
-package httpinput
+package request
 
 import (
 	"encoding/json"

@@ -9,7 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
 )
 
 // Tenant is a tenant as the API shows it.
@@ -27,7 +27,7 @@ func CurrentTenant(ctx context.Context, tx pgx.Tx) (Tenant, error) {
 }
 
 // TenantListSpec is what GET /api/v1/tenants accepts (C179).
-var TenantListSpec = httpinput.ListSpec{
+var TenantListSpec = request.ListSpec{
 	Sorts:       []string{"name", "code", "createdAt"},
 	DefaultSort: "name",
 	Filters:     map[string][]string{"status": {"provisioning", "active", "suspended", "archived"}},
@@ -46,7 +46,7 @@ type TenantItem struct {
 
 // ListTenants reads one page of the tenants the transaction may see (the operator: all)
 // and how many match in total. q matches the code, name, or slug.
-func ListTenants(ctx context.Context, tx pgx.Tx, l httpinput.List) ([]TenantItem, int, error) {
+func ListTenants(ctx context.Context, tx pgx.Tx, l request.List) ([]TenantItem, int, error) {
 	var where []string
 	args := []any{}
 	arg := func(v any) string {
@@ -54,7 +54,7 @@ func ListTenants(ctx context.Context, tx pgx.Tx, l httpinput.List) ([]TenantItem
 		return "$" + strconv.Itoa(len(args))
 	}
 	if l.Q != "" {
-		p := arg("%" + httpinput.Escape(l.Q) + "%")
+		p := arg("%" + request.Escape(l.Q) + "%")
 		where = append(where, "(t.code ILIKE "+p+" OR t.name ILIKE "+p+" OR t.slug ILIKE "+p+")")
 	}
 	if s, ok := l.Filters["status"]; ok {

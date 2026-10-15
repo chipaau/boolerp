@@ -1,4 +1,4 @@
-package httpinput
+package request
 
 import (
 	"net/http"
@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/go-chi/render"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 )
@@ -53,25 +51,6 @@ type SortField struct {
 
 // Offset is the row offset of the page.
 func (l List) Offset() int { return (l.Page - 1) * l.PageSize }
-
-// Page is one page of a list in the agreed envelope (C68): the items, which page it
-// is, its size, and how many items match in all.
-type Page[T any] struct {
-	Items    []T `json:"items"`
-	Page     int `json:"page"`
-	PageSize int `json:"pageSize"`
-	Total    int `json:"total"`
-}
-
-// WritePage answers l's page: 200 with items in the envelope, an empty array (never
-// null) when there are none, and total, how many items match in all; written by
-// go-chi/render, as every JSON response is.
-func WritePage[T any](w http.ResponseWriter, r *http.Request, l List, items []T, total int) {
-	if items == nil {
-		items = []T{}
-	}
-	render.JSON(w, r, Page[T]{Items: items, Page: l.Page, PageSize: l.PageSize, Total: total})
-}
 
 // ParseList reads r's list parameters against spec. On failure it writes a 422
 // validation problem naming each bad parameter and returns false.

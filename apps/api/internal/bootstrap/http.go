@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -18,6 +17,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpserver"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/requestid"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 )
 
 const (
@@ -159,9 +159,8 @@ func newRouter(logger *slog.Logger, rc routerConfig) (chi.Router, error) {
 
 // liveness reports that the process is running and serving HTTP. It checks no
 // dependencies; readiness is separate (step 3).
-func liveness(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = io.WriteString(w, `{"status":"ok"}`)
+func liveness(w http.ResponseWriter, r *http.Request) {
+	response.OK(w, r, map[string]string{"status": "ok"})
 }
 
 // crossOriginDenied answers a cross-origin browser write from an origin that is
@@ -179,11 +178,10 @@ func readiness(logger *slog.Logger, check func(context.Context) error, timeout t
 		defer cancel()
 		if err := check(ctx); err != nil {
 			logger.WarnContext(r.Context(), "not ready", "error", err)
-			problem.Error(w, r, http.StatusServiceUnavailable, "A required dependency is unavailable.")
+			problem.Unavailable(w, r)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"status":"ready"}`)
+		response.OK(w, r, map[string]string{"status": "ready"})
 	}
 }
 

@@ -4,12 +4,11 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/go-chi/render"
-
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 )
 
 // portraits lists the built-in pictures a person may choose (GET
@@ -31,7 +30,7 @@ func (m *Module) portraits(w http.ResponseWriter, r *http.Request) {
 	for _, p := range m.users.Portraits() {
 		body.Portraits = append(body.Portraits, portrait{ID: p.ID, URL: p.URL})
 	}
-	render.JSON(w, r, body)
+	response.OK(w, r, body)
 }
 
 // setPhoto changes the caller's picture (PUT /api/auth/me/photo, C196): one of
@@ -48,7 +47,7 @@ func (m *Module) setPhoto(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Portrait *string `json:"portrait" validate:"required,max=64"`
 	}
-	if !httpinput.Decode(w, r, &in) {
+	if !request.Decode(w, r, &in) {
 		return
 	}
 

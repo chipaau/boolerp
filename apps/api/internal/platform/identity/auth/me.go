@@ -4,11 +4,10 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/go-chi/render"
-
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 )
 
 // me answers who is calling (GET /api/auth/me): the signed-in user and the
@@ -96,5 +95,5 @@ func writeCaller(w http.ResponseWriter, r *http.Request, caller Caller) {
 	if u := caller.User; u != nil {
 		body.User = &user{ID: u.ID, Email: u.Email, Phone: u.Phone, DisplayName: u.DisplayName, AvatarURL: u.AvatarURL}
 	}
-	render.JSON(w, r, body)
+	response.OK(w, r, body)
 }
