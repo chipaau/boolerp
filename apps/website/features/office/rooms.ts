@@ -1,5 +1,12 @@
 import { BarChart3, Boxes, CalendarDays, FileCheck2, Laptop, ShoppingCart } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import type { StaticImageData } from 'next/image'
+import analytics from '@workspace/assets/logos/analytics.png'
+import asset from '@workspace/assets/logos/asset.png'
+import inventory from '@workspace/assets/logos/inventory.png'
+import notes from '@workspace/assets/logos/notes-glyph.png'
+import procurement from '@workspace/assets/logos/procurement.png'
+import task from '@workspace/assets/logos/task.png'
 
 /**
  * The workspace map (public/office.webp, 3000×2000, transparent): the workspace as a hub in the
@@ -19,6 +26,8 @@ export type Room = {
   /** Small labels on the app's row. */
   tags: string[]
   icon: LucideIcon
+  /** The app's own logo, from the workspace. */
+  logo: StaticImageData
   /** The islands this step lights (one app, or a few that work together). */
   areas: Box[]
   /** What the app does, shown on its card as the step settles. */
@@ -37,9 +46,10 @@ export const ROOMS: Room[] = [
     tags: ['Stock', 'Receiving', 'Transfers'],
     body: 'Stock, stores and suppliers, counted where they sit, received at the door and moved between sites.',
     icon: Boxes,
+    logo: inventory,
     areas: [[563, 28, 1284, 600], [2091, 159, 2841, 722], [1406, 1491, 2156, 1988]],
     features: ['Stock levels per site', 'Low-stock alerts', 'Receiving against orders', 'Transfers between stores'],
-    pin: [1290, 640],
+    pin: [1330, 760],
     routes: [[[1088, 469], [1238, 544], [1313, 600]], [[2316, 638], [2203, 694], [1988, 825]], [[1838, 1519], [1875, 1425]]],
   },
   {
@@ -48,6 +58,7 @@ export const ROOMS: Room[] = [
     tags: ['Goods', 'Services'],
     body: 'Goods and services asked for, approved and delivered in one place, with every step on record.',
     icon: FileCheck2,
+    logo: task,
     areas: [[544, 1369, 1200, 1875], [2194, 1294, 2822, 1809]],
     features: ['Goods and service requests', 'Approval chains', 'Status at every step'],
     pin: [860, 1400],
@@ -59,6 +70,7 @@ export const ROOMS: Room[] = [
     tags: ['Orders', 'Suppliers'],
     body: 'Purchase orders raised from approved requests and tracked to delivery.',
     icon: ShoppingCart,
+    logo: procurement,
     areas: [[1369, 9, 1959, 459]],
     features: ['Orders from approved requests', 'Supplier quotes', 'Delivery tracking'],
     pin: [1960, 470],
@@ -70,6 +82,7 @@ export const ROOMS: Room[] = [
     tags: ['Devices', 'Checks'],
     body: 'Every laptop, desk and chair: who has it, where it is, and when it was last checked.',
     icon: Laptop,
+    logo: asset,
     areas: [[2353, 769, 2981, 1294]],
     features: ['Assigned to people and sites', 'Verification rounds', 'Full history'],
     pin: [2560, 820],
@@ -81,6 +94,7 @@ export const ROOMS: Room[] = [
     tags: ['Rooms', 'People', 'Notes'],
     body: 'Rooms and people in one diary, and the notes that come out of the meeting.',
     icon: CalendarDays,
+    logo: notes,
     areas: [[84, 469, 759, 994], [1509, 459, 1969, 769]],
     features: ['Room booking', 'Invites and replies', 'Shared notes'],
     pin: [380, 500],
@@ -92,6 +106,7 @@ export const ROOMS: Room[] = [
     tags: ['Insight', 'Exports'],
     body: 'Low stock, pending items and spend, from every app at once.',
     icon: BarChart3,
+    logo: analytics,
     areas: [[113, 994, 806, 1509]],
     features: ['Across every app', 'Pending and overdue', 'Export to Excel'],
     pin: [420, 1030],

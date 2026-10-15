@@ -2,6 +2,7 @@ import { Button } from '@workspace/ui/components/button'
 import { SiteHeader } from '@/components/site-header'
 import { Apps } from '@/features/apps/apps'
 import { Hero } from '@/features/hero/hero'
+import { Local } from '@/features/local/local'
 import { Office } from '@/features/office/office'
 import {
   Card,
@@ -62,29 +63,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Built for the Maldives */}
-        <section className="border-t border-border/60 bg-muted/20">
-          <div className="mx-auto max-w-6xl px-6 py-20">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-semibold tracking-tight">Built for the Maldives</h2>
-            </div>
-            <div className="mx-auto mt-10 grid max-w-4xl gap-x-10 gap-y-6 text-sm sm:grid-cols-2">
-              {[
-                ['Bilingual by design', 'Every operational record carries paired Dhivehi (Thaana) and English text.'],
-                ['Local geography', 'Atoll → island → ward hierarchy, with a global fallback for foreign entities.'],
-                ['eFaas-ready', 'National identity verification via eFaas, kept separate from core identity.'],
-                ['MVR & USD', 'Multi-currency money with captured exchange rates; MVR by default.'],
-                ['Oversight built in', 'Parent tenants aggregate authorised subordinate and affiliated facilities.'],
-                ['Audit & lifecycle', 'Institutional-grade audit, per-tenant data lifecycle, prompt access revocation.'],
-              ].map(([title, desc]) => (
-                <div key={title}>
-                  <p className="font-medium">{title}</p>
-                  <p className="mt-1 text-muted-foreground">{desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <Local />
 
         {/* Contact / CTA */}
         <section id="contact" className="border-t border-border/60">

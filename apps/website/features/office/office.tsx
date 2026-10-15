@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
+import Image from 'next/image'
 import { Check } from 'lucide-react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -19,7 +20,7 @@ function zoomFor(room: Room) {
   const t = Math.min(...room.areas.map((a) => a[1]))
   const b = Math.max(...room.areas.map((a) => a[3]))
   const fill = Math.max((r - l) / OFFICE.width, (b - t) / OFFICE.height)
-  return Math.min(1.35, Math.max(0.95, 0.5 / fill))
+  return Math.min(1.6, Math.max(1.05, 0.58 / fill))
 }
 
 /**
@@ -52,12 +53,12 @@ export function Office() {
         })
         const shot = (c: { x: number; y: number }, scale: number) => ({
           scale,
-          x: () => stage.clientWidth * 0.5 - c.x * camera.offsetWidth * scale,
-          y: () => stage.clientHeight * 0.6 - c.y * camera.offsetHeight * scale, // a little low: the heading is above
+          x: () => stage.clientWidth * 0.58 - c.x * camera.offsetWidth * scale, // right of the heading
+          y: () => stage.clientHeight * 0.62 - c.y * camera.offsetHeight * scale, // a little low: the heading is above
         })
         // the whole map, as large as fits under the heading
-        const fit = () => Math.min(1, (stage.clientHeight * 0.74) / camera.offsetHeight)
-        const whole = { scale: fit, x: () => stage.clientWidth * 0.5 - 0.5 * camera.offsetWidth * fit(), y: () => stage.clientHeight * 0.58 - 0.5 * camera.offsetHeight * fit() }
+        const fit = () => Math.min(1.1, (stage.clientHeight * 0.92) / camera.offsetHeight)
+        const whole = { scale: fit, x: () => stage.clientWidth * 0.57 - 0.5 * camera.offsetWidth * fit(), y: () => stage.clientHeight * 0.6 - 0.5 * camera.offsetHeight * fit() }
         ROOMS.forEach((r) => {
           const p = parts(r.id)
           gsap.set([...p.lit, ...p.card], { autoAlpha: 0 })
@@ -75,17 +76,17 @@ export function Office() {
           const at = k + 0.15
           if (k > 0) {
             const from = parts(ROOMS[k - 1].id)
-            tl.to(from.card, { autoAlpha: 0, y: -8, duration: 0.2, ease: 'power1.in' }, at)
-              .to(from.lit, { autoAlpha: 0, duration: 0.35, ease: 'power1.inOut' }, at + 0.05)
-              .to(from.veil, { autoAlpha: 1, duration: 0.4, ease: 'power1.inOut' }, at + 0.05)
-              .to(from.item, { '--on': 0, duration: 0.35, ease: 'power1.inOut' }, at)
+            tl.to(from.card, { autoAlpha: 0, y: -8, duration: 0.12, ease: 'power1.in' }, at)
+              .to(from.lit, { autoAlpha: 0, duration: 0.2, ease: 'power1.inOut' }, at)
+              .to(from.veil, { autoAlpha: 1, duration: 0.25, ease: 'power1.inOut' }, at)
+              .to(from.item, { '--on': 0, duration: 0.2, ease: 'power1.inOut' }, at)
           }
-          tl.to(camera, { ...shot(centreOf(room), zoomFor(room) * fit()), duration: 0.7, ease: 'power3.inOut' }, at + 0.05)
-            .to(to.item, { '--on': 1, duration: 0.35, ease: 'power1.inOut' }, at + 0.3)
-            .to(to.veil, { autoAlpha: 0, duration: 0.45, ease: 'power1.inOut', stagger: 0.06 }, at + 0.4)
-            .to(to.lit, { autoAlpha: 1, duration: 0.4, ease: 'power1.inOut', stagger: 0.06 }, at + 0.45)
-            .fromTo(to.card, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.3, ease: 'power2.out' }, at + 0.6)
-            .fromTo(to.features, { autoAlpha: 0, x: -6 }, { autoAlpha: 1, x: 0, duration: 0.25, stagger: 0.05, ease: 'power2.out' }, at + 0.7)
+          tl.to(camera, { ...shot(centreOf(room), zoomFor(room) * fit()), duration: 0.4, ease: 'power2.inOut' }, at)
+            .to(to.item, { '--on': 1, duration: 0.2, ease: 'power1.inOut' }, at + 0.15)
+            .to(to.veil, { autoAlpha: 0, duration: 0.25, ease: 'power1.inOut', stagger: 0.04 }, at + 0.15)
+            .to(to.lit, { autoAlpha: 1, duration: 0.25, ease: 'power1.inOut', stagger: 0.04 }, at + 0.18)
+            .fromTo(to.card, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.18, ease: 'power2.out' }, at + 0.28)
+            .fromTo(to.features, { autoAlpha: 0, x: -6 }, { autoAlpha: 1, x: 0, duration: 0.15, stagger: 0.03, ease: 'power2.out' }, at + 0.32)
             .addLabel(room.id, at + 0.98)
         })
         // the finale: the camera pulls back and everything lights at once
@@ -99,16 +100,14 @@ export function Office() {
           .addLabel('all', end + 0.95)
           .to({}, { duration: 0.2 })
 
-        const snaps = [0, ...ROOMS.map((r) => tl.labels[r.id] / tl.duration()), tl.labels.all / tl.duration(), 1]
         trigger.current = ScrollTrigger.create({
           trigger: section.current,
           start: 'top top',
           end: () => `+=${innerHeight * (ROOMS.length + 0.6)}`,
           pin: true,
-          scrub: 1,
+          scrub: 1.2, // follows the scroll with a soft lag; no snapping
           animation: tl,
           invalidateOnRefresh: true,
-          snap: { snapTo: snaps, duration: { min: 0.35, max: 0.9 }, delay: 0.05, ease: 'power2.inOut' },
         })
         return () => {
           section.current?.removeAttribute('data-live')
@@ -160,20 +159,24 @@ export function Office() {
             }),
           )}
           {ROOMS.map((r) => {
-            const Icon = r.icon
             return (
               <div key={r.id} data-office-card={r.id} className="invisible absolute" style={pct(r.pin)}>
-                <div data-office-face="" className="office-card absolute bottom-2 left-0 w-max min-w-56 py-3.5 pl-3.5 pr-5">
+                <div data-office-face="" className="office-card absolute bottom-2 left-0 w-max min-w-64 p-4 pr-5">
                   <div className="flex items-center gap-3">
-                    <span className="grid size-9 place-items-center rounded-xl bg-[#fdf1e4] text-[#e0730f]">
-                      <Icon className="size-[18px]" strokeWidth={1.7} />
+                    <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#fdf3e7]">
+                      <Image src={r.logo} alt="" className="h-8 w-auto" />
                     </span>
-                    <span className="text-[15px] font-bold text-foreground">{r.title}</span>
+                    <span>
+                      <span className="block text-[16px] font-bold leading-tight text-foreground">{r.title}</span>
+                      <span className="mt-0.5 block text-[10.5px] font-bold uppercase tracking-[0.14em] text-(--brand)">{r.tags.join(' · ')}</span>
+                    </span>
                   </div>
-                  <ul className="mt-3 space-y-1.5 pl-1">
+                  <ul className="mt-3.5 space-y-2 border-t border-border/60 pt-3.5">
                     {r.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-[13px] text-body">
-                        <Check className="size-3.5 text-(--brand)" strokeWidth={2.4} />
+                      <li key={f} className="flex items-center gap-2.5 text-[13.5px] text-body">
+                        <span className="grid size-[18px] place-items-center rounded-full bg-[#fdf1e4]">
+                          <Check className="size-3 text-(--brand)" strokeWidth={3} />
+                        </span>
                         {f}
                       </li>
                     ))}
@@ -186,11 +189,15 @@ export function Office() {
       </div>
 
       {/* the heading, at the top over a soft cream fade */}
-      <div className="pointer-events-none relative px-6 pt-24 text-center lg:absolute lg:inset-x-0 lg:top-0 lg:z-20 lg:bg-[linear-gradient(var(--background)_60%,transparent)] lg:pb-20 lg:pt-24">
+      <div className="pointer-events-none relative lg:absolute lg:inset-x-0 lg:top-0 lg:z-20 lg:bg-[linear-gradient(var(--background)_45%,transparent)]">
+        <div className="mx-auto max-w-7xl px-6 pb-16 pt-24 2xl:max-w-[88rem]">
         <p className="text-overline tracking-[0.28em] text-muted-foreground">Inside your workspace</p>
-        <h2 className="mt-3 text-[clamp(2rem,3vw,3.25rem)] font-light leading-[1.05] tracking-[-0.035em] text-foreground">
-          One workspace, <span className="text-(--brand)">every app connected.</span>
+        <h2 className="mt-3 text-[clamp(2.25rem,3.4vw,3.75rem)] font-light leading-[1.05] tracking-[-0.035em] text-foreground">
+          One workspace,
+          <br />
+          <span className="text-(--brand)">every app connected.</span>
         </h2>
+        </div>
       </div>
 
       {/* where the visitor is: a dot per app, the current one amber; clicking one goes to it */}
