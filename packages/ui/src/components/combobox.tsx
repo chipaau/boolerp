@@ -165,6 +165,15 @@ function groupOptions(options: readonly ComboboxOption[]): Grouped[] | null {
   return [...groups].map(([label, items]) => ({ label, items }))
 }
 
+/**
+ * Whether a change came from Escape. Base UI clears the choice when Escape is pressed with the
+ * list closed (the ARIA combobox pattern's optional clear); here Escape only closes the list, and
+ * clearing is the clear button's or a chip's remove button's, so these fields ignore it.
+ */
+function escaped(details: { reason?: string }) {
+  return details.reason === "escape-key"
+}
+
 /** Matches the label or the keywords, ignoring case and accents. */
 function useOptionFilter() {
   const filter = ComboboxPrimitive.useFilter({ sensitivity: "base" })
@@ -245,7 +254,7 @@ function ComboboxField({
     <Combobox<ComboboxOption>
       items={grouped ?? options}
       value={selected}
-      onValueChange={(o) => onValueChange(o?.value ?? null)}
+      onValueChange={(o, details) => !escaped(details) && onValueChange(o?.value ?? null)}
       isItemEqualToValue={(a, b) => a.value === b.value}
       itemToStringLabel={(o) => o.label}
       itemToStringValue={(o) => o.value}
@@ -285,7 +294,7 @@ function ComboboxMultiField({
       multiple
       items={grouped ?? options}
       value={selected}
-      onValueChange={(os) => onValueChange(os.map((o) => o.value))}
+      onValueChange={(os, details) => !escaped(details) && onValueChange(os.map((o) => o.value))}
       isItemEqualToValue={(a, b) => a.value === b.value}
       itemToStringLabel={(o) => o.label}
       itemToStringValue={(o) => o.value}

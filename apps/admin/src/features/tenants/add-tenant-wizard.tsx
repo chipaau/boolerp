@@ -64,6 +64,8 @@ const slugify = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^\w\s
 const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 const today = () => fmt(new Date())
 const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
+/** A value the form sets itself: the field is neither touched nor validated (which would touch it). */
+const quietly = { dontUpdateMeta: true, dontValidate: true } as const
 
 /** What each step 1 field is called when a toast says what is still missing. */
 const STEP1_LABELS: Record<string, string> = {
@@ -268,7 +270,7 @@ export function AddTenantWizard({
               <FormErrorBanner errors={create.formErrors} className="sm:col-span-2" />
               <form.Field
                 name="name"
-                listeners={{ onChange: ({ value }) => !slugTouched && form.setFieldValue('slug', slugify(value)) }}
+                listeners={{ onChange: ({ value }) => !slugTouched && form.setFieldValue('slug', slugify(value), quietly) }}
               >
                 {(field) => (
                   <TextField field={field} label="Name" required autoFocus className="sm:col-span-2" placeholder="e.g. National Centre for Information Technology" />
@@ -300,10 +302,11 @@ export function AddTenantWizard({
                   name="country"
                   listeners={{
                     // Another country's legal forms are not this one's: the form and its number go.
+                    // Quietly: they are not marked touched, so no error shows until someone edits them.
                     onChange: () => {
-                      form.setFieldValue('legalFormId', '')
-                      form.setFieldValue('identityDocument', null)
-                      form.setFieldValue('identityNumber', '')
+                      form.setFieldValue('legalFormId', '', quietly)
+                      form.setFieldValue('identityDocument', null, quietly)
+                      form.setFieldValue('identityNumber', '', quietly)
                     },
                   }}
                 >
@@ -337,8 +340,8 @@ export function AddTenantWizard({
                           value={c.value || null}
                           onValueChange={(legalFormId, legalForm) => {
                             c.onChange(legalFormId ?? '')
-                            form.setFieldValue('identityDocument', legalForm?.identityDocument ?? null)
-                            if (!legalForm?.identityDocument) form.setFieldValue('identityNumber', '')
+                            form.setFieldValue('identityDocument', legalForm?.identityDocument ?? null, quietly)
+                            if (!legalForm?.identityDocument) form.setFieldValue('identityNumber', '', quietly)
                           }}
                         />
                       )}

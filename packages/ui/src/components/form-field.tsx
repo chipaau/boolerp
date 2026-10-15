@@ -79,6 +79,9 @@ function FormField<T>({
     id,
     value: field.state.value,
     onChange: (value) => {
+      // A control that reports the value it already has (a picker as its list loads) has not
+      // been edited: the field stays untouched and keeps its errors to itself.
+      if (Object.is(value, field.state.value)) return
       if (field.state.meta.errorMap?.onServer !== undefined) {
         field.setMeta((meta: { errorMap: Record<string, unknown> }) => ({ ...meta, errorMap: { ...meta.errorMap, onServer: undefined } }))
       }

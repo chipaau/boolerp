@@ -56,6 +56,20 @@ describe("TextField", () => {
   })
 })
 
+describe("FormField", () => {
+  it("ignores a change to the value it already has", async () => {
+    const { FormField } = await import("@workspace/ui/components/form-field")
+    const f = field({}, "same")
+    render(
+      <FormField field={f} label="Legal form">
+        {(c) => <button type="button" onClick={() => c.onChange("same")}>report</button>}
+      </FormField>
+    )
+    await userEvent.setup().click(screen.getByRole("button", { name: "report" }))
+    expect(f.handleChange).not.toHaveBeenCalled()
+  })
+})
+
 describe("FormErrorBanner", () => {
   it("shows what no field can, with the request's reference", () => {
     render(<FormErrorBanner errors={{ messages: ["parentId: is not a parent"], reference: "req-1" }} />)
