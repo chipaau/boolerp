@@ -14,6 +14,10 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
 - A capability grows into one shape: a root package with `New`, `Routes`, and
   `Migrations`, plus `domain/`, `application/`, `adapters/`, `migrations/`, and `seeds/`
   as needed; sub-capabilities are subpackages (`identity/auth`).
+- Inside a module (C200, [backend](../../docs/architecture/backend.md#modules-and-routes-c92-c93-c95)):
+  `routes.go` lists the routes only; handlers are one file per resource with that
+  resource's request and response types; endpoint tests split the same way. Small
+  platform modules stay flat; business modules put routes and handlers in `adapters/http/`.
 - A module owns its persistence writes. Do not reach into another module's SQL package.
 - Design every module so it can become a separate service later, all services sharing
   one PostgreSQL database (C134). Foreign keys across modules are allowed, always
