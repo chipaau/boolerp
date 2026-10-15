@@ -1,88 +1,99 @@
 import * as React from "react"
+import { Toast } from "@base-ui/react/toast"
 import { XIcon } from "lucide-react"
 
 import { cn } from "@workspace/ui/lib/utils"
 
 /**
- * The design's toast: one cream pill at the bottom centre with a hex dot (sage when the thing
- * worked, terracotta when it did not), a line of text, an optional second line (`detail`, such as
- * the request's reference), and an optional Undo. An error stays longer and can be dismissed.
- * One toast at a time; a new one replaces the last. `useToast()` returns the `toast(text, { ok, detail, undo })` function.
+ * The design's toast on Base UI's Toast (C214), which times, stacks, pauses on hover, swipes
+ * away, and announces them: one cream pill at the bottom centre with a hex dot (sage when the
+ * thing worked, terracotta when it did not), a line of text, an optional second line (`detail`,
+ * such as the request's reference), and an optional Undo. An error stays longer, is announced
+ * urgently, and can be dismissed. `useToast()` returns the `toast(text, { ok, detail, undo })`
+ * function.
  */
 type ToastOptions = { ok?: boolean; detail?: string; undo?: () => void; undoLabel?: string }
-type ToastState = { text: string; ok: boolean; detail?: string; undo?: () => void; undoLabel: string } | null
 type ToastFn = (text: string, opts?: ToastOptions) => void
 
 const ToastContext = React.createContext<ToastFn | null>(null)
 
+/** One manager for the app, so a toast can be raised from anywhere under the provider. */
+const manager = Toast.createToastManager()
+
+const show: ToastFn = (text, opts) => {
+  const ok = opts?.ok !== false
+  const undo = opts?.undo
+  const id: string = manager.add({
+    title: text,
+    description: opts?.detail,
+    type: ok ? "ok" : "error",
+    priority: ok ? "low" : "high",
+    timeout: undo || !ok ? 6500 : 2600,
+    actionProps: undo
+      ? {
+          children: opts?.undoLabel ?? "Undo",
+          onClick: () => {
+            manager.close(id)
+            undo()
+          },
+        }
+      : undefined,
+  })
+}
+
+function ToastList() {
+  const { toasts } = Toast.useToastManager()
+  return toasts.map((toast) => {
+    const ok = toast.type !== "error"
+    return (
+      <Toast.Root
+        key={toast.id}
+        toast={toast}
+        data-slot="toast"
+        data-ok={ok}
+        className={cn(
+          "flex w-max max-w-full animate-rise items-center gap-[11px] bg-popover px-[18px] py-3 shadow-floating transition-opacity duration-200 data-[ending-style]:opacity-0 data-[limited]:hidden",
+          toast.description ? "rounded-[18px]" : "rounded-full",
+          !ok && "pe-2.5"
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className={cn(
+            "block h-[9px] w-2 shrink-0 [clip-path:polygon(50%_0%,100%_25%,100%_75%,50%_100%,0%_75%,0%_25%)]",
+            ok ? "bg-tone-success" : "bg-tone-risk"
+          )}
+        />
+        <Toast.Content className="min-w-0 flex-1">
+          <Toast.Title className="block text-ui-sm font-bold text-foreground" />
+          <Toast.Description className="mt-0.5 block text-caption break-all text-muted-foreground" />
+        </Toast.Content>
+        {toast.actionProps && <Toast.Action className="ms-1 text-compact font-bold text-link hover:underline" />}
+        {!ok && (
+          <Toast.Close
+            aria-label="Dismiss"
+            className="-my-0.5 shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <XIcon className="size-4" />
+          </Toast.Close>
+        )}
+      </Toast.Root>
+    )
+  })
+}
+
 function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toast, setToast] = React.useState<ToastState>(null)
-  const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const show = React.useCallback<ToastFn>((text, opts) => {
-    if (timer.current) clearTimeout(timer.current)
-    const ok = opts?.ok !== false
-    setToast({ text, ok, detail: opts?.detail, undo: opts?.undo, undoLabel: opts?.undoLabel ?? "Undo" })
-    timer.current = setTimeout(() => setToast(null), opts?.undo || !ok ? 6500 : 2600)
-  }, [])
-
-  const dismiss = React.useCallback(() => {
-    if (timer.current) clearTimeout(timer.current)
-    setToast(null)
-  }, [])
-
-  React.useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
-
   return (
     <ToastContext.Provider value={show}>
-      {children}
-      {toast && (
-        <div
-          role={toast.ok ? "status" : "alert"}
-          data-slot="toast"
-          data-ok={toast.ok}
-          className={cn(
-            "fixed bottom-7 left-1/2 z-70 flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 animate-rise items-center gap-[11px] bg-popover px-[18px] py-3 shadow-floating",
-            toast.detail ? "rounded-[18px]" : "rounded-full",
-            !toast.ok && "pe-2.5"
-          )}
-        >
-          <span
-            aria-hidden="true"
-            className={cn(
-              "block h-[9px] w-2 shrink-0 [clip-path:polygon(50%_0%,100%_25%,100%_75%,50%_100%,0%_75%,0%_25%)]",
-              toast.ok ? "bg-tone-success" : "bg-tone-risk"
-            )}
-          />
-          <span className="min-w-0 flex-1">
-            <span className="block text-ui-sm font-bold text-foreground">{toast.text}</span>
-            {toast.detail && <span className="mt-0.5 block text-caption break-all text-muted-foreground">{toast.detail}</span>}
-          </span>
-          {toast.undo && (
-            <button
-              type="button"
-              className="ms-1 text-compact font-bold text-link hover:underline"
-              onClick={() => {
-                const u = toast.undo
-                setToast(null)
-                u?.()
-              }}
-            >
-              {toast.undoLabel}
-            </button>
-          )}
-          {!toast.ok && (
-            <button
-              type="button"
-              aria-label="Dismiss"
-              className="-my-0.5 shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              onClick={dismiss}
-            >
-              <XIcon className="size-4" />
-            </button>
-          )}
-        </div>
-      )}
+      <Toast.Provider toastManager={manager} limit={3}>
+        {children}
+        <Toast.Portal>
+          {/* The newest toast sits lowest; the others stack above it. */}
+          <Toast.Viewport className="fixed bottom-7 left-1/2 z-70 flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col-reverse items-center gap-2 outline-none">
+            <ToastList />
+          </Toast.Viewport>
+        </Toast.Portal>
+      </Toast.Provider>
     </ToastContext.Provider>
   )
 }

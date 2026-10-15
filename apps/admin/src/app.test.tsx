@@ -32,12 +32,15 @@ describe('the console', () => {
       mutationFn: () => Promise.reject(new ApiError({ kind: 'http', status: 503, title: 'Service Unavailable', requestId: 'req-503' })),
     })
     await failing.mutate().catch(() => {})
-    // An error toast: an alert with the reference on its own line, dismissed by hand.
-    const toast = await screen.findByRole('alert')
-    expect(toast).toHaveTextContent('The service is unavailable right now. Try again shortly.')
+    // An error toast (Base UI's Toast, C214): the reference on its own line, dismissed by hand.
+    // The toast's text, not the copy Base UI keeps for screen readers.
+    const message = await screen.findByText('The service is unavailable right now. Try again shortly.', { selector: '[data-slot="toast"] *' })
+    const toast = message.closest('[data-slot="toast"]') as HTMLElement
     expect(within(toast).getByText('Reference req-503')).toBeInTheDocument()
-    await userEvent.click(within(toast).getByRole('button', { name: 'Dismiss' }))
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    // Base UI hides the toast's buttons from screen readers until its area has focus (F6); they
+    // hear the live region. A pointer reaches them as usual.
+    await userEvent.click(within(toast).getByLabelText('Dismiss'))
+    await waitFor(() => expect(screen.queryByText('Reference req-503', { selector: '[data-slot="toast"] *' })).not.toBeInTheDocument())
   })
 
   it('passes its QueryClient to every route through the router context', () => {

@@ -157,9 +157,14 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   `detail` as the message; errors matching no field show in a banner above the form with the
   request reference; and a toast says "Check the highlighted fields and try again." (`INVALID_FORM_MESSAGE`,
   C185). Invalid values the form itself catches show on every field with the same toast, and
-  are never sent. Toasts are a bottom-centre pill; an error's carries the reference on a second
-  line, stays 6.5 seconds, and can be dismissed. Editing a field clears its server error; submit is disabled only while
+  are never sent. Editing a field clears its server error; submit is disabled only while
   sending.
+- Toasts (C214): `useToast()` from `@workspace/ui/components/toast`, built on Base UI's Toast
+  (the library the shadcn components use), which times them, pauses them on hover, stacks up to
+  three, lets them be swiped away, and announces them in a live region (errors urgently). The
+  design is a bottom-centre pill; an error's carries the request reference on a second line,
+  stays 6.5 seconds, and can be dismissed. Tests find a toast's text with the selector
+  `[data-slot="toast"] *`, since the live region holds a copy.
 - Built (F3): `useApiMutation({ ...mutation, form })` in `@workspace/api` saves a form: on a 422
   it puts each `ApiError.fieldErrors` path on its field (`applyServerErrors`; `a.1.b` is the field
   `a[1].b`, falling back to the nearest field that exists) and returns `formErrors` for the
