@@ -77,6 +77,21 @@ describe("ComboboxField", () => {
   })
 })
 
+describe("Escape", () => {
+  it("closes the list but never clears the choice", async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<Multi onChange={onChange} />)
+    const input = screen.getByRole("combobox", { name: "Types" })
+    await user.type(input, "hosp")
+    await user.click(await screen.findByRole("option", { name: "Hospital" }))
+    await user.keyboard("{Escape}")
+    await user.keyboard("{Escape}")
+    expect(onChange).toHaveBeenLastCalledWith(["hospital"])
+    expect(screen.getByText("Hospital")).toBeInTheDocument()
+  })
+})
+
 describe("ComboboxMultiField", () => {
   it("adds each choice as a chip and removes it again", async () => {
     const user = userEvent.setup()

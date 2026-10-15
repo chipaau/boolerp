@@ -163,22 +163,30 @@ describe('the tenants list', () => {
     await waitFor(() => expect(calls).toBeGreaterThan(before))
   })
 
-  it('opens the create form as a preview that sends nothing to the API', async () => {
-    listApi([tenant(1)])
+  it('creates a tenant through the API from step 1 of the form', async () => {
+    const seen = listApi([tenant(1)])
     referenceApi()
-    const writes: string[] = []
-    server.events.on('request:start', ({ request }) => {
-      if (request.method !== 'GET') writes.push(`${request.method} ${new URL(request.url).pathname}`)
-    })
+    let body: unknown
+    server.use(
+      http.post('/api/v1/tenants', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json(tenant(2, { name: 'Test Clinic', slug: 'test-clinic', code: 'TCLN', status: 'provisioning', workspaceHost: null }), {
+          status: 201,
+          headers: { Location: '/api/v1/tenants/0192f6a0-0000-7000-8000-000000000002' },
+        })
+      })
+    )
     renderRoute('/tenants')
     await screen.findByText('T1 · tenant-1')
 
     await userEvent.click(screen.getByRole('button', { name: 'New tenant' }))
     const form = await screen.findByRole('dialog')
     expect(within(form).getByText('Who they are')).toBeInTheDocument()
-    await userEvent.type(within(form).getByLabelText('Name'), 'Test Ministry')
-    await userEvent.type(within(form).getByLabelText('Code'), 'TMIN')
+    await userEvent.type(within(form).getByLabelText('Name'), 'Test Clinic')
+    expect(within(form).getByLabelText('Slug')).toHaveValue('test-clinic')
+    await userEvent.type(within(form).getByLabelText('Code'), 'TCLN')
     expect(within(form).queryByRole('button', { name: 'Create tenant' })).not.toBeInTheDocument()
+    expect(within(form).queryByRole('button', { name: 'Save as draft' })).not.toBeInTheDocument()
     // Required fields are marked (*), optional ones are not (C202).
     for (const label of ['Name', 'Slug', 'Code', 'Country', 'Legal form', 'Time zone', 'Institution types'])
       expect(within(form).getByText(label, { selector: 'label' })).toHaveAttribute('data-required', 'true')
@@ -196,13 +204,110 @@ describe('the tenants list', () => {
     await userEvent.click(within(form).getByRole('radio', { name: /Child of another tenant/ }))
     await pick(form, 'Parent tenant', 't1', /Tenant 1/)
     expect(within(form).getByLabelText('Parent tenant')).toHaveValue('Tenant 1')
-    expect(within(form).queryByLabelText('Owner name')).not.toBeInTheDocument()
+    await userEvent.type(within(form).getByLabelText('Phone'), '+960 332 4568')
+
+    const lists = seen.length
+    await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(body).toEqual({
+      name: 'Test Clinic', slug: 'test-clinic', code: 'TCLN', country: 'MV',
+      legalFormId: '0192f6a0-0000-7000-8000-0000000000f2', timezone: 'Indian/Maldives',
+      institutionTypes: [{ code: 'hospital', primary: true }], parentId: tenant(1).id,
+      identityNumber: 'C-0001/2026', phone: '+9603324568',
+    })
+    expect(await screen.findByText('Test Clinic created')).toBeInTheDocument()
+    await waitFor(() => expect(seen.length).toBeGreaterThan(lists), { timeout: 3000 })
+  })
+
+  it('shows the API’s refusal on its fields with a toast, and what no field can show in a banner', async () => {
+    listApi([tenant(1)])
+    referenceApi()
+    server.use(
+      http.post('/api/v1/tenants', () =>
+        HttpResponse.json(
+          {
+            type: 'https://bool.mv/problems/validation-error', title: 'Unprocessable Content', status: 422,
+            detail: 'The request has 2 invalid fields.',
+            instance: 'urn:uuid:0192f6a0-0000-7000-8000-0000000000aa',
+            errors: [
+              { pointer: '#/slug', code: 'unique', detail: 'is already used by Tenant 1' },
+              { pointer: '#/registrationAuthority', code: 'unknown', detail: 'is not taken here' },
+            ],
+          },
+          { status: 422, headers: { 'Content-Type': 'application/problem+json' } }
+        )
+      )
+    )
+    renderRoute('/tenants')
+    await screen.findByText('T1 · tenant-1')
+    await userEvent.click(screen.getByRole('button', { name: 'New tenant' }))
+    const form = await screen.findByRole('dialog')
+    await userEvent.type(within(form).getByLabelText('Name'), 'Tenant One')
+    await userEvent.type(within(form).getByLabelText('Code'), 'TONE')
+    await pick(form, 'Country', 'mdv', /Maldives/)
+    await pick(form, 'Legal form', 'ministry', /Government ministry/)
+    await pick(form, 'Time zone', 'maldives', /Indian \/ Maldives/)
+    await pick(form, 'Institution types', 'minis', 'Ministry')
 
     await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))
-    expect(await screen.findByText(/Preview only: nothing was saved/)).toBeInTheDocument()
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(writes).toEqual([])
-    server.events.removeAllListeners()
+    expect(await within(form).findByText('is already used by Tenant 1')).toBeInTheDocument()
+    expect(within(form).getByLabelText('Slug')).toHaveAttribute('aria-invalid', 'true')
+    const banner = within(form).getByText('It could not be saved').closest('[role="alert"]') as HTMLElement
+    expect(banner).toHaveTextContent('registrationAuthority: is not taken here')
+    expect(banner).toHaveTextContent('Reference 0192f6a0-0000-7000-8000-0000000000aa')
+    expect(await screen.findByText(/^The request has 2 invalid fields./)).toBeInTheDocument() // the toast (C185)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    // Editing the field clears the API's error on it (C176).
+    await userEvent.type(within(form).getByLabelText('Slug'), '-2')
+    expect(within(form).queryByText('is already used by Tenant 1')).not.toBeInTheDocument()
+  })
+
+  it('shows invalid values on their fields with a toast, and sends nothing', async () => {
+    listApi([tenant(1)])
+    referenceApi()
+    let sent = false
+    server.use(http.post('/api/v1/tenants', () => ((sent = true), HttpResponse.json({}, { status: 500 }))))
+    renderRoute('/tenants')
+    await screen.findByText('T1 · tenant-1')
+    await userEvent.click(screen.getByRole('button', { name: 'New tenant' }))
+    const form = await screen.findByRole('dialog')
+    await userEvent.type(within(form).getByLabelText('Name'), 'Tenant One')
+    await userEvent.type(within(form).getByLabelText('Phone'), '12ab')
+
+    await userEvent.click(within(form).getByRole('button', { name: 'Continue' }))
+    expect(await screen.findByText(/^Tenant details still needs a valid code, the country/)).toBeInTheDocument()
+    // Every field the toast names shows its error, touched or not.
+    for (const label of ['Code', 'Country', 'Legal form', 'Time zone', 'Institution types', 'Phone'])
+      await waitFor(() => expect(within(form).getByLabelText(label)).toHaveAttribute('aria-invalid', 'true'))
+    expect(within(form).getAllByText('is required')).toHaveLength(3)
+    expect(within(form).getByLabelText('Name')).not.toHaveAttribute('aria-invalid')
+    expect(sent).toBe(false)
+  })
+
+  it('says so when the caller may not create tenants', async () => {
+    listApi([tenant(1)])
+    referenceApi()
+    server.use(
+      http.post('/api/v1/tenants', () =>
+        HttpResponse.json({ type: 'about:blank', title: 'Forbidden', status: 403, detail: 'You are not allowed to do this.' }, {
+          status: 403, headers: { 'Content-Type': 'application/problem+json' },
+        })
+      )
+    )
+    renderRoute('/tenants')
+    await screen.findByText('T1 · tenant-1')
+    await userEvent.click(screen.getByRole('button', { name: 'New tenant' }))
+    const form = await screen.findByRole('dialog')
+    await userEvent.type(within(form).getByLabelText('Name'), 'Tenant One')
+    await userEvent.type(within(form).getByLabelText('Code'), 'TONE')
+    await pick(form, 'Country', 'mdv', /Maldives/)
+    await pick(form, 'Legal form', 'ministry', /Government ministry/)
+    await pick(form, 'Time zone', 'maldives', /Indian \/ Maldives/)
+    await pick(form, 'Institution types', 'minis', 'Ministry')
+    await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))
+    expect(await screen.findByText(/You don’t have permission to do this|You don't have permission to do this/)).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('keeps the design prototype at /tenants-prototype until this list is accepted', async () => {

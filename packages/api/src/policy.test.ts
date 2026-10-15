@@ -46,7 +46,7 @@ describe('the error policy (C185)', () => {
         refetch: true,
       })
     })
-    it('422 without a form: a toast with the detail', () => {
+    it('422: a toast with the detail (a form also shows it on its fields)', () => {
       expect(decide(http(422, 'The request has 1 invalid field.'), { operation: 'mutation' })).toEqual({
         message: 'The request has 1 invalid field.',
         reference: 'req-1',

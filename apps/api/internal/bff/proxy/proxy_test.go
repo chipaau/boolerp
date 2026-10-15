@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/bff/session"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/requestid"
 )
 
 var errRefused = errors.New("refused")
@@ -46,6 +47,7 @@ func newFixture(t *testing.T) *fixture {
 	f := &fixture{t: t, now: time.Now()}
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Set-Cookie", "api=1")
+		w.Header().Set(requestid.Header, "api-request")
 		_ = json.NewEncoder(w).Encode(seen{
 			Path: r.URL.Path, Host: r.Host, Authorization: r.Header.Get("Authorization"),
 			Cookie: r.Header.Get("Cookie"), ForwardedFor: r.Header.Get("X-Forwarded-For"), Origin: r.Header.Get("Origin"),
@@ -69,6 +71,7 @@ func newFixture(t *testing.T) *fixture {
 	p.now = func() time.Time { return f.now }
 
 	r := chi.NewRouter()
+	r.Use(requestid.Middleware) // the BFF's own request IDs, as bootstrap adds them
 	r.Use(middleware.ClientIPFromXFFTrustedProxies(1))
 	r.Use(sessions.LoadAndSave)
 	r.Get("/signin", func(_ http.ResponseWriter, r *http.Request) {
@@ -143,7 +146,17 @@ func TestForwardsWithTheSessionToken(t *testing.T) {
 	for _, c := range rec.Header().Values("Set-Cookie") {
 		assert.False(t, strings.HasPrefix(c, "api="), "the API's cookies are dropped")
 	}
+	assert.Equal(t, []string{"api-request"}, rec.Header().Values(requestid.Header), "the API's request ID alone")
 	assert.Zero(t, f.refreshN.Load())
+}
+
+func TestTheBFFsOwnAnswersCarryItsRequestID(t *testing.T) {
+	f := newFixture(t)
+	rec := f.do(http.MethodGet, "/api/auth/me", nil) // not signed in: the BFF answers
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	ids := rec.Header().Values(requestid.Header)
+	require.Len(t, ids, 1)
+	assert.Contains(t, rec.Body.String(), "urn:uuid:"+ids[0])
 }
 
 func TestNotSignedInIs401WithoutCallingTheAPI(t *testing.T) {
@@ -246,7 +259,10 @@ func TestAnUnavailableAPIIs502(t *testing.T) {
 	// The forwarding itself, pointed at a closed port.
 	reverse := New(target, http.DefaultTransport, nil, nil, errRefused, slog.New(slog.DiscardHandler)).reverse
 	rec := httptest.NewRecorder()
-	reverse.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/x", nil))
+	requestid.Middleware(reverse).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/x", nil))
 	assert.Equal(t, http.StatusBadGateway, rec.Code)
+	ids := rec.Header().Values(requestid.Header)
+	require.Len(t, ids, 1, "this BFF's own request ID")
+	assert.Contains(t, rec.Body.String(), "urn:uuid:"+ids[0])
 	assert.NotContains(t, rec.Body.String(), "127.0.0.1", "no internal address in the answer")
 }

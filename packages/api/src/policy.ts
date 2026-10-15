@@ -40,8 +40,8 @@ const MESSAGES = {
  *
  * - Queries: nothing while there is nothing on screen (the screen shows its own state: forbidden,
  *   not found, error with retry); a toast when a refresh fails over data already shown.
- * - Mutations: a toast; 404 and 409 also refetch the mutation's declared keys; 422 stays with the
- *   form when the mutation handles it (`meta.handles`), otherwise a toast.
+ * - Mutations: a toast; 404 and 409 also refetch the mutation's declared keys; a 422 toasts its
+ *   detail too, while a form's mutation also puts its errors on the fields (useApiMutation).
  * - Aborted calls are ignored; a status the caller handles itself is left to it.
  */
 export function decide(error: unknown, ctx: ErrorContext): ErrorAction {

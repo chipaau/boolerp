@@ -105,14 +105,13 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
 - General errors are handled in one place (C185): `createQueryClient({ notify })` applies one
   policy to every query and mutation. 401 sends the browser to sign-in and back; 403 and 404
   are the screen's state for a query, a toast for a mutation; 409 toasts and refetches; 422
-  stays with the form; 429, 5xx, network, and timeout are the screen's error state on a first
+  toasts its detail and, from a form, also shows on the fields; 429, 5xx, network, and timeout are the screen's error state on a first
   load and a toast otherwise (with the request reference). A query or mutation opts out of a
   status with `meta: { handles: [...] }`. Queries retry network and 5xx errors twice, never a
   4xx; mutations never retry.
 - Resources: `createKeys(name)` and per-feature `queryOptions` builders. A mutation lists the
   keys it changes in `meta.invalidates`: the query client refetches them on success, and on a
-  404 or 409 (C185). A form's mutation declares `meta.handles: [422]` and puts the field errors
-  on the form (C176).
+  404 or 409 (C185). A form's mutation also puts a 422's field errors on the form (C176).
 - The admin console: `src/lib/query-client.ts` creates its QueryClient with `createQueryClient`
   and connects the policy to the app's toast (`ToastBridge`, rendered in the root route); the
   client reaches every route's loader through the router context (`RouterContext`).
@@ -155,8 +154,18 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   no mark; a group that is wholly optional may say so in its heading.
 - A 422's field errors appear on their fields (the `onServer` error), with the server's
   `detail` as the message; errors matching no field show in a banner above the form with the
-  request reference. Editing a field clears its server error; submit is disabled only while
+  request reference; and a toast says the save failed (the problem's `detail`, such as "The
+  request has 2 invalid fields.", C185). Invalid values the form itself catches show on their
+  fields with a toast naming what is missing, and are never sent. Editing a field clears its server error; submit is disabled only while
   sending.
+- Built (F3): `useApiMutation({ ...mutation, form })` in `@workspace/api` saves a form: on a 422
+  it puts each `ApiError.fieldErrors` path on its field (`applyServerErrors`; `a.1.b` is the field
+  `a[1].b`, falling back to the nearest field that exists) and returns `formErrors` for the
+  rest. `@workspace/ui/components/form-field` has `FormField` (any control, given `id`, `value`,
+  `onChange`, `onBlur`, `invalid`), `TextField`, and `FormErrorBanner`, bound to the `field`
+  that `form.Field` gives (typed structurally, so `ui` needs no form dependency); a field shows
+  its errors once touched, and its `onChange` clears the server's error. The first form is the
+  admin console's create-tenant step 1 (`newTenantFormSchema` → `toCreateTenantInput`).
 
 ### The first list: tenants (C187)
 
