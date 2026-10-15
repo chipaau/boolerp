@@ -12,7 +12,7 @@ let toast: Toast | null = null
 /** Creates the console's QueryClient (one per app; tests make their own). */
 export function createAppQueryClient() {
   return createQueryClient({
-    notify: (message, { reference }) => toast?.(reference ? `${message} Reference: ${reference}` : message, { ok: false }),
+    notify: (message, { reference }) => toast?.(message, { ok: false, detail: reference ? `Reference ${reference}` : undefined }),
   })
 }
 

@@ -19,7 +19,16 @@ export type ErrorContext = {
   hasData?: boolean
   /** HTTP statuses the query or mutation handles itself (`meta.handles`). */
   handles?: readonly number[]
+  /** For a mutation: it saves a form, which shows a 422's errors on its fields (`meta.form`). */
+  form?: boolean
 }
+
+/**
+ * The one message for invalid values in a form, whether the form or the API found them (C185):
+ * short, since each field says what is wrong with it.
+ */
+export const INVALID_FORM_MESSAGE = 'Check the highlighted fields and try again.'
+
 
 const MESSAGES = {
   forbidden: "You don't have permission to do this.",
@@ -40,8 +49,9 @@ const MESSAGES = {
  *
  * - Queries: nothing while there is nothing on screen (the screen shows its own state: forbidden,
  *   not found, error with retry); a toast when a refresh fails over data already shown.
- * - Mutations: a toast; 404 and 409 also refetch the mutation's declared keys; a 422 toasts its
- *   detail too, while a form's mutation also puts its errors on the fields (useApiMutation).
+ * - Mutations: a toast; 404 and 409 also refetch the mutation's declared keys; a 422 from a form
+ *   toasts INVALID_FORM_MESSAGE (useApiMutation puts its errors on the fields), and without a
+ *   form the problem's detail.
  * - Aborted calls are ignored; a status the caller handles itself is left to it.
  */
 export function decide(error: unknown, ctx: ErrorContext): ErrorAction {
@@ -66,7 +76,7 @@ export function decide(error: unknown, ctx: ErrorContext): ErrorAction {
       case 409:
         return { message: MESSAGES.conflict, refetch: true }
       case 422:
-        return { message: error.detail ?? MESSAGES.invalid, reference }
+        return { message: ctx.form ? INVALID_FORM_MESSAGE : (error.detail ?? MESSAGES.invalid), reference }
     }
   }
   return { message: messageFor(error), reference, log: error.kind === 'contract' }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from './error'
-import { decide } from './policy'
+import { decide, INVALID_FORM_MESSAGE } from './policy'
 
 const http = (status: number, detail?: string) => new ApiError({ kind: 'http', status, title: `HTTP ${status}`, detail, requestId: 'req-1' })
 const other = (kind: 'network' | 'timeout' | 'contract' | 'aborted') => new ApiError({ kind, title: kind, requestId: 'req-1' })
@@ -46,7 +46,13 @@ describe('the error policy (C185)', () => {
         refetch: true,
       })
     })
-    it('422: a toast with the detail (a form also shows it on its fields)', () => {
+    it('422 from a form: the one form message, whatever the detail (its fields say the rest)', () => {
+      expect(decide(http(422, 'The request has 1 invalid field.'), { operation: 'mutation', form: true })).toEqual({
+        message: INVALID_FORM_MESSAGE,
+        reference: 'req-1',
+      })
+    })
+    it('422 without a form: a toast with the detail', () => {
       expect(decide(http(422, 'The request has 1 invalid field.'), { operation: 'mutation' })).toEqual({
         message: 'The request has 1 invalid field.',
         reference: 'req-1',

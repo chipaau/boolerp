@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
+import { INVALID_FORM_MESSAGE } from '@workspace/api'
 import { server } from '@/test/server'
 import { renderRoute } from '@/test/render'
 
@@ -255,7 +256,7 @@ describe('the tenants list', () => {
     const banner = within(form).getByText('It could not be saved').closest('[role="alert"]') as HTMLElement
     expect(banner).toHaveTextContent('registrationAuthority: is not taken here')
     expect(banner).toHaveTextContent('Reference 0192f6a0-0000-7000-8000-0000000000aa')
-    expect(await screen.findByText(/^The request has 2 invalid fields./)).toBeInTheDocument() // the toast (C185)
+    expect(await screen.findByText(INVALID_FORM_MESSAGE)).toBeInTheDocument() // the toast: the form's one message (C185)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 
     // Editing the field clears the API's error on it (C176).
@@ -276,7 +277,7 @@ describe('the tenants list', () => {
     await userEvent.type(within(form).getByLabelText('Phone'), '12ab')
 
     await userEvent.click(within(form).getByRole('button', { name: 'Continue' }))
-    expect(await screen.findByText(/^Tenant details still needs a valid code, the country/)).toBeInTheDocument()
+    expect(await screen.findByText(INVALID_FORM_MESSAGE)).toBeInTheDocument() // the same toast as the API's 422
     // Every field the toast names shows its error, touched or not.
     for (const label of ['Code', 'Country', 'Legal form', 'Time zone', 'Institution types', 'Phone'])
       await waitFor(() => expect(within(form).getByLabelText(label)).toHaveAttribute('aria-invalid', 'true'))
