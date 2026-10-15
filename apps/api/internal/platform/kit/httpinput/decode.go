@@ -136,7 +136,7 @@ func writeDecodeError(w http.ResponseWriter, r *http.Request, err error) {
 		problem.Error(w, r, http.StatusBadRequest, "The request body is not valid JSON.")
 	case errors.As(err, &typeErr) && typeErr.Field != "":
 		problem.WriteValidation(w, r, []problem.FieldError{{
-			Pointer: pointer(strings.Split(typeErr.Field, ".")),
+			Pointer: problem.Pointer(strings.Split(typeErr.Field, ".")...),
 			Code:    "type",
 			Detail:  "must be " + jsonType(typeErr.Type),
 		}})
@@ -168,21 +168,12 @@ func fieldErrors(invalid validator.ValidationErrors) []problem.FieldError {
 		_, path, _ := strings.Cut(fe.Namespace(), ".") // drop the struct's own name
 		path = strings.NewReplacer("[", ".", "]", "").Replace(path)
 		out = append(out, problem.FieldError{
-			Pointer: pointer(strings.Split(path, ".")),
+			Pointer: problem.Pointer(strings.Split(path, ".")...),
 			Code:    fe.Tag(),
 			Detail:  message(fe),
 		})
 	}
 	return out
-}
-
-// pointer builds a JSON Pointer fragment (RFC 6901) from path segments.
-func pointer(segments []string) string {
-	escaper := strings.NewReplacer("~", "~0", "/", "~1")
-	for i, s := range segments {
-		segments[i] = escaper.Replace(s)
-	}
-	return "#/" + strings.Join(segments, "/")
 }
 
 // message describes a failed rule without the submitted value.

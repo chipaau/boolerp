@@ -55,3 +55,40 @@ func plural(n int, one, many string) string {
 	}
 	return many
 }
+
+// Pointer builds a JSON Pointer fragment (RFC 6901) from path segments, escaping "~"
+// and "/" inside each: Pointer("items", "0", "name") is "#/items/0/name".
+func Pointer(segments ...string) string {
+	escaper := strings.NewReplacer("~", "~0", "/", "~1")
+	escaped := make([]string, len(segments))
+	for i, s := range segments {
+		escaped[i] = escaper.Replace(s)
+	}
+	return "#/" + strings.Join(escaped, "/")
+}
+
+// Field returns the error for a body field named by its JSON path, segments joined by
+// "/" ("slug", "institutionTypes/1/code"): a rule code, and a detail that never contains
+// the submitted value. A name that itself contains "/" needs Pointer.
+func Field(path, code, detail string) FieldError {
+	return FieldError{Pointer: Pointer(strings.Split(path, "/")...), Code: code, Detail: detail}
+}
+
+// Add records a body field's error (see Field).
+func (e *ValidationError) Add(path, code, detail string) {
+	e.Errors = append(e.Errors, Field(path, code, detail))
+}
+
+// Err returns e when it holds errors and nil otherwise, so a check ends with
+// `return v.Err()`.
+func (e *ValidationError) Err() error {
+	if len(e.Errors) == 0 {
+		return nil
+	}
+	return e
+}
+
+// Invalid returns a validation error for one body field (see Field).
+func Invalid(path, code, detail string) error {
+	return &ValidationError{Errors: []FieldError{Field(path, code, detail)}}
+}

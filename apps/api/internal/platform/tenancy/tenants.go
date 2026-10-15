@@ -219,21 +219,13 @@ var reservedSlugs = map[string]bool{"admin": true, "api": true, "app": true, "au
 // request breaks is a *problem.ValidationError naming each field (C71); a slug, code,
 // identity number, or tax number another tenant holds names that tenant.
 func (m *Module) CreateTenant(ctx context.Context, n NewTenant) (Created, error) {
-	errs, err := m.checkNewTenant(ctx, n)
-	if err != nil {
+	if err := m.checkNewTenant(ctx, n); err != nil {
 		return Created{}, err
 	}
-	if len(errs) > 0 {
-		return Created{}, &problem.ValidationError{Errors: errs}
-	}
 	var created Created
-	err = tenant.Tx(ctx, m.db, func(ctx context.Context, tx pgx.Tx) error {
-		errs, err := taken(ctx, tx, n)
-		if err != nil {
+	err := tenant.Tx(ctx, m.db, func(ctx context.Context, tx pgx.Tx) error {
+		if err := taken(ctx, tx, n); err != nil {
 			return err
-		}
-		if len(errs) > 0 {
-			return &problem.ValidationError{Errors: errs}
 		}
 		if n.ParentID != "" {
 			ok, err := store.ParentAllowed(ctx, tx, n.ParentID)
@@ -241,7 +233,7 @@ func (m *Module) CreateTenant(ctx context.Context, n NewTenant) (Created, error)
 				return err
 			}
 			if !ok {
-				return invalid("parentId", "exists", "is not a tenant that can be a parent")
+				return problem.Invalid("parentId", "exists", "is not a tenant that can be a parent")
 			}
 		}
 		id, err := store.InsertTenant(ctx, tx, store.NewTenant{
@@ -268,44 +260,33 @@ func (m *Module) CreateTenant(ctx context.Context, n NewTenant) (Created, error)
 
 // checkNewTenant checks the rules that need data, before the transaction: the reference
 // rules (C136, C197), and the time zone, which the request checks but no database
-// constraint does, so a caller other than HTTP is held to it too.
-func (m *Module) checkNewTenant(ctx context.Context, n NewTenant) ([]problem.FieldError, error) {
-	var errs []problem.FieldError
+// constraint does, so a caller other than HTTP is held to it too. It returns a
+// *problem.ValidationError naming each field, or the error that kept it from checking.
+func (m *Module) checkNewTenant(ctx context.Context, n NewTenant) error {
+	var v problem.ValidationError
 	if _, err := time.LoadLocation(n.Timezone); err != nil || n.Timezone == "" || strings.EqualFold(n.Timezone, "local") {
-		errs = append(errs, problem.FieldError{Pointer: "#/timezone", Code: "timezone", Detail: "must be an IANA time zone, such as Indian/Maldives"})
-	}
-	ref, err := m.checkReference(ctx, n)
-	return append(errs, ref...), err
-}
-
-// checkReference checks the request against the reference lists: a current country, a
-// current legal form of that country, the identity number its document needs (required
-// when it names one, refused when it names none), and current institution types.
-func (m *Module) checkReference(ctx context.Context, n NewTenant) ([]problem.FieldError, error) {
-	var errs []problem.FieldError
-	add := func(field, code, detail string) {
-		errs = append(errs, problem.FieldError{Pointer: "#/" + field, Code: code, Detail: detail})
+		v.Add("timezone", "timezone", "must be an IANA time zone, such as Indian/Maldives")
 	}
 	ok, err := m.reference.CountryCurrent(ctx, n.Country)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if !ok {
-		add("country", "exists", "is not a country in use")
+		v.Add("country", "exists", "is not a country in use")
 	}
 	country, document, ok, err := m.reference.LegalForm(ctx, n.LegalFormID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	switch {
 	case !ok:
-		add("legalFormId", "exists", "is not a legal form in use")
+		v.Add("legalFormId", "exists", "is not a legal form in use")
 	case country != n.Country:
-		add("legalFormId", "country", "is not a legal form of the tenant's country")
+		v.Add("legalFormId", "country", "is not a legal form of the tenant's country")
 	case document != "" && strings.TrimSpace(n.IdentityNumber) == "":
-		add("identityNumber", "required", "is required: the legal form names a "+strings.ToLower(document))
+		v.Add("identityNumber", "required", "is required: the legal form names a "+strings.ToLower(document))
 	case document == "" && n.IdentityNumber != "":
-		add("identityNumber", "excluded", "is not taken: the legal form names no identity document")
+		v.Add("identityNumber", "excluded", "is not taken: the legal form names no identity document")
 	}
 	codes := make([]string, len(n.InstitutionTypes))
 	for i, it := range n.InstitutionTypes {
@@ -313,19 +294,19 @@ func (m *Module) checkReference(ctx context.Context, n NewTenant) ([]problem.Fie
 	}
 	current, err := m.reference.InstitutionTypesCurrent(ctx, codes)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for i, c := range codes {
 		if !current[c] {
-			add(fmt.Sprintf("institutionTypes/%d/code", i), "exists", "is not an institution type in use")
+			v.Add(fmt.Sprintf("institutionTypes/%d/code", i), "exists", "is not an institution type in use")
 		}
 	}
-	return errs, nil
+	return v.Err()
 }
 
 // taken names, for each unique value another tenant already holds, the tenant holding it.
-func taken(ctx context.Context, tx pgx.Tx, n NewTenant) ([]problem.FieldError, error) {
-	var errs []problem.FieldError
+func taken(ctx context.Context, tx pgx.Tx, n NewTenant) error {
+	var v problem.ValidationError
 	for _, c := range []struct{ field, column, value string }{
 		{"slug", "slug", n.Slug}, {"code", "code", n.Code},
 		{"identityNumber", "identity_number", n.IdentityNumber}, {"taxNumber", "tax_number", n.TaxNumber},
@@ -335,17 +316,13 @@ func taken(ctx context.Context, tx pgx.Tx, n NewTenant) ([]problem.FieldError, e
 		}
 		name, ok, err := store.HolderOf(ctx, tx, c.column, c.value, n.Country)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if ok {
-			errs = append(errs, problem.FieldError{Pointer: "#/" + c.field, Code: "unique", Detail: "is already used by " + name})
+			v.Add(c.field, "unique", "is already used by "+name)
 		}
 	}
-	return errs, nil
-}
-
-func invalid(field, code, detail string) error {
-	return &problem.ValidationError{Errors: []problem.FieldError{{Pointer: "#/" + field, Code: code, Detail: detail}}}
+	return v.Err()
 }
 
 // uniqueViolation turns a unique violation that slipped past taken (another request
@@ -360,5 +337,5 @@ func uniqueViolation(err error) error {
 	if field == "" {
 		return err
 	}
-	return invalid(field, "unique", "is already used by another tenant")
+	return problem.Invalid(field, "unique", "is already used by another tenant")
 }

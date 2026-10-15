@@ -29,6 +29,16 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   `httpinput`; a struct-level rule beside the request for the module's own), only if the
   database also guards it or it is pure shape; the use case holds the rules needing data,
   in the writing transaction. No validation tag queries the database.
+- Use the kit's shared helpers; never re-implement them in a module:
+  - requests: `httpinput.Decode` (body, `validate` tags), `httpinput.ParseList` with a `ListSpec`,
+    the shared tags (`phone`, `slug`, `notblank`, plus the validator's own), and
+    `httpinput.RegisterStructValidation` for a request's own rules (C208);
+  - responses: `httpinput.WritePage` for every list (C68), `problem.Unavailable` for a failed
+    dependency, `problem.Error` for other statuses, `authorization.WriteError` after a Cerbos check;
+  - field errors from a use case: `var v problem.ValidationError; v.Add(path, code, detail)`,
+    `return v.Err()`, or `problem.Invalid(path, code, detail)` for one field; paths are JSON
+    paths (`institutionTypes/1/code`), pointers come from `problem.Field`/`problem.Pointer`.
+  A helper several modules need is added to the kit first, then used.
 - A module owns its persistence writes. Do not reach into another module's SQL package.
 - Design every module so it can become a separate service later, all services sharing
   one PostgreSQL database (C134). Foreign keys across modules are allowed, always

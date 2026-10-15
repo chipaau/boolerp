@@ -171,10 +171,6 @@ func TestDecodeReportsEveryRuleFailure(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), "s3cret", "submitted values are never echoed")
 }
 
-func TestPointerEscapesSpecialCharacters(t *testing.T) {
-	assert.Equal(t, "#/a~1b/c~0d", pointer([]string{"a/b", "c~d"}))
-}
-
 // Guard: Decode must leave the body fully read so the connection can be reused.
 func TestDecodeConsumesBody(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(validBody))

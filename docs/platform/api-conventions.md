@@ -142,7 +142,7 @@ module holds the rules that need data; the database guards them all.
 | Layer | Rules | How |
 | --- | --- | --- |
 | Request (the handler's struct) | Each field's shape and format, conditions between the request's fields (`required_if`, `excluded_unless`, …), and the module's own rules that need no data (reserved slugs, exactly one primary item, no duplicates) | `validate` tags; the shared formats `phone`, `slug`, `notblank` (and the validator's `timezone`, `email`, `uuid`, `datetime`, …); a struct-level rule beside the request, registered with `httpinput.RegisterStructValidation` from the module's package |
-| Module (the use case) | Rules that need data: existence and currency of what is referenced, uniqueness naming the holder, rules depending on another row, checked in the writing transaction | `problem.ValidationError` |
+| Module (the use case) | Rules that need data: existence and currency of what is referenced, uniqueness naming the holder, rules depending on another row, checked in the writing transaction | `problem.ValidationError`, built with `v.Add(path, code, detail)` and returned as `v.Err()` (nil when empty), or `problem.Invalid(path, code, detail)` for one field; the path is the field's JSON path (`institutionTypes/1/code`), turned into a pointer by `problem.Field`/`problem.Pointer`, which `httpinput` uses too |
 | Database | Every rule a caller must not break, whoever calls | CHECK constraints, foreign keys, unique indexes, triggers, row-level security |
 
 A rule goes in the request only if the database also guards it, or it is purely about the
