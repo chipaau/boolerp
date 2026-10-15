@@ -7,6 +7,9 @@ dist/
 .output/
 .vinxi/
 .next/
+# Next.js rewrites it on every dev and build run (paths differ between the two);
+# `next typegen` creates it before a type check.
+next-env.d.ts
 *.tsbuildinfo
 .turbo/
 .tanstack/
