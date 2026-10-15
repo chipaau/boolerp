@@ -10,5 +10,9 @@ RUN npm install -g corepack@0.36.0 && corepack enable && corepack prepare pnpm@1
 # the store inside each container's own node_modules volume, so each service downloads everything
 # again. pnpm 12 reads pnpm_config_*; it ignores npm_config_store_dir.
 ENV pnpm_config_store_dir=/w/.pnpm-store
+# Install from the store first: pnpm asks the registry only for packages the store lacks, so a
+# container (re)start whose packages are already cached needs no network round trips at all,
+# which matters on a slow or filtered connection. New or bumped packages still download.
+ENV pnpm_config_prefer_offline=true
 
 WORKDIR /w
