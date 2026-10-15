@@ -10,7 +10,7 @@ import (
 func TestTheEmbeddedLegalForms(t *testing.T) {
 	forms, err := ParseLegalForms(legalFormsCSV)
 	require.NoError(t, err)
-	assert.Len(t, forms, 12)
+	assert.Len(t, forms, 13)
 	assert.Contains(t, forms, LegalForm{Country: "MV", Code: "private_company", Name: "Private company (Pvt Ltd)",
 		Category: "private", IdentityDocument: "Company registration number"})
 	assert.Contains(t, forms, LegalForm{Country: "MV", Code: "local_council", Name: "Local council (city, atoll, island)",

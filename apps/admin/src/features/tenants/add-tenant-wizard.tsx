@@ -1,9 +1,17 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Lock } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { referenceQueries } from '@workspace/reference/api'
+import { CountrySelect } from '@workspace/reference/country-select'
+import { InstitutionTypesField } from '@workspace/reference/institution-types-field'
+import type { InstitutionTypesValue } from '@workspace/reference/institution-types-field'
+import { LegalFormSelect } from '@workspace/reference/legal-form-select'
+import { TimezoneSelect } from '@workspace/reference/timezone-select'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
+import { ComboboxField } from '@workspace/ui/components/combobox'
 import { DatePicker } from '@workspace/ui/components/date-picker'
 import { Dialog, DialogContent } from '@workspace/ui/components/dialog'
 import { SelectField } from '@workspace/ui/components/select'
@@ -14,8 +22,9 @@ import { cn } from '@workspace/ui/lib/utils'
 import { Field, ReviewCard, StepHeading, fieldClass } from '@/components/form-field'
 import { useCurrentUser } from '@/components/layout/user-context'
 import { useActiveCountries, useChildGeographies, useTopLevelGeographies } from '@/features/geographies/queries'
-import { useAppCatalog, useCoreApps, useEntityTypes, useOrgTypes, usePlans, useTenantDirectory, useTenantProfileActions } from './queries'
-import type { AppName, CreateTenantInput, EntityType, Nationality, OrgType, PlanName, TenantAdmin, TenantApps, TenantProfile } from './types'
+import { tenantQueries } from './api'
+import { useAppCatalog, useCoreApps, useTenantDirectory, useTenantProfileActions } from './queries'
+import type { AppName, Nationality, TenantAdmin, TenantApps, TenantProfile } from './types'
 
 /** What the list shows after a successful provision: the one-time recovery link for the owner. */
 /** What the list shows after the prototype's wizard finishes. Fixtures only (F2f): the activation
@@ -23,49 +32,30 @@ import type { AppName, CreateTenantInput, EntityType, Nationality, OrgType, Plan
 export type Provisioned = { name: string; recoveryLink: string }
 
 const STEPS = [
-  { title: 'Tenant details', hint: 'Identity, owner, plan' },
-  { title: 'Contact & address', hint: 'Who we write to' },
+  { title: 'Tenant details', hint: 'Who they are, in law' },
+  { title: 'Address', hint: 'Where they are' },
   { title: 'Apps & modules', hint: 'What they can open' },
   { title: 'Admin users', hint: 'At least one admin' },
   { title: 'Review', hint: 'Last look before it goes live' },
 ]
 const HEADINGS: [string, string][] = [
-  ['Who they are', 'Name, slug, code and owner are all it takes to create the tenant. Once they are in you can create it straight away and fill in the rest later.'],
-  ['How we reach them', 'Invites and billing notices go to the contact e-mail. Everything here is optional.'],
+  ['Who they are', 'What the tenant is called, where it is registered, and what it does. This step creates the tenant; the rest can be filled in later on its details page.'],
+  ['Where they are', 'The registered address. Everything here is optional.'],
   ['What they can open', 'Control Centre and Calendar come with every tenant. Switch on the other apps they pay for, down to the module.'],
-  ['Who runs it', 'A tenant needs at least one admin. The owner is the first; add anyone else who should be invited when the tenant is created.'],
-  ['Check it over', 'Everything you have set, in one place. The owner’s sign-in link is created the moment you do.'],
+  ['Who runs it', 'A tenant needs at least one owner before it can be activated. Add the people who should be invited.'],
+  ['Check it over', 'Everything you have set, in one place.'],
 ]
 const appLabel = (a: AppName) => a
-
-// The API still speaks the seeded classification codes (00007_seed_reference.sql); the design speaks
-// organisation / party types. Closest mapping until the SRS reconciles the two vocabularies.
-const PARTY_TYPE: Record<OrgType, string> = {
-  Government: 'government',
-  'Local government': 'government',
-  'Public company': 'public-company',
-  'Private company': 'private-company',
-  NGO: 'ngo',
-  International: 'ngo',
-}
-const INSTITUTION_TYPE: Record<EntityType, string> = {
-  Ministry: 'ministry',
-  'Statutory body': 'business',
-  Council: 'council',
-  Hospital: 'hospital',
-  School: 'school',
-  Education: 'university',
-  Transport: 'business',
-  Telecom: 'business',
-  Other: 'business',
-}
 
 type DraftAdmin = { name: string; idNo: string; email: string; nat: Nationality }
 
 type Form = {
-  name: string; slug: string; code: string; regNo: string; regDate: string; orgType: OrgType; entityType: EntityType
-  ownerName: string; ownerEmail: string; tree: 'Standalone' | 'Child'; parent: string; plan: PlanName; seats: number
-  addr: string; country: string; district: string; city: string; postal: string; sameAsReg: boolean; contact: string; email: string
+  // Step 1, the request that creates the tenant (C197). `country` is the tenant's (an ISO code);
+  // `addrCountry` is the address step's, still the prototype's geography fixtures.
+  name: string; slug: string; code: string; country: string | null; legalFormId: string | null; identityDocument: string | null
+  identityNumber: string; registeredOn: string; taxNumber: string; timezone: string | null; types: InstitutionTypesValue
+  email: string; phone: string; tree: 'Standalone' | 'Child'; parentId: string | null
+  addr: string; addrCountry: string; district: string; city: string; postal: string; sameAsReg: boolean
   apps: TenantApps; nat: Nationality; aName: string; aId: string; aEmail: string; admins: DraftAdmin[]
 }
 
@@ -73,14 +63,18 @@ const slugify = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^\w\s
 const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 const today = () => fmt(new Date())
 const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
+/** The API's phone format: + and 6 to 15 digits (E.164). */
+const isPhone = (s: string) => /^\+[0-9]{6,15}$/.test(s.replace(/[\s-]/g, ''))
 
 /**
  * Add a tenant in a large stepped dialog (the New employee pattern): a Stepper rail on the left,
  * one step body on the right. A step can only be moved past once complete; later steps stay locked
- * until then. "Create tenant" calls the real provisioning API and is offered from every step as soon as the required
- * details (name, slug, code, owner) are in: the owner is the required admin and Control Centre +
- * Calendar are included, so nothing on a later step can block it. Everything the API does not take
- * yet (plan, apps, geography, parent, extra admins) is saved to the fixture profile afterwards.
+ * until then. Step 1 is the request that creates the tenant in provisioning (C197): name, slug,
+ * code, country, legal form (and the number of the document it names), time zone, and institution
+ * types are required; the reference lists come from the API (C199) through @workspace/reference.
+ * "Create tenant" is offered as soon as step 1 is complete: owners are needed to activate a tenant
+ * (C198), not to create it. Until POST /api/v1/tenants exists it saves nothing in preview, and only
+ * the prototype's fixture profile otherwise.
  */
 export function AddTenantWizard({
   onClose,
@@ -99,32 +93,40 @@ export function AddTenantWizard({
   const user = useCurrentUser()
   const { create: saveProfile } = useTenantProfileActions()
   const { tenants } = useTenantDirectory()
-  const plans = usePlans()
   const catalog = useAppCatalog()
   const core = useCoreApps()
-  const orgTypes = useOrgTypes()
-  const entityTypes = useEntityTypes()
   const countries = useActiveCountries()
 
   const [step, setStep] = useState(0)
   const [slugTouched, setSlugTouched] = useState(false)
   const [f, setF] = useState<Form>(() => ({
-    name: '', slug: '', code: '', regNo: '', regDate: '', orgType: 'Government', entityType: 'Ministry',
-    ownerName: '', ownerEmail: '', tree: 'Standalone', parent: '', plan: 'Basic', seats: 120,
-    addr: '', country: 'Maldives', district: 'Kaafu', city: 'Malé City', postal: '', sameAsReg: true, contact: '', email: '',
+    name: '', slug: '', code: '', country: null, legalFormId: null, identityDocument: null,
+    identityNumber: '', registeredOn: '', taxNumber: '', timezone: null, types: { codes: [], primary: null },
+    email: '', phone: '', tree: 'Standalone', parentId: null,
+    addr: '', addrCountry: 'Maldives', district: 'Kaafu', city: 'Malé City', postal: '', sameAsReg: true,
     apps: Object.fromEntries(core.map((a) => [a, catalog.find((c) => c.name === a)?.modules ?? []])),
     nat: 'Maldivian', aName: '', aId: '', aEmail: '', admins: [],
   }))
   const set = <TKey extends keyof Form>(k: TKey, v: Form[TKey]) => setF((prev) => ({ ...prev, [k]: v }))
+  // The pickers' lists, from the same cache, to name the choices on the review step.
+  const refCountries = useQuery(referenceQueries.countries()).data
+  const legalForms = useQuery(referenceQueries.legalForms(f.country ?? '')).data
+  const institutionTypes = useQuery(referenceQueries.institutionTypes()).data
+  const countryName = (code: string | null) => (code ? (refCountries?.find((c) => c.code === code)?.name ?? code) : undefined)
+  const legalFormName = legalForms?.find((l) => l.id === f.legalFormId)?.name
+  const typeName = (code: string) => institutionTypes?.find((t) => t.code === code)?.name ?? code
 
-  const districts = useTopLevelGeographies(f.country)
+  const districts = useTopLevelGeographies(f.addrCountry)
   const cities = useChildGeographies(f.district)
 
-  const regDupe = f.regNo.trim() ? tenants.find((t) => t.regNo.toLowerCase() === f.regNo.trim().toLowerCase()) : undefined
   const slugDupe = f.slug.trim() ? tenants.find((t) => t.slug === f.slug.trim()) : undefined
-  const parentOptions = tenants.filter((t) => !t.parentSlug && t.directoryStatus !== 'archived')
-  const hasOwner = !!(f.ownerName.trim() && isEmail(f.ownerEmail))
-  const adminCount = (hasOwner ? 1 : 0) + f.admins.length
+  // A parent is one of the API's tenants, shown by name and chosen by id (C197's parentId).
+  const apiTenants = useQuery(tenantQueries.list({ page: 1, pageSize: 100, sort: 'name' })).data?.items
+  const parentOptions = (apiTenants ?? [])
+    .filter((t) => t.status !== 'archived')
+    .map((t) => ({ value: t.id, label: t.name, detail: t.code, keywords: `${t.code} ${t.slug}` }))
+  const parentName = apiTenants?.find((t) => t.id === f.parentId)?.name
+  const adminCount = f.admins.length
 
   /** What still stops step `i` from being complete; empty = passable. */
   const missing = (i: number): string[] => {
@@ -134,17 +136,20 @@ export function AddTenantWizard({
       if (!f.slug.trim()) out.push('a slug')
       else if (slugDupe) out.push(`a slug not already used by ${slugDupe.abbr}`)
       if (!f.code.trim()) out.push('a code')
-      if (regDupe) out.push(`a reg no. not already used by ${regDupe.abbr}`)
-      if (!f.ownerName.trim()) out.push('the owner name')
-      if (!isEmail(f.ownerEmail)) out.push('a valid owner email')
-      if (f.tree === 'Child' && !f.parent) out.push('a parent tenant')
+      if (!f.country) out.push('the country')
+      if (!f.legalFormId) out.push('the legal form')
+      else if (f.identityDocument && !f.identityNumber.trim()) out.push(`the ${f.identityDocument.toLowerCase()}`)
+      if (!f.timezone) out.push('the time zone')
+      if (!f.types.codes.length) out.push('an institution type')
+      if (f.email.trim() && !isEmail(f.email)) out.push('a valid e-mail')
+      if (f.phone.trim() && !isPhone(f.phone)) out.push('a phone number in international form')
+      if (f.tree === 'Child' && !f.parentId) out.push('a parent tenant')
     }
-    if (i === 1 && f.email.trim() && !isEmail(f.email)) out.push('a valid contact e-mail')
-    if (i === 3 && adminCount === 0) out.push('at least one admin user')
     return out
   }
   const complete = (i: number) => missing(i).length === 0
-  const ready = STEPS.every((_, i) => complete(i))
+  // Creating needs step 1 only (C197); the later steps can be finished on the details page.
+  const ready = complete(0)
 
   /** Toasts what step `i` is missing and returns true when it cannot be passed. */
   const blocked = (i: number) => {
@@ -178,7 +183,7 @@ export function AddTenantWizard({
   const addAdmin = () => {
     const email = f.aEmail.trim().toLowerCase()
     if (!f.aName.trim() || !isEmail(email)) return toast('A name and a valid e-mail are the minimum for an admin user.', { ok: false })
-    if (email === f.ownerEmail.trim().toLowerCase() || f.admins.some((a) => a.email.toLowerCase() === email)) return toast('That e-mail is already on the list.', { ok: false })
+    if (f.admins.some((a) => a.email.toLowerCase() === email)) return toast('That e-mail is already on the list.', { ok: false })
     setF((p) => ({
       ...p,
       admins: [...p.admins, { name: p.aName.trim(), idNo: p.aId.trim() || (p.nat === 'Maldivian' ? 'ID pending' : 'Passport pending'), email: p.aEmail.trim(), nat: p.nat }],
@@ -189,19 +194,18 @@ export function AddTenantWizard({
 
   const profileFrom = (slug: string, name: string, status: TenantProfile['status']): TenantProfile => {
     const admins: TenantAdmin[] = [
-      ...(f.ownerName.trim() ? [{ name: f.ownerName.trim(), idNo: 'Owner', email: f.ownerEmail.trim(), invite: 'Invited' as const, last: 'Invited just now' }] : []),
       ...f.admins.map((a, i) => ({ name: a.name, idNo: a.idNo.endsWith('pending') ? `${a.idNo} ${i + 1}` : a.idNo, email: a.email, invite: 'Invited' as const, last: 'Invited just now' })),
     ]
     const apps: TenantApps = { ...f.apps }
     for (const a of core) apps[a] = apps[a] ?? catalog.find((c) => c.name === a)?.modules ?? []
     return {
-      slug, name, abbr: (f.code.trim() || name.slice(0, 4)).toUpperCase(), regNo: f.regNo.trim() || '—',
-      orgType: f.orgType, entityType: f.entityType,
-      parentSlug: f.tree === 'Child' && f.parent ? f.parent : null,
-      plan: f.plan, seatsUsed: 0, seatLimit: f.seats, status,
+      slug, name, abbr: (f.code.trim() || name.slice(0, 4)).toUpperCase(), regNo: f.identityNumber.trim() || '—',
+      orgType: 'Not set', entityType: 'Not set',
+      parentSlug: null, // the parent is an API tenant, not one of the prototype's fixtures
+      plan: 'Basic', seatsUsed: 0, seatLimit: 0, status,
       activeFrom: status === 'Active' ? today() : '—',
-      contact: f.contact.trim() || '—', email: f.email.trim() || f.ownerEmail.trim() || '—',
-      country: f.country, district: f.city && f.city !== '—' ? f.city : f.district,
+      contact: f.phone.trim() || '—', email: f.email.trim() || '—',
+      country: f.addrCountry, district: f.city && f.city !== '—' ? f.city : f.district,
       addr: f.addr.trim() || '—', mail: f.sameAsReg ? 'Same as registered address' : '—',
       apps, admins,
       activity: [{ when: today(), what: status === 'Draft' ? 'Saved as draft' : 'Tenant created and activated', who: user.name }],
@@ -209,21 +213,8 @@ export function AddTenantWizard({
   }
 
   const create_ = () => {
-    const bad = STEPS.findIndex((_, i) => !complete(i))
-    if (bad >= 0) {
-      blocked(bad)
-      return setStep(bad)
-    }
-    const input: CreateTenantInput = {
-      name: f.name.trim(),
-      slug: f.slug.trim(),
-      code: f.code.trim(),
-      country: countries.find((c) => c.name === f.country)?.code ?? 'MV',
-      party_type_code: PARTY_TYPE[f.orgType],
-      institution_type_code: INSTITUTION_TYPE[f.entityType],
-      owner_email: f.ownerEmail.trim(),
-      owner_name: f.ownerName.trim(),
-    }
+    if (blocked(0)) return setStep(0)
+    const input = { name: f.name.trim(), slug: f.slug.trim() }
     if (preview) {
       toast('Preview only: nothing was saved. Creating tenants comes next (F3).', { ok: false })
       return onClose()
@@ -251,10 +242,10 @@ export function AddTenantWizard({
   const extraApps = optional.filter((a) => f.apps[a.name]).length
   const last = STEPS.length - 1
   const notes = [
-    ready ? 'Ready to create. The other steps are optional.' : 'Name, slug, code and owner are all it needs.',
-    'Optional. Left blank, notices go to the owner.',
+    ready ? 'Ready to create. The other steps are optional.' : 'Creating the tenant needs this step only.',
+    'Optional.',
     `Control Centre and Calendar are included${extraApps ? ` · ${extraApps} more ${extraApps === 1 ? 'app' : 'apps'}` : ''}.`,
-    adminCount ? `${adminCount} ${adminCount === 1 ? 'admin' : 'admins'} will be invited when you create it.` : 'Add at least one admin to continue.',
+    adminCount ? `${adminCount} ${adminCount === 1 ? 'person' : 'people'} will be invited.` : 'Optional now; activating the tenant needs an owner.',
     'Nothing is created until you press the button.',
   ]
 
@@ -266,9 +257,10 @@ export function AddTenantWizard({
 
           {step === 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="t-name" label="Name" className="sm:col-span-2">
+              <Field id="t-name" label="Name" required className="sm:col-span-2">
                 <input
                   id="t-name"
+                  required
                   autoFocus
                   value={f.name}
                   placeholder="e.g. National Centre for Information Technology"
@@ -279,31 +271,72 @@ export function AddTenantWizard({
                   }}
                 />
               </Field>
-              <Field id="t-slug" label="Slug" hint={slugDupe ? `Already used by ${slugDupe.abbr}.` : 'The tenant’s web address: slug.bool.mv'} warn={!!slugDupe}>
-                <input id="t-slug" value={f.slug} placeholder="ncit" className={cn(fieldClass, 'font-mono text-compact')} onChange={(e) => (setSlugTouched(true), set('slug', e.target.value))} />
+              <Field id="t-slug" label="Slug" required hint={slugDupe ? `Already used by ${slugDupe.abbr}.` : 'The tenant’s web address: slug.bool.mv'} warn={!!slugDupe}>
+                <input id="t-slug" required value={f.slug} placeholder="ncit" className={cn(fieldClass, 'font-mono text-compact')} onChange={(e) => (setSlugTouched(true), set('slug', e.target.value))} />
               </Field>
-              <Field id="t-code" label="Code" hint="Short name shown across the platform, e.g. NCIT.">
-                <input id="t-code" value={f.code} placeholder="NCIT" className={fieldClass} onChange={(e) => set('code', e.target.value)} />
-              </Field>
-              <Field id="t-owner-name" label="Owner name" hint="The first admin. They get a one-time link to set a password.">
-                <input id="t-owner-name" value={f.ownerName} placeholder="Fathimath Mohamed" className={fieldClass} onChange={(e) => set('ownerName', e.target.value)} />
-              </Field>
-              <Field id="t-owner-email" label="Owner email" hint={f.ownerEmail.trim() && !isEmail(f.ownerEmail) ? 'That doesn’t look like an e-mail address.' : undefined} warn>
-                <input id="t-owner-email" type="email" value={f.ownerEmail} placeholder="name@tenant.gov.mv" className={fieldClass} onChange={(e) => set('ownerEmail', e.target.value)} />
+              <Field id="t-code" label="Code" required hint="Short name shown across the platform, e.g. NCIT.">
+                <input id="t-code" required value={f.code} placeholder="NCIT" className={fieldClass} onChange={(e) => set('code', e.target.value)} />
               </Field>
 
               <div className="grid gap-4 border-t border-divider pt-[18px] sm:col-span-2 sm:grid-cols-2">
-                <Field id="t-reg" label="Reg no." hint={regDupe ? `Already used by ${regDupe.abbr}. Registration numbers must be unique.` : undefined} warn>
-                  <input id="t-reg" value={f.regNo} placeholder="CO123456" className={fieldClass} onChange={(e) => set('regNo', e.target.value)} />
+                <div className="text-overline text-faint sm:col-span-2">Registration</div>
+                <Field id="t-country" label="Country" required hint="Where the organisation is registered. Its legal forms follow.">
+                  <CountrySelect
+                    id="t-country"
+                    aria-label="Country"
+                    aria-required
+                    value={f.country}
+                    onValueChange={(country) =>
+                      setF((p) => (country === p.country ? p : { ...p, country, legalFormId: null, identityDocument: null, identityNumber: '' }))
+                    }
+                  />
                 </Field>
-                <Field id="t-regdate" label="Reg date">
-                  <DatePicker id="t-regdate" value={f.regDate} onChange={(iso) => set('regDate', iso)} placeholder="Pick the registration date" />
+                <Field id="t-legal-form" label="Legal form" required>
+                  <LegalFormSelect
+                    id="t-legal-form"
+                    aria-label="Legal form"
+                    aria-required
+                    country={f.country}
+                    value={f.legalFormId}
+                    onValueChange={(legalFormId, form) =>
+                      setF((p) => ({ ...p, legalFormId, identityDocument: form?.identityDocument ?? null, identityNumber: form?.identityDocument ? p.identityNumber : '' }))
+                    }
+                  />
                 </Field>
-                <Field id="t-org" label="Organization type">
-                  <SelectField id="t-org" aria-label="Organisation type" value={f.orgType} onValueChange={(v) => set('orgType', v as OrgType)} options={orgTypes} />
+                {f.identityDocument && (
+                  <Field id="t-identity" label={f.identityDocument} required hint="The number on the document this legal form carries. One organisation per number in a country.">
+                    <input id="t-identity" required value={f.identityNumber} placeholder="C-1024/2026" className={fieldClass} onChange={(e) => set('identityNumber', e.target.value)} />
+                  </Field>
+                )}
+                <Field id="t-registered" label="Registered on">
+                  <DatePicker id="t-registered" value={f.registeredOn} onChange={(iso) => set('registeredOn', iso)} placeholder="Pick the registration date" />
                 </Field>
-                <Field id="t-party" label="Party type">
-                  <SelectField id="t-party" aria-label="Party type" value={f.entityType} onValueChange={(v) => set('entityType', v as EntityType)} options={entityTypes} />
+                <Field id="t-tax" label="Tax number" hint="The TIN printed on invoices, if they have one.">
+                  <input id="t-tax" value={f.taxNumber} placeholder="1012345GST501" className={fieldClass} onChange={(e) => set('taxNumber', e.target.value)} />
+                </Field>
+                <Field id="t-timezone" label="Time zone" required hint="Their working days and times are kept in this zone.">
+                  <TimezoneSelect id="t-timezone" aria-label="Time zone" aria-required value={f.timezone} onValueChange={(timezone) => set('timezone', timezone)} />
+                </Field>
+              </div>
+
+              <div className="border-t border-divider pt-[18px] sm:col-span-2">
+                <Field id="t-types" label="Institution types" required hint="What they do. Pick one or more; with several, mark the primary one. Their sector follows from it.">
+                  <InstitutionTypesField id="t-types" aria-label="Institution types" aria-required value={f.types} onValueChange={(types) => set('types', types)} />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 border-t border-divider pt-[18px] sm:col-span-2 sm:grid-cols-2">
+                <div className="text-overline text-faint sm:col-span-2">Contact · optional</div>
+                <Field id="t-email" label="E-mail address" hint={f.email.trim() && !isEmail(f.email) ? 'That doesn’t look like an e-mail address.' : undefined} warn>
+                  <input id="t-email" type="email" value={f.email} placeholder="info@tenant.gov.mv" className={fieldClass} onChange={(e) => set('email', e.target.value)} />
+                </Field>
+                <Field
+                  id="t-phone"
+                  label="Phone"
+                  hint={f.phone.trim() && !isPhone(f.phone) ? 'Write it in international form, starting with + and the country code.' : 'International form, e.g. +960 332 4568.'}
+                  warn={!!f.phone.trim() && !isPhone(f.phone)}
+                >
+                  <input id="t-phone" value={f.phone} placeholder="+960 332 4568" inputMode="tel" className={fieldClass} onChange={(e) => set('phone', e.target.value)} />
                 </Field>
               </div>
 
@@ -313,7 +346,7 @@ export function AddTenantWizard({
                   {(
                     [
                       ['Standalone', 'Standalone or parent', 'Stands on its own. Other tenants can later be added under it.'],
-                      ['Child', 'Child of another tenant', 'Rolls up to a parent for plan and reporting.'],
+                      ['Child', 'Child of another tenant', 'Its parent may publish data for it to read.'],
                     ] as const
                   ).map(([k, label, sub]) => (
                     <PickCard key={k} on={f.tree === k} onClick={() => set('tree', k)}>
@@ -326,58 +359,33 @@ export function AddTenantWizard({
                   ))}
                 </div>
                 {f.tree === 'Child' && (
-                  <Field id="t-parent" label="Parent tenant" className="mt-3.5 max-w-[420px]" hint="A child keeps its own admins and data, but rolls up to the parent.">
-                    <SelectField
+                  <Field id="t-parent" label="Parent tenant" required className="mt-3.5 max-w-[420px]" hint="A child keeps its own admins and data; the parent sees nothing inside it.">
+                    <ComboboxField
                       id="t-parent"
                       aria-label="Parent tenant"
-                      value={f.parent}
-                      onValueChange={(v) => set('parent', v)}
-                      options={[{ value: '', label: 'Pick a parent' }, ...parentOptions.map((t) => ({ value: t.slug, label: t.name }))]}
+                      aria-required
+                      value={f.parentId}
+                      onValueChange={(parentId) => set('parentId', parentId)}
+                      options={parentOptions}
+                      placeholder={apiTenants ? 'Search tenants by name or code' : 'Loading tenants…'}
+                      emptyText="No tenant matches."
+                      disabled={!apiTenants}
                     />
                   </Field>
                 )}
-              </div>
-
-              <div className="border-t border-divider pt-[18px] sm:col-span-2">
-                <div className="mb-2 text-overline text-faint">Plan</div>
-                <div role="radiogroup" aria-label="Plan" className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2.5">
-                  {plans.map((p) => (
-                    <PickCard key={p.name} on={f.plan === p.name} onClick={() => setF((prev) => ({ ...prev, plan: p.name, seats: p.seats }))} block>
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="text-ui-sm font-black text-foreground">{p.name}</span>
-                        <Radio on={f.plan === p.name} />
-                      </span>
-                      <span className="mt-2 block text-caption font-bold text-body">{p.seats} seats included</span>
-                      <span className="mt-0.5 block text-caption leading-[1.45] text-faint">{p.note}</span>
-                    </PickCard>
-                  ))}
-                </div>
               </div>
             </div>
           )}
 
           {step === 1 && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="t-contact" label="Contact number">
-                <input id="t-contact" value={f.contact} placeholder="3324568" inputMode="tel" className={fieldClass} onChange={(e) => set('contact', e.target.value)} />
-              </Field>
-              <Field
-                id="t-email"
-                label="E-mail address"
-                hint={f.email.trim() && !isEmail(f.email) ? 'That doesn’t look like an e-mail address.' : 'Invites and billing notices go here.'}
-                warn={!!f.email.trim() && !isEmail(f.email)}
-              >
-                <input id="t-email" type="email" value={f.email} placeholder="admin@tenant.gov.mv" className={fieldClass} onChange={(e) => set('email', e.target.value)} />
-              </Field>
-
-              <div className="grid gap-4 border-t border-divider pt-[18px] sm:col-span-2 sm:grid-cols-2">
-                <div className="text-overline text-faint sm:col-span-2">Address</div>
-                <Field id="t-country" label="Country">
+              <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
+                <Field id="t-addr-country" label="Country">
                   <SelectField
-                    id="t-country"
-                    aria-label="Country"
-                    value={f.country}
-                    onValueChange={(v) => setF((p) => ({ ...p, country: v, district: '', city: '—' }))}
+                    id="t-addr-country"
+                    aria-label="Address country"
+                    value={f.addrCountry}
+                    onValueChange={(v) => setF((p) => ({ ...p, addrCountry: v, district: '', city: '—' }))}
                     options={countries.map((c) => c.name)}
                   />
                 </Field>
@@ -477,20 +485,11 @@ export function AddTenantWizard({
           {step === 3 && (
             <div>
               <div className="mb-2 flex items-baseline justify-between gap-3">
-                <div className="text-overline text-faint">Admins · at least one required</div>
+                <div className="text-overline text-faint">People to invite</div>
                 <span className="text-caption text-faint">{adminCount} on the list</span>
               </div>
               <div className="overflow-clip rounded-[13px] border border-border bg-surface-band">
-                {hasOwner ? (
-                  <AdminRow name={f.ownerName.trim()} sub={`${f.ownerEmail.trim()} · gets the sign-in link when you create it`} tag="Owner · counts as admin" />
-                ) : (
-                  <div className="flex items-center justify-between gap-3 border-b border-divider px-4 py-3 last:border-b-0">
-                    <span className="text-compact text-body">No owner yet. The owner is the tenant’s first admin.</span>
-                    <Button variant="link" size="xs" onClick={() => setStep(0)}>
-                      Add the owner
-                    </Button>
-                  </div>
-                )}
+                {!f.admins.length && <div className="px-4 py-3 text-compact text-body">No one yet.</div>}
                 {f.admins.map((a, i) => (
                   <AdminRow key={`${a.email}-${i}`} name={a.name} sub={`${a.idNo} · ${a.email} · invite sends when you create it`} onRemove={() => set('admins', f.admins.filter((_, j) => j !== i))} />
                 ))}
@@ -507,13 +506,13 @@ export function AddTenantWizard({
                   </SegmentedItem>
                 </Segmented>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field id="a-name" label="Full name">
+                  <Field id="a-name" label="Full name" required>
                     <input id="a-name" value={f.aName} placeholder="Aishath Leena" className={fieldClass} onChange={(e) => set('aName', e.target.value)} />
                   </Field>
                   <Field id="a-id" label={f.nat === 'Maldivian' ? 'ID number' : 'Passport number'} hint={f.nat === 'Expatriate' ? 'Expatriate admins also need a work permit number before first sign-in.' : undefined}>
                     <input id="a-id" value={f.aId} placeholder={f.nat === 'Maldivian' ? 'A123566' : 'P-8823441'} className={fieldClass} onChange={(e) => set('aId', e.target.value)} />
                   </Field>
-                  <Field id="a-email" label="E-mail address" className="sm:col-span-2">
+                  <Field id="a-email" label="E-mail address" required className="sm:col-span-2">
                     <input id="a-email" type="email" value={f.aEmail} placeholder="name@tenant.gov.mv" className={fieldClass} onChange={(e) => set('aEmail', e.target.value)} />
                   </Field>
                 </div>
@@ -532,20 +531,22 @@ export function AddTenantWizard({
                 lines={[
                   ['Name', f.name.trim() || 'Not set'],
                   ['Slug · code', `${f.slug.trim() || '—'} · ${f.code.trim() || '—'}`],
-                  ['Owner', hasOwner ? `${f.ownerName.trim()} · ${f.ownerEmail.trim()}` : 'Not set'],
-                  ['Reg no.', f.regNo.trim() ? `${f.regNo.trim()}${f.regDate ? ` · ${fmt(new Date(`${f.regDate}T00:00`))}` : ''}` : 'Not set'],
-                  ['Type', `${f.orgType} · ${f.entityType}`],
-                  ['Tenant tree', f.tree === 'Child' ? `Child of ${tenants.find((t) => t.slug === f.parent)?.name ?? 'not picked'}` : 'Standalone / can take children'],
-                  ['Plan', `${f.plan} · ${f.seats} seats`],
+                  ['Country', countryName(f.country) ?? 'Not set'],
+                  ['Legal form', legalFormName ?? 'Not set'],
+                  ...(f.identityDocument ? [[f.identityDocument, f.identityNumber.trim() || 'Not set'] as [string, string]] : []),
+                  ['Registered on', f.registeredOn ? fmt(new Date(`${f.registeredOn}T00:00`)) : 'Not set'],
+                  ['Tax number', f.taxNumber.trim() || 'Not set'],
+                  ['Time zone', f.timezone ?? 'Not set'],
+                  ['Institution types', f.types.codes.map((c) => `${typeName(c)}${c === f.types.primary && f.types.codes.length > 1 ? ' (primary)' : ''}`).join(', ') || 'Not set'],
+                  ['Contact', [f.email.trim(), f.phone.trim()].filter(Boolean).join(' · ') || 'Not set'],
+                  ['Tenant tree', f.tree === 'Child' ? `Child of ${parentName ?? 'not picked'}` : 'Standalone / can take children'],
                 ]}
               />
               <ReviewCard
-                title="Contact & address"
+                title="Address"
                 onEdit={() => setStep(1)}
                 lines={[
-                  ['Contact number', f.contact.trim() || 'Not set'],
-                  ['E-mail', f.email.trim() || `None, notices go to ${f.ownerEmail.trim() || 'the owner'}`],
-                  ['Address', [f.addr.trim(), f.city !== '—' ? f.city : '', f.district, f.country, f.postal.trim()].filter(Boolean).join(', ') || 'Not set'],
+                  ['Address', [f.addr.trim(), f.city !== '—' ? f.city : '', f.district, f.addrCountry, f.postal.trim()].filter(Boolean).join(', ') || 'Not set'],
                   ['Mailing address', f.sameAsReg ? 'Same as address' : 'Separate, not yet filled'],
                 ]}
               />
@@ -557,10 +558,9 @@ export function AddTenantWizard({
                   .map((a) => [appLabel(a.name), core.includes(a.name) ? 'Included' : (f.apps[a.name] ?? []).join(', ')] as [string, string])}
               />
               <ReviewCard
-                title="Admin users"
+                title="People to invite"
                 onEdit={() => setStep(3)}
                 lines={[
-                  ...(hasOwner ? [[f.ownerName.trim(), `Owner · ${f.ownerEmail.trim()}`] as [string, string]] : []),
                   ...f.admins.map((a) => [a.name, `${a.idNo} · ${a.email}`] as [string, string]),
                 ]}
               />
