@@ -299,46 +299,26 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
   }
 }
 
-/* "Inside your workspace" (features/office): the drafting grid, the step list and the room cards */
+/* "Inside your workspace" (features/office): drafting paper (a fine grid with a stronger line every
+   fourth square, fading out at the edges), its crosshairs, and the step hairlines */
 .office-grid {
   background-image:
-    linear-gradient(to right, rgb(165 144 111 / 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(165 144 111 / 0.08) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(70% 70% at 60% 50%, black, transparent);
+    linear-gradient(to right, rgb(165 144 111 / 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(165 144 111 / 0.12) 1px, transparent 1px),
+    linear-gradient(to right, rgb(165 144 111 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(165 144 111 / 0.05) 1px, transparent 1px);
+  background-size: 160px 160px, 160px 160px, 40px 40px, 40px 40px;
+  mask-image: radial-gradient(80% 75% at 55% 50%, black 40%, transparent);
 }
-.office-item {
+.office-cross {
+  color: rgb(140 122 92 / 0.45);
+}
+.office-step {
   --on: 0;
-  opacity: calc(0.45 + var(--on) * 0.55);
-}
-.office-item::before {
-  /* the current step's marker: an amber bar that grows in */
-  content: "";
-  position: absolute;
-  left: -0.75rem;
-  top: 0.9rem;
-  width: 2px;
-  height: calc(var(--on) * 1.4rem);
+  height: 2px;
+  width: calc(1.25rem + var(--on) * 1.75rem);
   border-radius: 2px;
-  background: var(--brand-soft);
-}
-.office-num {
-  color: color-mix(in oklab, var(--brand) calc(var(--on) * 100%), var(--faint));
-}
-.office-title {
-  color: var(--foreground);
-  font-weight: 700;
-}
-.office-body {
-  /* the description opens under the current step only */
-  display: grid;
-  max-height: calc(var(--on) * 6rem);
-  overflow: hidden;
-  opacity: var(--on);
-}
-@media (max-width: 1023.98px), (prefers-reduced-motion: reduce) {
-  .office-item { opacity: 1; }
-  .office-body { max-height: none; opacity: 1; }
+  background: color-mix(in oklab, var(--brand-soft) calc(var(--on) * 100%), rgb(140 122 92 / 0.25));
 }
 .office-card {
   border-radius: 1rem;

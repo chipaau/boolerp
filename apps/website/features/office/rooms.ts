@@ -2,13 +2,15 @@ import { Boxes, CalendarDays, FileCheck2, Laptop, Settings2 } from 'lucide-react
 import type { LucideIcon } from 'lucide-react'
 
 /** The isometric office (public/office.webp, transparent, 1536×1024); every point below is in its pixels. */
-export const OFFICE = { src: '/office.webp', width: 1536, height: 1024 } as const
+export const OFFICE = { src: '/office.webp', lines: '/office-lines.webp', width: 1536, height: 1024 } as const
 
 type Point = [number, number]
 
 export type Room = {
   id: string
   title: string
+  /** The step's headline, its middle part in amber. */
+  headline: [string, string, string]
   body: string
   icon: LucideIcon
   /** The room's footprint, walls included, traced on the drawing. */
@@ -24,6 +26,7 @@ export type Room = {
 export const ROOMS: Room[] = [
   {
     id: 'inventory',
+    headline: ['Stock that', 'counts itself', '.'],
     title: 'Inventory',
     body: 'Stock, stores and suppliers, counted where they sit. Low stock flags itself before anyone runs out.',
     icon: Boxes,
@@ -33,6 +36,7 @@ export const ROOMS: Room[] = [
   },
   {
     id: 'requests',
+    headline: ['Manage', 'requests', 'with clarity.'],
     title: 'Requests',
     body: 'Goods, services and purchases asked for, approved and delivered in one place, with every step on record.',
     icon: FileCheck2,
@@ -43,6 +47,7 @@ export const ROOMS: Room[] = [
   },
   {
     id: 'assets',
+    headline: ['Every asset,', 'accounted for', '.'],
     title: 'Assets',
     body: 'Every laptop, desk and chair: who has it, where it is, and when it was last checked.',
     icon: Laptop,
@@ -52,6 +57,7 @@ export const ROOMS: Room[] = [
   },
   {
     id: 'calendar',
+    headline: ['Rooms that', 'book themselves', '.'],
     title: 'Calendar',
     body: 'Rooms and people in one diary. Find a free room, invite the team, and the room is held.',
     icon: CalendarDays,
@@ -61,6 +67,7 @@ export const ROOMS: Room[] = [
   },
   {
     id: 'control-centre',
+    headline: ['Set up once,', 'used everywhere', '.'],
     title: 'Control Centre',
     body: 'Sites, people and approval chains, set up once in one office, and every app follows them.',
     icon: Settings2,
