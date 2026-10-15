@@ -131,7 +131,7 @@ func TestEscape(t *testing.T) {
 
 func TestWritePageAnswersTheEnvelope(t *testing.T) {
 	rec := httptest.NewRecorder()
-	WritePage(rec, List{Page: 2, PageSize: 10}, []string{"a", "b"}, 12)
+	WritePage(rec, httptest.NewRequest(http.MethodGet, "/", nil), List{Page: 2, PageSize: 10}, []string{"a", "b"}, 12)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 	assert.JSONEq(t, `{"items": ["a", "b"], "page": 2, "pageSize": 10, "total": 12}`, rec.Body.String())
@@ -139,7 +139,7 @@ func TestWritePageAnswersTheEnvelope(t *testing.T) {
 
 func TestWritePageAnswersNoItemsAsAnEmptyArray(t *testing.T) {
 	rec := httptest.NewRecorder()
-	WritePage[string](rec, List{Page: 3, PageSize: 10}, nil, 12)
+	WritePage[string](rec, httptest.NewRequest(http.MethodGet, "/", nil), List{Page: 3, PageSize: 10}, nil, 12)
 	assert.JSONEq(t, `{"items": [], "page": 3, "pageSize": 10, "total": 12}`, rec.Body.String())
 
 	var p Page[string]

@@ -136,6 +136,28 @@ submitted values:
   application layer and database constraints, which return `problem.ValidationError`;
   the response has the same format.
 
+**Writing JSON (C209):** every JSON response goes through go-chi/render: `render.JSON(w, r, v)`,
+with `render.Status(r, code)` before it for a status other than 200 (a create answers
+`201` with `Location`); lists through `httpinput.WritePage`, built on it. Problem responses
+keep `problem.Write` for their own content type. Decoding stays `httpinput.Decode`, for our
+validation and error format; render's binding is not used.
+
+**Where each rule lives (C208):** the request holds every rule that needs no data; the
+module holds the rules that need data; the database guards them all.
+
+| Layer | Rules | How |
+| --- | --- | --- |
+| Request (the handler's struct) | Each field's shape and format, conditions between the request's fields (`required_if`, `excluded_unless`, …), and the module's own rules that need no data (reserved slugs, exactly one primary item, no duplicates) | `validate` tags; the shared formats `phone`, `slug`, `notblank` (and the validator's `timezone`, `email`, `uuid`, `datetime`, …); a struct-level rule beside the request, registered with `httpinput.RegisterStructValidation` from the module's package |
+| Module (the use case) | Rules that need data: existence and currency of what is referenced, uniqueness naming the holder, rules depending on another row, checked in the writing transaction | `problem.ValidationError`, built with `v.Add(path, code, detail)` and returned as `v.Err()` (nil when empty), or `problem.Invalid(path, code, detail)` for one field; the path is the field's JSON path (`institutionTypes/1/code`), turned into a pointer by `problem.Field`/`problem.Pointer`, which `httpinput` uses too |
+| Database | Every rule a caller must not break, whoever calls | CHECK constraints, foreign keys, unique indexes, triggers, row-level security |
+
+A rule goes in the request only if the database also guards it, or it is purely about the
+request's shape: callers other than HTTP (CLI commands, jobs, seeds) skip the request and
+meet the database's error instead. A rule with no database guard that every caller must
+obey stays in the module too (a tenant's time zone). No tag queries the database: existence
+is checked in the writing transaction, through the owning module for another module's data
+(C134). A new shared format is registered only in `httpinput`, with its message.
+
 ## Contract and frontend types (C74, C183)
 
 There is no OpenAPI description and no generated client (C183; C70 was replaced): the Go

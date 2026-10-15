@@ -1,0 +1,46 @@
+package store
+
+import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
+)
+
+// CountryListSpec is what GET /api/v1/countries accepts: every country in one page.
+var CountryListSpec = httpinput.ListSpec{
+	Sorts: []string{"name", "code"}, DefaultSort: "name", Search: true,
+	DefaultPageSize: 300, MaxPageSize: 300,
+}
+
+// Country is a country as the list shows it.
+type Country struct{ Code, Alpha3, Name, PhonePrefix string }
+
+// ListCountries reads one page of the current countries and how many match. q matches
+// the name or either code.
+func ListCountries(ctx context.Context, db Querier, l httpinput.List) ([]Country, int, error) {
+	q := query{from: "countries c", where: []string{current("c")},
+		sorts: map[string]string{"name": "c.name", "code": "c.code"}, key: "c.code"}
+	if l.Q != "" {
+		p := q.arg("%" + httpinput.Escape(l.Q) + "%")
+		q.where = append(q.where, "(c.name ILIKE "+p+" OR c.code ILIKE "+p+" OR c.alpha3 ILIKE "+p+")")
+	}
+	items := []Country{}
+	total, err := q.run(ctx, db, l, "c.code, c.alpha3, c.name, c.phone_prefix", func(rows pgx.Rows, total *int) error {
+		var c Country
+		if err := rows.Scan(&c.Code, &c.Alpha3, &c.Name, &c.PhonePrefix, total); err != nil {
+			return err
+		}
+		items = append(items, c)
+		return nil
+	})
+	return items, total, err
+}
+
+// CountryCurrent reports whether code is a country in use.
+func CountryCurrent(ctx context.Context, db Querier, code string) (bool, error) {
+	var ok bool
+	err := db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM countries c WHERE c.code = $1 AND `+current("c")+`)`, code).Scan(&ok)
+	return ok, err
+}

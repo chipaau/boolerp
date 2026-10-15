@@ -42,6 +42,6 @@ func (m *Module) institutionTypes(authz authorization.Authorizer) http.HandlerFu
 		for i, it := range rows {
 			items[i] = institutionType{it.Code, it.Name, sector{it.SectorCode, it.SectorName}}
 		}
-		httpinput.WritePage(w, l, items, total)
+		httpinput.WritePage(w, r, l, items, total)
 	}
 }

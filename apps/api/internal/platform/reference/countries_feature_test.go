@@ -3,6 +3,7 @@
 package reference_test
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
+	"github.com/boolmv/erp/apps/api/internal/platform/reference"
 )
 
 // Tests create the rows they need (C135) with ISO's user-assigned codes (XA, XAA,
@@ -56,4 +58,15 @@ func TestFeatureUpdatedAtFollowsChanges(t *testing.T) {
 		`INSERT INTO countries (code, alpha3, name, phone_prefix, updated_at) VALUES ('XA', 'XAA', 'Testland', '+999', '2000-01-01')`,
 		`UPDATE countries SET name = 'Testland Again' WHERE code = 'XA'`,
 		`SELECT updated_at = now() FROM countries WHERE code = 'XA'`)
+}
+
+// CountryCurrent is what creating a tenant asks (tenancy.Reference, C197): only a country
+// in use counts.
+func TestFeatureOnlyACountryInUseIsCurrent(t *testing.T) {
+	m := reference.New(referenceWorld(t), slog.New(slog.DiscardHandler))
+	for code, want := range map[string]bool{"XA": true, "XL": true, "XR": false, "XQ": false} {
+		ok, err := m.CountryCurrent(t.Context(), code)
+		require.NoError(t, err)
+		assert.Equal(t, want, ok, code)
+	}
 }

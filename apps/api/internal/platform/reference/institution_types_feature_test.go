@@ -3,6 +3,7 @@
 package reference_test
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
+	"github.com/boolmv/erp/apps/api/internal/platform/reference"
 )
 
 // insertTestInstitutionType adds the sector x_test and its type x_type.
@@ -58,4 +60,12 @@ func TestFeatureInstitutionTypeUpdatedAtFollowsChanges(t *testing.T) {
 		`INSERT INTO institution_types (code, sector, name, updated_at) VALUES ('x_type', 'x_test', 'Test type', '2000-01-01')`,
 		`UPDATE institution_types SET name = 'Test type again' WHERE code = 'x_type'`,
 		`SELECT updated_at = now() FROM institution_types WHERE code = 'x_type'`)
+}
+
+// InstitutionTypesCurrent is what creating a tenant asks (tenancy.Reference, C197).
+func TestFeatureOnlyCurrentInstitutionTypesOfCurrentSectorsCount(t *testing.T) {
+	m := reference.New(referenceWorld(t), slog.New(slog.DiscardHandler))
+	current, err := m.InstitutionTypesCurrent(t.Context(), []string{"x_clinic", "x_old", "x_orphan", "x_nope"})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]bool{"x_clinic": true}, current, "retired types, types of retired sectors, and unknown codes are not current")
 }

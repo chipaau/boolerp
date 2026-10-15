@@ -6,6 +6,7 @@
 package reference
 
 import (
+	"context"
 	"embed"
 	"io/fs"
 	"log/slog"
@@ -47,4 +48,20 @@ type Module struct {
 // New returns the module over db, the pool as the runtime role.
 func New(db store.Querier, logger *slog.Logger) *Module {
 	return &Module{db: db, logger: logger}
+}
+
+// CountryCurrent reports whether code is a country in use (tenancy.Reference).
+func (m *Module) CountryCurrent(ctx context.Context, code string) (bool, error) {
+	return store.CountryCurrent(ctx, m.db, code)
+}
+
+// LegalForm returns a current legal form's country and the identity document it names
+// (tenancy.Reference).
+func (m *Module) LegalForm(ctx context.Context, id string) (country, identityDocument string, ok bool, err error) {
+	return store.CurrentLegalForm(ctx, m.db, id)
+}
+
+// InstitutionTypesCurrent returns which of codes are current institution types (tenancy.Reference).
+func (m *Module) InstitutionTypesCurrent(ctx context.Context, codes []string) (map[string]bool, error) {
+	return store.InstitutionTypesCurrent(ctx, m.db, codes)
 }

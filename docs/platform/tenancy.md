@@ -258,6 +258,22 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   window over the whole table, so a tenant's parent is usually on another one, and a name resolved
   from the rows at hand would be missing precisely as the directory outgrows a single page (C188).
   The list is flat — the parent is a column, not an indent.
+- **`POST /api/v1/tenants`** (C197, C203–C206): creates a tenant in `provisioning`, behind the
+  `Operator` chain; Cerbos `create` on `tenancy:tenant` first (`tenancy:tenant:manage` in the
+  operator tenant). The body: `name`, `slug`, `code`, `country`, `legalFormId`, `timezone`, and
+  `institutionTypes` (`[{code, primary}]`, one or more, exactly one primary) required;
+  `parentId`, `identityNumber`, `registeredOn` (`YYYY-MM-DD`), `taxNumber`, `email`, `phone`
+  (`+` and 6 to 15 digits) optional. The rules, as 422 field errors on their JSON pointers:
+  the slug's and code's formats and the reserved slugs; an IANA time zone (`time.LoadLocation`
+  on Go's embedded database, so the host needs none); a current country and a current legal
+  form of it; the identity number required when the form names a document and refused when it
+  names none; current, distinct institution types; a parent that is neither the operator nor
+  archived; and a slug, code, identity number, or tax number another tenant holds, naming that
+  tenant (`unique`). The reference rules are read through the reference module
+  (`tenancy.Reference`, C134). One `tenant.Tx` in the operator's transaction writes the tenant,
+  its institution types, and its default apps (`activated_by` the caller); no domain (C203), no
+  owner (C198), no idempotency key (C205). `201` with the tenant as the list shows it and
+  `Location: /api/v1/tenants/{id}`.
 - The lookup before any tenant is known (C131): a `SECURITY DEFINER` function owned by
   `erp_lookup`, a `NOLOGIN BYPASSRLS` role with column-level `SELECT` on only the
   columns it reads and no writes. It pins `search_path`, schema-qualifies its tables,

@@ -108,7 +108,9 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 
 	// The platform every module gets (C144): the tenant chain is built here from
 	// the single-purpose middlewares of auth, tenancy, and authorization.
-	tenancyModule := tenancy.New(d.Pool, d.Logger)
+	referenceModule := reference.New(d.Pool, d.Logger)
+	// Creating a tenant checks it against the reference lists through the reference module (C134).
+	tenancyModule := tenancy.New(d.Pool, referenceModule, d.Logger)
 	capabilities := authorization.LoadCapabilities(d.Pool, d.Logger)
 	services := platform.Services{
 		Pool: d.Pool, Authz: authz, Logger: d.Logger,
@@ -123,7 +125,7 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/tenant", tenancyModule.Routes(services))
 		r.Route("/tenants", tenancyModule.TenantsRoutes(services))
-		r.Group(reference.New(d.Pool, d.Logger).Routes(services))
+		r.Group(referenceModule.Routes(services))
 	})
 	return nil
 }
