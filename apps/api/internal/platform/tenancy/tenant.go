@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/go-chi/render"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/adapters/store"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
 )
@@ -27,13 +27,13 @@ func (m *Module) current(authz authorization.Authorizer) http.HandlerFunc {
 			return
 		}
 		if err := authz.Check(r.Context(), "view", authorization.Resource{
-			Kind: "tenancy:tenant", ID: t.ID,
+			Kind: tenantKind, ID: t.ID,
 			Attributes: map[string]any{"tenant_id": t.ID, "status": t.Status},
 		}); err != nil {
-			authorization.WriteError(w, r, err)
+			authorization.WriteError(w, r, m.logger, err)
 			return
 		}
-		render.JSON(w, r, struct {
+		response.OK(w, r, struct {
 			ID     string `json:"id"`
 			Code   string `json:"code"`
 			Name   string `json:"name"`

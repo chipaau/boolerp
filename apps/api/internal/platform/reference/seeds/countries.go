@@ -32,7 +32,7 @@ var (
 // ParseCountries reads countries CSV (lines starting with # are comments): a
 // header, then one country per line. It rejects a malformed or duplicated row.
 func ParseCountries(data []byte) ([]Country, error) {
-	records, err := readCSV("countries", data, "code", "alpha3", "name", "phone_prefix")
+	records, err := seed.ReadCSV("countries", data, "code", "alpha3", "name", "phone_prefix")
 	if err != nil {
 		return nil, err
 	}

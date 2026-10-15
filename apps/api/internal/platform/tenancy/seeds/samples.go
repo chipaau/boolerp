@@ -1,19 +1,17 @@
 package seeds
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
-	"encoding/csv"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
+	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/adapters/store"
 )
 
 //go:embed sample_tenants.csv
@@ -35,26 +33,13 @@ type Sample struct {
 // ParseSamples reads sample tenants CSV. It rejects a malformed row, a repeated
 // slug, a parent that is not an earlier row, and a row without a legal form (C195).
 func ParseSamples(data []byte) ([]Sample, error) {
-	r := csv.NewReader(bytes.NewReader(data))
-	r.Comment = '#'
-	r.FieldsPerRecord = 8
-	header, err := r.Read()
+	records, err := seed.ReadCSV("sample tenants", data, "slug", "code", "name", "country", "legal_form", "identity_number", "parent", "types")
 	if err != nil {
-		return nil, fmt.Errorf("sample tenants header: %w", err)
-	}
-	if strings.Join(header, ",") != "slug,code,name,country,legal_form,identity_number,parent,types" {
-		return nil, fmt.Errorf("sample tenants header: got %q", header)
+		return nil, err
 	}
 	var samples []Sample
 	seen := map[string]bool{}
-	for {
-		rec, err := r.Read()
-		if errors.Is(err, io.EOF) {
-			return samples, nil
-		}
-		if err != nil {
-			return nil, fmt.Errorf("sample tenants: %w", err)
-		}
+	for _, rec := range records {
 		s := Sample{Slug: rec[0], Code: rec[1], Name: rec[2], Country: rec[3], LegalForm: rec[4],
 			IdentityNumber: rec[5], Parent: rec[6]}
 		if rec[7] != "" {
@@ -73,6 +58,7 @@ func ParseSamples(data []byte) ([]Sample, error) {
 		seen[s.Slug] = true
 		samples = append(samples, s)
 	}
+	return samples, nil
 }
 
 // SampleSlugs are the embedded sample tenants' slugs, for other modules' sample seeds.
@@ -89,8 +75,10 @@ func SampleSlugs() []string {
 }
 
 // Samples creates the sample tenants, in development only (C143). It writes as
-// the table owner, like Operator: tenancy has no create-tenant operation yet, so
-// this is a recorded exception to seeding through use cases (C50) until it does.
+// the table owner, like Operator, a recorded exception to seeding through use cases
+// (C50): CreateTenant (C197) exists now, but it runs in an operator's request context
+// and does not create the active hosts the samples get, so moving them onto it is
+// still to do.
 // A tenant whose slug exists is left as it is.
 // Each sample, new or existing, gets its platform workspace host,
 // <slug>.<platform domain>, if it has none (C158, C159).
@@ -117,8 +105,7 @@ func (*Samples) Name() string { return "tenancy.sample_tenants" }
 // Run implements seed.Seeder, in one transaction: the rule that an active tenant
 // has a primary type is checked at its commit.
 func (s *Samples) Run(ctx context.Context, env seed.Env) error {
-	if env.Environment != "dev" {
-		env.Logger.InfoContext(ctx, "sample tenants are seeded only in dev; skipped")
+	if !env.DevOnly(ctx, "sample tenants") {
 		return nil
 	}
 	samples, err := ParseSamples(s.data)
@@ -129,8 +116,7 @@ func (s *Samples) Run(ctx context.Context, env seed.Env) error {
 	// One transaction, attributed to the seeder in the audit (C164).
 	err = actor.Tx(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
 		for _, sm := range samples {
-			var id string
-			err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, sm.Slug).Scan(&id)
+			id, err := store.TenantIDBySlug(ctx, tx, sm.Slug)
 			switch {
 			case err == nil:
 				existing++
@@ -174,8 +160,7 @@ func createSample(ctx context.Context, tx pgx.Tx, sm Sample) (string, error) {
 		return "", fmt.Errorf("sample %s (legal form %q): %w", sm.Slug, sm.LegalForm, err)
 	}
 	for i, typ := range sm.Types {
-		if _, err := tx.Exec(ctx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
-			VALUES ($1, $2, $3)`, id, typ, i == 0); err != nil {
+		if err := store.InsertInstitutionType(ctx, tx, id, typ, i == 0); err != nil {
 			return "", fmt.Errorf("sample %s type %s: %w", sm.Slug, typ, err)
 		}
 	}

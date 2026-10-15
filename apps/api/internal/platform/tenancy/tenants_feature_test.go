@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -33,15 +32,15 @@ func newWorld(t *testing.T) *world {
 	t.Helper()
 	tx := testdb.OwnerTx(t)
 	w := &world{tx: tx}
-	exec(t, tx, `INSERT INTO countries (code, alpha3, name, phone_prefix)
+	testdb.Exec(t, tx, `INSERT INTO countries (code, alpha3, name, phone_prefix)
 		VALUES ('XT', 'XTT', 'Testland', '+999'), ('XU', 'XUU', 'Otherland', '+998')`)
-	exec(t, tx, `INSERT INTO sectors (code, name) VALUES ('x_tenancy', 'Test sector')`)
-	exec(t, tx, `INSERT INTO institution_types (code, sector, name) VALUES ('x_tenancy_type', 'x_tenancy', 'Test type')`)
-	w.formXT = id(t, tx, `INSERT INTO legal_forms (country, code, name, category, identity_document)
+	testdb.Exec(t, tx, `INSERT INTO sectors (code, name) VALUES ('x_tenancy', 'Test sector')`)
+	testdb.Exec(t, tx, `INSERT INTO institution_types (code, sector, name) VALUES ('x_tenancy_type', 'x_tenancy', 'Test type')`)
+	w.formXT = testdb.ID(t, tx, `INSERT INTO legal_forms (country, code, name, category, identity_document)
 		VALUES ('XT', 'test_company', 'Test company', 'private', 'Test registration number') RETURNING id`)
-	w.formXTNoDocument = id(t, tx, `INSERT INTO legal_forms (country, code, name, category)
+	w.formXTNoDocument = testdb.ID(t, tx, `INSERT INTO legal_forms (country, code, name, category)
 		VALUES ('XT', 'test_ministry', 'Test ministry', 'government') RETURNING id`)
-	w.formXU = id(t, tx, `INSERT INTO legal_forms (country, code, name, category)
+	w.formXU = testdb.ID(t, tx, `INSERT INTO legal_forms (country, code, name, category)
 		VALUES ('XU', 'test_company', 'Test company', 'private') RETURNING id`)
 	return w
 }
@@ -49,14 +48,14 @@ func newWorld(t *testing.T) *world {
 // tenant inserts a provisioning tenant in country XT and returns its id.
 func (w *world) tenant(t *testing.T, slug, code string) string {
 	t.Helper()
-	return id(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone)
+	return testdb.ID(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone)
 		VALUES ($1, $2, $3, 'XT', $4, 'Etc/UTC') RETURNING id`, slug, code, "Tenant "+code, w.formXTNoDocument)
 }
 
 // operator inserts the operator tenant, as only the owner can.
 func (w *world) operator(t *testing.T) string {
 	t.Helper()
-	return id(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, is_operator)
+	return testdb.ID(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, is_operator)
 		VALUES ('x-operator', 'XOP', 'Test operator', 'XT', $1, 'Etc/UTC', true) RETURNING id`, w.formXTNoDocument)
 }
 
@@ -67,14 +66,14 @@ func (w *world) operator(t *testing.T) string {
 func (w *world) enforce(t *testing.T) {
 	t.Helper()
 	// ALTER TABLE refuses while commit-time checks are pending: run them now.
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
-	exec(t, w.tx, `ALTER TABLE tenants FORCE ROW LEVEL SECURITY`)
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
+	testdb.Exec(t, w.tx, `ALTER TABLE tenants FORCE ROW LEVEL SECURITY`)
 }
 
 // as sets the transaction's tenant, as the API does per transaction ("" = none).
 func (w *world) as(t *testing.T, tenant string) {
 	t.Helper()
-	exec(t, w.tx, `SELECT set_config('app.tenant_id', $1, true)`, tenant)
+	testdb.Exec(t, w.tx, `SELECT set_config('app.tenant_id', $1, true)`, tenant)
 }
 
 func (w *world) visible(t *testing.T) []string {
@@ -91,61 +90,26 @@ func (w *world) visible(t *testing.T) []string {
 // CONSTRAINTS ALL IMMEDIATE), as the test's transaction never commits.
 func (w *world) activate(t *testing.T, tenant string) {
 	t.Helper()
-	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
 		VALUES ($1, 'x_tenancy_type', true)`, tenant)
 	if w.owner == "" {
 		w.owner = w.user(t, 999999)
 	}
-	exec(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at, is_owner)
+	testdb.Exec(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at, is_owner)
 		VALUES ($1, $2, 'active', now(), true)`, tenant, w.owner)
-	exec(t, w.tx, `UPDATE tenants SET status = 'active', activated_at = now() WHERE id = $1`, tenant)
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
-}
-
-func exec(t *testing.T, tx pgx.Tx, sql string, args ...any) {
-	t.Helper()
-	_, err := tx.Exec(t.Context(), sql, args...)
-	require.NoError(t, err, sql)
-}
-
-func id(t *testing.T, tx pgx.Tx, sql string, args ...any) string {
-	t.Helper()
-	var v string
-	require.NoError(t, tx.QueryRow(t.Context(), sql, args...).Scan(&v), sql)
-	return v
-}
-
-// code returns the PostgreSQL error code of err, failing when it is not one.
-func code(t *testing.T, err error) string {
-	t.Helper()
-	var pgErr *pgconn.PgError
-	require.ErrorAs(t, err, &pgErr)
-	return pgErr.Code
-}
-
-// savepoint runs sql in a savepoint, so a refused statement does not end the test's transaction.
-func savepoint(t *testing.T, tx pgx.Tx, sql string, args ...any) (pgconn.CommandTag, error) {
-	t.Helper()
-	sp, err := tx.Begin(t.Context())
-	require.NoError(t, err)
-	tag, err := sp.Exec(t.Context(), sql, args...)
-	if err != nil {
-		require.NoError(t, sp.Rollback(t.Context()))
-		return tag, err
-	}
-	require.NoError(t, sp.Commit(t.Context()))
-	return tag, nil
+	testdb.Exec(t, w.tx, `UPDATE tenants SET status = 'active', activated_at = now() WHERE id = $1`, tenant)
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
 }
 
 func TestFeatureTheRuntimeRoleWithoutATenantSeesAndWritesNothing(t *testing.T) {
 	tx := testdb.Tx(t)
 	_, err := tx.Exec(t.Context(), `INSERT INTO tenants (slug, code, name, country) VALUES ('x-a', 'XTA', 'A', 'MV')`)
-	assert.Equal(t, "42501", code(t, err), "no tenant: row-level security refuses the insert")
+	assert.Equal(t, "42501", testdb.PgCode(err), "no tenant: row-level security refuses the insert")
 
 	tx = testdb.Tx(t)
-	exec(t, tx, `SELECT set_config('app.tenant_id', '0192f6a0-0000-7000-8000-000000000000', true)`)
+	testdb.Exec(t, tx, `SELECT set_config('app.tenant_id', '0192f6a0-0000-7000-8000-000000000000', true)`)
 	_, err = tx.Exec(t.Context(), `INSERT INTO tenants (slug, code, name, country) VALUES ('x-a', 'XTA', 'A', 'MV')`)
-	assert.Equal(t, "42501", code(t, err), "an unknown tenant is not the operator")
+	assert.Equal(t, "42501", testdb.PgCode(err), "an unknown tenant is not the operator")
 }
 
 func TestFeatureATenantReadsOnlyItsOwnRow(t *testing.T) {
@@ -171,22 +135,22 @@ func TestFeatureOnlyTheOperatorCreatesAndChangesTenants(t *testing.T) {
 	w.enforce(t)
 
 	w.as(t, a)
-	tag, err := savepoint(t, w.tx, `UPDATE tenants SET name = 'Renamed' WHERE id = $1`, a)
+	tag, err := testdb.Savepoint(t, w.tx, `UPDATE tenants SET name = 'Renamed' WHERE id = $1`, a)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "a tenant cannot change even its own registry row")
 	const insertC = `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, parent_id)
 		VALUES ('x-c', 'XTC', 'C', 'XT', $1, 'Etc/UTC', $2)`
-	_, err = savepoint(t, w.tx, insertC, w.formXTNoDocument, nil)
-	assert.Equal(t, "42501", code(t, err), "a tenant cannot create tenants")
+	_, err = testdb.Savepoint(t, w.tx, insertC, w.formXTNoDocument, nil)
+	assert.Equal(t, "42501", testdb.PgCode(err), "a tenant cannot create tenants")
 
 	w.as(t, op)
-	tag, err = savepoint(t, w.tx, `UPDATE tenants SET name = 'Renamed' WHERE id = $1`, a)
+	tag, err = testdb.Savepoint(t, w.tx, `UPDATE tenants SET name = 'Renamed' WHERE id = $1`, a)
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, tag.RowsAffected())
-	_, err = savepoint(t, w.tx, insertC, w.formXTNoDocument, b)
+	_, err = testdb.Savepoint(t, w.tx, insertC, w.formXTNoDocument, b)
 	require.NoError(t, err, "the operator creates tenants")
 
-	tag, err = savepoint(t, w.tx, `DELETE FROM tenants WHERE id = $1`, a)
+	tag, err = testdb.Savepoint(t, w.tx, `DELETE FROM tenants WHERE id = $1`, a)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "no delete policy: tenants are archived, never deleted")
 }
@@ -204,10 +168,10 @@ func TestFeatureTheRuntimeRoleNeverSetsTheOperatorFlag(t *testing.T) {
 		"make a tenant operator":  `UPDATE tenants SET is_operator = true WHERE id = '` + a + `'`,
 		"stop being the operator": `UPDATE tenants SET is_operator = false WHERE id = '` + op + `'`,
 	} {
-		_, err := savepoint(t, w.tx, sql)
-		assert.Equal(t, "42501", code(t, err), name)
+		_, err := testdb.Savepoint(t, w.tx, sql)
+		assert.Equal(t, "42501", testdb.PgCode(err), name)
 	}
-	_, err := savepoint(t, w.tx, `UPDATE tenants SET name = 'Bool' WHERE id = $1`, op)
+	_, err := testdb.Savepoint(t, w.tx, `UPDATE tenants SET name = 'Bool' WHERE id = $1`, op)
 	require.NoError(t, err, "the operator still changes its own other fields")
 }
 
@@ -249,14 +213,14 @@ func TestFeatureTenantConstraints(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			w := newWorld(t)
 			w.operator(t)
-			exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, identity_number, tax_number)
+			testdb.Exec(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, identity_number, tax_number)
 				VALUES ('x-a', 'XTA', 'A', 'XT', $1, 'Etc/UTC', 'C-123', 'TIN-9')`, w.formXT)
 			sql := c.sql
 			for k, v := range map[string]string{"%FORM%": w.formXT, "%FORMXU%": w.formXU} {
 				sql = strings.ReplaceAll(sql, k, v)
 			}
 			_, err := w.tx.Exec(t.Context(), sql)
-			assert.Equal(t, c.want, code(t, err))
+			assert.Equal(t, c.want, testdb.PgCode(err))
 		})
 	}
 }
@@ -265,18 +229,18 @@ func TestFeatureTheSameIdentityNumberInAnotherCountry(t *testing.T) {
 	w := newWorld(t)
 	const insert = `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, identity_number)
 		VALUES ($1, $2, $3, $4, $5, 'Etc/UTC', 'C-123')`
-	exec(t, w.tx, insert, "x-a", "XTA", "A", "XT", w.formXT)
-	exec(t, w.tx, insert, "x-b", "XTB", "B", "XU", w.formXU)
+	testdb.Exec(t, w.tx, insert, "x-a", "XTA", "A", "XT", w.formXT)
+	testdb.Exec(t, w.tx, insert, "x-b", "XTB", "B", "XU", w.formXU)
 }
 
 func TestFeatureTheSameTaxNumberInAnotherCountry(t *testing.T) {
 	w := newWorld(t)
 	const insert = `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, tax_number)
 		VALUES ($1, $2, $3, $4, $5, 'Etc/UTC', $6)`
-	exec(t, w.tx, insert, "x-a", "XTA", "A", "XT", w.formXT, "TIN-9")
-	exec(t, w.tx, insert, "x-b", "XTB", "B", "XU", w.formXU, "TIN-9")
-	exec(t, w.tx, insert, "x-c", "XTC", "C", "XT", w.formXT, nil)
-	exec(t, w.tx, insert, "x-d", "XTD", "D", "XT", w.formXT, nil) // many without one
+	testdb.Exec(t, w.tx, insert, "x-a", "XTA", "A", "XT", w.formXT, "TIN-9")
+	testdb.Exec(t, w.tx, insert, "x-b", "XTB", "B", "XU", w.formXU, "TIN-9")
+	testdb.Exec(t, w.tx, insert, "x-c", "XTC", "C", "XT", w.formXT, nil)
+	testdb.Exec(t, w.tx, insert, "x-d", "XTD", "D", "XT", w.formXT, nil) // many without one
 }
 
 func TestFeatureAnActiveTenantIsClassified(t *testing.T) {
@@ -292,8 +256,8 @@ func TestFeatureTheOperatorStaysActiveAndHasNoParent(t *testing.T) {
 		"archived":   `UPDATE tenants SET status = 'archived', archived_at = now() WHERE id = '` + op + `'`,
 		"has parent": `UPDATE tenants SET parent_id = '` + a + `' WHERE id = '` + op + `'`,
 	} {
-		_, err := savepoint(t, w.tx, sql)
-		assert.Equal(t, "23514", code(t, err), name)
+		_, err := testdb.Savepoint(t, w.tx, sql)
+		assert.Equal(t, "23514", testdb.PgCode(err), name)
 	}
 }
 
@@ -303,8 +267,8 @@ func TestFeatureParentRules(t *testing.T) {
 	a := w.tenant(t, "x-a", "XTA")
 	b := w.tenant(t, "x-b", "XTB")
 	c := w.tenant(t, "x-c", "XTC")
-	exec(t, w.tx, `UPDATE tenants SET parent_id = $1 WHERE id = $2`, a, b)
-	exec(t, w.tx, `UPDATE tenants SET parent_id = $1 WHERE id = $2`, b, c)
+	testdb.Exec(t, w.tx, `UPDATE tenants SET parent_id = $1 WHERE id = $2`, a, b)
+	testdb.Exec(t, w.tx, `UPDATE tenants SET parent_id = $1 WHERE id = $2`, b, c)
 
 	for name, sql := range map[string]string{
 		"itself":          `UPDATE tenants SET parent_id = id WHERE id = '` + a + `'`,
@@ -312,18 +276,18 @@ func TestFeatureParentRules(t *testing.T) {
 		"the operator":    `UPDATE tenants SET parent_id = '` + op + `' WHERE id = '` + a + `'`,
 		"deleting parent": `DELETE FROM tenants WHERE id = '` + a + `'`,
 	} {
-		_, err := savepoint(t, w.tx, sql)
-		assert.Contains(t, []string{"23514", "23001"}, code(t, err), name)
+		_, err := testdb.Savepoint(t, w.tx, sql)
+		assert.Contains(t, []string{"23514", "23001"}, testdb.PgCode(err), name)
 	}
 }
 
 func TestFeatureTheSlugIsLockedOnceActive(t *testing.T) {
 	w := newWorld(t)
 	a := w.tenant(t, "x-a", "XTA")
-	exec(t, w.tx, `UPDATE tenants SET slug = 'x-a2' WHERE id = $1`, a)
+	testdb.Exec(t, w.tx, `UPDATE tenants SET slug = 'x-a2' WHERE id = $1`, a)
 	w.activate(t, a)
-	_, err := savepoint(t, w.tx, `UPDATE tenants SET slug = 'x-a3' WHERE id = $1`, a)
-	assert.Equal(t, "23514", code(t, err))
+	_, err := testdb.Savepoint(t, w.tx, `UPDATE tenants SET slug = 'x-a3' WHERE id = $1`, a)
+	assert.Equal(t, "23514", testdb.PgCode(err))
 }
 
 func TestFeatureReferencedClassificationCannotBeDeleted(t *testing.T) {
@@ -335,9 +299,9 @@ func TestFeatureReferencedClassificationCannotBeDeleted(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			w := newWorld(t)
 			a := w.tenant(t, "x-a", "XTA") // its legal form is test_ministry
-			exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type')`, a)
+			testdb.Exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type')`, a)
 			_, err := w.tx.Exec(t.Context(), sql)
-			assert.Contains(t, []string{"23001", "23503"}, code(t, err))
+			assert.Contains(t, []string{"23001", "23503"}, testdb.PgCode(err))
 		})
 	}
 }
@@ -345,9 +309,9 @@ func TestFeatureReferencedClassificationCannotBeDeleted(t *testing.T) {
 func TestFeatureTenantUpdatedAtFollowsChanges(t *testing.T) {
 	w := newWorld(t)
 	// The trigger runs on updates only, so a backdated insert keeps its updated_at.
-	a := id(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, updated_at)
+	a := testdb.ID(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, updated_at)
 		VALUES ('x-a', 'XTA', 'A', 'XT', $1, 'Etc/UTC', '2000-01-01') RETURNING id`, w.formXTNoDocument)
-	exec(t, w.tx, `UPDATE tenants SET name = 'Renamed' WHERE id = $1`, a)
+	testdb.Exec(t, w.tx, `UPDATE tenants SET name = 'Renamed' WHERE id = $1`, a)
 	var setToNow bool
 	require.NoError(t, w.tx.QueryRow(t.Context(), `SELECT updated_at = now() FROM tenants WHERE id = $1`, a).Scan(&setToNow))
 	assert.True(t, setToNow)

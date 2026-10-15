@@ -3,13 +3,12 @@ package store
 import (
 	"context"
 	"errors"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/postgres"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
 )
 
 // Tenant is a tenant as the API shows it.
@@ -27,15 +26,28 @@ func CurrentTenant(ctx context.Context, tx pgx.Tx) (Tenant, error) {
 }
 
 // TenantListSpec is what GET /api/v1/tenants accepts (C179).
-var TenantListSpec = httpinput.ListSpec{
+var TenantListSpec = request.ListSpec{
 	Sorts:       []string{"name", "code", "createdAt"},
 	DefaultSort: "name",
 	Filters:     map[string][]string{"status": {"provisioning", "active", "suspended", "archived"}},
 	Search:      true,
 }
 
-// sortColumns maps a declared sort field to its column; nothing else reaches SQL.
-var sortColumns = map[string]string{"name": "t.name", "code": "t.code", "createdAt": "t.created_at"}
+// tenantColumns are a tenant as the list shows it (C179), over tenants t and its parent p.
+// The parent's name comes from the join, not the page: a page is a window over the whole
+// table, so a tenant's parent is usually on another one (C188).
+const tenantColumns = `t.id::text, t.slug, t.code, t.name, t.status, t.country, t.parent_id::text, p.name,
+	(SELECT d.host FROM domains d WHERE d.tenant_id = t.id AND d.serves = 'workspace'
+	    AND d.is_primary AND d.status = 'active'),
+	t.created_at`
+
+const tenantFrom = `tenants t LEFT JOIN tenants p ON p.id = t.parent_id`
+
+// scanTenant reads tenantColumns into t, then any extra destinations (the list's total).
+func scanTenant(row pgx.Row, t *TenantItem, extra ...any) error {
+	return row.Scan(append([]any{&t.ID, &t.Slug, &t.Code, &t.Name, &t.Status, &t.Country, &t.ParentID,
+		&t.ParentName, &t.WorkspaceHost, &t.CreatedAt}, extra...)...)
+}
 
 // TenantItem is a tenant as the list shows it (C179).
 type TenantItem struct {
@@ -46,73 +58,23 @@ type TenantItem struct {
 
 // ListTenants reads one page of the tenants the transaction may see (the operator: all)
 // and how many match in total. q matches the code, name, or slug.
-func ListTenants(ctx context.Context, tx pgx.Tx, l httpinput.List) ([]TenantItem, int, error) {
-	var where []string
-	args := []any{}
-	arg := func(v any) string {
-		args = append(args, v)
-		return "$" + strconv.Itoa(len(args))
-	}
-	if l.Q != "" {
-		p := arg("%" + httpinput.Escape(l.Q) + "%")
-		where = append(where, "(t.code ILIKE "+p+" OR t.name ILIKE "+p+" OR t.slug ILIKE "+p+")")
-	}
+func ListTenants(ctx context.Context, tx pgx.Tx, l request.List) ([]TenantItem, int, error) {
+	q := postgres.ListQuery{From: tenantFrom, Key: "t.id",
+		Sorts: map[string]string{"name": "t.name", "code": "t.code", "createdAt": "t.created_at"}}
+	q.Search(l.Q, "t.code", "t.name", "t.slug")
 	if s, ok := l.Filters["status"]; ok {
-		where = append(where, "t.status = "+arg(s))
+		q.Equal("t.status", s)
 	}
-	order := make([]string, 0, len(l.Sort)+1)
-	for _, f := range l.Sort {
-		dir := " ASC"
-		if f.Desc {
-			dir = " DESC"
-		}
-		order = append(order, sortColumns[f.Field]+dir)
-	}
-	order = append(order, "t.id") // a stable order across pages
-
-	// p.name, not just t.parent_id: the list shows the parent by name, and a page is a window over
-	// the whole table — a tenant's parent is usually on another page, so a name resolved from the
-	// rows at hand would be missing precisely when the hierarchy is worth seeing.
-	sql := `SELECT t.id::text, t.slug, t.code, t.name, t.status, t.country, t.parent_id::text, p.name,
-	               (SELECT d.host FROM domains d WHERE d.tenant_id = t.id AND d.serves = 'workspace'
-	                   AND d.is_primary AND d.status = 'active'),
-	               t.created_at, count(*) OVER ()
-	          FROM tenants t
-	          LEFT JOIN tenants p ON p.id = t.parent_id`
-	if len(where) > 0 {
-		sql += " WHERE " + strings.Join(where, " AND ")
-	}
-	sql += " ORDER BY " + strings.Join(order, ", ") + " LIMIT " + arg(l.PageSize) + " OFFSET " + arg(l.Offset())
-
-	rows, err := tx.Query(ctx, sql, args...)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
 	items := []TenantItem{}
-	total := 0
-	for rows.Next() {
+	total, err := q.Run(ctx, tx, l, tenantColumns, func(rows pgx.Rows, total *int) error {
 		var t TenantItem
-		if err := rows.Scan(&t.ID, &t.Slug, &t.Code, &t.Name, &t.Status, &t.Country, &t.ParentID,
-			&t.ParentName, &t.WorkspaceHost, &t.CreatedAt, &total); err != nil {
-			return nil, 0, err
+		if err := scanTenant(rows, &t, total); err != nil {
+			return err
 		}
 		items = append(items, t)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, 0, err
-	}
-	if len(items) == 0 && l.Page > 1 {
-		// Past the last page: the window count is unknown, so count the matches.
-		cnt := `SELECT count(*) FROM tenants t`
-		if len(where) > 0 {
-			cnt += " WHERE " + strings.Join(where, " AND ")
-		}
-		if err := tx.QueryRow(ctx, cnt, args[:len(args)-2]...).Scan(&total); err != nil {
-			return nil, 0, err
-		}
-	}
-	return items, total, nil
+		return nil
+	})
+	return items, total, err
 }
 
 // NewTenant is a tenant to insert; empty optional fields are stored as null.
@@ -151,7 +113,7 @@ func TurnOnDefaultApps(ctx context.Context, tx pgx.Tx, tenant string) error {
 		INSERT INTO tenant_apps (tenant_id, app_key, activated_by)
 		SELECT $1, key, nullif(current_setting('app.actor_user_id', true), '')::uuid
 		  FROM apps
-		 WHERE is_default AND active_to IS NULL
+		 WHERE is_default AND is_current(active_from, active_to)
 		 ORDER BY key`, tenant)
 	return err
 }
@@ -159,16 +121,7 @@ func TurnOnDefaultApps(ctx context.Context, tx pgx.Tx, tenant string) error {
 // TenantByID reads one tenant as the list shows it.
 func TenantByID(ctx context.Context, tx pgx.Tx, id string) (TenantItem, error) {
 	var t TenantItem
-	err := tx.QueryRow(ctx, `
-		SELECT t.id::text, t.slug, t.code, t.name, t.status, t.country, t.parent_id::text, p.name,
-		       (SELECT d.host FROM domains d WHERE d.tenant_id = t.id AND d.serves = 'workspace'
-		           AND d.is_primary AND d.status = 'active'),
-		       t.created_at
-		  FROM tenants t
-		  LEFT JOIN tenants p ON p.id = t.parent_id
-		 WHERE t.id = $1`, id).
-		Scan(&t.ID, &t.Slug, &t.Code, &t.Name, &t.Status, &t.Country, &t.ParentID, &t.ParentName,
-			&t.WorkspaceHost, &t.CreatedAt)
+	err := scanTenant(tx.QueryRow(ctx, `SELECT `+tenantColumns+` FROM `+tenantFrom+` WHERE t.id = $1`, id), &t)
 	return t, err
 }
 
@@ -206,4 +159,18 @@ func ParentAllowed(ctx context.Context, tx pgx.Tx, id string) (bool, error) {
 	err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM tenants WHERE id = $1 AND NOT is_operator
 		AND status <> 'archived')`, id).Scan(&ok)
 	return ok, err
+}
+
+// OperatorID returns the operator tenant's id; pgx.ErrNoRows when there is none yet.
+func OperatorID(ctx context.Context, tx pgx.Tx) (string, error) {
+	var id string
+	err := tx.QueryRow(ctx, `SELECT id::text FROM tenants WHERE is_operator`).Scan(&id)
+	return id, err
+}
+
+// TenantIDBySlug returns the id of the tenant with slug; pgx.ErrNoRows when there is none.
+func TenantIDBySlug(ctx context.Context, tx pgx.Tx, slug string) (string, error) {
+	var id string
+	err := tx.QueryRow(ctx, `SELECT id::text FROM tenants WHERE slug = $1`, slug).Scan(&id)
+	return id, err
 }

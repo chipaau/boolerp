@@ -38,9 +38,9 @@ SELECT DISTINCT rc.capability
   JOIN roles r            ON r.id = ra.role_id AND r.archived_at IS NULL
   JOIN tenant_apps_on ta  ON ta.tenant_id = ra.tenant_id AND ta.app_key = r.app_key
   JOIN role_capabilities rc ON rc.role_id = r.id
-  JOIN capabilities c     ON c.key = rc.capability AND c.active_to IS NULL
+  JOIN capabilities c     ON c.key = rc.capability AND is_current(c.active_from, c.active_to)
  WHERE ra.membership_id = $1
-   AND ra.active_from <= now() AND (ra.active_to IS NULL OR ra.active_to > now())
+   AND is_current(ra.active_from, ra.active_to)
  ORDER BY 1`
 
 // LoadCapabilities puts the caller's capabilities in the request's tenant in its

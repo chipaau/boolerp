@@ -110,7 +110,7 @@ panics or TLS handshake errors) to the application logger at warn level (C31) th
 redaction does not apply to them; a panic value containing a secret would be
 logged. Step 2e's panic recovery should intercept panics before net/http logs them. The body limit is `chi/middleware.RequestSize`, which wraps the
 body in `http.MaxBytesReader`; a handler reading past the limit receives
-`*http.MaxBytesError`; `httpinput.Decode` turns it into a `413` problem response (H2).
+`*http.MaxBytesError`; `request.Decode` turns it into a `413` problem response (H2).
 Every request's context also gets a deadline, `APP_HTTP_REQUEST_TIMEOUT` (25 seconds,
 below the write timeout, C114): database, cache, and provider calls made with the
 request's context fail once it passes, and the handler answers with its usual problem

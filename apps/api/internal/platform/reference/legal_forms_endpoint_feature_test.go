@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization/authztest"
 )
 
 type legalForm struct {
@@ -16,12 +18,12 @@ type legalForm struct {
 }
 
 func TestFeatureTheLegalFormListShowsACountrysCurrentForms(t *testing.T) {
-	authz := &stated{allow: true}
+	authz := &authztest.Stated{Allow: true}
 	h := referenceRouter(referenceWorld(t), authz)
 
 	rec, p := get[legalForm](t, h, "/api/v1/legal-forms?country=XA")
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, []string{"list reference:legal_form"}, authz.cans)
+	assert.Equal(t, []string{"list reference:legal_form"}, authz.Cans)
 	require.Len(t, p.Items, 2, "XB's form and the retired one are left out")
 	company, ministry := p.Items[0], p.Items[1]
 	assert.Equal(t, "x_company", company.Code, "by name")
@@ -44,7 +46,7 @@ func TestFeatureTheLegalFormListShowsACountrysCurrentForms(t *testing.T) {
 }
 
 func TestFeatureTheLegalFormListNeedsACountry(t *testing.T) {
-	rec, _ := get[legalForm](t, referenceRouter(referenceWorld(t), &stated{allow: true}), "/api/v1/legal-forms")
+	rec, _ := get[legalForm](t, referenceRouter(referenceWorld(t), &authztest.Stated{Allow: true}), "/api/v1/legal-forms")
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"country"`)
 }

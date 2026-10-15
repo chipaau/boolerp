@@ -9,17 +9,19 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization/authztest"
 )
 
 type country struct{ Code, Alpha3, Name, PhonePrefix string }
 
 func TestFeatureTheCountryListShowsCurrentCountries(t *testing.T) {
-	authz := &stated{allow: true}
+	authz := &authztest.Stated{Allow: true}
 	h := referenceRouter(referenceWorld(t), authz)
 
 	rec, p := get[country](t, h, "/api/v1/countries?q=testland")
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, []string{"list reference:country"}, authz.cans, "Cerbos decides the list")
+	assert.Equal(t, []string{"list reference:country"}, authz.Cans, "Cerbos decides the list")
 	assert.Equal(t, []country{
 		{"XA", "XAA", "Xanadu Testland", "+991"}, {"XB", "XBB", "Xavier Testland", "+992"},
 	}, p.Items, "by name")

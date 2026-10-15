@@ -17,21 +17,21 @@ import (
 // returns its id.
 func (w *world) user(t *testing.T, n int) string {
 	t.Helper()
-	return id(t, w.tx, `INSERT INTO users (kratos_identity_id, email, phone) VALUES ($1, $2, '+9990000000') RETURNING id`,
+	return testdb.ID(t, w.tx, `INSERT INTO users (kratos_identity_id, email, phone) VALUES ($1, $2, '+9990000000') RETURNING id`,
 		fmt.Sprintf("0192f6a0-0000-7000-8000-00000e%06d", n), fmt.Sprintf("member%d@x-tenancy.test", n))
 }
 
 // member adds an active membership and returns its id.
 func (w *world) member(t *testing.T, tenant, user string, owner bool) string {
 	t.Helper()
-	return id(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at, is_owner)
+	return testdb.ID(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at, is_owner)
 		VALUES ($1, $2, 'active', now(), $3) RETURNING id`, tenant, user, owner)
 }
 
 // invite adds an invited membership and returns its id.
 func (w *world) invite(t *testing.T, tenant, user string) string {
 	t.Helper()
-	return id(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at)
+	return testdb.ID(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at)
 		VALUES ($1, $2, now() + interval '7 days') RETURNING id`, tenant, user)
 }
 
@@ -62,7 +62,7 @@ func TestFeatureMembershipConstraints(t *testing.T) {
 		"disabled owner":            `INSERT INTO memberships (tenant_id, user_id, status, joined_at, disabled_at, is_owner) VALUES ($1, '` + v + `', 'disabled', now(), now(), true)`,
 		"unknown user":              `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, '0192f6a0-0000-7000-8000-000000000000', now())`,
 	} {
-		_, err := savepoint(t, w.tx, sql, a)
+		_, err := testdb.Savepoint(t, w.tx, sql, a)
 		assert.Error(t, err, name)
 	}
 }
@@ -72,13 +72,13 @@ func TestFeatureAnEndedMembershipIsHistory(t *testing.T) {
 	a := w.tenant(t, "x-a", "XTA")
 	u := w.user(t, 1)
 	first := w.member(t, a, u, false)
-	exec(t, w.tx, `UPDATE memberships SET status = 'ended', ended_at = now() WHERE id = $1`, first)
+	testdb.Exec(t, w.tx, `UPDATE memberships SET status = 'ended', ended_at = now() WHERE id = $1`, first)
 
 	// Rejoining is a new row; the ended one is frozen.
 	w.invite(t, a, u)
 	assert.Equal(t, 2, testdb.Count(t, w.tx, "memberships", map[string]any{"tenant_id": a, "user_id": u}))
-	_, err := savepoint(t, w.tx, `UPDATE memberships SET status = 'active', ended_at = null WHERE id = $1`, first)
-	assert.Equal(t, "23514", code(t, err), "an ended membership cannot change")
+	_, err := testdb.Savepoint(t, w.tx, `UPDATE memberships SET status = 'active', ended_at = null WHERE id = $1`, first)
+	assert.Equal(t, "23514", testdb.PgCode(err), "an ended membership cannot change")
 }
 
 func TestFeatureAMembershipsTenantAndUserNeverChange(t *testing.T) {
@@ -93,8 +93,8 @@ func TestFeatureAMembershipsTenantAndUserNeverChange(t *testing.T) {
 		"tenant": `UPDATE memberships SET tenant_id = '` + b + `' WHERE id = $1`,
 		"user":   `UPDATE memberships SET user_id = '` + v + `' WHERE id = $1`,
 	} {
-		_, err := savepoint(t, w.tx, sql, m)
-		assert.Equal(t, "23514", code(t, err), name)
+		_, err := testdb.Savepoint(t, w.tx, sql, m)
+		assert.Equal(t, "23514", testdb.PgCode(err), name)
 	}
 }
 
@@ -102,8 +102,8 @@ func TestFeatureDisablingIsReversible(t *testing.T) {
 	w := newWorld(t)
 	a := w.tenant(t, "x-a", "XTA")
 	m := w.member(t, a, w.user(t, 1), false)
-	exec(t, w.tx, `UPDATE memberships SET status = 'disabled', disabled_at = now() WHERE id = $1`, m)
-	exec(t, w.tx, `UPDATE memberships SET status = 'active', disabled_at = null WHERE id = $1`, m)
+	testdb.Exec(t, w.tx, `UPDATE memberships SET status = 'disabled', disabled_at = now() WHERE id = $1`, m)
+	testdb.Exec(t, w.tx, `UPDATE memberships SET status = 'active', disabled_at = null WHERE id = $1`, m)
 	testdb.AssertHas(t, w.tx, "memberships", map[string]any{"id": m, "status": "active"})
 }
 
@@ -113,7 +113,7 @@ func TestFeatureATenantHasSeveralOwners(t *testing.T) {
 	w.member(t, a, w.user(t, 1), true)
 	w.member(t, a, w.user(t, 2), true)
 	w.invite(t, a, w.user(t, 3))
-	exec(t, w.tx, `UPDATE memberships SET is_owner = true WHERE tenant_id = $1 AND status = 'invited'`, a)
+	testdb.Exec(t, w.tx, `UPDATE memberships SET is_owner = true WHERE tenant_id = $1 AND status = 'invited'`, a)
 	assert.Equal(t, 3, testdb.Count(t, w.tx, "memberships", map[string]any{"tenant_id": a, "is_owner": true}),
 		"an invited member may be an owner too (C198)")
 }
@@ -121,14 +121,14 @@ func TestFeatureATenantHasSeveralOwners(t *testing.T) {
 func TestFeatureActivationNeedsAnOwner(t *testing.T) {
 	w := newWorld(t)
 	a := w.tenant(t, "x-a", "XTA")
-	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
 		VALUES ($1, 'x_tenancy_type', true)`, a)
 	w.member(t, a, w.user(t, 1), false)
 	err := w.commitCheck(t, `UPDATE tenants SET status = 'active', activated_at = now() WHERE id = $1`, a)
-	assert.Equal(t, "23514", code(t, err), "a member who is not an owner is not enough")
+	assert.Equal(t, "23514", testdb.PgCode(err), "a member who is not an owner is not enough")
 
 	w.invite(t, a, w.user(t, 2))
-	exec(t, w.tx, `UPDATE memberships SET is_owner = true WHERE tenant_id = $1 AND status = 'invited'`, a)
+	testdb.Exec(t, w.tx, `UPDATE memberships SET is_owner = true WHERE tenant_id = $1 AND status = 'invited'`, a)
 	require.NoError(t, w.commitCheck(t, `UPDATE tenants SET status = 'active', activated_at = now() WHERE id = $1`, a),
 		"an invited owner is enough")
 }
@@ -136,21 +136,21 @@ func TestFeatureActivationNeedsAnOwner(t *testing.T) {
 func TestFeatureAProvisioningTenantNeedsNoOwner(t *testing.T) {
 	w := newWorld(t)
 	w.tenant(t, "x-a", "XTA")
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
 }
 
 func TestFeatureAnActiveTenantKeepsAtLeastOneOwner(t *testing.T) {
 	w := newWorld(t)
 	a := w.tenant(t, "x-a", "XTA")
 	w.activate(t, a) // its owner: w.owner
-	last := id(t, w.tx, `SELECT id FROM memberships WHERE tenant_id = $1 AND is_owner`, a)
+	last := testdb.ID(t, w.tx, `SELECT id FROM memberships WHERE tenant_id = $1 AND is_owner`, a)
 
 	for name, sql := range map[string]string{
 		"unflagging the last owner": `UPDATE memberships SET is_owner = false WHERE id = $1`,
 		"deleting the last owner":   `DELETE FROM memberships WHERE id = $1`,
 	} {
 		err := w.commitCheck(t, sql, last)
-		assert.Equal(t, "23514", code(t, err), name)
+		assert.Equal(t, "23514", testdb.PgCode(err), name)
 	}
 
 	// Ownership moves by adding another owner, then stepping down.
@@ -162,9 +162,9 @@ func TestFeatureAnActiveTenantKeepsAtLeastOneOwner(t *testing.T) {
 func TestFeatureMembershipUpdatedAtFollowsChanges(t *testing.T) {
 	w := newWorld(t)
 	a := w.tenant(t, "x-a", "XTA")
-	m := id(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at, updated_at)
+	m := testdb.ID(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at, updated_at)
 		VALUES ($1, $2, now(), '2000-01-01') RETURNING id`, a, w.user(t, 1))
-	exec(t, w.tx, `UPDATE memberships SET invite_expires_at = now() + interval '1 day' WHERE id = $1`, m)
+	testdb.Exec(t, w.tx, `UPDATE memberships SET invite_expires_at = now() + interval '1 day' WHERE id = $1`, m)
 	var setToNow bool
 	require.NoError(t, w.tx.QueryRow(t.Context(), `SELECT updated_at = now() FROM memberships WHERE id = $1`, m).Scan(&setToNow))
 	assert.True(t, setToNow)
@@ -195,8 +195,8 @@ func TestFeatureActiveMembershipLookup(t *testing.T) {
 	assert.Empty(t, lookup(a, invited), "an invitation is not access")
 	assert.Empty(t, lookup(w.tenant(t, "x-b", "XTB"), u), "not a member there")
 
-	exec(t, w.tx, `UPDATE memberships SET is_owner = false WHERE id = $1`, m)
-	exec(t, w.tx, `UPDATE memberships SET status = 'disabled', disabled_at = now() WHERE id = $1`, m)
+	testdb.Exec(t, w.tx, `UPDATE memberships SET is_owner = false WHERE id = $1`, m)
+	testdb.Exec(t, w.tx, `UPDATE memberships SET status = 'disabled', disabled_at = now() WHERE id = $1`, m)
 	assert.Empty(t, lookup(a, u), "a disabled membership is not access")
 }
 
@@ -252,8 +252,8 @@ func TestFeatureMembershipPolicies(t *testing.T) {
 	w.member(t, a, staff, false)
 	w.member(t, b, w.user(t, 5), false)
 	w.member(t, op, opStaff, false)
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
-	exec(t, w.tx, `ALTER TABLE memberships FORCE ROW LEVEL SECURITY`)
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
+	testdb.Exec(t, w.tx, `ALTER TABLE memberships FORCE ROW LEVEL SECURITY`)
 
 	visible := func() int {
 		var n int
@@ -267,22 +267,22 @@ func TestFeatureMembershipPolicies(t *testing.T) {
 
 	w.as(t, a)
 	assert.Equal(t, 2, visible(), "a tenant sees its own memberships")
-	_, err := savepoint(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, $2, now())`, a, newcomer)
+	_, err := testdb.Savepoint(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, $2, now())`, a, newcomer)
 	require.NoError(t, err, "a tenant invites into itself")
-	_, err = savepoint(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, $2, now())`, b, newcomer)
-	assert.Equal(t, "42501", code(t, err), "but not into another tenant")
+	_, err = testdb.Savepoint(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, $2, now())`, b, newcomer)
+	assert.Equal(t, "42501", testdb.PgCode(err), "but not into another tenant")
 
 	w.as(t, op)
 	assert.Equal(t, 2, visible(), "the operator sees its own members and other tenants' owners")
-	_, err = savepoint(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at, is_owner)
+	_, err = testdb.Savepoint(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at, is_owner)
 		VALUES ($1, $2, now(), true)`, b, newcomer)
 	require.NoError(t, err, "the operator creates an owner membership")
-	_, err = savepoint(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, $2, now())`, a, opStaff)
-	assert.Equal(t, "42501", code(t, err), "but no other membership in another tenant")
-	tag, err := savepoint(t, w.tx, `UPDATE memberships SET status = 'disabled', disabled_at = now() WHERE user_id = $1`, staff)
+	_, err = testdb.Savepoint(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, $2, now())`, a, opStaff)
+	assert.Equal(t, "42501", testdb.PgCode(err), "but no other membership in another tenant")
+	tag, err := testdb.Savepoint(t, w.tx, `UPDATE memberships SET status = 'disabled', disabled_at = now() WHERE user_id = $1`, staff)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "nor changes one")
-	tag, err = savepoint(t, w.tx, `DELETE FROM memberships WHERE user_id = $1`, opStaff)
+	tag, err = testdb.Savepoint(t, w.tx, `DELETE FROM memberships WHERE user_id = $1`, opStaff)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "no one deletes a membership: it is ended")
 }

@@ -8,12 +8,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
 
 // addTypes adds the types x_tenancy_type2 and x_tenancy_type3 (sector x_tenancy).
 func (w *world) addTypes(t *testing.T) {
 	t.Helper()
-	exec(t, w.tx, `INSERT INTO institution_types (code, sector, name)
+	testdb.Exec(t, w.tx, `INSERT INTO institution_types (code, sector, name)
 		VALUES ('x_tenancy_type2', 'x_tenancy', 'Second type'), ('x_tenancy_type3', 'x_tenancy', 'Third type')`)
 }
 
@@ -39,7 +41,7 @@ func TestFeatureATenantHasSeveralTypesAndOnePrimary(t *testing.T) {
 	w.addTypes(t)
 	a := w.tenant(t, "x-a", "XTA")
 	w.activate(t, a)
-	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type)
 		VALUES ($1, 'x_tenancy_type2'), ($1, 'x_tenancy_type3')`, a)
 
 	var types, primaries int
@@ -66,8 +68,8 @@ func TestFeatureTenantInstitutionTypeConstraints(t *testing.T) {
 			w.addTypes(t)
 			a := w.tenant(t, "x-a", "XTA")
 			w.activate(t, a)
-			_, err := savepoint(t, w.tx, strings.ReplaceAll(c.sql, "%A%", a))
-			assert.Equal(t, c.want, code(t, err))
+			_, err := testdb.Savepoint(t, w.tx, strings.ReplaceAll(c.sql, "%A%", a))
+			assert.Equal(t, c.want, testdb.PgCode(err))
 		})
 	}
 }
@@ -76,17 +78,17 @@ func TestFeatureAnActiveTenantAlwaysHasAPrimaryType(t *testing.T) {
 	w := newWorld(t)
 	w.addTypes(t)
 	a := w.tenant(t, "x-a", "XTA")
-	exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1, timezone = 'Indian/Maldives' WHERE id = $2`, w.formXTNoDocument, a)
+	testdb.Exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1, timezone = 'Indian/Maldives' WHERE id = $2`, w.formXTNoDocument, a)
 
 	err := w.commitCheck(t, `UPDATE tenants SET status = 'active', activated_at = now() WHERE id = $1`, a)
-	assert.Equal(t, "23514", code(t, err), "activating without a primary type")
+	assert.Equal(t, "23514", testdb.PgCode(err), "activating without a primary type")
 
 	w.activate(t, a)
-	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type2')`, a)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type2')`, a)
 	err = w.commitCheck(t, `DELETE FROM tenant_institution_types WHERE tenant_id = $1 AND is_primary`, a)
-	assert.Equal(t, "23514", code(t, err), "removing an active tenant's primary")
+	assert.Equal(t, "23514", testdb.PgCode(err), "removing an active tenant's primary")
 	err = w.commitCheck(t, `UPDATE tenant_institution_types SET is_primary = false WHERE tenant_id = $1`, a)
-	assert.Equal(t, "23514", code(t, err), "unflagging an active tenant's primary")
+	assert.Equal(t, "23514", testdb.PgCode(err), "unflagging an active tenant's primary")
 
 	require.NoError(t, w.commitCheck(t, `DELETE FROM tenant_institution_types
 		WHERE tenant_id = $1 AND institution_type = 'x_tenancy_type2'`, a), "removing an additional type")
@@ -97,14 +99,14 @@ func TestFeatureThePrimaryTypeCanBeSwapped(t *testing.T) {
 	w.addTypes(t)
 	a := w.tenant(t, "x-a", "XTA")
 	w.activate(t, a)
-	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type2')`, a)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type2')`, a)
 
 	// Unflag the old primary, then flag the new one; the check runs at commit.
-	exec(t, w.tx, `SET CONSTRAINTS ALL DEFERRED`)
-	exec(t, w.tx, `UPDATE tenant_institution_types SET is_primary = false WHERE tenant_id = $1 AND is_primary`, a)
-	exec(t, w.tx, `UPDATE tenant_institution_types SET is_primary = true
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL DEFERRED`)
+	testdb.Exec(t, w.tx, `UPDATE tenant_institution_types SET is_primary = false WHERE tenant_id = $1 AND is_primary`, a)
+	testdb.Exec(t, w.tx, `UPDATE tenant_institution_types SET is_primary = true
 		WHERE tenant_id = $1 AND institution_type = 'x_tenancy_type2'`, a)
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
 
 	var primary string
 	require.NoError(t, w.tx.QueryRow(t.Context(),
@@ -115,7 +117,7 @@ func TestFeatureThePrimaryTypeCanBeSwapped(t *testing.T) {
 func TestFeatureAProvisioningTenantNeedsNoPrimaryType(t *testing.T) {
 	w := newWorld(t)
 	a := w.tenant(t, "x-a", "XTA")
-	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary) VALUES ($1, 'x_tenancy_type', true)`, a)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary) VALUES ($1, 'x_tenancy_type', true)`, a)
 	require.NoError(t, w.commitCheck(t, `DELETE FROM tenant_institution_types WHERE tenant_id = $1`, a))
 }
 
@@ -125,11 +127,11 @@ func TestFeatureTenantInstitutionTypePolicies(t *testing.T) {
 	op := w.operator(t)
 	a := w.tenant(t, "x-a", "XTA")
 	b := w.tenant(t, "x-b", "XTB")
-	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type)
 		VALUES ($1, 'x_tenancy_type'), ($2, 'x_tenancy_type2')`, a, b)
 	// Only this package uses the table, so forcing row-level security on the owner is safe here.
 	w.enforce(t)
-	exec(t, w.tx, `ALTER TABLE tenant_institution_types FORCE ROW LEVEL SECURITY`)
+	testdb.Exec(t, w.tx, `ALTER TABLE tenant_institution_types FORCE ROW LEVEL SECURITY`)
 
 	count := func() (n int) {
 		require.NoError(t, w.tx.QueryRow(t.Context(),
@@ -140,17 +142,17 @@ func TestFeatureTenantInstitutionTypePolicies(t *testing.T) {
 	assert.Zero(t, count(), "no tenant set: no rows")
 	w.as(t, a)
 	assert.Equal(t, 1, count(), "a tenant reads its own types")
-	_, err := savepoint(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type3')`, a)
-	assert.Equal(t, "42501", code(t, err), "a tenant cannot add its own types")
-	tag, err := savepoint(t, w.tx, `DELETE FROM tenant_institution_types WHERE tenant_id = $1`, a)
+	_, err := testdb.Savepoint(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type3')`, a)
+	assert.Equal(t, "42501", testdb.PgCode(err), "a tenant cannot add its own types")
+	tag, err := testdb.Savepoint(t, w.tx, `DELETE FROM tenant_institution_types WHERE tenant_id = $1`, a)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "nor remove them")
 
 	w.as(t, op)
 	assert.Equal(t, 2, count(), "the operator reads every tenant's types")
-	_, err = savepoint(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type3')`, a)
+	_, err = testdb.Savepoint(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type) VALUES ($1, 'x_tenancy_type3')`, a)
 	require.NoError(t, err, "the operator adds types")
-	tag, err = savepoint(t, w.tx, `DELETE FROM tenant_institution_types WHERE tenant_id = $1 AND institution_type = 'x_tenancy_type3'`, a)
+	tag, err = testdb.Savepoint(t, w.tx, `DELETE FROM tenant_institution_types WHERE tenant_id = $1 AND institution_type = 'x_tenancy_type3'`, a)
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, tag.RowsAffected(), "and removes them")
 }

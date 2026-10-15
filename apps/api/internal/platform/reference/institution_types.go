@@ -4,8 +4,9 @@ import (
 	"net/http"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 	"github.com/boolmv/erp/apps/api/internal/platform/reference/adapters/store"
 )
 
@@ -25,10 +26,10 @@ type institutionType struct {
 func (m *Module) institutionTypes(authz authorization.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := authz.Can(r.Context(), "list", "reference:institution_type"); err != nil {
-			authorization.WriteError(w, r, err)
+			authorization.WriteError(w, r, m.logger, err)
 			return
 		}
-		l, ok := httpinput.ParseList(w, r, store.InstitutionTypeListSpec)
+		l, ok := request.ParseList(w, r, store.InstitutionTypeListSpec)
 		if !ok {
 			return
 		}
@@ -42,6 +43,6 @@ func (m *Module) institutionTypes(authz authorization.Authorizer) http.HandlerFu
 		for i, it := range rows {
 			items[i] = institutionType{it.Code, it.Name, sector{it.SectorCode, it.SectorName}}
 		}
-		httpinput.WritePage(w, r, l, items, total)
+		response.Page(w, r, l, items, total)
 	}
 }

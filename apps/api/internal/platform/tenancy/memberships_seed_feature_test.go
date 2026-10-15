@@ -41,7 +41,7 @@ func TestFeatureTheOperatorMembersSeederLeavesLaterChanges(t *testing.T) {
 	op := w.operator(t)
 	u1, u2, u3 := w.user(t, 1), w.user(t, 2), w.user(t, 3)
 	w.member(t, op, u3, true) // the owner was transferred to someone else
-	exec(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at, disabled_at)
+	testdb.Exec(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at, disabled_at)
 		VALUES ($1, $2, 'disabled', now(), now())`, op, u2) // and a member paused
 	require.NoError(t, seeds.NewOperatorMembers(w.tx, []seeds.Member{
 		{Email: "member1@x-tenancy.test", Owner: true}, {Email: "member2@x-tenancy.test"},
@@ -78,11 +78,11 @@ func TestFeatureTheSampleMembersSeederAddsTheTeamToEverySample(t *testing.T) {
 	require.NoError(t, s.Run(t.Context(), seedEnvFor("dev")), "running again is fine")
 
 	for _, slug := range []string{"x-ministry", "x-hospital", "x-company", "x-new"} {
-		tenant := id(t, w.tx, `SELECT id FROM tenants WHERE slug = $1`, slug)
+		tenant := testdb.ID(t, w.tx, `SELECT id FROM tenants WHERE slug = $1`, slug)
 		testdb.AssertHas(t, w.tx, "memberships", map[string]any{"tenant_id": tenant, "user_id": u1, "status": "active", "is_owner": true})
 		testdb.AssertHas(t, w.tx, "memberships", map[string]any{"tenant_id": tenant, "user_id": u2, "status": "active", "is_owner": false})
 	}
-	company := id(t, w.tx, `SELECT id FROM tenants WHERE slug = 'x-company'`)
+	company := testdb.ID(t, w.tx, `SELECT id FROM tenants WHERE slug = 'x-company'`)
 	testdb.AssertHas(t, w.tx, "memberships", map[string]any{"tenant_id": company, "user_id": u3, "status": "active", "is_owner": false})
 	assert.Equal(t, 1, testdb.Count(t, w.tx, "memberships", map[string]any{"user_id": u3}), "the extra grant only")
 	assert.Equal(t, 4, testdb.Count(t, w.tx, "memberships", map[string]any{"user_id": u1}), "running again never duplicates")
@@ -92,7 +92,7 @@ func TestFeatureTheMemberSeedersActivateWhatTheyOwn(t *testing.T) {
 	w := newWorld(t)
 	w.addTypes(t)
 	op := w.operator(t)
-	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
 		VALUES ($1, 'x_tenancy_type', true)`, op)
 	require.NoError(t, seeds.NewSamplesFrom(w.tx, []byte(testSamples), "x-tenancy.test").Run(t.Context(), seedEnvFor("dev")))
 	w.user(t, 1)
@@ -100,7 +100,7 @@ func TestFeatureTheMemberSeedersActivateWhatTheyOwn(t *testing.T) {
 
 	require.NoError(t, seeds.NewOperatorMembers(w.tx, team).Run(t.Context(), seedEnvFor("dev")))
 	require.NoError(t, seeds.NewSampleMembersFrom(w.tx, []byte(testSamples), team).Run(t.Context(), seedEnvFor("dev")))
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`) // every active tenant has its owner and primary type
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`) // every active tenant has its owner and primary type
 
 	testdb.AssertHas(t, w.tx, "tenants", map[string]any{"id": op, "status": "active"})
 	for slug, status := range map[string]string{

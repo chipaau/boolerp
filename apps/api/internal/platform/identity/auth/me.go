@@ -4,11 +4,10 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/go-chi/render"
-
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 )
 
 // me answers who is calling (GET /api/auth/me): the signed-in user and the
@@ -20,7 +19,7 @@ func (m *Module) me(w http.ResponseWriter, r *http.Request) {
 
 	// A person may see their own user; a machine client only itself (C154).
 	if err := m.authz.Check(r.Context(), "view", ownUser(caller)); err != nil {
-		authorization.WriteError(w, r, err)
+		authorization.WriteError(w, r, m.logger, err)
 		return
 	}
 	writeCaller(w, r, caller)
@@ -51,7 +50,7 @@ func (m *Module) register(w http.ResponseWriter, r *http.Request) {
 		account = caller.Token.ClientID // a client acting for itself: Cerbos denies it
 	}
 	if err := m.authz.Check(r.Context(), "register", authorization.Resource{Kind: "identity:account", ID: account}); err != nil {
-		authorization.WriteError(w, r, err)
+		authorization.WriteError(w, r, m.logger, err)
 		return
 	}
 
@@ -96,5 +95,5 @@ func writeCaller(w http.ResponseWriter, r *http.Request, caller Caller) {
 	if u := caller.User; u != nil {
 		body.User = &user{ID: u.ID, Email: u.Email, Phone: u.Phone, DisplayName: u.DisplayName, AvatarURL: u.AvatarURL}
 	}
-	render.JSON(w, r, body)
+	response.OK(w, r, body)
 }

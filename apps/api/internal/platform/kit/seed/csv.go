@@ -1,4 +1,4 @@
-package seeds
+package seed
 
 import (
 	"bytes"
@@ -9,9 +9,10 @@ import (
 	"strings"
 )
 
-// readCSV reads a seed file (lines starting with # are comments): the header,
-// which must be header, then the records, each with as many fields.
-func readCSV(name string, data []byte, header ...string) ([][]string, error) {
+// ReadCSV reads a seed file named name (for errors), every module's seed files' one format:
+// lines starting with # are comments, then the header, which must be header, then the
+// records, each with as many fields.
+func ReadCSV(name string, data []byte, header ...string) ([][]string, error) {
 	r := csv.NewReader(bytes.NewReader(data))
 	r.Comment = '#'
 	r.FieldsPerRecord = len(header)

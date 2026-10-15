@@ -4,13 +4,11 @@ package audit_test
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -56,11 +54,11 @@ const (
 func things(t *testing.T) pgx.Tx {
 	t.Helper()
 	tx := testdb.OwnerTx(t)
-	exec(t, tx, `CREATE TABLE x_audit_things (id uuid PRIMARY KEY, tenant_id uuid, name text, secret text,
+	testdb.Exec(t, tx, `CREATE TABLE x_audit_things (id uuid PRIMARY KEY, tenant_id uuid, name text, secret text,
 		updated_at timestamptz NOT NULL DEFAULT now())`)
-	exec(t, tx, `CREATE TRIGGER x_audit_things_updated_at BEFORE UPDATE ON x_audit_things
+	testdb.Exec(t, tx, `CREATE TRIGGER x_audit_things_updated_at BEFORE UPDATE ON x_audit_things
 		FOR EACH ROW EXECUTE FUNCTION set_updated_at()`)
-	exec(t, tx, `SELECT audit.enable('x_audit_things', exclude => ARRAY['secret'])`)
+	testdb.Exec(t, tx, `SELECT audit.enable('x_audit_things', exclude => ARRAY['secret'])`)
 	return tx
 }
 
@@ -79,8 +77,8 @@ type entry struct {
 // security), then returns to the migration role.
 func entries(t *testing.T, tx pgx.Tx, entity string) []entry {
 	t.Helper()
-	exec(t, tx, `SET LOCAL ROLE erp_audit`)
-	defer exec(t, tx, `RESET ROLE`)
+	testdb.Exec(t, tx, `SET LOCAL ROLE erp_audit`)
+	defer testdb.Exec(t, tx, `RESET ROLE`)
 	rows, err := tx.Query(t.Context(), `
 		SELECT action, record_id, tenant_id::text, old_values, new_values, changed_columns,
 		       actor_user_id::text, actor_client_id, actor_tenant_id::text, operation, request_id, host(ip), db_role
@@ -93,11 +91,11 @@ func entries(t *testing.T, tx pgx.Tx, entity string) []entry {
 
 func TestFeatureTheTriggerRecordsEveryChange(t *testing.T) {
 	tx := things(t)
-	exec(t, tx, `INSERT INTO x_audit_things (id, tenant_id, name, secret) VALUES ($1, $2, 'first', 's3cret')`, thingID, tenantA)
-	exec(t, tx, `UPDATE x_audit_things SET name = 'second', secret = 'other' WHERE id = $1`, thingID)
-	exec(t, tx, `UPDATE x_audit_things SET name = 'second' WHERE id = $1`, thingID)  // changes only updated_at
-	exec(t, tx, `UPDATE x_audit_things SET secret = 'third' WHERE id = $1`, thingID) // only an excluded column
-	exec(t, tx, `DELETE FROM x_audit_things WHERE id = $1`, thingID)
+	testdb.Exec(t, tx, `INSERT INTO x_audit_things (id, tenant_id, name, secret) VALUES ($1, $2, 'first', 's3cret')`, thingID, tenantA)
+	testdb.Exec(t, tx, `UPDATE x_audit_things SET name = 'second', secret = 'other' WHERE id = $1`, thingID)
+	testdb.Exec(t, tx, `UPDATE x_audit_things SET name = 'second' WHERE id = $1`, thingID)  // changes only updated_at
+	testdb.Exec(t, tx, `UPDATE x_audit_things SET secret = 'third' WHERE id = $1`, thingID) // only an excluded column
+	testdb.Exec(t, tx, `DELETE FROM x_audit_things WHERE id = $1`, thingID)
 
 	got := entries(t, tx, "x_audit_things")
 	require.Len(t, got, 4, "a no-op update records nothing")
@@ -132,7 +130,7 @@ func TestFeatureTheTriggerRecordsTheActor(t *testing.T) {
 	ctx := actor.With(t.Context(), actor.Actor{UserID: userID, ClientID: "bff-workspace",
 		Operation: "PATCH /api/v1/things/{id}", RequestID: "req-1", IP: "203.0.113.7"})
 	// Through tenant.Tx, as the API writes: the actor acts in tenant B.
-	require.NoError(t, tenant.Tx(tenant.With(ctx, tenant.Tenant{ID: tenantB}), savepoints{tx},
+	require.NoError(t, tenant.Tx(tenant.With(ctx, tenant.Tenant{ID: tenantB}), testdb.Savepoints{Tx: tx},
 		func(ctx context.Context, tx pgx.Tx) error {
 			_, err := tx.Exec(ctx, `INSERT INTO x_audit_things (id, name) VALUES ($1, 'global')`, thingID)
 			return err
@@ -153,7 +151,7 @@ func TestFeatureTheTriggerRecordsTheActor(t *testing.T) {
 
 func TestFeatureAWriteWithoutAnActorIsStillRecorded(t *testing.T) {
 	tx := things(t)
-	exec(t, tx, `INSERT INTO x_audit_things (id, name) VALUES ($1, 'manual fix')`, thingID)
+	testdb.Exec(t, tx, `INSERT INTO x_audit_things (id, name) VALUES ($1, 'manual fix')`, thingID)
 	got := entries(t, tx, "x_audit_things")
 	require.Len(t, got, 1)
 	assert.Nil(t, got[0].UserID)
@@ -163,9 +161,9 @@ func TestFeatureAWriteWithoutAnActorIsStillRecorded(t *testing.T) {
 
 func TestFeatureACompositeKeyIsTheRecordID(t *testing.T) {
 	tx := testdb.OwnerTx(t)
-	exec(t, tx, `CREATE TABLE x_audit_pairs (a text, b text, PRIMARY KEY (a, b))`)
-	exec(t, tx, `SELECT audit.enable('x_audit_pairs')`)
-	exec(t, tx, `INSERT INTO x_audit_pairs VALUES ('left', 'right')`)
+	testdb.Exec(t, tx, `CREATE TABLE x_audit_pairs (a text, b text, PRIMARY KEY (a, b))`)
+	testdb.Exec(t, tx, `SELECT audit.enable('x_audit_pairs')`)
+	testdb.Exec(t, tx, `INSERT INTO x_audit_pairs VALUES ('left', 'right')`)
 	got := entries(t, tx, "x_audit_pairs")
 	require.Len(t, got, 1)
 	assert.Equal(t, "left/right", got[0].RecordID)
@@ -174,54 +172,54 @@ func TestFeatureACompositeKeyIsTheRecordID(t *testing.T) {
 
 func TestFeatureEnableRefusesWhatItCannotAudit(t *testing.T) {
 	tx := testdb.OwnerTx(t)
-	exec(t, tx, `CREATE TABLE x_audit_keyless (name text)`)
-	exec(t, tx, `CREATE TABLE x_audit_keyed (id uuid PRIMARY KEY)`)
+	testdb.Exec(t, tx, `CREATE TABLE x_audit_keyless (name text)`)
+	testdb.Exec(t, tx, `CREATE TABLE x_audit_keyed (id uuid PRIMARY KEY)`)
 	for name, sql := range map[string]string{
 		"no primary key":           `SELECT audit.enable('x_audit_keyless')`,
 		"an unknown excluded":      `SELECT audit.enable('x_audit_keyed', exclude => ARRAY['nope'])`,
 		"an unknown tenant column": `SELECT audit.enable('x_audit_keyed', tenant_column => 'nope')`,
 	} {
-		_, err := savepoint(t, tx, sql)
+		_, err := testdb.Savepoint(t, tx, sql)
 		assert.Error(t, err, name)
 	}
 }
 
 func TestFeatureAuditLogIsAppendOnly(t *testing.T) {
 	tx := things(t)
-	exec(t, tx, `INSERT INTO x_audit_things (id, name) VALUES ($1, 'x')`, thingID)
-	exec(t, tx, `SET LOCAL ROLE erp_audit`) // even the owner
+	testdb.Exec(t, tx, `INSERT INTO x_audit_things (id, name) VALUES ($1, 'x')`, thingID)
+	testdb.Exec(t, tx, `SET LOCAL ROLE erp_audit`) // even the owner
 	for name, sql := range map[string]string{
 		"update":               `UPDATE audit_log SET entity = 'changed' WHERE entity = 'x_audit_things'`,
 		"delete":               `DELETE FROM audit_log WHERE entity = 'x_audit_things'`,
 		"truncate":             `TRUNCATE audit_log`,
 		"truncate a partition": `TRUNCATE audit.audit_log_default`,
 	} {
-		_, err := savepoint(t, tx, sql)
-		assert.Equal(t, "42501", code(err), name)
+		_, err := testdb.Savepoint(t, tx, sql)
+		assert.Equal(t, "42501", testdb.PgCode(err), name)
 	}
-	exec(t, tx, `RESET ROLE`)
+	testdb.Exec(t, tx, `RESET ROLE`)
 	assert.Len(t, entries(t, tx, "x_audit_things"), 1)
 }
 
 func TestFeatureTheRuntimeRoleOnlyReadsThroughThePolicies(t *testing.T) {
 	tx := testdb.Tx(t)
-	_, err := savepoint(t, tx, `INSERT INTO audit_log (action, entity, record_id) VALUES ('insert', 'x', 'x')`)
-	assert.Equal(t, "42501", code(err), "no one but the trigger writes")
-	_, err = savepoint(t, tx, `SELECT count(*) FROM audit.audit_log_default`)
-	assert.Equal(t, "42501", code(err), "a partition is out of reach (it would bypass the policies)")
-	_, err = savepoint(t, tx, `SELECT count(*) FROM audit_log`)
+	_, err := testdb.Savepoint(t, tx, `INSERT INTO audit_log (action, entity, record_id) VALUES ('insert', 'x', 'x')`)
+	assert.Equal(t, "42501", testdb.PgCode(err), "no one but the trigger writes")
+	_, err = testdb.Savepoint(t, tx, `SELECT count(*) FROM audit.audit_log_default`)
+	assert.Equal(t, "42501", testdb.PgCode(err), "a partition is out of reach (it would bypass the policies)")
+	_, err = testdb.Savepoint(t, tx, `SELECT count(*) FROM audit_log`)
 	assert.NoError(t, err, "audit_log itself is readable, through its policies")
 }
 
 func TestFeatureATenantReadsOnlyItsOwnRows(t *testing.T) {
 	tx := things(t)
-	exec(t, tx, `INSERT INTO x_audit_things (id, tenant_id, name) VALUES ($1, $2, 'a')`, thingID, tenantA)
-	exec(t, tx, `INSERT INTO x_audit_things (id, tenant_id, name) VALUES ('0192f6a0-0000-7000-8000-00000000d002', $1, 'b')`, tenantB)
-	exec(t, tx, `INSERT INTO x_audit_things (id, name) VALUES ('0192f6a0-0000-7000-8000-00000000d003', 'global')`)
+	testdb.Exec(t, tx, `INSERT INTO x_audit_things (id, tenant_id, name) VALUES ($1, $2, 'a')`, thingID, tenantA)
+	testdb.Exec(t, tx, `INSERT INTO x_audit_things (id, tenant_id, name) VALUES ('0192f6a0-0000-7000-8000-00000000d002', $1, 'b')`, tenantB)
+	testdb.Exec(t, tx, `INSERT INTO x_audit_things (id, name) VALUES ('0192f6a0-0000-7000-8000-00000000d003', 'global')`)
 
 	// The migration role is not audit_log's owner, so its policies apply to it.
 	visible := func(tenant string) int {
-		exec(t, tx, `SELECT set_config('app.tenant_id', $1, true)`, tenant)
+		testdb.Exec(t, tx, `SELECT set_config('app.tenant_id', $1, true)`, tenant)
 		var n int
 		require.NoError(t, tx.QueryRow(t.Context(), `SELECT count(*) FROM audit_log WHERE entity = 'x_audit_things'`).Scan(&n))
 		return n
@@ -233,9 +231,9 @@ func TestFeatureATenantReadsOnlyItsOwnRows(t *testing.T) {
 
 func TestFeatureThePartitionsSeederCreatesTheMonthsAhead(t *testing.T) {
 	tx := testdb.OwnerTx(t)
-	exec(t, tx, `SET LOCAL ROLE erp_audit`)
-	exec(t, tx, `CREATE TABLE x_audit_parts (occurred_at timestamptz NOT NULL) PARTITION BY RANGE (occurred_at)`)
-	exec(t, tx, `RESET ROLE`)
+	testdb.Exec(t, tx, `SET LOCAL ROLE erp_audit`)
+	testdb.Exec(t, tx, `CREATE TABLE x_audit_parts (occurred_at timestamptz NOT NULL) PARTITION BY RANGE (occurred_at)`)
+	testdb.Exec(t, tx, `RESET ROLE`)
 
 	s := seeds.NewPartitionsOf(tx, "x_audit_parts", 2)
 	assert.Equal(t, "audit.partitions", s.Name())
@@ -256,8 +254,8 @@ func TestFeatureThePartitionsSeederCreatesTheMonthsAhead(t *testing.T) {
 		`SELECT count(*) FROM pg_inherits WHERE inhparent = 'x_audit_parts'::regclass`).Scan(&parts))
 	assert.Equal(t, 2, parts, "running again creates nothing")
 
-	exec(t, tx, `SET LOCAL ROLE erp_audit`) // the owner writes; the migration role may not
-	exec(t, tx, `INSERT INTO x_audit_parts VALUES (now())`)
+	testdb.Exec(t, tx, `SET LOCAL ROLE erp_audit`) // the owner writes; the migration role may not
+	testdb.Exec(t, tx, `INSERT INTO x_audit_parts VALUES (now())`)
 	var lands string
 	require.NoError(t, tx.QueryRow(t.Context(), `SELECT tableoid::regclass::text FROM x_audit_parts`).Scan(&lands))
 	assert.Equal(t, "audit.x_audit_parts_y"+now.Format("2006")+"m"+now.Format("01"), lands)
@@ -265,16 +263,9 @@ func TestFeatureThePartitionsSeederCreatesTheMonthsAhead(t *testing.T) {
 
 func TestFeatureThePartitionsSeederOnlyTouchesAuditTables(t *testing.T) {
 	tx := testdb.OwnerTx(t)
-	exec(t, tx, `CREATE TABLE x_audit_mine (occurred_at timestamptz NOT NULL) PARTITION BY RANGE (occurred_at)`)
+	testdb.Exec(t, tx, `CREATE TABLE x_audit_mine (occurred_at timestamptz NOT NULL) PARTITION BY RANGE (occurred_at)`)
 	err := seeds.NewPartitionsOf(tx, "x_audit_mine", 1).Run(t.Context(), seed.NewEnv("test", slog.New(slog.DiscardHandler)))
 	assert.ErrorContains(t, err, "not an audit table")
-}
-
-// savepoints lets tenant.Tx begin its transaction inside the test's.
-type savepoints struct{ pgx.Tx }
-
-func (s savepoints) BeginTx(ctx context.Context, _ pgx.TxOptions) (pgx.Tx, error) {
-	return s.Begin(ctx)
 }
 
 func sessionUser(t *testing.T, tx pgx.Tx) string {
@@ -282,31 +273,4 @@ func sessionUser(t *testing.T, tx pgx.Tx) string {
 	var u string
 	require.NoError(t, tx.QueryRow(t.Context(), `SELECT session_user::text`).Scan(&u))
 	return u
-}
-
-func exec(t *testing.T, tx pgx.Tx, sql string, args ...any) {
-	t.Helper()
-	_, err := tx.Exec(t.Context(), sql, args...)
-	require.NoError(t, err, sql)
-}
-
-// savepoint runs sql in a savepoint, so a failure leaves the test's transaction usable.
-func savepoint(t *testing.T, tx pgx.Tx, sql string, args ...any) (pgconn.CommandTag, error) {
-	t.Helper()
-	sp, err := tx.Begin(t.Context())
-	require.NoError(t, err)
-	defer func() { _ = sp.Rollback(context.Background()) }()
-	tag, err := sp.Exec(t.Context(), sql, args...)
-	if err == nil {
-		err = sp.Commit(t.Context())
-	}
-	return tag, err
-}
-
-func code(err error) string {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		return pgErr.Code
-	}
-	return ""
 }

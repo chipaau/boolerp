@@ -26,6 +26,13 @@ END;
 $$;
 -- +goose StatementEnd
 
+-- A row with active_from and active_to is current while it has started and not yet ended:
+-- the one meaning of "current" every module's queries use. A plain SQL function, so the
+-- planner inlines it.
+CREATE FUNCTION is_current(active_from timestamptz, active_to timestamptz) RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$ SELECT active_from <= now() AND (active_to IS NULL OR active_to > now()) $$;
+
 CREATE TRIGGER countries_updated_at BEFORE UPDATE ON countries
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 

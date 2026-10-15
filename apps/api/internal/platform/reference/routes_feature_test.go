@@ -3,7 +3,6 @@
 package reference_test
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -17,7 +16,9 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/platform"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization/authztest"
+	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 	"github.com/boolmv/erp/apps/api/internal/platform/reference"
 )
@@ -28,30 +29,6 @@ import (
 // record-or-deny backstop (C155) alone, since the routes need no caller of their own,
 // and Cerbos is an Authorizer stating allow or deny. Test rows use ISO's user-assigned
 // codes (XA…), which no real country has, and the seeded rows are filtered out.
-
-// stated is authorization faked: it notes every decision asked and answers allow.
-type stated struct {
-	allow bool
-	cans  []string
-}
-
-func (s *stated) Check(ctx context.Context, _ string, _ authorization.Resource, _ ...authorization.Fact) error {
-	authorization.NoteDecision(ctx)
-	return s.answer()
-}
-
-func (s *stated) Can(ctx context.Context, action, kind string, _ ...authorization.Fact) error {
-	authorization.NoteDecision(ctx)
-	s.cans = append(s.cans, action+" "+kind)
-	return s.answer()
-}
-
-func (s *stated) answer() error {
-	if !s.allow {
-		return authorization.ErrDenied
-	}
-	return nil
-}
 
 // referenceWorld holds test countries, legal forms, sectors, and institution types,
 // some retired, created as the tables' owner in a rolled-back transaction.
@@ -89,17 +66,20 @@ func referenceWorld(t *testing.T) pgx.Tx {
 // referenceRouter mounts the module under /api/v1 as the edition does, over tx.
 func referenceRouter(tx pgx.Tx, authz authorization.Authorizer) http.Handler {
 	logger := slog.New(slog.DiscardHandler)
-	s := platform.Services{Authz: authz, Logger: logger, Authenticated: chi.Chain(authorization.Enforce(logger))}
+	// The edition's Authenticated chain; any caller passes the faked authentication.
+	anyone := func(next http.Handler) http.Handler { return next }
+	s := platform.ChainParts{Authenticate: anyone, Actor: auth.Actor, Enforce: authorization.Enforce(logger)}.
+		Services(nil, authz, logger)
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(r chi.Router) { r.Group(reference.New(tx, logger).Routes(s)) })
 	return r
 }
 
-func get[T any](t *testing.T, h http.Handler, path string) (*httptest.ResponseRecorder, httpinput.Page[T]) {
+func get[T any](t *testing.T, h http.Handler, path string) (*httptest.ResponseRecorder, response.Paged[T]) {
 	t.Helper()
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
-	var p httpinput.Page[T]
+	var p response.Paged[T]
 	if rec.Code == http.StatusOK {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &p))
 	}
@@ -108,21 +88,21 @@ func get[T any](t *testing.T, h http.Handler, path string) (*httptest.ResponseRe
 
 func TestFeatureTheReferenceListsRefuse(t *testing.T) {
 	tx := referenceWorld(t)
-	h := referenceRouter(tx, &stated{allow: false})
+	h := referenceRouter(tx, &authztest.Stated{Allow: false})
 	for _, path := range []string{"/api/v1/countries", "/api/v1/legal-forms?country=XA", "/api/v1/institution-types"} {
 		rec, _ := get[country](t, h, path)
 		assert.Equal(t, http.StatusForbidden, rec.Code, "Cerbos denies %s", path)
 	}
 
-	rec, _ := get[country](t, referenceRouter(tx, &stated{allow: true}), "/api/v1/countries?sort=alpha3")
+	rec, _ := get[country](t, referenceRouter(tx, &authztest.Stated{Allow: true}), "/api/v1/countries?sort=alpha3")
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "an unknown sort")
-	rec, _ = get[country](t, referenceRouter(tx, &stated{allow: true}), "/api/v1/institution-types?sort=sectorCode")
+	rec, _ = get[country](t, referenceRouter(tx, &authztest.Stated{Allow: true}), "/api/v1/institution-types?sort=sectorCode")
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "an unknown sort")
 }
 
 func TestFeatureAFailedReadIsUnavailable(t *testing.T) {
 	tx := referenceWorld(t)
-	h := referenceRouter(tx, &stated{allow: true})
+	h := referenceRouter(tx, &authztest.Stated{Allow: true})
 	_, err := tx.Exec(t.Context(), `SELECT 1/0`) // the transaction is now aborted
 	require.Error(t, err)
 	for _, path := range []string{"/api/v1/countries", "/api/v1/legal-forms?country=XA", "/api/v1/institution-types"} {

@@ -19,6 +19,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/adapters/store"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/application"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/domain"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/embedded"
 )
 
 //go:embed migrations/*.sql
@@ -29,21 +30,13 @@ var policies embed.FS
 
 // Migrations returns the module's tables, applied by cmd/migrate as "identity".
 func Migrations() fs.FS {
-	sub, err := fs.Sub(migrations, "migrations")
-	if err != nil {
-		panic(err) // the directory is embedded above, so this cannot fail
-	}
-	return sub
+	return embedded.Dir(migrations, "migrations")
 }
 
 // Policies returns the module's Cerbos policies, their tests, and their schemas
 // (C151, C154), assembled as "identity".
 func Policies() fs.FS {
-	sub, err := fs.Sub(policies, "policies")
-	if err != nil {
-		panic(err) // the directory is embedded above, so this cannot fail
-	}
-	return sub
+	return embedded.Dir(policies, "policies")
 }
 
 // Settings configure the module (from config.Identity).

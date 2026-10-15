@@ -15,12 +15,15 @@ Read [testing.md](../../docs/testing.md).
   tokens), authorization (an Authorizer stating allow or deny), and every outside service,
   and assert the database after every write: `testdb.AssertHas` after create or update,
   `testdb.AssertMissing` after delete. Only adapter tests talk to a real outside service.
+- Use the shared test helpers (`testdb.Exec`, `ID`, `Savepoint`, `PgCode`, `Savepoints`;
+  `authztest.Stated` for a stated Cerbos answer) and build endpoint routers from
+  `platform.ChainParts` with only authentication faked, so they run the production chains.
 - Tests never depend on seeded or migrated data: each test creates the rows it needs in
   its rolled-back transaction (`testdb.Tx`, `testdb.OwnerTx`) with values that cannot
   clash with real data (C135).
 - Do not require every use case to have redundant tests at every layer or claim a
   coverage percentage without measurement.
 - Keep the API's total coverage (unit and feature tests, `cmd/*` excluded) at or above
-  the threshold in `apps/api/.testcoverage.yml` (90%, C119, C143, C163); CI fails below it. Add
+  the threshold in `apps/api/.testcoverage.yml` (91%, C119, C143, C163, C212); measure it with CI's pinned `GO_IMAGE`, since another Go version counts statements differently; CI fails below it. Add
   tests with each change; raise the threshold when coverage rises, never lower it.
 - Do not launch services or alter persisted data just to validate planning documents.

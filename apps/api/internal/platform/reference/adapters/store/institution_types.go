@@ -5,11 +5,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/postgres"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
 )
 
 // InstitutionTypeListSpec is what GET /api/v1/institution-types accepts.
-var InstitutionTypeListSpec = httpinput.ListSpec{
+var InstitutionTypeListSpec = request.ListSpec{
 	Sorts: []string{"sector", "name", "code"}, DefaultSort: "sector,name", Search: true,
 	Filters: map[string][]string{"sector": nil},
 }
@@ -19,17 +20,17 @@ type InstitutionType struct{ Code, Name, SectorCode, SectorName string }
 
 // ListInstitutionTypes reads one page of the current institution types of current
 // sectors. q matches the type's name.
-func ListInstitutionTypes(ctx context.Context, db Querier, l httpinput.List) ([]InstitutionType, int, error) {
-	q := query{from: "institution_types i JOIN sectors s ON s.code = i.sector", where: []string{current("i"), current("s")},
-		sorts: map[string]string{"sector": "s.name", "name": "i.name", "code": "i.code"}, key: "i.code"}
+func ListInstitutionTypes(ctx context.Context, db Querier, l request.List) ([]InstitutionType, int, error) {
+	q := postgres.ListQuery{From: "institution_types i JOIN sectors s ON s.code = i.sector",
+		Sorts: map[string]string{"sector": "s.name", "name": "i.name", "code": "i.code"}, Key: "i.code"}
+	q.Where(current("i"))
+	q.Where(current("s"))
 	if s, ok := l.Filters["sector"]; ok {
-		q.where = append(q.where, "i.sector = "+q.arg(s))
+		q.Equal("i.sector", s)
 	}
-	if l.Q != "" {
-		q.where = append(q.where, "i.name ILIKE "+q.arg("%"+httpinput.Escape(l.Q)+"%"))
-	}
+	q.Search(l.Q, "i.name")
 	items := []InstitutionType{}
-	total, err := q.run(ctx, db, l, "i.code, i.name, s.code, s.name", func(rows pgx.Rows, total *int) error {
+	total, err := q.Run(ctx, db, l, "i.code, i.name, s.code, s.name", func(rows pgx.Rows, total *int) error {
 		var it InstitutionType
 		if err := rows.Scan(&it.Code, &it.Name, &it.SectorCode, &it.SectorName, total); err != nil {
 			return err

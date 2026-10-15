@@ -4,8 +4,9 @@ import (
 	"net/http"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 	"github.com/boolmv/erp/apps/api/internal/platform/reference/adapters/store"
 )
 
@@ -22,10 +23,10 @@ type legalForm struct {
 func (m *Module) legalForms(authz authorization.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := authz.Can(r.Context(), "list", "reference:legal_form"); err != nil {
-			authorization.WriteError(w, r, err)
+			authorization.WriteError(w, r, m.logger, err)
 			return
 		}
-		l, ok := httpinput.ParseList(w, r, store.LegalFormListSpec)
+		l, ok := request.ParseList(w, r, store.LegalFormListSpec)
 		if !ok {
 			return
 		}
@@ -39,6 +40,6 @@ func (m *Module) legalForms(authz authorization.Authorizer) http.HandlerFunc {
 		for i, f := range rows {
 			items[i] = legalForm{f.ID, f.Code, f.Name, f.Category, f.IdentityDocument}
 		}
-		httpinput.WritePage(w, r, l, items, total)
+		response.Page(w, r, l, items, total)
 	}
 }

@@ -26,21 +26,30 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   `store/lookups.go`. `kit/*`, `bootstrap`, and `bff/*` are organised by concern.
 - Validation (C208, [API conventions](../../docs/platform/api-conventions.md)): the request
   struct holds every rule needing no data (`validate` tags; shared formats only from
-  `httpinput`; a struct-level rule beside the request for the module's own), only if the
+  `request`; a struct-level rule beside the request for the module's own), only if the
   database also guards it or it is pure shape; the use case holds the rules needing data,
   in the writing transaction. No validation tag queries the database.
 - Use the kit's shared helpers; never re-implement them in a module:
-  - requests: `httpinput.Decode` (body, `validate` tags), `httpinput.ParseList` with a `ListSpec`,
-    the shared tags (`phone`, `slug`, `notblank`, plus the validator's own), and
-    `httpinput.RegisterStructValidation` for a request's own rules (C208);
-  - responses: JSON through go-chi/render (`render.JSON`, with `render.Status` for a status
-    other than 200), never a hand-written encoder; `httpinput.WritePage` for every list (C68,
-    itself on `render.JSON`); `problem.Write`/`problem.Error` for errors (their own content
-    type); `problem.Unavailable` for a failed
-    dependency, `problem.Error` for other statuses, `authorization.WriteError` after a Cerbos check;
+  - requests (`kit/request`): `request.Decode` (body, `validate` tags), `request.ParseList`
+    with a `ListSpec`, the shared tags (`phone`, `slug`, `notblank`, plus the validator's own),
+    and `request.RegisterStructValidation` for a request's own rules (C208);
+  - success responses only through `kit/response` (C210): `response.OK`, `response.Created`
+    (with `Location`), `response.NoContent`, `response.Page` for every list; never a
+    hand-written encoder or Content-Type;
+  - errors only through `kit/problem`: `problem.Unavailable` for a failed dependency,
+    `problem.Error` for other statuses, `authorization.WriteError` after a Cerbos check;
+  - redirects, files, and proxied responses (the BFF) use the standard library;
   - field errors from a use case: `var v problem.ValidationError; v.Add(path, code, detail)`,
     `return v.Err()`, or `problem.Invalid(path, code, detail)` for one field; paths are JSON
     paths (`institutionTypes/1/code`), pointers come from `problem.Field`/`problem.Pointer`.
+  - "in use now" in SQL: `is_current(active_from, active_to)` (C211), never a hand-written
+    condition;
+  - lists in a store: `postgres.ListQuery` (`Where`, `Equal`, `Search`, `Run`: sorts, a
+    stable key, the window count, past-last-page counting); seed files: `seed.ReadCSV`;
+  - route protection: the named chains of `platform.Services`, built with
+    `platform.ChainParts` (the edition and tests alike);
+  - tests: `testdb.Exec`, `ID`, `Savepoint`, `PgCode`, `Savepoints` (code that begins its
+    own transactions inside the test's), and `authztest.Stated` for Cerbos.
   A helper several modules need is added to the kit first, then used.
 - A module owns its persistence writes. Do not reach into another module's SQL package.
 - Design every module so it can become a separate service later, all services sharing

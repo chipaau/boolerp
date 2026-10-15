@@ -24,8 +24,9 @@ type ModuleMigrations struct {
 	FS   fs.FS
 }
 
-// moduleName is what a module name may contain; it becomes part of a table name.
-var moduleName = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+// ModuleName is what a module's name may contain: it becomes part of a table name (its
+// migration history) and a directory name (its Cerbos policies).
+var ModuleName = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 
 // HistoryTable is where Goose records a module's applied migrations: a private
 // schema the runtime role cannot read (created by docker/postgres/init).
@@ -44,7 +45,7 @@ func MigrateModules(ctx context.Context, db *sql.DB, modules []ModuleMigrations,
 	}
 	total := 0
 	for _, m := range modules {
-		if !moduleName.MatchString(m.Name) {
+		if !ModuleName.MatchString(m.Name) {
 			return total, fmt.Errorf("invalid module name %q", m.Name)
 		}
 		applied, err := Migrate(ctx, db, m.FS, HistoryTable(m.Name), logger.With("module", m.Name))

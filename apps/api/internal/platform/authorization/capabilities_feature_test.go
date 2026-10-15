@@ -72,6 +72,6 @@ func TestFeatureTheRuntimeRoleOnlyReadsCapabilities(t *testing.T) {
 	tx := testdb.Tx(t)
 	var n int
 	require.NoError(t, tx.QueryRow(t.Context(), `SELECT count(*) FROM capabilities`).Scan(&n))
-	_, err := savepoint(t, tx, `INSERT INTO capabilities (key, app_key, name) VALUES ('x:a:view', 'admin', 'A')`)
+	_, err := testdb.Savepoint(t, tx, `INSERT INTO capabilities (key, app_key, name) VALUES ('x:a:view', 'admin', 'A')`)
 	assert.Error(t, err)
 }

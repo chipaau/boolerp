@@ -1,11 +1,11 @@
-// Package httpinput decodes and validates JSON request bodies (H2), writing
+// Package request reads requests: it decodes and validates JSON bodies (H2), writing
 // failures as RFC 9457 problem details (C71–C74).
 //
 // Input validation covers shape and format only: required fields, lengths,
 // formats, allowed values. Rules that need data, such as "email already in
 // use", belong to the application layer and database constraints; they report
 // through problem.ValidationError so clients see the same 422 format.
-package httpinput
+package request
 
 import (
 	"encoding/json"
@@ -107,7 +107,7 @@ func Decode(w http.ResponseWriter, r *http.Request, dst any) bool {
 		var invalid validator.ValidationErrors
 		if !errors.As(err, &invalid) {
 			// Only programming errors reach here (for example dst is not a struct).
-			problem.Error(w, r, http.StatusInternalServerError, "")
+			problem.Internal(w, r)
 			return false
 		}
 		problem.WriteValidation(w, r, fieldErrors(invalid))

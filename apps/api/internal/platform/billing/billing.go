@@ -7,6 +7,8 @@ package billing
 import (
 	"embed"
 	"io/fs"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/embedded"
 )
 
 //go:embed migrations/*.sql
@@ -15,9 +17,5 @@ var migrations embed.FS
 // Migrations returns the module's tables, applied by cmd/migrate as "billing", after
 // tenancy (agreements belong to tenants).
 func Migrations() fs.FS {
-	sub, err := fs.Sub(migrations, "migrations")
-	if err != nil {
-		panic(err) // the directory is embedded above, so this cannot fail
-	}
-	return sub
+	return embedded.Dir(migrations, "migrations")
 }

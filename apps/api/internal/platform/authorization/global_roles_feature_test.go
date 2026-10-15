@@ -95,12 +95,12 @@ type capsFixture struct {
 func newCapsFixture(t *testing.T) capsFixture {
 	t.Helper()
 	w, global, mine := capsWorld(t)
-	user := id(t, w.tx, `INSERT INTO users (kratos_identity_id, email, phone) VALUES ('0192f6a0-0000-7000-8000-0000000ac0a1',
+	user := testdb.ID(t, w.tx, `INSERT INTO users (kratos_identity_id, email, phone) VALUES ('0192f6a0-0000-7000-8000-0000000ac0a1',
 		'x-authz-caps@example.test', '+9990000000') RETURNING id`)
 	f := capsFixture{appsWorld: w, global: global, mine: mine,
-		member: id(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at) VALUES ($1, $2, 'active', now()) RETURNING id`, w.a, user)}
-	exec(t, w.tx, `INSERT INTO role_capabilities (role_id, capability) VALUES ($1, 'x-hrms:employee:view'), ($2, 'x-hrms:employee:manage')`, global, mine)
-	exec(t, w.tx, `INSERT INTO role_assignments (tenant_id, membership_id, role_id) VALUES ($1, $2, $3), ($1, $2, $4)`, w.a, f.member, global, mine)
+		member: testdb.ID(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at) VALUES ($1, $2, 'active', now()) RETURNING id`, w.a, user)}
+	testdb.Exec(t, w.tx, `INSERT INTO role_capabilities (role_id, capability) VALUES ($1, 'x-hrms:employee:view'), ($2, 'x-hrms:employee:manage')`, global, mine)
+	testdb.Exec(t, w.tx, `INSERT INTO role_assignments (tenant_id, membership_id, role_id) VALUES ($1, $2, $3), ($1, $2, $4)`, w.a, f.member, global, mine)
 	return f
 }
 
@@ -109,19 +109,12 @@ func newCapsFixture(t *testing.T) capsFixture {
 func loadCaps(t *testing.T, f capsFixture) ([]string, int) {
 	t.Helper()
 	var got []string
-	h := authorization.LoadCapabilities(savepoints{f.tx}, slog.New(slog.DiscardHandler))(http.HandlerFunc(
+	h := authorization.LoadCapabilities(testdb.Savepoints{Tx: f.tx}, slog.New(slog.DiscardHandler))(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) { got = authorization.CapabilitiesFrom(r.Context()) }))
 	ctx := tenant.WithMembership(tenant.With(context.Background(), tenant.Tenant{ID: f.a}), tenant.Membership{ID: f.member})
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx))
 	return got, rec.Code
-}
-
-// savepoints lets tenant.ReadTx begin its transaction inside the test's.
-type savepoints struct{ pgx.Tx }
-
-func (s savepoints) BeginTx(ctx context.Context, _ pgx.TxOptions) (pgx.Tx, error) {
-	return s.Begin(ctx)
 }
 
 func TestFeatureAMembershipsCapabilities(t *testing.T) {
@@ -138,7 +131,7 @@ func TestFeatureAMembershipsCapabilities(t *testing.T) {
 		{"a retired capability counts for nothing", `UPDATE capabilities SET active_to = now() WHERE key = 'x-hrms:employee:view'`, nil},
 	}
 	for _, s := range steps {
-		exec(t, f.tx, s.sql)
+		testdb.Exec(t, f.tx, s.sql)
 		got, _ = loadCaps(t, f)
 		if s.want == nil {
 			assert.Empty(t, got, s.name)
@@ -150,16 +143,16 @@ func TestFeatureAMembershipsCapabilities(t *testing.T) {
 
 func TestFeatureAssignmentsCountOnlyWhileLiveAndTheAppIsOn(t *testing.T) {
 	f := newCapsFixture(t)
-	exec(t, f.tx, `UPDATE role_assignments SET active_to = now() WHERE role_id = $1`, f.mine) // revoked
+	testdb.Exec(t, f.tx, `UPDATE role_assignments SET active_to = now() WHERE role_id = $1`, f.mine) // revoked
 	got, _ := loadCaps(t, f)
 	assert.Equal(t, []string{"x-hrms:employee:view"}, got, "a revoked assignment grants nothing")
 
-	exec(t, f.tx, `INSERT INTO role_assignments (tenant_id, membership_id, role_id, active_from) VALUES ($1, $2, $3, now() + interval '7 days')`,
+	testdb.Exec(t, f.tx, `INSERT INTO role_assignments (tenant_id, membership_id, role_id, active_from) VALUES ($1, $2, $3, now() + interval '7 days')`,
 		f.a, f.member, f.mine)
 	got, _ = loadCaps(t, f)
 	assert.Equal(t, []string{"x-hrms:employee:view"}, got, "an acting appointment starting next week grants nothing yet")
 
-	exec(t, f.tx, `UPDATE tenant_apps SET active_to = now() WHERE tenant_id = $1 AND app_key = 'x-hr'`, f.a)
+	testdb.Exec(t, f.tx, `UPDATE tenant_apps SET active_to = now() WHERE tenant_id = $1 AND app_key = 'x-hr'`, f.a)
 	got, _ = loadCaps(t, f)
 	assert.Empty(t, got, "the app is off: its roles grant nothing")
 }
@@ -176,12 +169,12 @@ func TestFeatureLoadCapabilitiesWithoutAMembership(t *testing.T) {
 
 func TestFeatureTheTeamRolesSeeder(t *testing.T) {
 	w := newAppsWorld(t)
-	exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-console')`, w.operator)
-	role := id(t, w.tx, `INSERT INTO roles (app_key, key, name) VALUES ('x-console', 'x-console.admin', 'Administrator') RETURNING id`)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-console')`, w.operator)
+	role := testdb.ID(t, w.tx, `INSERT INTO roles (app_key, key, name) VALUES ('x-console', 'x-console.admin', 'Administrator') RETURNING id`)
 	for i, email := range []string{"x-team-1@example.test", "X-Team-2@example.test"} {
-		u := id(t, w.tx, `INSERT INTO users (kratos_identity_id, email, phone) VALUES ($1, $2, '+9990000000') RETURNING id`,
+		u := testdb.ID(t, w.tx, `INSERT INTO users (kratos_identity_id, email, phone) VALUES ($1, $2, '+9990000000') RETURNING id`,
 			[]string{"0192f6a0-0000-7000-8000-0000000ae001", "0192f6a0-0000-7000-8000-0000000ae002"}[i], email)
-		exec(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at) VALUES ($1, $2, 'active', now())`, w.operator, u)
+		testdb.Exec(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at) VALUES ($1, $2, 'active', now())`, w.operator, u)
 	}
 	s := seeds.NewTeamRoles(w.tx, []string{"x-team-1@example.test", "x-team-2@example.test"}, "x-console.admin")
 	assert.Equal(t, "authorization.team_roles", s.Name())
@@ -190,7 +183,7 @@ func TestFeatureTheTeamRolesSeeder(t *testing.T) {
 	assert.Equal(t, 2, testdb.Count(t, w.tx, "role_assignments", map[string]any{"role_id": role}))
 
 	// A revoked assignment is an operator's decision: left as it is.
-	exec(t, w.tx, `UPDATE role_assignments SET active_to = now() WHERE role_id = $1`, role)
+	testdb.Exec(t, w.tx, `UPDATE role_assignments SET active_to = now() WHERE role_id = $1`, role)
 	require.NoError(t, s.Run(t.Context(), seedEnv()))
 	assert.Equal(t, 2, testdb.Count(t, w.tx, "role_assignments", map[string]any{"role_id": role}))
 	testdb.AssertMissing(t, w.tx, "role_assignments", map[string]any{"role_id": role, "active_to": nil})

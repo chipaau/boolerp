@@ -10,17 +10,17 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/boolmv/erp/apps/api/internal/platform"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
-	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
-	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization/authztest"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy"
 )
@@ -47,12 +47,12 @@ func newListWorld(t *testing.T) listWorld {
 	for _, c := range []struct{ slug, code, name string }{
 		{"x-bravo", "XBRV", "Bravo Clinic"}, {"x-alpha", "XALP", "Alpha Hospital"}, {"x-charlie", "XCHA", "Charlie 50% Clinic"},
 	} {
-		lw.tenants[c.code] = id(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone)
+		lw.tenants[c.code] = testdb.ID(t, w.tx, `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone)
 			VALUES ($1, $2, $3, 'XT', $4, 'Etc/UTC') RETURNING id`, c.slug, c.code, c.name, w.formXTNoDocument)
 	}
 	w.activate(t, lw.tenants["XALP"])
 	w.platformDomain(t, lw.tenants["XALP"], "x-alpha.x-tenancy.test", "workspace", true)
-	exec(t, w.tx, `UPDATE tenants SET parent_id = $1 WHERE id = $2`, lw.tenants["XALP"], lw.tenants["XBRV"])
+	testdb.Exec(t, w.tx, `UPDATE tenants SET parent_id = $1 WHERE id = $2`, lw.tenants["XALP"], lw.tenants["XBRV"])
 	lw.staff, lw.outsider = w.user(t, 1), w.user(t, 2)
 	w.member(t, lw.operator, lw.staff, false)
 	w.member(t, lw.tenants["XALP"], lw.outsider, true)
@@ -62,16 +62,14 @@ func newListWorld(t *testing.T) listWorld {
 
 func listRouter(w *world, authz authorization.Authorizer) http.Handler {
 	logger := slog.New(slog.DiscardHandler)
-	m := tenancy.New(savepoints{w.tx}, nil, logger)
-	s := platform.Services{Authz: authz, Logger: logger,
-		Operator: chi.Chain(actingAs, auth.RequireUser, m.ResolveOperator, m.RequireMember, m.RequireActiveTenant,
-			authorization.Enforce(logger))}
+	m := tenancy.New(testdb.Savepoints{Tx: w.tx}, nil, logger)
+	s := chainParts(w, m, logger).Services(nil, authz, logger)
 	r := chi.NewRouter()
 	r.Route("/api/v1/tenants", m.TenantsRoutes(s))
 	return r
 }
 
-type tenantPage = httpinput.Page[struct {
+type tenantPage = response.Paged[struct {
 	ID, Slug, Code, Name, Status, Country string
 	ParentID, ParentName, WorkspaceHost   *string
 	CreatedAt                             string
@@ -103,10 +101,10 @@ func codes(p tenantPage) []string {
 
 func TestFeatureOperatorStaffListTenants(t *testing.T) {
 	lw := newListWorld(t)
-	authz := &stated{allow: true}
+	authz := &authztest.Stated{Allow: true}
 	rec, p := listTenants(t, listRouter(lw.world, authz), "user:"+lw.staff, "")
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, []string{"list tenancy:tenant"}, authz.cans, "Cerbos decides the list")
+	assert.Equal(t, []string{"list tenancy:tenant"}, authz.Cans, "Cerbos decides the list")
 
 	assert.Equal(t, []string{"XALP", "XBRV", "XCHA"}, codes(p), "by name, the default")
 	assert.Equal(t, 1, p.Page)
@@ -135,7 +133,7 @@ func TestFeatureOperatorStaffListTenants(t *testing.T) {
 
 func TestFeatureTheTenantListSearchesFiltersSortsAndPages(t *testing.T) {
 	lw := newListWorld(t)
-	h := listRouter(lw.world, &stated{allow: true})
+	h := listRouter(lw.world, &authztest.Stated{Allow: true})
 	staff := "user:" + lw.staff
 	for query, want := range map[string][]string{
 		"?q=clinic":                  {"XBRV", "XCHA"},
@@ -162,20 +160,20 @@ func TestFeatureTheTenantListSearchesFiltersSortsAndPages(t *testing.T) {
 
 func TestFeatureTheTenantListRefuses(t *testing.T) {
 	lw := newListWorld(t)
-	rec, _ := listTenants(t, listRouter(lw.world, &stated{allow: true}), "user:"+lw.staff, "?pageSize=500&sort=slug&tenantId=x")
+	rec, _ := listTenants(t, listRouter(lw.world, &authztest.Stated{Allow: true}), "user:"+lw.staff, "?pageSize=500&sort=slug&tenantId=x")
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	for _, param := range []string{`"parameter":"pageSize"`, `"parameter":"sort"`, `"parameter":"tenantId"`} {
 		assert.Contains(t, rec.Body.String(), param)
 	}
 
-	rec, _ = listTenants(t, listRouter(lw.world, &stated{allow: false}), "user:"+lw.staff, "")
+	rec, _ = listTenants(t, listRouter(lw.world, &authztest.Stated{Allow: false}), "user:"+lw.staff, "")
 	assert.Equal(t, http.StatusForbidden, rec.Code, "without the capability")
 	assert.NotContains(t, rec.Body.String(), "XALP")
 
-	authz := &stated{allow: true}
+	authz := &authztest.Stated{Allow: true}
 	rec, _ = listTenants(t, listRouter(lw.world, authz), "user:"+lw.outsider, "")
 	assert.Equal(t, http.StatusNotFound, rec.Code, "not a member of the operator tenant")
-	assert.Empty(t, authz.cans, "refused before Cerbos is asked")
+	assert.Empty(t, authz.Cans, "refused before Cerbos is asked")
 
 	rec, _ = listTenants(t, listRouter(lw.world, authz), "client", "")
 	assert.Equal(t, http.StatusForbidden, rec.Code, "a machine client")
@@ -187,7 +185,7 @@ func TestFeatureTheTenantListRefuses(t *testing.T) {
 // went blank-ish exactly when the directory grew past one page.
 func TestFeatureTheTenantListNamesAParentOnAnotherPage(t *testing.T) {
 	lw := newListWorld(t)
-	h := listRouter(lw.world, &stated{allow: true})
+	h := listRouter(lw.world, &authztest.Stated{Allow: true})
 
 	// Alphabetically XALP (the parent) is first and XBRV (its child) second, so a page holding the
 	// child and not the parent is page 2 of 1.
@@ -205,7 +203,7 @@ func TestFeatureTheTenantListNamesAParentOnAnotherPage(t *testing.T) {
 // A root tenant has no parent, and says so rather than naming something.
 func TestFeatureTheTenantListLeavesARootsParentEmpty(t *testing.T) {
 	lw := newListWorld(t)
-	_, p := listTenants(t, listRouter(lw.world, &stated{allow: true}), "user:"+lw.staff, "?q=x-alp")
+	_, p := listTenants(t, listRouter(lw.world, &authztest.Stated{Allow: true}), "user:"+lw.staff, "?q=x-alp")
 	require.Len(t, p.Items, 1)
 	assert.Nil(t, p.Items[0].ParentID)
 	assert.Nil(t, p.Items[0].ParentName, "no parent, no name — not an empty string")
@@ -262,11 +260,11 @@ func newCreateWorld(t *testing.T) createWorld {
 	w := newWorld(t)
 	cw := createWorld{world: w, operator: w.operator(t)}
 	w.activate(t, cw.operator)
-	exec(t, w.tx, `INSERT INTO institution_types (code, sector, name) VALUES ('x_tenancy_other', 'x_tenancy', 'Other test type')`)
-	exec(t, w.tx, `INSERT INTO apps (key, name, kind, is_default) VALUES ('x-tcreate-on', 'On', 'workspace', true),
+	testdb.Exec(t, w.tx, `INSERT INTO institution_types (code, sector, name) VALUES ('x_tenancy_other', 'x_tenancy', 'Other test type')`)
+	testdb.Exec(t, w.tx, `INSERT INTO apps (key, name, kind, is_default) VALUES ('x-tcreate-on', 'On', 'workspace', true),
 		('x-tcreate-off', 'Off', 'workspace', false)`)
 	cw.existing = w.tenant(t, "x-held", "XHELD")
-	exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1, identity_number = 'C-77', tax_number = 'TIN-77' WHERE id = $2`, w.formXT, cw.existing)
+	testdb.Exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1, identity_number = 'C-77', tax_number = 'TIN-77' WHERE id = $2`, w.formXT, cw.existing)
 	cw.staff = w.user(t, 1)
 	w.member(t, cw.operator, cw.staff, false)
 	w.enforce(t)
@@ -282,10 +280,8 @@ func newCreateWorld(t *testing.T) createWorld {
 
 func createRouter(w createWorld, authz authorization.Authorizer) http.Handler {
 	logger := slog.New(slog.DiscardHandler)
-	m := tenancy.New(savepoints{w.tx}, w.lists, logger)
-	s := platform.Services{Authz: authz, Logger: logger,
-		Operator: chi.Chain(actingAs, auth.RequireUser, auth.Actor, m.ResolveOperator, m.RequireMember,
-			m.RequireActiveTenant, authorization.Enforce(logger))}
+	m := tenancy.New(testdb.Savepoints{Tx: w.tx}, w.lists, logger)
+	s := chainParts(w.world, m, logger).Services(nil, authz, logger)
 	r := chi.NewRouter()
 	r.Route("/api/v1/tenants", m.TenantsRoutes(s))
 	return r
@@ -329,10 +325,10 @@ func fieldErrors(t *testing.T, rec *httptest.ResponseRecorder) map[string]string
 
 func TestFeatureOperatorStaffCreateATenant(t *testing.T) {
 	w := newCreateWorld(t)
-	authz := &stated{allow: true}
+	authz := &authztest.Stated{Allow: true}
 	rec := post(t, createRouter(w, authz), "user:"+w.staff, w.valid())
 	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
-	assert.Equal(t, []string{"create tenancy:tenant"}, authz.cans, "Cerbos decides the create")
+	assert.Equal(t, []string{"create tenancy:tenant"}, authz.Cans, "Cerbos decides the create")
 
 	var got struct {
 		ID, Slug, Code, Name, Status, Country string
@@ -357,7 +353,7 @@ func TestFeatureOperatorStaffCreateATenant(t *testing.T) {
 
 func TestFeatureATenantCanBeCreatedUnderAParent(t *testing.T) {
 	w := newCreateWorld(t)
-	h := createRouter(w, &stated{allow: true})
+	h := createRouter(w, &authztest.Stated{Allow: true})
 	body := w.valid()
 	body["parentId"] = w.existing
 	rec := post(t, h, "user:"+w.staff, body)
@@ -376,7 +372,7 @@ func TestFeatureATenantCanBeCreatedUnderAParent(t *testing.T) {
 
 func TestFeatureCreatingATenantChecksItsRules(t *testing.T) {
 	w := newCreateWorld(t)
-	h := createRouter(w, &stated{allow: true})
+	h := createRouter(w, &authztest.Stated{Allow: true})
 	for name, c := range map[string]struct {
 		change func(b map[string]any)
 		want   map[string]string
@@ -430,21 +426,38 @@ func TestFeatureATakenValueNamesItsTenant(t *testing.T) {
 	w := newCreateWorld(t)
 	b := w.valid()
 	b["slug"] = "x-held"
-	rec := post(t, createRouter(w, &stated{allow: true}), "user:"+w.staff, b)
+	rec := post(t, createRouter(w, &authztest.Stated{Allow: true}), "user:"+w.staff, b)
 	assert.Contains(t, rec.Body.String(), "is already used by Tenant XHELD")
 }
 
 func TestFeatureCreatingATenantRefuses(t *testing.T) {
 	w := newCreateWorld(t)
-	rec := post(t, createRouter(w, &stated{allow: false}), "user:"+w.staff, w.valid())
+	rec := post(t, createRouter(w, &authztest.Stated{Allow: false}), "user:"+w.staff, w.valid())
 	assert.Equal(t, http.StatusForbidden, rec.Code, "Cerbos denies")
 
 	down := w
 	down.lists.down = true
-	rec = post(t, createRouter(down, &stated{allow: true}), "user:"+w.staff, w.valid())
+	rec = post(t, createRouter(down, &authztest.Stated{Allow: true}), "user:"+w.staff, w.valid())
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code, "the reference lists cannot be read")
 
-	rec = post(t, createRouter(w, &stated{allow: true}), "client", w.valid())
+	rec = post(t, createRouter(w, &authztest.Stated{Allow: true}), "client", w.valid())
 	assert.Equal(t, http.StatusForbidden, rec.Code, "a machine client is not operator staff")
 	testdb.AssertMissing(t, w.tx, "tenants", map[string]any{"slug": "x-new-clinic"})
+}
+
+// The request refuses every slug the tenants table's CHECK reserves, with its own field
+// error (C208): the Go list and the database's must not drift apart.
+func TestFeatureEverySlugTheDatabaseReservesIsRefusedFirst(t *testing.T) {
+	w := newCreateWorld(t)
+	var def string
+	require.NoError(t, w.tx.QueryRow(t.Context(), `SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c
+		WHERE c.conrelid = 'tenants'::regclass AND pg_get_constraintdef(c.oid) LIKE '%''operator''%'`).Scan(&def))
+	reserved := regexp.MustCompile(`'([a-z]+)'`).FindAllStringSubmatch(def, -1)
+	require.NotEmpty(t, reserved)
+	h := createRouter(w, &authztest.Stated{Allow: true})
+	for _, m := range reserved {
+		b := w.valid()
+		b["slug"] = m[1]
+		assert.Equal(t, map[string]string{"#/slug": "reserved"}, fieldErrors(t, post(t, h, "user:"+w.staff, b)), m[1])
+	}
 }

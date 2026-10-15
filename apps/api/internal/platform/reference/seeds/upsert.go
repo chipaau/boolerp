@@ -11,9 +11,7 @@ import (
 )
 
 // DB is what the seeders need: a pool, or a transaction in tests (C79).
-type DB interface {
-	Begin(ctx context.Context) (pgx.Tx, error)
-}
+type DB = actor.Beginner
 
 // row is one seed row: key names it in errors, args fill the upsert's parameters.
 type row struct {

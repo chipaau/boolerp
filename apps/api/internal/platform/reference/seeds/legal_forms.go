@@ -30,7 +30,7 @@ var (
 // ParseLegalForms reads legal forms CSV: a header, then one form per line. It
 // rejects a malformed row or a code repeated within a country.
 func ParseLegalForms(data []byte) ([]LegalForm, error) {
-	records, err := readCSV("legal forms", data, "country", "code", "name", "category", "identity_document")
+	records, err := seed.ReadCSV("legal forms", data, "country", "code", "name", "category", "identity_document")
 	if err != nil {
 		return nil, err
 	}

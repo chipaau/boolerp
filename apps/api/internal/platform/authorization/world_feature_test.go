@@ -3,13 +3,10 @@
 package authorization_test
 
 import (
-	"context"
-	"errors"
 	"log/slog"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
@@ -36,52 +33,18 @@ type appsWorld struct {
 func newAppsWorld(t *testing.T) appsWorld {
 	t.Helper()
 	tx := testdb.OwnerTx(t)
-	exec(t, tx, `INSERT INTO countries (code, alpha3, name, phone_prefix) VALUES ('XV', 'XVV', 'Appland', '+997')`)
-	form := id(t, tx, `INSERT INTO legal_forms (country, code, name, category)
+	testdb.Exec(t, tx, `INSERT INTO countries (code, alpha3, name, phone_prefix) VALUES ('XV', 'XVV', 'Appland', '+997')`)
+	form := testdb.ID(t, tx, `INSERT INTO legal_forms (country, code, name, category)
 		VALUES ('XV', 'test_ministry', 'Test ministry', 'government') RETURNING id`)
 	const insert = `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, is_operator)
 		VALUES ($1, $2, $3, 'XV', $4, 'Etc/UTC', $5) RETURNING id`
 	w := appsWorld{tx: tx,
-		operator: id(t, tx, insert, "x-authz-operator", "XAOP", "Test operator", form, true),
-		a:        id(t, tx, insert, "x-authz-a", "XAA", "A", form, false),
-		b:        id(t, tx, insert, "x-authz-b", "XAB", "B", form, false),
+		operator: testdb.ID(t, tx, insert, "x-authz-operator", "XAOP", "Test operator", form, true),
+		a:        testdb.ID(t, tx, insert, "x-authz-a", "XAA", "A", form, false),
+		b:        testdb.ID(t, tx, insert, "x-authz-b", "XAB", "B", form, false),
 	}
-	exec(t, tx, `INSERT INTO apps (key, name, kind) VALUES ('x-hr', 'Test HR', 'workspace'),
+	testdb.Exec(t, tx, `INSERT INTO apps (key, name, kind) VALUES ('x-hr', 'Test HR', 'workspace'),
 		('x-console', 'Test console', 'operator'), ('x-tasks', 'Test tasks', 'workspace'), ('x-gone', 'Gone', 'workspace')`)
-	exec(t, tx, `UPDATE apps SET active_to = now() WHERE key = 'x-gone'`)
+	testdb.Exec(t, tx, `UPDATE apps SET active_to = now() WHERE key = 'x-gone'`)
 	return w
-}
-
-func exec(t *testing.T, tx pgx.Tx, sql string, args ...any) {
-	t.Helper()
-	_, err := tx.Exec(t.Context(), sql, args...)
-	require.NoError(t, err, sql)
-}
-
-func id(t *testing.T, tx pgx.Tx, sql string, args ...any) string {
-	t.Helper()
-	var v string
-	require.NoError(t, tx.QueryRow(t.Context(), sql, args...).Scan(&v), sql)
-	return v
-}
-
-// savepoint runs sql in a savepoint, so a failure leaves the test's transaction usable.
-func savepoint(t *testing.T, tx pgx.Tx, sql string, args ...any) (pgconn.CommandTag, error) {
-	t.Helper()
-	sp, err := tx.Begin(t.Context())
-	require.NoError(t, err)
-	defer func() { _ = sp.Rollback(context.Background()) }()
-	tag, err := sp.Exec(t.Context(), sql, args...)
-	if err == nil {
-		err = sp.Commit(t.Context())
-	}
-	return tag, err
-}
-
-func code(err error) string {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		return pgErr.Code
-	}
-	return ""
 }

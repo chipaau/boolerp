@@ -1,7 +1,9 @@
 // Package authorization is the platform's authorization capability (C21, C149-C153):
-// the Cerbos policies' shared pieces (the principal schema; later the shared derived
-// roles) and the assembly of every module's policies into the one directory Cerbos
-// reads. The Cerbos adapter, the only code that imports the SDK, comes later.
+// the Authorizer every module asks and its Cerbos adapter (cerbos.go, the only code
+// that imports the SDK), the record-or-deny backstop (Enforce, C155), the caller's
+// capabilities (C177), the roles and capabilities each app grants (C167, C168), the
+// Cerbos policies' shared pieces (the principal schema), and the assembly of every
+// module's policies into the one directory Cerbos reads.
 package authorization
 
 import (
@@ -12,20 +14,27 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/embedded"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/postgres"
 )
+
+//go:embed migrations/*.sql
+var migrations embed.FS
+
+// Migrations returns the module's tables, applied by cmd/migrate as "authorization",
+// after tenancy (roles belong to tenants and are assigned to memberships).
+func Migrations() fs.FS {
+	return embedded.Dir(migrations, "migrations")
+}
 
 //go:embed all:policies
 var policies embed.FS
 
 // Policies returns the shared policies and schemas, assembled as "authorization".
 func Policies() fs.FS {
-	sub, err := fs.Sub(policies, "policies")
-	if err != nil {
-		panic(err) // the directory is embedded above, so this cannot fail
-	}
-	return sub
+	return embedded.Dir(policies, "policies")
 }
 
 // ModulePolicies is one module's policies: YAML policy files and their _test.yaml
@@ -39,8 +48,6 @@ type ModulePolicies struct {
 // never empties a directory it did not create.
 const marker = ".policies-assembled"
 
-var moduleName = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
-
 // Write assembles modules into dir, the layout Cerbos's disk store reads: module m's
 // policy files under m/, its schemas under _schemas/m/ (referenced as
 // cerbos:///m/<file>). dir must be empty or written by Write before; its previous
@@ -50,7 +57,7 @@ func Write(dir string, modules []ModulePolicies) error {
 		return err
 	}
 	for _, m := range modules {
-		if !moduleName.MatchString(m.Name) {
+		if !postgres.ModuleName.MatchString(m.Name) {
 			return fmt.Errorf("policies: invalid module name %q", m.Name)
 		}
 		err := fs.WalkDir(m.FS, ".", func(p string, d fs.DirEntry, err error) error {

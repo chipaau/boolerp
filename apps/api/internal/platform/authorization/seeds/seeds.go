@@ -5,12 +5,8 @@
 package seeds
 
 import (
-	"context"
-
-	"github.com/jackc/pgx/v5"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/actor"
 )
 
 // DB is what the seeders need: a pool, or a transaction in tests (C79).
-type DB interface {
-	Begin(ctx context.Context) (pgx.Tx, error)
-}
+type DB = actor.Beginner

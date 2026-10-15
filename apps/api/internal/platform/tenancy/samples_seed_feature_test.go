@@ -26,7 +26,7 @@ func TestFeatureTheSampleSeederCreatesTenantsInDev(t *testing.T) {
 	s := seeds.NewSamplesFrom(w.tx, []byte(testSamples), "x-tenancy.test")
 	assert.Equal(t, "tenancy.sample_tenants", s.Name())
 	require.NoError(t, s.Run(t.Context(), seedEnvFor("dev")))
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`) // every active sample has its primary type
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`) // every active sample has its primary type
 	require.NoError(t, s.Run(t.Context(), seedEnvFor("dev")), "running again is fine")
 
 	var parent, status, primary string
@@ -64,7 +64,7 @@ func TestFeatureTheSampleSeederKeepsAnotherPrimary(t *testing.T) {
 	w.addTypes(t)
 	a := w.tenant(t, "x-company", "XCOM")
 	// A verified custom host is already the primary.
-	exec(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, verification_token, status, verified_at, activated_at, is_primary)
+	testdb.Exec(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, verification_token, status, verified_at, activated_at, is_primary)
 		VALUES ($1, 'own.x-tenancy.test', 'custom', $2, 'active', now(), now(), true)`, a, token)
 	require.NoError(t, seeds.NewSamplesFrom(w.tx, []byte(testSamples), "x-tenancy.test").Run(t.Context(), seedEnvFor("dev")))
 
