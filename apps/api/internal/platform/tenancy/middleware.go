@@ -31,7 +31,7 @@ func (m *Module) ResolveTenant(next http.Handler) http.Handler {
 		h, ok, err := m.lookups.TenantByHost(r.Context(), host)
 		if err != nil {
 			m.logger.ErrorContext(r.Context(), "looking up the tenant failed", "error", err)
-			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+			problem.Unavailable(w, r)
 			return
 		}
 		if !ok || h.Serves != "workspace" {
@@ -51,7 +51,7 @@ func (m *Module) ResolveOperator(next http.Handler) http.Handler {
 		t, ok, err := m.lookups.OperatorTenant(r.Context())
 		if err != nil {
 			m.logger.ErrorContext(r.Context(), "looking up the operator failed", "error", err)
-			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+			problem.Unavailable(w, r)
 			return
 		}
 		if !ok {
@@ -77,7 +77,7 @@ func (m *Module) RequireMember(next http.Handler) http.Handler {
 		membership, ok, err := m.lookups.ActiveMembership(r.Context(), t.ID, caller.User.ID)
 		if err != nil {
 			m.logger.ErrorContext(r.Context(), "looking up the membership failed", "error", err)
-			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+			problem.Unavailable(w, r)
 			return
 		}
 		if !ok {

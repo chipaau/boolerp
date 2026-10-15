@@ -34,6 +34,17 @@ func TestErrorWritesProblemDetails(t *testing.T) {
 	}, got)
 }
 
+func TestUnavailableSaysNothingOfTheCause(t *testing.T) {
+	rec := httptest.NewRecorder()
+	Unavailable(rec, httptest.NewRequest(http.MethodGet, "/x", nil))
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	var got Details
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	assert.Equal(t, "Service Unavailable", got.Title)
+	assert.Equal(t, "The service is unavailable right now.", got.Detail)
+}
+
 func TestErrorOmitsEmptyMembers(t *testing.T) {
 	rec := httptest.NewRecorder()
 	// No request ID middleware and no detail: both members are omitted.

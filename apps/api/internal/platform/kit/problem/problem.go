@@ -67,3 +67,9 @@ func Write(w http.ResponseWriter, d Details) {
 func Error(w http.ResponseWriter, r *http.Request, status int, detail string) {
 	Write(w, New(r, status, detail))
 }
+
+// Unavailable writes the generic 503 for a dependency that failed (the database, a
+// provider), never saying which or why; the caller logs the error.
+func Unavailable(w http.ResponseWriter, r *http.Request) {
+	Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+}

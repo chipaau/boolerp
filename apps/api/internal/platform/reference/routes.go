@@ -47,7 +47,8 @@ func (m *Module) countries(authz authorization.Authorizer) http.HandlerFunc {
 		}
 		rows, total, err := store.ListCountries(r.Context(), m.db, l)
 		if err != nil {
-			m.unavailable(w, r, "listing countries failed", err)
+			m.logger.ErrorContext(r.Context(), "listing countries failed", "error", err)
+			problem.Unavailable(w, r)
 			return
 		}
 		items := make([]country, len(rows))
@@ -80,7 +81,8 @@ func (m *Module) legalForms(authz authorization.Authorizer) http.HandlerFunc {
 		}
 		rows, total, err := store.ListLegalForms(r.Context(), m.db, l)
 		if err != nil {
-			m.unavailable(w, r, "listing legal forms failed", err)
+			m.logger.ErrorContext(r.Context(), "listing legal forms failed", "error", err)
+			problem.Unavailable(w, r)
 			return
 		}
 		items := make([]legalForm, len(rows))
@@ -116,7 +118,8 @@ func (m *Module) institutionTypes(authz authorization.Authorizer) http.HandlerFu
 		}
 		rows, total, err := store.ListInstitutionTypes(r.Context(), m.db, l)
 		if err != nil {
-			m.unavailable(w, r, "listing institution types failed", err)
+			m.logger.ErrorContext(r.Context(), "listing institution types failed", "error", err)
+			problem.Unavailable(w, r)
 			return
 		}
 		items := make([]institutionType, len(rows))
@@ -125,10 +128,4 @@ func (m *Module) institutionTypes(authz authorization.Authorizer) http.HandlerFu
 		}
 		httpinput.WritePage(w, l, items, total)
 	}
-}
-
-// unavailable logs a failed read and answers 503, never the error itself.
-func (m *Module) unavailable(w http.ResponseWriter, r *http.Request, msg string, err error) {
-	m.logger.ErrorContext(r.Context(), msg, "error", err)
-	problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
 }

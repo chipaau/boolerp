@@ -74,7 +74,7 @@ func (m *Module) list(authz authorization.Authorizer) http.HandlerFunc {
 		})
 		if err != nil {
 			m.logger.ErrorContext(r.Context(), "listing tenants failed", "error", err)
-			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+			problem.Unavailable(w, r)
 			return
 		}
 		items := make([]item, len(tenants))
@@ -93,7 +93,7 @@ func (m *Module) current(authz authorization.Authorizer) http.HandlerFunc {
 		t, err := m.currentTenant(r.Context())
 		if err != nil {
 			m.logger.ErrorContext(r.Context(), "reading the tenant failed", "error", err)
-			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+			problem.Unavailable(w, r)
 			return
 		}
 		if err := authz.Check(r.Context(), "view", authorization.Resource{
