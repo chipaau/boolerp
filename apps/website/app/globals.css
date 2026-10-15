@@ -322,18 +322,46 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
     linear-gradient(to bottom, rgb(255 255 255 / 0.02) 1px, transparent 1px);
   background-size: 160px 160px, 160px 160px, 40px 40px, 40px 40px;
 }
-/* the building in a soft warm grey while the story runs (multiplied onto the cream, so its white
-   floors take the page's colour); the current room comes back in colour over it */
-#workspace .office-base,
-#workspace .office-colour {
-  mix-blend-mode: multiply;
+/* the workspace map: an inactive island sits under a cream veil (soft-edged, so it reads as faded,
+   not boxed); the current one is clear, with warm light pooled under it */
+.office-veil {
+  border-radius: 14%;
+  background: radial-gradient(closest-side, rgb(241 236 226 / 0.8) 72%, rgb(241 236 226 / 0));
+  transform: scale(1.14);
 }
-#workspace[data-live] .office-base {
-  filter: grayscale(1) sepia(0.22) contrast(0.9) brightness(1.03);
-  opacity: 0.85;
+.office-island-glow {
+  border-radius: 14%;
+  background: radial-gradient(closest-side, rgb(246 162 77 / 0.3), rgb(246 162 77 / 0));
+  transform: scale(1.25);
+  filter: blur(16px);
 }
-.office-colour {
-  filter: saturate(1.25);
+/* the routes into the hub: dashes marching inward, faint at rest, amber for the current app */
+.office-route-rest,
+.office-route {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 2 10;
+  animation: office-march 1.2s linear infinite;
+}
+.office-route-rest {
+  stroke: rgb(165 144 111 / 0.35);
+  stroke-width: 1.5;
+}
+.office-route {
+  stroke: #f0913a;
+  stroke-width: 2.5;
+  animation-duration: 0.7s;
+}
+@keyframes office-march {
+  to {
+    stroke-dashoffset: 12;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .office-route-rest,
+  .office-route {
+    animation: none;
+  }
 }
 /* the apps' list, ruled like the reference (--on: 0 to 1, set by the story) */
 .office-item {

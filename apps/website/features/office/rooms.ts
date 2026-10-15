@@ -1,86 +1,101 @@
-import { Boxes, CalendarDays, FileCheck2, Laptop, Settings2 } from 'lucide-react'
+import { BarChart3, Boxes, CalendarDays, FileCheck2, Laptop, ShoppingCart } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-/** The isometric office (public/office.webp, transparent, 2000×1333); every point below is in its pixels. */
-export const OFFICE = { src: '/office.webp', width: 2000, height: 1333 } as const
+/**
+ * The workspace map (public/office.webp, 3000×2000, transparent): the workspace as a hub in the
+ * middle, each app an island around it, joined by walkways. Every box below is in its pixels.
+ */
+export const OFFICE = { src: '/office.webp', width: 3000, height: 2000 } as const
 
-type Point = [number, number]
+type Box = [number, number, number, number] // left, top, right, bottom
+
+/** The hub, always in colour: the workspace every app connects to. */
+export const HUB: Box = [750, 581, 2250, 1556]
 
 export type Room = {
   id: string
   title: string
   body: string
-  /** Small labels on the app's row, like the reference's disciplines. */
+  /** Small labels on the app's row. */
   tags: string[]
   icon: LucideIcon
-  /** The room's footprint, walls included, traced on the drawing. */
-  outline: Point[]
-  /** Where the card's leader starts, inside the room. */
-  pin: Point
-  card: { title: string; detail: string; status?: string }
-  /** A dotted route drawn when the room is lit (Requests: from the reception desk to the store). */
-  route?: Point[]
+  /** The islands this step lights (one app, or a few that work together). */
+  areas: Box[]
+  /** What the app does, shown on its card as the step settles. */
+  features: string[]
+  /** Where the card stands, on the drawing. */
+  pin: [number, number]
 }
 
 // UI fixtures: marketing content, not live data
 export const ROOMS: Room[] = [
   {
-    id: 'inventory',
-    tags: ['Stock', 'Stores', 'Suppliers'],
+    id: 'stock',
     title: 'Inventory',
-    body: 'Stock, stores and suppliers, counted where they sit. Low stock flags itself before anyone runs out.',
+    tags: ['Stock', 'Receiving', 'Transfers'],
+    body: 'Stock, stores and suppliers, counted where they sit, received at the door and moved between sites.',
     icon: Boxes,
-    outline: [[125, 320], [455, 140], [712, 282], [712, 420], [512, 528], [505, 690], [180, 520]],
-    pin: [330, 390],
-    card: { title: 'Printer toner', detail: '4 left · reorder at 10', status: 'Below reorder' },
+    areas: [[563, 28, 1284, 600], [2091, 159, 2841, 722], [1406, 1491, 2156, 1988]],
+    features: ['Stock levels per site', 'Low-stock alerts', 'Receiving against orders', 'Transfers between stores'],
+    pin: [1290, 640],
   },
   {
     id: 'requests',
-    tags: ['Goods', 'Services', 'Purchases'],
     title: 'Requests',
-    body: 'Goods, services and purchases asked for, approved and delivered in one place, with every step on record.',
+    tags: ['Goods', 'Services'],
+    body: 'Goods and services asked for, approved and delivered in one place, with every step on record.',
     icon: FileCheck2,
-    outline: [[595, 490], [800, 385], [1160, 590], [1160, 640], [1035, 770], [870, 800], [600, 585]],
-    pin: [880, 560],
-    card: { title: 'PO-0142', detail: '24 reams A4 · Finance', status: 'Approved' },
-    route: [[880, 610], [700, 660], [540, 630], [430, 575]],
+    areas: [[544, 1369, 1200, 1875], [2194, 1294, 2822, 1809]],
+    features: ['Goods and service requests', 'Approval chains', 'Status at every step'],
+    pin: [860, 1400],
+  },
+  {
+    id: 'purchasing',
+    title: 'Purchasing',
+    tags: ['Orders', 'Suppliers'],
+    body: 'Purchase orders raised from approved requests and tracked to delivery.',
+    icon: ShoppingCart,
+    areas: [[1369, 9, 1959, 459]],
+    features: ['Orders from approved requests', 'Supplier quotes', 'Delivery tracking'],
+    pin: [1960, 470],
   },
   {
     id: 'assets',
-    tags: ['Devices', 'Furniture', 'Checks'],
     title: 'Assets',
+    tags: ['Devices', 'Checks'],
     body: 'Every laptop, desk and chair: who has it, where it is, and when it was last checked.',
     icon: Laptop,
-    outline: [[1380, 575], [1500, 505], [1748, 648], [1748, 765], [1650, 795], [1380, 645]],
-    pin: [1560, 620],
-    card: { title: 'MacBook Pro 14"', detail: 'Assigned to Rania Bakr', status: 'Verified' },
+    areas: [[2353, 769, 2981, 1294]],
+    features: ['Assigned to people and sites', 'Verification rounds', 'Full history'],
+    pin: [2560, 820],
   },
   {
     id: 'calendar',
-    tags: ['Rooms', 'People', 'Invites'],
-    title: 'Calendar',
-    body: 'Rooms and people in one diary. Find a free room, invite the team, and the room is held.',
+    title: 'Calendar & Notes',
+    tags: ['Rooms', 'People', 'Notes'],
+    body: 'Rooms and people in one diary, and the notes that come out of the meeting.',
     icon: CalendarDays,
-    outline: [[715, 115], [880, 30], [1258, 235], [1252, 410], [1065, 495], [715, 300]],
-    pin: [1010, 290],
-    card: { title: 'Hive 2 · Stock review', detail: 'Today, 4:00 PM · 6 people', status: 'Booked' },
+    areas: [[84, 469, 759, 994], [1509, 459, 1969, 769]],
+    features: ['Room booking', 'Invites and replies', 'Shared notes'],
+    pin: [380, 500],
   },
   {
-    id: 'control-centre',
-    tags: ['Sites', 'Roles', 'Approvals'],
-    title: 'Control Centre',
-    body: 'Sites, people and approval chains, set up once in one office, and every app follows them.',
-    icon: Settings2,
-    outline: [[1410, 885], [1605, 770], [1885, 922], [1880, 958], [1690, 1080], [1500, 1135], [1410, 1050]],
-    pin: [1630, 930],
-    card: { title: 'Approval chains', detail: 'Purchases over MVR 5,000', status: '3 steps' },
+    id: 'reports',
+    title: 'Reports',
+    tags: ['Insight', 'Exports'],
+    body: 'Low stock, pending items and spend, from every app at once.',
+    icon: BarChart3,
+    areas: [[113, 994, 806, 1509]],
+    features: ['Across every app', 'Pending and overdue', 'Export to Excel'],
+    pin: [420, 1030],
   },
 ]
 
-/** A room's centre (the average of its outline), as fractions of the drawing. */
+/** The middle of a step's islands, as fractions of the drawing. */
 export function centreOf(room: Room) {
-  const n = room.outline.length
-  const x = room.outline.reduce((s, p) => s + p[0], 0) / n
-  const y = room.outline.reduce((s, p) => s + p[1], 0) / n
-  return { x: x / OFFICE.width, y: y / OFFICE.height }
+  const l = Math.min(...room.areas.map((a) => a[0]))
+  const t = Math.min(...room.areas.map((a) => a[1]))
+  const r = Math.max(...room.areas.map((a) => a[2]))
+  const b = Math.max(...room.areas.map((a) => a[3]))
+  return { x: (l + r) / 2 / OFFICE.width, y: (t + b) / 2 / OFFICE.height }
 }
