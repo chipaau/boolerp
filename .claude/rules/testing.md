@@ -15,6 +15,9 @@ Read [testing.md](../../docs/testing.md).
   tokens), authorization (an Authorizer stating allow or deny), and every outside service,
   and assert the database after every write: `testdb.AssertHas` after create or update,
   `testdb.AssertMissing` after delete. Only adapter tests talk to a real outside service.
+- Use the shared test helpers (`testdb.Exec`, `ID`, `Savepoint`, `PgCode`, `Savepoints`;
+  `authztest.Stated` for a stated Cerbos answer) and build endpoint routers from
+  `platform.ChainParts` with only authentication faked, so they run the production chains.
 - Tests never depend on seeded or migrated data: each test creates the rows it needs in
   its rolled-back transaction (`testdb.Tx`, `testdb.OwnerTx`) with values that cannot
   clash with real data (C135).

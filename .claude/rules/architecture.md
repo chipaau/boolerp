@@ -42,6 +42,12 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   - field errors from a use case: `var v problem.ValidationError; v.Add(path, code, detail)`,
     `return v.Err()`, or `problem.Invalid(path, code, detail)` for one field; paths are JSON
     paths (`institutionTypes/1/code`), pointers come from `problem.Field`/`problem.Pointer`.
+  - lists in a store: `postgres.ListQuery` (`Where`, `Equal`, `Search`, `Run`: sorts, a
+    stable key, the window count, past-last-page counting); seed files: `seed.ReadCSV`;
+  - route protection: the named chains of `platform.Services`, built with
+    `platform.ChainParts` (the edition and tests alike);
+  - tests: `testdb.Exec`, `ID`, `Savepoint`, `PgCode`, `Savepoints` (code that begins its
+    own transactions inside the test's), and `authztest.Stated` for Cerbos.
   A helper several modules need is added to the kit first, then used.
 - A module owns its persistence writes. Do not reach into another module's SQL package.
 - Design every module so it can become a separate service later, all services sharing

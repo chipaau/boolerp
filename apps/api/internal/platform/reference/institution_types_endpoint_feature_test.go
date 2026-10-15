@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization/authztest"
 )
 
 type institutionType struct {
@@ -17,12 +19,12 @@ type institutionType struct {
 }
 
 func TestFeatureTheInstitutionTypeListShowsCurrentTypesBySector(t *testing.T) {
-	authz := &stated{allow: true}
+	authz := &authztest.Stated{Allow: true}
 	h := referenceRouter(referenceWorld(t), authz)
 
 	rec, p := get[institutionType](t, h, "/api/v1/institution-types?q=X%20")
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.Equal(t, []string{"list reference:institution_type"}, authz.cans)
+	assert.Equal(t, []string{"list reference:institution_type"}, authz.Cans)
 	got := []string{}
 	for _, it := range p.Items {
 		if strings.HasPrefix(it.Code, "x_") {

@@ -37,7 +37,7 @@ func TestFeatureTheOperatorSeederCreatesTheOperatorInProvisioning(t *testing.T) 
 	s := seeds.NewOperator(w.tx, testOperator, "x-tenancy.test")
 	assert.Equal(t, "tenancy.operator", s.Name())
 	require.NoError(t, s.Run(t.Context(), seedEnv()))
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`) // a provisioning tenant needs no owner yet
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`) // a provisioning tenant needs no owner yet
 
 	var slug, status, primary, form string
 	var isOperator bool
@@ -74,7 +74,7 @@ func TestFeatureTheOperatorSeederLeavesAnExistingOperator(t *testing.T) {
 	w := newWorld(t)
 	s := seeds.NewOperator(w.tx, testOperator, "x-tenancy.test")
 	require.NoError(t, s.Run(t.Context(), seedEnv()))
-	exec(t, w.tx, `UPDATE tenants SET name = 'Renamed in the admin console' WHERE is_operator`)
+	testdb.Exec(t, w.tx, `UPDATE tenants SET name = 'Renamed in the admin console' WHERE is_operator`)
 	require.NoError(t, s.Run(t.Context(), seedEnv()))
 
 	var name string

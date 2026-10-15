@@ -20,7 +20,7 @@ type Sector struct {
 // ParseSectors reads sectors CSV: a header, then one sector per line. It rejects
 // a malformed or duplicated row.
 func ParseSectors(data []byte) ([]Sector, error) {
-	records, err := readCSV("sectors", data, "code", "name")
+	records, err := seed.ReadCSV("sectors", data, "code", "name")
 	if err != nil {
 		return nil, err
 	}

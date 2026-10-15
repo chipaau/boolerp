@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization/authztest"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
@@ -118,7 +119,7 @@ type meBody struct {
 func TestFeatureGetMeNeverCreatesAUser(t *testing.T) {
 	tx := testdb.Tx(t)
 	hydra := newFakeHydra(t)
-	rec := callMe(t, endpoint(t, tx, &recordingAuthz{}, hydra), http.MethodGet, "person")
+	rec := callMe(t, endpoint(t, tx, &authztest.Stated{Allow: true}, hydra), http.MethodGet, "person")
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code, "the person has not registered")
 	assert.Contains(t, rec.Body.String(), "POST /api/auth/me")
@@ -128,7 +129,7 @@ func TestFeatureGetMeNeverCreatesAUser(t *testing.T) {
 
 func TestFeatureRegisterCreatesThenUpdatesTheUser(t *testing.T) {
 	tx := testdb.Tx(t)
-	authz := &recordingAuthz{}
+	authz := &authztest.Stated{Allow: true}
 	hydra := newFakeHydra(t)
 	h := endpoint(t, tx, authz, hydra)
 
@@ -143,7 +144,7 @@ func TestFeatureRegisterCreatesThenUpdatesTheUser(t *testing.T) {
 		"id": body.User.ID, "kratos_identity_id": newPerson, "email": "aisha@example.test",
 		"phone": "+9607770000", "display_name": "Aisha", "avatar_url": picture,
 	})
-	assert.Equal(t, []authorization.Resource{{Kind: "identity:account", ID: newPerson}}, authz.asked,
+	assert.Equal(t, []authorization.Resource{{Kind: "identity:account", ID: newPerson}}, authz.Asked,
 		"Cerbos is asked about the caller's own account")
 
 	// Registering again refreshes the same user from /userinfo.
@@ -164,7 +165,7 @@ func TestFeatureRegisterCreatesThenUpdatesTheUser(t *testing.T) {
 
 func TestFeatureRegisterNeedsTheEmailAndPhoneScopes(t *testing.T) {
 	tx := testdb.Tx(t)
-	rec := callMe(t, endpoint(t, tx, &recordingAuthz{}, newFakeHydra(t)), http.MethodPost, "person-no-phone")
+	rec := callMe(t, endpoint(t, tx, &authztest.Stated{Allow: true}, newFakeHydra(t)), http.MethodPost, "person-no-phone")
 
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.Contains(t, rec.Header().Get("WWW-Authenticate"), `error="insufficient_scope"`)
@@ -173,7 +174,7 @@ func TestFeatureRegisterNeedsTheEmailAndPhoneScopes(t *testing.T) {
 
 func TestFeatureRegisterWithATokenHydraRefusesWritesNothing(t *testing.T) {
 	tx := testdb.Tx(t)
-	rec := callMe(t, endpoint(t, tx, &recordingAuthz{}, newFakeHydra(t)), http.MethodPost, "revoked")
+	rec := callMe(t, endpoint(t, tx, &authztest.Stated{Allow: true}, newFakeHydra(t)), http.MethodPost, "revoked")
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	assert.Equal(t, `Bearer error="invalid_token"`, rec.Header().Get("WWW-Authenticate"))
@@ -183,7 +184,7 @@ func TestFeatureRegisterWithATokenHydraRefusesWritesNothing(t *testing.T) {
 func TestFeatureRegisterRefusedByCerbosWritesNothing(t *testing.T) {
 	tx := testdb.Tx(t)
 	hydra := newFakeHydra(t)
-	rec := callMe(t, endpoint(t, tx, failWith{authorization.ErrDenied}, hydra), http.MethodPost, "person")
+	rec := callMe(t, endpoint(t, tx, &authztest.Stated{Err: authorization.ErrDenied}, hydra), http.MethodPost, "person")
 
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	testdb.AssertMissing(t, tx, "users", map[string]any{"kratos_identity_id": newPerson})
@@ -192,13 +193,13 @@ func TestFeatureRegisterRefusedByCerbosWritesNothing(t *testing.T) {
 
 func TestFeatureMeForAClientWritesNothing(t *testing.T) {
 	tx := testdb.Tx(t)
-	authz := &recordingAuthz{}
+	authz := &authztest.Stated{Allow: true}
 	before := testdb.Count(t, tx, "users", nil)
 
 	rec := callMe(t, endpoint(t, tx, authz, newFakeHydra(t)), http.MethodGet, "client")
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"user":null,"clientId":"hrms-sync"}`, rec.Body.String())
-	assert.Equal(t, []authorization.Resource{{Kind: "identity:client", ID: sentClient}}, authz.asked)
+	assert.Equal(t, []authorization.Resource{{Kind: "identity:client", ID: sentClient}}, authz.Asked)
 	assert.Equal(t, before, testdb.Count(t, tx, "users", nil), "no user for a machine client")
 }
 
@@ -207,7 +208,7 @@ func TestFeatureMeWithoutAValidTokenWritesNothing(t *testing.T) {
 	hydra := newFakeHydra(t)
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
 		for _, token := range []string{"", "forged"} {
-			rec := callMe(t, endpoint(t, tx, &recordingAuthz{}, hydra), method, token)
+			rec := callMe(t, endpoint(t, tx, &authztest.Stated{Allow: true}, hydra), method, token)
 			assert.Equal(t, http.StatusUnauthorized, rec.Code, "%s with token %q", method, token)
 		}
 	}

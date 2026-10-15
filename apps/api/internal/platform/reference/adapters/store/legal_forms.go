@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/postgres"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
 )
 
@@ -24,14 +25,12 @@ type LegalForm struct {
 
 // ListLegalForms reads one page of a country's current legal forms. q matches the name.
 func ListLegalForms(ctx context.Context, db Querier, l request.List) ([]LegalForm, int, error) {
-	q := query{from: "legal_forms f", where: []string{current("f")},
-		sorts: map[string]string{"name": "f.name", "code": "f.code"}, key: "f.id"}
-	q.where = append(q.where, "f.country = "+q.arg(l.Filters["country"]))
-	if l.Q != "" {
-		q.where = append(q.where, "f.name ILIKE "+q.arg("%"+request.Escape(l.Q)+"%"))
-	}
+	q := postgres.ListQuery{From: "legal_forms f", Sorts: map[string]string{"name": "f.name", "code": "f.code"}, Key: "f.id"}
+	q.Where(current("f"))
+	q.Equal("f.country", l.Filters["country"])
+	q.Search(l.Q, "f.name")
 	items := []LegalForm{}
-	total, err := q.run(ctx, db, l, "f.id::text, f.code, f.name, f.category, f.identity_document", func(rows pgx.Rows, total *int) error {
+	total, err := q.Run(ctx, db, l, "f.id::text, f.code, f.name, f.category, f.identity_document", func(rows pgx.Rows, total *int) error {
 		var f LegalForm
 		if err := rows.Scan(&f.ID, &f.Code, &f.Name, &f.Category, &f.IdentityDocument, total); err != nil {
 			return err

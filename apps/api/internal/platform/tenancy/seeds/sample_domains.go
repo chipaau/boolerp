@@ -1,15 +1,10 @@
 package seeds
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	_ "embed"
-	"encoding/csv"
-	"errors"
 	"fmt"
-	"io"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 
@@ -30,26 +25,13 @@ type SampleDomain struct {
 // repeated host, an unknown kind or status, and a primary that is not active.
 // The table's checks catch the rest (the host's form, the portal key's).
 func ParseSampleDomains(data []byte) ([]SampleDomain, error) {
-	r := csv.NewReader(bytes.NewReader(data))
-	r.Comment = '#'
-	r.FieldsPerRecord = 6
-	header, err := r.Read()
+	records, err := seed.ReadCSV("sample domains", data, "tenant", "host", "kind", "serves", "status", "primary")
 	if err != nil {
-		return nil, fmt.Errorf("sample domains header: %w", err)
-	}
-	if strings.Join(header, ",") != "tenant,host,kind,serves,status,primary" {
-		return nil, fmt.Errorf("sample domains header: got %q", header)
+		return nil, err
 	}
 	var domains []SampleDomain
 	seen := map[string]bool{}
-	for {
-		rec, err := r.Read()
-		if errors.Is(err, io.EOF) {
-			return domains, nil
-		}
-		if err != nil {
-			return nil, fmt.Errorf("sample domains: %w", err)
-		}
+	for _, rec := range records {
 		d := SampleDomain{Tenant: rec[0], Host: rec[1], Kind: rec[2], Serves: rec[3], Status: rec[4], Primary: rec[5] == "yes"}
 		switch {
 		case d.Tenant == "" || d.Host == "" || d.Serves == "":
@@ -68,6 +50,7 @@ func ParseSampleDomains(data []byte) ([]SampleDomain, error) {
 		seen[d.Host] = true
 		domains = append(domains, d)
 	}
+	return domains, nil
 }
 
 // SampleDomains seeds development's extra hosts of the sample tenants (C158),

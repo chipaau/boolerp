@@ -20,7 +20,7 @@ type InstitutionType struct {
 // ParseInstitutionTypes reads institution types CSV: a header, then one type per
 // line. It rejects a malformed or duplicated row.
 func ParseInstitutionTypes(data []byte) ([]InstitutionType, error) {
-	records, err := readCSV("institution types", data, "code", "sector", "name")
+	records, err := seed.ReadCSV("institution types", data, "code", "sector", "name")
 	if err != nil {
 		return nil, err
 	}

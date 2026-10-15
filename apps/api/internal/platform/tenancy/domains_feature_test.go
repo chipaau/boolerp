@@ -20,14 +20,14 @@ const token = "abcdefghijklmnopqrstuvwxyz012345"
 // platformDomain adds an active platform host for tenant and returns its id.
 func (w *world) platformDomain(t *testing.T, tenant, host, serves string, primary bool) string {
 	t.Helper()
-	return id(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, serves, status, activated_at, is_primary)
+	return testdb.ID(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, serves, status, activated_at, is_primary)
 		VALUES ($1, $2, 'platform', $3, 'active', now(), $4) RETURNING id`, tenant, host, serves, primary)
 }
 
 // customDomain adds a pending custom host for tenant and returns its id.
 func (w *world) customDomain(t *testing.T, tenant, host string) string {
 	t.Helper()
-	return id(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, verification_token)
+	return testdb.ID(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, verification_token)
 		VALUES ($1, $2, 'custom', $3) RETURNING id`, tenant, host, token)
 }
 
@@ -54,12 +54,12 @@ func TestFeatureATenantHasPlatformAndCustomHosts(t *testing.T) {
 	w.platformDomain(t, a, "a.x-tenancy.test", "workspace", true)
 	custom := w.customDomain(t, a, "workspace.a.x-tenancy.test")
 	w.customDomain(t, a, "portal.a.x-tenancy.test")
-	exec(t, w.tx, `UPDATE domains SET serves = 'academics.student' WHERE host = 'portal.a.x-tenancy.test'`)
+	testdb.Exec(t, w.tx, `UPDATE domains SET serves = 'academics.student' WHERE host = 'portal.a.x-tenancy.test'`)
 
 	// Verified, the custom host becomes active; the primary moves to it.
-	exec(t, w.tx, `UPDATE domains SET status = 'active', verified_at = now(), activated_at = now() WHERE id = $1`, custom)
-	exec(t, w.tx, `UPDATE domains SET is_primary = false WHERE tenant_id = $1 AND serves = 'workspace'`, a)
-	exec(t, w.tx, `UPDATE domains SET is_primary = true WHERE id = $1`, custom)
+	testdb.Exec(t, w.tx, `UPDATE domains SET status = 'active', verified_at = now(), activated_at = now() WHERE id = $1`, custom)
+	testdb.Exec(t, w.tx, `UPDATE domains SET is_primary = false WHERE tenant_id = $1 AND serves = 'workspace'`, a)
+	testdb.Exec(t, w.tx, `UPDATE domains SET is_primary = true WHERE id = $1`, custom)
 
 	assert.Equal(t, 3, testdb.Count(t, w.tx, "domains", map[string]any{"tenant_id": a}))
 	testdb.AssertHas(t, w.tx, "domains", map[string]any{"id": custom, "is_primary": true})
@@ -88,7 +88,7 @@ func TestFeatureDomainConstraints(t *testing.T) {
 		"second primary":           `INSERT INTO domains (tenant_id, host, kind, status, activated_at, is_primary) VALUES ($1, 'b.x-tenancy.test', 'platform', 'active', now(), true)`,
 		"taken host":               `INSERT INTO domains (tenant_id, host, kind, verification_token) VALUES ($1, 'a.x-tenancy.test', 'custom', '` + token + `')`,
 	} {
-		_, err := savepoint(t, w.tx, sql, a)
+		_, err := testdb.Savepoint(t, w.tx, sql, a)
 		assert.Error(t, err, name)
 	}
 }
@@ -106,7 +106,7 @@ func TestFeatureARevokedHostCanBeClaimedAgain(t *testing.T) {
 	a := w.tenant(t, "x-a", "XTA")
 	b := w.tenant(t, "x-b", "XTB")
 	old := w.customDomain(t, a, "erp.x-tenancy.test")
-	exec(t, w.tx, `UPDATE domains SET status = 'revoked', revoked_at = now() WHERE id = $1`, old)
+	testdb.Exec(t, w.tx, `UPDATE domains SET status = 'revoked', revoked_at = now() WHERE id = $1`, old)
 
 	w.customDomain(t, b, "erp.x-tenancy.test")
 	assert.Equal(t, 2, testdb.Count(t, w.tx, "domains", map[string]any{"host": "erp.x-tenancy.test"}))
@@ -123,17 +123,17 @@ func TestFeatureADomainsHostKindAndTenantNeverChange(t *testing.T) {
 		"kind":   `UPDATE domains SET kind = 'platform', verification_token = null WHERE id = $1`,
 		"tenant": `UPDATE domains SET tenant_id = '` + b + `' WHERE id = $1`,
 	} {
-		_, err := savepoint(t, w.tx, sql, d)
-		assert.Equal(t, "23514", code(t, err), name)
+		_, err := testdb.Savepoint(t, w.tx, sql, d)
+		assert.Equal(t, "23514", testdb.PgCode(err), name)
 	}
 }
 
 func TestFeatureDomainUpdatedAtFollowsChanges(t *testing.T) {
 	w := newWorld(t)
 	a := w.tenant(t, "x-a", "XTA")
-	d := id(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, verification_token, updated_at)
+	d := testdb.ID(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, verification_token, updated_at)
 		VALUES ($1, 'c.x-tenancy.test', 'custom', $2, '2000-01-01') RETURNING id`, a, token)
-	exec(t, w.tx, `UPDATE domains SET serves = 'academics.student' WHERE id = $1`, d)
+	testdb.Exec(t, w.tx, `UPDATE domains SET serves = 'academics.student' WHERE id = $1`, d)
 	var setToNow bool
 	require.NoError(t, w.tx.QueryRow(t.Context(), `SELECT updated_at = now() FROM domains WHERE id = $1`, d).Scan(&setToNow))
 	assert.True(t, setToNow)
@@ -148,7 +148,7 @@ func TestFeatureLookupFindsOnlyActiveHosts(t *testing.T) {
 	w.platformDomain(t, a, "students-a.x-tenancy.test", "academics.student", true)
 	w.customDomain(t, a, "pending.x-tenancy.test")
 	revoked := w.customDomain(t, a, "revoked.x-tenancy.test")
-	exec(t, w.tx, `UPDATE domains SET status = 'revoked', revoked_at = now() WHERE id = $1`, revoked)
+	testdb.Exec(t, w.tx, `UPDATE domains SET status = 'revoked', revoked_at = now() WHERE id = $1`, revoked)
 
 	assert.Equal(t, []lookup{{TenantID: a, TenantCode: "XTA", TenantStatus: "provisioning", Serves: "workspace"}},
 		lookupHost(t, w.tx, "a.x-tenancy.test"))
@@ -174,8 +174,8 @@ func TestFeatureDomainPolicies(t *testing.T) {
 	b := w.tenant(t, "x-b", "XTB")
 	w.platformDomain(t, a, "a.x-tenancy.test", "workspace", true)
 	w.platformDomain(t, b, "b.x-tenancy.test", "workspace", true)
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
-	exec(t, w.tx, `ALTER TABLE domains FORCE ROW LEVEL SECURITY`)
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
+	testdb.Exec(t, w.tx, `ALTER TABLE domains FORCE ROW LEVEL SECURITY`)
 
 	hosts := func() []string {
 		rows, err := w.tx.Query(t.Context(), `SELECT host FROM domains WHERE host LIKE '%.x-tenancy.test' ORDER BY host`)
@@ -190,19 +190,19 @@ func TestFeatureDomainPolicies(t *testing.T) {
 
 	w.as(t, a)
 	assert.Equal(t, []string{"a.x-tenancy.test"}, hosts(), "a tenant sees its own domains")
-	_, err := savepoint(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, verification_token)
+	_, err := testdb.Savepoint(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, verification_token)
 		VALUES ($1, 'mine.x-tenancy.test', 'custom', $2)`, a, token)
-	assert.Equal(t, "42501", code(t, err), "a tenant does not add domains")
-	tag, err := savepoint(t, w.tx, `UPDATE domains SET serves = 'academics.student' WHERE host = 'a.x-tenancy.test'`)
+	assert.Equal(t, "42501", testdb.PgCode(err), "a tenant does not add domains")
+	tag, err := testdb.Savepoint(t, w.tx, `UPDATE domains SET serves = 'academics.student' WHERE host = 'a.x-tenancy.test'`)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "nor changes them")
 
 	w.as(t, op)
 	assert.Equal(t, []string{"a.x-tenancy.test", "b.x-tenancy.test"}, hosts(), "the operator sees every domain")
-	_, err = savepoint(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, verification_token)
+	_, err = testdb.Savepoint(t, w.tx, `INSERT INTO domains (tenant_id, host, kind, verification_token)
 		VALUES ($1, 'new.x-tenancy.test', 'custom', $2)`, b, token)
 	require.NoError(t, err, "the operator adds domains")
-	tag, err = savepoint(t, w.tx, `DELETE FROM domains WHERE host = 'b.x-tenancy.test'`)
+	tag, err = testdb.Savepoint(t, w.tx, `DELETE FROM domains WHERE host = 'b.x-tenancy.test'`)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "no one deletes a domain: it is revoked")
 }

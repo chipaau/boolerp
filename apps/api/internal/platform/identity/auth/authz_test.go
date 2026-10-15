@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization/authztest"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 )
 
@@ -40,33 +41,6 @@ func (allowOwn) Can(ctx context.Context, _, _ string, _ ...authorization.Fact) e
 	return authorization.ErrDenied
 }
 
-// failWith answers every check with err.
-type failWith struct{ err error }
-
-func (f failWith) Check(ctx context.Context, _ string, _ authorization.Resource, _ ...authorization.Fact) error {
-	authorization.NoteDecision(ctx)
-	return f.err
-}
-
-func (f failWith) Can(ctx context.Context, _, _ string, _ ...authorization.Fact) error {
-	authorization.NoteDecision(ctx)
-	return f.err
-}
-
-// recordingAuthz remembers what was asked and allows it.
-type recordingAuthz struct{ asked []authorization.Resource }
-
-func (r *recordingAuthz) Check(ctx context.Context, _ string, res authorization.Resource, _ ...authorization.Fact) error {
-	authorization.NoteDecision(ctx)
-	r.asked = append(r.asked, res)
-	return nil
-}
-
-func (r *recordingAuthz) Can(ctx context.Context, _, _ string, _ ...authorization.Fact) error {
-	authorization.NoteDecision(ctx)
-	return nil
-}
-
 func getMe(t *testing.T, iss *issuer, authz authorization.Authorizer, c claims) *httptest.ResponseRecorder {
 	t.Helper()
 	m := New(t.Context(), Settings{Issuer: iss.url(), Audience: "erp-api"}, iss.Client(), usersFunc(knownUser), authz, slog.New(slog.DiscardHandler))
@@ -81,10 +55,10 @@ func getMe(t *testing.T, iss *issuer, authz authorization.Authorizer, c claims) 
 
 func TestMeAsksAboutTheCallersOwnUser(t *testing.T) {
 	iss := newIssuer(t)
-	authz := &recordingAuthz{}
+	authz := &authztest.Stated{Allow: true}
 	rec := getMe(t, iss, authz, iss.valid())
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, []authorization.Resource{{Kind: "identity:user", ID: "user-1"}}, authz.asked)
+	assert.Equal(t, []authorization.Resource{{Kind: "identity:user", ID: "user-1"}}, authz.Asked)
 }
 
 func TestMeRefusesWithoutTheData(t *testing.T) {
@@ -98,7 +72,7 @@ func TestMeRefusesWithoutTheData(t *testing.T) {
 		"invalid":     {authorization.ErrInvalid, http.StatusInternalServerError},
 	} {
 		t.Run(name, func(t *testing.T) {
-			rec := getMe(t, iss, failWith{c.err}, iss.valid())
+			rec := getMe(t, iss, &authztest.Stated{Err: c.err}, iss.valid())
 			assert.Equal(t, c.status, rec.Code)
 			assert.NotContains(t, rec.Body.String(), "a@b.test", "no personal data in a refusal")
 			var body map[string]any
@@ -152,7 +126,7 @@ func TestRegisterAnswersEachFailure(t *testing.T) {
 		"database or Hydra down": {errors.New("s3cret-cause"), http.StatusServiceUnavailable},
 	} {
 		t.Run(name, func(t *testing.T) {
-			rec := postMe(t, iss, registering{err: c.err}, &recordingAuthz{}, iss.valid())
+			rec := postMe(t, iss, registering{err: c.err}, &authztest.Stated{Allow: true}, iss.valid())
 			assert.Equal(t, c.status, rec.Code)
 			assert.NotContains(t, rec.Body.String(), "s3cret-cause")
 		})
@@ -161,18 +135,18 @@ func TestRegisterAnswersEachFailure(t *testing.T) {
 
 func TestRegisterAnswersWithTheUser(t *testing.T) {
 	iss := newIssuer(t)
-	authz := &recordingAuthz{}
+	authz := &authztest.Stated{Allow: true}
 	rec := postMe(t, iss, registering{user: identity.User{ID: "user-1", Email: "a@b.test"}}, authz, iss.valid())
 	require.Equal(t, http.StatusOK, rec.Code)
 	var body struct{ User struct{ ID string } }
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	assert.Equal(t, "user-1", body.User.ID)
-	assert.Equal(t, []authorization.Resource{{Kind: "identity:account", ID: "account-1"}}, authz.asked)
+	assert.Equal(t, []authorization.Resource{{Kind: "identity:account", ID: "account-1"}}, authz.Asked)
 }
 
 func TestRegisterAsAClientIsAskedAboutTheClient(t *testing.T) {
 	iss := newIssuer(t)
-	authz := failWith{authorization.ErrDenied}
+	authz := &authztest.Stated{Err: authorization.ErrDenied}
 	c := iss.valid()
 	c.clientID = "account-1" // a client acting for itself
 	rec := postMe(t, iss, registering{err: errors.New("must not register")}, authz, c)

@@ -26,26 +26,26 @@ type appsWorld struct {
 func newAppsWorld(t *testing.T) appsWorld {
 	t.Helper()
 	tx := testdb.OwnerTx(t)
-	exec(t, tx, `INSERT INTO countries (code, alpha3, name, phone_prefix) VALUES ('XW', 'XWW', 'Appland', '+997')`)
-	form := id(t, tx, `INSERT INTO legal_forms (country, code, name, category)
+	testdb.Exec(t, tx, `INSERT INTO countries (code, alpha3, name, phone_prefix) VALUES ('XW', 'XWW', 'Appland', '+997')`)
+	form := testdb.ID(t, tx, `INSERT INTO legal_forms (country, code, name, category)
 		VALUES ('XW', 'test_ministry', 'Test ministry', 'government') RETURNING id`)
 	const insert = `INSERT INTO tenants (slug, code, name, country, legal_form_id, timezone, is_operator)
 		VALUES ($1, $2, $3, 'XW', $4, 'Etc/UTC', $5) RETURNING id`
 	w := appsWorld{tx: tx,
-		operator: id(t, tx, insert, "x-tapps-operator", "XPOP", "Test operator", form, true),
-		a:        id(t, tx, insert, "x-tapps-a", "XPA", "A", form, false),
-		b:        id(t, tx, insert, "x-tapps-b", "XPB", "B", form, false),
+		operator: testdb.ID(t, tx, insert, "x-tapps-operator", "XPOP", "Test operator", form, true),
+		a:        testdb.ID(t, tx, insert, "x-tapps-a", "XPA", "A", form, false),
+		b:        testdb.ID(t, tx, insert, "x-tapps-b", "XPB", "B", form, false),
 	}
-	exec(t, tx, `INSERT INTO apps (key, name, kind) VALUES ('x-thr', 'Test HR', 'workspace'),
+	testdb.Exec(t, tx, `INSERT INTO apps (key, name, kind) VALUES ('x-thr', 'Test HR', 'workspace'),
 		('x-tconsole', 'Test console', 'operator'), ('x-ttasks', 'Test tasks', 'workspace'), ('x-tgone', 'Gone', 'workspace')`)
-	exec(t, tx, `UPDATE apps SET active_to = now() WHERE key = 'x-tgone'`)
+	testdb.Exec(t, tx, `UPDATE apps SET active_to = now() WHERE key = 'x-tgone'`)
 	return w
 }
 
 func TestFeatureTenantAppRules(t *testing.T) {
 	w := newAppsWorld(t)
-	live := id(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-thr') RETURNING id`, w.a)
-	id(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-tconsole') RETURNING id`, w.operator)
+	live := testdb.ID(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-thr') RETURNING id`, w.a)
+	testdb.ID(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-tconsole') RETURNING id`, w.operator)
 
 	for name, sql := range map[string]string{
 		"a second live activation":  `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ('` + w.a + `', 'x-thr')`,
@@ -56,25 +56,25 @@ func TestFeatureTenantAppRules(t *testing.T) {
 		"changing its app":          `UPDATE tenant_apps SET app_key = 'x-tconsole' WHERE id = '` + live + `'`,
 		"ending before it began":    `UPDATE tenant_apps SET active_to = active_from - interval '1 day' WHERE id = '` + live + `'`,
 	} {
-		_, err := savepoint(t, w.tx, sql)
+		_, err := testdb.Savepoint(t, w.tx, sql)
 		assert.Error(t, err, name)
 	}
 
 	// Turned off, then on again: a new row, the old one frozen history.
-	exec(t, w.tx, `UPDATE tenant_apps SET active_to = now() WHERE id = $1`, live)
-	id(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-thr') RETURNING id`, w.a)
-	_, err := savepoint(t, w.tx, `UPDATE tenant_apps SET active_to = NULL WHERE id = $1`, live)
-	assert.Equal(t, "23514", code(t, err), "an ended activation cannot change")
+	testdb.Exec(t, w.tx, `UPDATE tenant_apps SET active_to = now() WHERE id = $1`, live)
+	testdb.ID(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-thr') RETURNING id`, w.a)
+	_, err := testdb.Savepoint(t, w.tx, `UPDATE tenant_apps SET active_to = NULL WHERE id = $1`, live)
+	assert.Equal(t, "23514", testdb.PgCode(err), "an ended activation cannot change")
 	assert.Equal(t, 2, testdb.Count(t, w.tx, "tenant_apps", map[string]any{"tenant_id": w.a, "app_key": "x-thr"}))
 }
 
 func TestFeatureTenantAppPolicies(t *testing.T) {
 	w := newAppsWorld(t)
-	exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-thr'), ($2, 'x-thr')`, w.a, w.b)
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-thr'), ($2, 'x-thr')`, w.a, w.b)
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
 	// The policies apply to the owner too, for the rest of the transaction.
-	exec(t, w.tx, `ALTER TABLE tenant_apps FORCE ROW LEVEL SECURITY`)
-	as := func(tenant string) { exec(t, w.tx, `SELECT set_config('app.tenant_id', $1, true)`, tenant) }
+	testdb.Exec(t, w.tx, `ALTER TABLE tenant_apps FORCE ROW LEVEL SECURITY`)
+	as := func(tenant string) { testdb.Exec(t, w.tx, `SELECT set_config('app.tenant_id', $1, true)`, tenant) }
 	visible := func() int {
 		var n int
 		require.NoError(t, w.tx.QueryRow(t.Context(), `SELECT count(*) FROM tenant_apps WHERE app_key LIKE 'x-%'`).Scan(&n))
@@ -86,18 +86,18 @@ func TestFeatureTenantAppPolicies(t *testing.T) {
 
 	as(w.a)
 	assert.Equal(t, 1, visible(), "a tenant reads its own")
-	_, err := savepoint(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-ttasks')`, w.a)
-	assert.Equal(t, "42501", code(t, err), "a tenant does not turn apps on")
-	tag, err := savepoint(t, w.tx, `UPDATE tenant_apps SET active_to = now() WHERE tenant_id = $1`, w.a)
+	_, err := testdb.Savepoint(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-ttasks')`, w.a)
+	assert.Equal(t, "42501", testdb.PgCode(err), "a tenant does not turn apps on")
+	tag, err := testdb.Savepoint(t, w.tx, `UPDATE tenant_apps SET active_to = now() WHERE tenant_id = $1`, w.a)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "nor off")
 
 	as(w.operator)
 	assert.Equal(t, 2, visible(), "the operator reads every tenant's")
-	tag, err = savepoint(t, w.tx, `UPDATE tenant_apps SET active_to = now() WHERE tenant_id = $1`, w.b)
+	tag, err = testdb.Savepoint(t, w.tx, `UPDATE tenant_apps SET active_to = now() WHERE tenant_id = $1`, w.b)
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, tag.RowsAffected(), "and turns them off")
-	tag, err = savepoint(t, w.tx, `DELETE FROM tenant_apps WHERE tenant_id = $1`, w.a)
+	tag, err = testdb.Savepoint(t, w.tx, `DELETE FROM tenant_apps WHERE tenant_id = $1`, w.a)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "nothing deletes an activation")
 }
@@ -106,10 +106,10 @@ func TestFeatureTenantAppPolicies(t *testing.T) {
 // under the reader's own row-level security, and nothing can be written through it.
 func TestFeatureTenantAppsOnPublishesTheLiveActivations(t *testing.T) {
 	w := newAppsWorld(t)
-	exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-thr'), ($1, 'x-ttasks'), ($2, 'x-thr')`, w.a, w.b)
-	exec(t, w.tx, `UPDATE tenant_apps SET active_to = now() WHERE tenant_id = $1 AND app_key = 'x-ttasks'`, w.a)
-	exec(t, w.tx, `ALTER TABLE tenant_apps FORCE ROW LEVEL SECURITY`)
-	as := func(tenant string) { exec(t, w.tx, `SELECT set_config('app.tenant_id', $1, true)`, tenant) }
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-thr'), ($1, 'x-ttasks'), ($2, 'x-thr')`, w.a, w.b)
+	testdb.Exec(t, w.tx, `UPDATE tenant_apps SET active_to = now() WHERE tenant_id = $1 AND app_key = 'x-ttasks'`, w.a)
+	testdb.Exec(t, w.tx, `ALTER TABLE tenant_apps FORCE ROW LEVEL SECURITY`)
+	as := func(tenant string) { testdb.Exec(t, w.tx, `SELECT set_config('app.tenant_id', $1, true)`, tenant) }
 	on := func() []string {
 		rows, err := w.tx.Query(t.Context(), `SELECT app_key || '@' || CASE tenant_id WHEN $1 THEN 'a' WHEN $2 THEN 'b' END
 			FROM tenant_apps_on WHERE app_key LIKE 'x-t%' ORDER BY 1`, w.a, w.b)
@@ -124,7 +124,7 @@ func TestFeatureTenantAppsOnPublishesTheLiveActivations(t *testing.T) {
 	as(w.operator)
 	assert.Equal(t, []string{"x-thr@a", "x-thr@b"}, on(), "the operator reads every tenant's")
 
-	_, err := savepoint(t, w.tx, `INSERT INTO tenant_apps_on (tenant_id, app_key) VALUES ($1, 'x-ttasks')`, w.a)
+	_, err := testdb.Savepoint(t, w.tx, `INSERT INTO tenant_apps_on (tenant_id, app_key) VALUES ($1, 'x-ttasks')`, w.a)
 	assert.Error(t, err, "nothing is written through the view")
 
 	var readable bool
@@ -145,7 +145,7 @@ func TestFeatureTheOperatorAppsSeeder(t *testing.T) {
 	assert.Equal(t, 2, testdb.Count(t, w.tx, "tenant_apps", map[string]any{"tenant_id": w.operator}))
 
 	// An app the operator turned off stays off.
-	exec(t, w.tx, `UPDATE tenant_apps SET active_to = now() WHERE tenant_id = $1 AND app_key = 'x-thr'`, w.operator)
+	testdb.Exec(t, w.tx, `UPDATE tenant_apps SET active_to = now() WHERE tenant_id = $1 AND app_key = 'x-thr'`, w.operator)
 	require.NoError(t, s.Run(t.Context(), env))
 	testdb.AssertMissing(t, w.tx, "tenant_apps", map[string]any{"tenant_id": w.operator, "app_key": "x-thr", "active_to": nil})
 }

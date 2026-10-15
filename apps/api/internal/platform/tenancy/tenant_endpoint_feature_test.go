@@ -3,7 +3,6 @@
 package tenancy_test
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -12,14 +11,15 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/platform"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization/authztest"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy"
 )
 
@@ -27,13 +27,6 @@ import (
 // the lookups, and PostgreSQL. Rows are created in the owner's rolled-back
 // transaction with row-level security forced on tenants (world.enforce), so the
 // read sees what the runtime role sees; authentication and authorization are faked.
-
-// savepoints lets the module begin its transactions inside the test's.
-type savepoints struct{ pgx.Tx }
-
-func (s savepoints) BeginTx(ctx context.Context, _ pgx.TxOptions) (pgx.Tx, error) {
-	return s.Begin(ctx)
-}
 
 // actingAs is authentication faked: "Bearer user:<id>" is a person with that user,
 // "Bearer client" a machine client; anything else is 401.
@@ -55,40 +48,24 @@ func actingAs(next http.Handler) http.Handler {
 	})
 }
 
-// stated is authorization faked: it allows or denies as the test states, notes
-// the decision, and keeps what it was asked.
-type stated struct {
-	allow bool
-	asked []authorization.Resource
-	cans  []string
-}
-
-func (s *stated) Check(ctx context.Context, _ string, r authorization.Resource, _ ...authorization.Fact) error {
-	authorization.NoteDecision(ctx)
-	s.asked = append(s.asked, r)
-	if !s.allow {
-		return authorization.ErrDenied
+// chainParts are the edition's chain parts over the test's transaction, with
+// authentication faked (actingAs), so the routes run behind the production chains.
+func chainParts(w *world, m *tenancy.Module, logger *slog.Logger) platform.ChainParts {
+	return platform.ChainParts{
+		Authenticate: actingAs, RequireUser: auth.RequireUser, Actor: auth.Actor,
+		ResolveTenant: m.ResolveTenant, ResolveOperator: m.ResolveOperator,
+		RequireMember: m.RequireMember, RequireActiveTenant: m.RequireActiveTenant,
+		Capabilities: authorization.LoadCapabilities(testdb.Savepoints{Tx: w.tx}, logger),
+		Enforce:      authorization.Enforce(logger),
 	}
-	return nil
-}
-
-func (s *stated) Can(ctx context.Context, action, kind string, _ ...authorization.Fact) error {
-	authorization.NoteDecision(ctx)
-	s.cans = append(s.cans, action+" "+kind)
-	if !s.allow {
-		return authorization.ErrDenied
-	}
-	return nil
 }
 
 // tenantRouter mounts the module at /api/v1/tenant behind the tenant chain, as the
 // edition does, over the test's transaction.
 func tenantRouter(w *world, authz authorization.Authorizer) http.Handler {
 	logger := slog.New(slog.DiscardHandler)
-	m := tenancy.New(savepoints{w.tx}, nil, logger)
-	s := platform.Services{Authz: authz, Logger: logger,
-		TenantUser: chi.Chain(actingAs, auth.RequireUser, m.ResolveTenant, m.RequireMember, m.RequireActiveTenant,
-			authorization.Enforce(logger))}
+	m := tenancy.New(testdb.Savepoints{Tx: w.tx}, nil, logger)
+	s := chainParts(w, m, logger).Services(nil, authz, logger)
 	r := chi.NewRouter()
 	r.Route("/api/v1/tenant", m.Routes(s))
 	return r
@@ -127,7 +104,7 @@ func newCityWorld(t *testing.T, change ...string) cityWorld {
 	w.invite(t, c.city, c.invited)
 	w.member(t, other, c.outsider, true)
 	for _, sql := range change {
-		exec(t, w.tx, sql, c.city)
+		testdb.Exec(t, w.tx, sql, c.city)
 	}
 	w.enforce(t)
 	return c
@@ -135,7 +112,7 @@ func newCityWorld(t *testing.T, change ...string) cityWorld {
 
 func TestFeatureAMemberGetsTheirTenant(t *testing.T) {
 	c := newCityWorld(t)
-	authz := &stated{allow: true}
+	authz := &authztest.Stated{Allow: true}
 	rec := get(tenantRouter(c.world, authz), "X-City.x-tenancy.test:443", "user:"+c.member)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 
@@ -143,7 +120,7 @@ func TestFeatureAMemberGetsTheirTenant(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&body))
 	assert.Equal(t, map[string]string{"id": c.city, "code": "XCITY", "name": "Tenant XCITY", "status": "active"}, body)
 	assert.Equal(t, []authorization.Resource{{Kind: "tenancy:tenant", ID: c.city,
-		Attributes: map[string]any{"tenant_id": c.city, "status": "active"}}}, authz.asked, "Cerbos decides on the tenant read")
+		Attributes: map[string]any{"tenant_id": c.city, "status": "active"}}}, authz.Asked, "Cerbos decides on the tenant read")
 }
 
 func TestFeatureTheTenantChainRefuses(t *testing.T) {
@@ -161,24 +138,24 @@ func TestFeatureTheTenantChainRefuses(t *testing.T) {
 		"an invited person, not joined": {"x-city.x-tenancy.test", "user:" + c.invited, http.StatusNotFound},
 	} {
 		t.Run(name, func(t *testing.T) {
-			authz := &stated{allow: true}
+			authz := &authztest.Stated{Allow: true}
 			rec := get(tenantRouter(c.world, authz), r.host, r.token)
 			assert.Equal(t, r.want, rec.Code, rec.Body.String())
-			assert.Empty(t, authz.asked, "refused before the handler")
+			assert.Empty(t, authz.Asked, "refused before the handler")
 		})
 	}
 }
 
 func TestFeatureMembersOfASuspendedTenantAreRefused(t *testing.T) {
 	c := newCityWorld(t, `UPDATE tenants SET status = 'suspended', suspended_at = now() WHERE id = $1`)
-	rec := get(tenantRouter(c.world, &stated{allow: true}), "x-city.x-tenancy.test", "user:"+c.member)
+	rec := get(tenantRouter(c.world, &authztest.Stated{Allow: true}), "x-city.x-tenancy.test", "user:"+c.member)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.Contains(t, rec.Body.String(), tenancy.TypeTenantSuspended)
 }
 
 func TestFeatureCerbosDecidesTheTenantRead(t *testing.T) {
 	c := newCityWorld(t)
-	rec := get(tenantRouter(c.world, &stated{allow: false}), "x-city.x-tenancy.test", "user:"+c.member)
+	rec := get(tenantRouter(c.world, &authztest.Stated{Allow: false}), "x-city.x-tenancy.test", "user:"+c.member)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.NotContains(t, rec.Body.String(), "XCITY", "nothing of the tenant is returned")
 }

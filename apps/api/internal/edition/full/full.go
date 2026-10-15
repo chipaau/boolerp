@@ -112,16 +112,12 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 	// Creating a tenant checks it against the reference lists through the reference module (C134).
 	tenancyModule := tenancy.New(d.Pool, referenceModule, d.Logger)
 	capabilities := authorization.LoadCapabilities(d.Pool, d.Logger)
-	services := platform.Services{
-		Pool: d.Pool, Authz: authz, Logger: d.Logger,
-		TenantUser: chi.Chain(authModule.Authenticate, auth.RequireUser, auth.Actor,
-			tenancyModule.ResolveTenant, tenancyModule.RequireMember, tenancyModule.RequireActiveTenant,
-			capabilities, authorization.Enforce(d.Logger)),
-		Authenticated: chi.Chain(authModule.Authenticate, auth.Actor, authorization.Enforce(d.Logger)),
-		Operator: chi.Chain(authModule.Authenticate, auth.RequireUser, auth.Actor,
-			tenancyModule.ResolveOperator, tenancyModule.RequireMember, tenancyModule.RequireActiveTenant,
-			capabilities, authorization.Enforce(d.Logger)),
-	}
+	services := platform.ChainParts{
+		Authenticate: authModule.Authenticate, RequireUser: auth.RequireUser, Actor: auth.Actor,
+		ResolveTenant: tenancyModule.ResolveTenant, ResolveOperator: tenancyModule.ResolveOperator,
+		RequireMember: tenancyModule.RequireMember, RequireActiveTenant: tenancyModule.RequireActiveTenant,
+		Capabilities: capabilities, Enforce: authorization.Enforce(d.Logger),
+	}.Services(d.Pool, authz, d.Logger)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/tenant", tenancyModule.Routes(services))
 		r.Route("/tenants", tenancyModule.TenantsRoutes(services))

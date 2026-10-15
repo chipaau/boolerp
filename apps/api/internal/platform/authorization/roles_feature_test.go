@@ -17,14 +17,14 @@ import (
 func rolesWorld(t *testing.T) appsWorld {
 	t.Helper()
 	w := newAppsWorld(t)
-	exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-hr')`, w.a)
-	exec(t, w.tx, `INSERT INTO roles (app_key, key, name) VALUES ('x-hr', 'x-hr.admin', 'HR admin')`)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-hr')`, w.a)
+	testdb.Exec(t, w.tx, `INSERT INTO roles (app_key, key, name) VALUES ('x-hr', 'x-hr.admin', 'HR admin')`)
 	return w
 }
 
 func TestFeatureRoleRules(t *testing.T) {
 	w := rolesWorld(t)
-	mine := id(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'Payroll clerk') RETURNING id`, w.a)
+	mine := testdb.ID(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'Payroll clerk') RETURNING id`, w.a)
 
 	for name, sql := range map[string]string{
 		"a global role without a key":      `INSERT INTO roles (app_key, name) VALUES ('x-hr', 'Viewer')`,
@@ -41,28 +41,28 @@ func TestFeatureRoleRules(t *testing.T) {
 		"moving a role to another app":     `UPDATE roles SET app_key = 'x-tasks' WHERE id = '` + mine + `'`,
 		"renaming a global role's key":     `UPDATE roles SET key = 'x-hr.chief' WHERE key = 'x-hr.admin'`,
 	} {
-		_, err := savepoint(t, w.tx, sql)
+		_, err := testdb.Savepoint(t, w.tx, sql)
 		assert.Error(t, err, name)
 	}
 
 	// Archived, a name is free again; unarchived, the clash is refused again.
-	exec(t, w.tx, `UPDATE roles SET archived_at = now() WHERE id = $1`, mine)
-	id(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'Payroll clerk') RETURNING id`, w.a)
-	_, err := savepoint(t, w.tx, `UPDATE roles SET archived_at = NULL WHERE id = $1`, mine)
+	testdb.Exec(t, w.tx, `UPDATE roles SET archived_at = now() WHERE id = $1`, mine)
+	testdb.ID(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'Payroll clerk') RETURNING id`, w.a)
+	_, err := testdb.Savepoint(t, w.tx, `UPDATE roles SET archived_at = NULL WHERE id = $1`, mine)
 	assert.Error(t, err, "two live roles with one name")
 
 	// Another tenant may use the same name for its own role.
-	exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-hr')`, w.b)
-	id(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'Payroll clerk') RETURNING id`, w.b)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-hr')`, w.b)
+	testdb.ID(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'Payroll clerk') RETURNING id`, w.b)
 }
 
 func TestFeatureRolePolicies(t *testing.T) {
 	w := rolesWorld(t)
-	exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-hr')`, w.b)
-	exec(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'A clerk'), ($2, 'x-hr', 'B clerk')`, w.a, w.b)
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
-	exec(t, w.tx, `ALTER TABLE roles FORCE ROW LEVEL SECURITY`) // only this package's tests use roles
-	as := func(tenant string) { exec(t, w.tx, `SELECT set_config('app.tenant_id', $1, true)`, tenant) }
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-hr')`, w.b)
+	testdb.Exec(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'A clerk'), ($2, 'x-hr', 'B clerk')`, w.a, w.b)
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
+	testdb.Exec(t, w.tx, `ALTER TABLE roles FORCE ROW LEVEL SECURITY`) // only this package's tests use roles
+	as := func(tenant string) { testdb.Exec(t, w.tx, `SELECT set_config('app.tenant_id', $1, true)`, tenant) }
 	names := func() []string {
 		rows, err := w.tx.Query(t.Context(), `SELECT name FROM roles WHERE app_key = 'x-hr' ORDER BY name`)
 		require.NoError(t, err)
@@ -81,15 +81,15 @@ func TestFeatureRolePolicies(t *testing.T) {
 
 	as(w.a)
 	assert.Equal(t, []string{"A clerk", "HR admin"}, names(), "its own and the global ones, never B's")
-	id(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'A viewer') RETURNING id`, w.a)
-	_, err := savepoint(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'Sneaky')`, w.b)
-	assert.Equal(t, "42501", code(err), "not for another tenant")
-	_, err = savepoint(t, w.tx, `INSERT INTO roles (app_key, key, name) VALUES ('x-hr', 'x-hr.mine', 'Mine')`)
-	assert.Equal(t, "42501", code(err), "nor a global role")
-	tag, err := savepoint(t, w.tx, `UPDATE roles SET description = 'changed' WHERE tenant_id IS NULL OR tenant_id = $1`, w.b)
+	testdb.ID(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'A viewer') RETURNING id`, w.a)
+	_, err := testdb.Savepoint(t, w.tx, `INSERT INTO roles (tenant_id, app_key, name) VALUES ($1, 'x-hr', 'Sneaky')`, w.b)
+	assert.Equal(t, "42501", testdb.PgCode(err), "not for another tenant")
+	_, err = testdb.Savepoint(t, w.tx, `INSERT INTO roles (app_key, key, name) VALUES ('x-hr', 'x-hr.mine', 'Mine')`)
+	assert.Equal(t, "42501", testdb.PgCode(err), "nor a global role")
+	tag, err := testdb.Savepoint(t, w.tx, `UPDATE roles SET description = 'changed' WHERE tenant_id IS NULL OR tenant_id = $1`, w.b)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "global and other tenants' roles are not its to change")
-	tag, err = savepoint(t, w.tx, `DELETE FROM roles WHERE tenant_id = $1`, w.a)
+	tag, err = testdb.Savepoint(t, w.tx, `DELETE FROM roles WHERE tenant_id = $1`, w.a)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "nothing deletes a role")
 	testdb.AssertHas(t, w.tx, "roles", map[string]any{"tenant_id": w.a, "name": "A viewer"})

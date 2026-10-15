@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization/authztest"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
@@ -95,11 +96,11 @@ func putPhoto(t *testing.T, h http.Handler, token, body string) *httptest.Respon
 
 func TestFeaturePhotoIsSavedOnTheAccountAndShownAtOnce(t *testing.T) {
 	tx := testdb.Tx(t)
-	authz := &recordingAuthz{}
+	authz := &authztest.Stated{Allow: true}
 	hydra, kratos := newFakeHydra(t), newFakeKratos(t)
 	h := photoEndpoint(t, tx, authz, hydra, kratos)
 	require.Equal(t, http.StatusOK, callMe(t, h, http.MethodPost, "person").Code)
-	authz.asked = nil
+	authz.Asked = nil
 
 	rec := putPhoto(t, h, "person", `{"portrait":"portrait-3"}`)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
@@ -109,7 +110,7 @@ func TestFeaturePhotoIsSavedOnTheAccountAndShownAtOnce(t *testing.T) {
 	assert.Equal(t, want, body.User.AvatarURL)
 	assert.Equal(t, want, kratos.picture, "the account holds it, so every app sees it")
 	testdb.AssertHas(t, tx, "users", map[string]any{"id": body.User.ID, "avatar_url": want})
-	assert.Equal(t, []authorization.Resource{{Kind: "identity:user", ID: body.User.ID}}, authz.asked,
+	assert.Equal(t, []authorization.Resource{{Kind: "identity:user", ID: body.User.ID}}, authz.Asked,
 		"Cerbos is asked about the caller's own user")
 
 	// Back to initials.
@@ -122,7 +123,7 @@ func TestFeaturePhotoIsSavedOnTheAccountAndShownAtOnce(t *testing.T) {
 func TestFeaturePhotoRefusesWhatIsNotAPortrait(t *testing.T) {
 	tx := testdb.Tx(t)
 	hydra, kratos := newFakeHydra(t), newFakeKratos(t)
-	h := photoEndpoint(t, tx, &recordingAuthz{}, hydra, kratos)
+	h := photoEndpoint(t, tx, &authztest.Stated{Allow: true}, hydra, kratos)
 	require.Equal(t, http.StatusOK, callMe(t, h, http.MethodPost, "person").Code)
 
 	for _, body := range []string{
@@ -142,9 +143,9 @@ func TestFeaturePhotoRefusedByCerbosWritesNothing(t *testing.T) {
 	tx := testdb.Tx(t)
 	hydra, kratos := newFakeHydra(t), newFakeKratos(t)
 	require.Equal(t, http.StatusOK,
-		callMe(t, photoEndpoint(t, tx, &recordingAuthz{}, hydra, kratos), http.MethodPost, "person").Code)
+		callMe(t, photoEndpoint(t, tx, &authztest.Stated{Allow: true}, hydra, kratos), http.MethodPost, "person").Code)
 
-	rec := putPhoto(t, photoEndpoint(t, tx, failWith{authorization.ErrDenied}, hydra, kratos), "person", `{"portrait":"portrait-1"}`)
+	rec := putPhoto(t, photoEndpoint(t, tx, &authztest.Stated{Err: authorization.ErrDenied}, hydra, kratos), "person", `{"portrait":"portrait-1"}`)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.Zero(t, kratos.patches)
 	testdb.AssertHas(t, tx, "users", map[string]any{"kratos_identity_id": newPerson, "avatar_url": picture})
@@ -153,7 +154,7 @@ func TestFeaturePhotoRefusedByCerbosWritesNothing(t *testing.T) {
 func TestFeaturePhotoWhenKratosFailsWritesNothing(t *testing.T) {
 	tx := testdb.Tx(t)
 	hydra, kratos := newFakeHydra(t), newFakeKratos(t)
-	h := photoEndpoint(t, tx, &recordingAuthz{}, hydra, kratos)
+	h := photoEndpoint(t, tx, &authztest.Stated{Allow: true}, hydra, kratos)
 	require.Equal(t, http.StatusOK, callMe(t, h, http.MethodPost, "person").Code)
 	kratos.Close()
 
@@ -165,11 +166,11 @@ func TestFeaturePhotoWhenKratosFailsWritesNothing(t *testing.T) {
 
 func TestFeaturePortraitsListsTheChoices(t *testing.T) {
 	tx := testdb.Tx(t)
-	authz := &recordingAuthz{}
+	authz := &authztest.Stated{Allow: true}
 	hydra, kratos := newFakeHydra(t), newFakeKratos(t)
 	h := photoEndpoint(t, tx, authz, hydra, kratos)
 	require.Equal(t, http.StatusOK, callMe(t, h, http.MethodPost, "person").Code)
-	authz.asked = nil
+	authz.Asked = nil
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/me/portraits", nil)
 	req.Header.Set("Authorization", "Bearer person")
@@ -182,17 +183,17 @@ func TestFeaturePortraitsListsTheChoices(t *testing.T) {
 	require.Len(t, body.Portraits, 7)
 	assert.Equal(t, "portrait-1", body.Portraits[0].ID)
 	assert.Equal(t, portraits+"portrait-1.jpg", body.Portraits[0].URL)
-	require.Len(t, authz.asked, 1)
-	assert.Equal(t, "identity:user", authz.asked[0].Kind)
+	require.Len(t, authz.Asked, 1)
+	assert.Equal(t, "identity:user", authz.Asked[0].Kind)
 }
 
 func TestFeaturePhotoForAClientIsDenied(t *testing.T) {
 	tx := testdb.Tx(t)
-	authz := &recordingAuthz{}
+	authz := &authztest.Stated{Allow: true}
 	kratos := newFakeKratos(t)
 	h := photoEndpoint(t, tx, authz, newFakeHydra(t), kratos)
 
 	putPhoto(t, h, "client", `{"portrait":"portrait-1"}`)
-	assert.Equal(t, []authorization.Resource{{Kind: "identity:client", ID: sentClient}}, authz.asked,
+	assert.Equal(t, []authorization.Resource{{Kind: "identity:client", ID: sentClient}}, authz.Asked,
 		"a client acting for itself is checked as itself, which Cerbos denies")
 }

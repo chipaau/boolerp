@@ -1,13 +1,10 @@
 package seeds
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
-	"encoding/csv"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -35,26 +32,13 @@ type Sample struct {
 // ParseSamples reads sample tenants CSV. It rejects a malformed row, a repeated
 // slug, a parent that is not an earlier row, and a row without a legal form (C195).
 func ParseSamples(data []byte) ([]Sample, error) {
-	r := csv.NewReader(bytes.NewReader(data))
-	r.Comment = '#'
-	r.FieldsPerRecord = 8
-	header, err := r.Read()
+	records, err := seed.ReadCSV("sample tenants", data, "slug", "code", "name", "country", "legal_form", "identity_number", "parent", "types")
 	if err != nil {
-		return nil, fmt.Errorf("sample tenants header: %w", err)
-	}
-	if strings.Join(header, ",") != "slug,code,name,country,legal_form,identity_number,parent,types" {
-		return nil, fmt.Errorf("sample tenants header: got %q", header)
+		return nil, err
 	}
 	var samples []Sample
 	seen := map[string]bool{}
-	for {
-		rec, err := r.Read()
-		if errors.Is(err, io.EOF) {
-			return samples, nil
-		}
-		if err != nil {
-			return nil, fmt.Errorf("sample tenants: %w", err)
-		}
+	for _, rec := range records {
 		s := Sample{Slug: rec[0], Code: rec[1], Name: rec[2], Country: rec[3], LegalForm: rec[4],
 			IdentityNumber: rec[5], Parent: rec[6]}
 		if rec[7] != "" {
@@ -73,6 +57,7 @@ func ParseSamples(data []byte) ([]Sample, error) {
 		seen[s.Slug] = true
 		samples = append(samples, s)
 	}
+	return samples, nil
 }
 
 // SampleSlugs are the embedded sample tenants' slugs, for other modules' sample seeds.
