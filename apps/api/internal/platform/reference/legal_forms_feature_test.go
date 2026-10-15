@@ -3,6 +3,7 @@
 package reference_test
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
+	"github.com/boolmv/erp/apps/api/internal/platform/reference"
 )
 
 // insertTestLegalForm adds country XA and one of its legal forms as the owner.
@@ -71,4 +73,24 @@ func TestFeatureLegalFormUpdatedAtFollowsChanges(t *testing.T) {
 		`INSERT INTO legal_forms (country, code, name, category, updated_at) VALUES ('XA', 'test_company', 'Test company', 'private', '2000-01-01')`,
 		`UPDATE legal_forms SET name = 'Test company again' WHERE code = 'test_company'`,
 		`SELECT updated_at = now() FROM legal_forms WHERE code = 'test_company'`)
+}
+
+// LegalForm is what creating a tenant asks (tenancy.Reference, C197): a current form's
+// country and the document it names; a retired form is not found.
+func TestFeatureACurrentLegalFormNamesItsCountryAndDocument(t *testing.T) {
+	tx := referenceWorld(t)
+	m := reference.New(tx, slog.New(slog.DiscardHandler))
+	var company, gone string
+	require.NoError(t, tx.QueryRow(t.Context(), `SELECT id::text FROM legal_forms WHERE country = 'XA' AND code = 'x_company'`).Scan(&company))
+	require.NoError(t, tx.QueryRow(t.Context(), `SELECT id::text FROM legal_forms WHERE code = 'x_gone'`).Scan(&gone))
+
+	country, document, ok, err := m.LegalForm(t.Context(), company)
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "XA", country)
+	assert.Equal(t, "Test registration", document)
+
+	_, _, ok, err = m.LegalForm(t.Context(), gone)
+	require.NoError(t, err)
+	assert.False(t, ok, "a retired form")
 }

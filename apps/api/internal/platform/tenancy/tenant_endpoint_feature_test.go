@@ -85,7 +85,7 @@ func (s *stated) Can(ctx context.Context, action, kind string, _ ...authorizatio
 // edition does, over the test's transaction.
 func tenantRouter(w *world, authz authorization.Authorizer) http.Handler {
 	logger := slog.New(slog.DiscardHandler)
-	m := tenancy.New(savepoints{w.tx}, logger)
+	m := tenancy.New(savepoints{w.tx}, nil, logger)
 	s := platform.Services{Authz: authz, Logger: logger,
 		TenantUser: chi.Chain(actingAs, auth.RequireUser, m.ResolveTenant, m.RequireMember, m.RequireActiveTenant,
 			authorization.Enforce(logger))}

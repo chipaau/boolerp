@@ -2,9 +2,9 @@
 // customer organisations that are each one data boundary, and the single
 // operator tenant. Its tables are in migrations (C95, C122) and its Cerbos policies
 // in policies (C151). It provides the middlewares that put a request in its tenant
-// (ResolveTenant, RequireMember, RequireActiveTenant, C144) and the route that
-// answers which tenant a request is in; other use cases come with the operations
-// that need them.
+// (ResolveTenant, RequireMember, RequireActiveTenant, C144), the route that answers
+// which tenant a request is in, and the admin console's tenant routes: the list and
+// creating a tenant (C179, C197).
 package tenancy
 
 import (
@@ -12,8 +12,6 @@ import (
 	"embed"
 	"io/fs"
 	"log/slog"
-
-	"github.com/jackc/pgx/v5"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/adapters/store"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
@@ -36,23 +34,16 @@ type Lookups interface {
 
 // Module is the tenancy module.
 type Module struct {
-	db      DB
-	lookups Lookups
-	logger  *slog.Logger
+	db        DB
+	lookups   Lookups
+	reference Reference
+	logger    *slog.Logger
 }
 
-// New returns the module over db.
-func New(db DB, logger *slog.Logger) *Module {
-	return &Module{db: db, lookups: store.NewLookups(db), logger: logger}
-}
-
-// currentTenant reads the request's tenant in its own read-only transaction.
-func (m *Module) currentTenant(ctx context.Context) (t store.Tenant, err error) {
-	err = tenant.ReadTx(ctx, m.db, func(ctx context.Context, tx pgx.Tx) error {
-		t, err = store.CurrentTenant(ctx, tx)
-		return err
-	})
-	return t, err
+// New returns the module over db; ref is the reference lists creating a tenant checks
+// against (the reference module).
+func New(db DB, ref Reference, logger *slog.Logger) *Module {
+	return &Module{db: db, lookups: store.NewLookups(db), reference: ref, logger: logger}
 }
 
 //go:embed migrations/*.sql

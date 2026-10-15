@@ -159,6 +159,26 @@ HRMS is a group of capability modules (`internal/modules/hrms/<capability>`, mou
 because of endpoint count. No folder per kind (`handlers/`, `routes/`): in Go every
 folder is a package.
 
+**Every file is named for its resource (C207),** in every layer of a module, never for an
+action (`create.go`, `list.go`) or a kind of code (`checks.go`, `lists.go`, `queries.go`):
+
+| Layer | One file per resource |
+| --- | --- |
+| Handlers, their request and response types, and the resource's use cases and rules | `tenants.go`, `countries.go` (a flat module) or `adapters/http/employees.go` with `application/employees.go` |
+| SQL | `adapters/store/tenants.go`, `adapters/store/countries.go` |
+| Seed files | `seeds/countries.go` |
+| Table and rule tests | `tenants_feature_test.go` |
+| Endpoint tests | `tenants_endpoint_feature_test.go` |
+
+A sub-resource that has no route of its own lives with its resource (`/me/photo` in
+`photo.go` beside `me.go` is its own file because it has its own routes). What several
+resources share in a package goes in the file named for the package (`store/store.go`,
+`reference.go`) or in `routes_feature_test.go` for tests. Two exceptions, named for what
+they are: middleware (`middleware.go`), and a store for a database boundary rather than a
+table (`store/lookups.go`, the `lookup` schema's functions that resolve a request's tenant
+before its transaction, C131). Technical packages (`kit/*`, `bootstrap`, `bff/*`) have no
+resources and are organised by concern.
+
 **Dependencies between modules:** business modules may depend on platform modules. A
 module that needs another business module defines the interface it needs in its own
 `application` package, and the edition passes the other module in. Platform modules

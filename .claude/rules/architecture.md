@@ -18,6 +18,12 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   `routes.go` lists the routes only; handlers are one file per resource with that
   resource's request and response types; endpoint tests split the same way. Small
   platform modules stay flat; business modules put routes and handlers in `adapters/http/`.
+- Every file in a module is named for its resource, in every layer (C207): handlers, use
+  cases and rules, store SQL, seeds, and tests (`tenants.go`, `store/tenants.go`,
+  `tenants_feature_test.go`, `tenants_endpoint_feature_test.go`). Never name a file for an
+  action (`create.go`, `list.go`) or a kind of code (`checks.go`, `lists.go`). Shared code
+  goes in the file named for the package; exceptions are `middleware.go` and
+  `store/lookups.go`. `kit/*`, `bootstrap`, and `bff/*` are organised by concern.
 - A module owns its persistence writes. Do not reach into another module's SQL package.
 - Design every module so it can become a separate service later, all services sharing
   one PostgreSQL database (C134). Foreign keys across modules are allowed, always
