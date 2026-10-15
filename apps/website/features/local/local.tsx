@@ -25,7 +25,7 @@ const LIGHTS: [number, number][] = [[0.5, 0.14], [0.56, 0.24], [0.61, 0.31], [0.
 
 function PointCard({ point, n }: { point: (typeof POINTS)[number]; n: number }) {
   return (
-    <article className="office-card flex items-center gap-5 p-5">
+    <article className="glass-card flex items-center gap-5 p-5">
       <img
         src={`/local/${point.art}.webp`}
         alt={point.alt}

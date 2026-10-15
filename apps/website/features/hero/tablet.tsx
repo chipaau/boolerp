@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import type { CSSProperties } from 'react'
-import { HEX_PATH, HEX_VIEWBOX } from '@workspace/ui/components/hexagon'
+import { HEX_MASK } from '@/components/hex'
 import { APP_TILES, DASHBOARD, TABLET, TODAY_CELL, onScreen } from './scene'
 
 /**
@@ -66,10 +66,6 @@ const percent = (box: ReturnType<typeof onScreen>): CSSProperties => ({
   height: `${box.height}%`,
 })
 
-// the brand hexagon as a mask, stretched to each tile's box
-const HEX_MASK = `url("data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='${HEX_VIEWBOX}' preserveAspectRatio='none'><path d='${HEX_PATH}'/></svg>`,
-)}") center / 100% 100% no-repeat`
 
 /**
  * The parts of the dashboard that come alive after the landing: the app hexagons, and today's cell

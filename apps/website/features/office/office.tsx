@@ -7,6 +7,7 @@ import { Check } from 'lucide-react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { HEX_MASK } from '@/components/hex'
 import boolLogo from '@workspace/assets/logos/bool-logo.png'
 import { HUB, ROOMS, STAGE, TILE, placeOf, walkway } from './rooms'
 import type { Room, Tile } from './rooms'
@@ -30,10 +31,10 @@ function Point({ children }: { children: ReactNode }) {
 /** The app's card: what it is, what it is worth, and what it does. */
 function RoomCard({ room }: { room: Room }) {
   return (
-    <article className="office-card p-7">
+    <article className="glass-card p-7">
       <header className="flex items-center gap-3.5">
-        <span className="grid size-12 place-items-center rounded-xl bg-(--brand)/10">
-          <Image src={room.logo} alt="" className="h-7 w-8 object-contain" />
+        <span className="grid size-12 shrink-0 place-items-center bg-[#f7f1e8]" style={{ mask: HEX_MASK }}>
+          <Image src={room.logo} alt="" className="h-6 w-7 object-contain" />
         </span>
         <div>
           <h3 className="text-[22px] font-medium leading-tight text-foreground">{room.title}</h3>
@@ -53,7 +54,7 @@ function RoomCard({ room }: { room: Room }) {
 /** The end of the story: what every app shares. */
 function SharedCard() {
   return (
-    <article className="office-card p-7">
+    <article className="glass-card p-7">
       <h3 className="text-[22px] font-medium leading-tight text-foreground">Every app, one record</h3>
       <p className="mt-3 text-[16px] leading-snug text-muted-foreground">Add an app and it already knows your organisation.</p>
       <ul className="mt-5 grid gap-3 border-t border-border/60 pt-5">

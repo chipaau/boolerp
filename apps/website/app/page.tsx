@@ -1,6 +1,5 @@
 import { Button } from '@workspace/ui/components/button'
 import { SiteHeader } from '@/components/site-header'
-import { Apps } from '@/features/apps/apps'
 import { Hero } from '@/features/hero/hero'
 import { Local } from '@/features/local/local'
 import { Office } from '@/features/office/office'
@@ -23,8 +22,6 @@ export default function Home() {
         <Hero />
 
         <Office />
-
-        <Apps />
 
         {/* Deployment */}
         <section id="deployment" className="border-t border-border/60">

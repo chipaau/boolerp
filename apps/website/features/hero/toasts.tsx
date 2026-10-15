@@ -3,7 +3,7 @@ import asset from '@workspace/assets/logos/asset.png'
 import inventory from '@workspace/assets/logos/inventory.png'
 import procurement from '@workspace/assets/logos/procurement.png'
 import task from '@workspace/assets/logos/task.png'
-import { HEX_PATH, HEX_VIEWBOX } from '@workspace/ui/components/hexagon'
+import { HEX_MASK } from '@/components/hex'
 
 /**
  * What Bool tells people as their day goes: one at a time, a notification from one of its apps
@@ -20,10 +20,6 @@ const TOASTS: { app: string; icon: StaticImageData; tile: number; title: string;
   { app: 'Task', icon: task, tile: 1, title: 'Due today', line: 'Quarterly asset check' },
 ]
 
-// the brand hexagon as a mask, like the dashboard's app tiles
-const HEX_MASK = `url("data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='${HEX_VIEWBOX}' preserveAspectRatio='none'><path d='${HEX_PATH}'/></svg>`,
-)}") center / 100% 100% no-repeat`
 
 /** The notifications, stacked in one place over the tablet's corner, all hidden until their turn. Desktop only. */
 export function HeroToasts() {
