@@ -27,10 +27,10 @@ func (m *Module) current(authz authorization.Authorizer) http.HandlerFunc {
 			return
 		}
 		if err := authz.Check(r.Context(), "view", authorization.Resource{
-			Kind: "tenancy:tenant", ID: t.ID,
+			Kind: tenantKind, ID: t.ID,
 			Attributes: map[string]any{"tenant_id": t.ID, "status": t.Status},
 		}); err != nil {
-			authorization.WriteError(w, r, err)
+			authorization.WriteError(w, r, m.logger, err)
 			return
 		}
 		response.OK(w, r, struct {

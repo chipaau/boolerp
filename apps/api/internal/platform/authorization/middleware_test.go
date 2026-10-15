@@ -48,7 +48,7 @@ func TestEnforceLetsADecidedRouteThrough(t *testing.T) {
 func TestEnforceLetsARefusalThrough(t *testing.T) {
 	rec, _ := serve(t, func(w http.ResponseWriter, r *http.Request) {
 		NoteDecision(r.Context()) // a denied check is still a decision
-		WriteError(w, r, ErrDenied)
+		WriteError(w, r, slog.New(slog.DiscardHandler), ErrDenied)
 	})
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 }
@@ -64,7 +64,7 @@ func TestWriteErrorMapsEachOutcome(t *testing.T) {
 		ErrInvalid:     http.StatusInternalServerError,
 	} {
 		rec := httptest.NewRecorder()
-		WriteError(rec, httptest.NewRequest(http.MethodGet, "/", nil), err)
+		WriteError(rec, httptest.NewRequest(http.MethodGet, "/", nil), slog.New(slog.DiscardHandler), err)
 		assert.Equal(t, status, rec.Code, err.Error())
 		assert.Contains(t, rec.Header().Get("Content-Type"), "application/problem+json")
 	}

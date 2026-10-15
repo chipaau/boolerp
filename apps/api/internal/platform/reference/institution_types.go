@@ -26,7 +26,7 @@ type institutionType struct {
 func (m *Module) institutionTypes(authz authorization.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := authz.Can(r.Context(), "list", "reference:institution_type"); err != nil {
-			authorization.WriteError(w, r, err)
+			authorization.WriteError(w, r, m.logger, err)
 			return
 		}
 		l, ok := request.ParseList(w, r, store.InstitutionTypeListSpec)

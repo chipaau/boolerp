@@ -107,7 +107,7 @@ func Decode(w http.ResponseWriter, r *http.Request, dst any) bool {
 		var invalid validator.ValidationErrors
 		if !errors.As(err, &invalid) {
 			// Only programming errors reach here (for example dst is not a struct).
-			problem.Error(w, r, http.StatusInternalServerError, "")
+			problem.Internal(w, r)
 			return false
 		}
 		problem.WriteValidation(w, r, fieldErrors(invalid))

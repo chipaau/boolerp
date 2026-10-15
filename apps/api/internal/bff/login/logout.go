@@ -125,7 +125,7 @@ func (h *Handler) backchannelLogout(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, err := h.discover(ctx); err != nil {
 		h.logger.WarnContext(ctx, "back-channel logout: discovery failed", "error", err)
-		problem.Error(w, r, http.StatusServiceUnavailable, "")
+		problem.Unavailable(w, r)
 		return
 	}
 	// Signature (Hydra's keys), issuer, and audience (this client). A logout token
@@ -150,7 +150,7 @@ func (h *Handler) backchannelLogout(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.sessions.EndHydraSession(ctx, claims.SID); err != nil {
 		h.logger.ErrorContext(ctx, "back-channel logout: ending sessions failed", "error", err)
-		problem.Error(w, r, http.StatusServiceUnavailable, "")
+		problem.Unavailable(w, r)
 		return
 	}
 	h.logger.InfoContext(ctx, "signed out by back-channel logout", "account", token.Subject)

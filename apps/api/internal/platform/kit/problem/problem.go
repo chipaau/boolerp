@@ -68,6 +68,12 @@ func Error(w http.ResponseWriter, r *http.Request, status int, detail string) {
 	Write(w, New(r, status, detail))
 }
 
+// Internal writes the generic 500 for a fault of ours (a bug, a refused invalid request
+// to a dependency), never saying what; the caller logs the cause.
+func Internal(w http.ResponseWriter, r *http.Request) {
+	Error(w, r, http.StatusInternalServerError, "The request could not be completed.")
+}
+
 // Unavailable writes the generic 503 for a dependency that failed (the database, a
 // provider), never saying which or why; the caller logs the error.
 func Unavailable(w http.ResponseWriter, r *http.Request) {

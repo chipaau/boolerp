@@ -50,8 +50,8 @@ func tenantItem(t store.TenantItem) tenantJSON {
 // read in the operator's own transaction.
 func (m *Module) list(authz authorization.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := authz.Can(r.Context(), "list", "tenancy:tenant"); err != nil {
-			authorization.WriteError(w, r, err)
+		if err := authz.Can(r.Context(), "list", tenantKind); err != nil {
+			authorization.WriteError(w, r, m.logger, err)
 			return
 		}
 		l, ok := request.ParseList(w, r, store.TenantListSpec)
@@ -134,8 +134,8 @@ func validateCreateRequest(sl validator.StructLevel) {
 // writes it. 201 with the tenant as the list shows it and its address in Location.
 func (m *Module) create(authz authorization.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := authz.Can(r.Context(), "create", "tenancy:tenant"); err != nil {
-			authorization.WriteError(w, r, err)
+		if err := authz.Can(r.Context(), "create", tenantKind); err != nil {
+			authorization.WriteError(w, r, m.logger, err)
 			return
 		}
 		var req createRequest

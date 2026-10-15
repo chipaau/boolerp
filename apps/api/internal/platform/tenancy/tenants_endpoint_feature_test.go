@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -442,4 +443,21 @@ func TestFeatureCreatingATenantRefuses(t *testing.T) {
 	rec = post(t, createRouter(w, &authztest.Stated{Allow: true}), "client", w.valid())
 	assert.Equal(t, http.StatusForbidden, rec.Code, "a machine client is not operator staff")
 	testdb.AssertMissing(t, w.tx, "tenants", map[string]any{"slug": "x-new-clinic"})
+}
+
+// The request refuses every slug the tenants table's CHECK reserves, with its own field
+// error (C208): the Go list and the database's must not drift apart.
+func TestFeatureEverySlugTheDatabaseReservesIsRefusedFirst(t *testing.T) {
+	w := newCreateWorld(t)
+	var def string
+	require.NoError(t, w.tx.QueryRow(t.Context(), `SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c
+		WHERE c.conrelid = 'tenants'::regclass AND pg_get_constraintdef(c.oid) LIKE '%''operator''%'`).Scan(&def))
+	reserved := regexp.MustCompile(`'([a-z]+)'`).FindAllStringSubmatch(def, -1)
+	require.NotEmpty(t, reserved)
+	h := createRouter(w, &authztest.Stated{Allow: true})
+	for _, m := range reserved {
+		b := w.valid()
+		b["slug"] = m[1]
+		assert.Equal(t, map[string]string{"#/slug": "reserved"}, fieldErrors(t, post(t, h, "user:"+w.staff, b)), m[1])
+	}
 }

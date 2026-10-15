@@ -17,7 +17,7 @@ import (
 func (m *Module) portraits(w http.ResponseWriter, r *http.Request) {
 	caller, _ := FromContext(r.Context())
 	if err := m.authz.Check(r.Context(), "view", ownUser(caller)); err != nil {
-		authorization.WriteError(w, r, err)
+		authorization.WriteError(w, r, m.logger, err)
 		return
 	}
 	type portrait struct {
@@ -41,7 +41,7 @@ func (m *Module) portraits(w http.ResponseWriter, r *http.Request) {
 func (m *Module) setPhoto(w http.ResponseWriter, r *http.Request) {
 	caller, _ := FromContext(r.Context())
 	if err := m.authz.Check(r.Context(), "update", ownUser(caller)); err != nil {
-		authorization.WriteError(w, r, err)
+		authorization.WriteError(w, r, m.logger, err)
 		return
 	}
 	var in struct {
@@ -56,7 +56,7 @@ func (m *Module) setPhoto(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 	case errors.Is(err, identity.ErrUnknownPortrait):
 		problem.WriteValidation(w, r, []problem.FieldError{
-			{Pointer: "#/portrait", Code: "oneof", Detail: "must be one of the portraits, or empty for initials"},
+			problem.Field("portrait", "oneof", "must be one of the portraits, or empty for initials"),
 		})
 		return
 	default:

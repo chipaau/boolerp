@@ -19,7 +19,7 @@ func (m *Module) me(w http.ResponseWriter, r *http.Request) {
 
 	// A person may see their own user; a machine client only itself (C154).
 	if err := m.authz.Check(r.Context(), "view", ownUser(caller)); err != nil {
-		authorization.WriteError(w, r, err)
+		authorization.WriteError(w, r, m.logger, err)
 		return
 	}
 	writeCaller(w, r, caller)
@@ -50,7 +50,7 @@ func (m *Module) register(w http.ResponseWriter, r *http.Request) {
 		account = caller.Token.ClientID // a client acting for itself: Cerbos denies it
 	}
 	if err := m.authz.Check(r.Context(), "register", authorization.Resource{Kind: "identity:account", ID: account}); err != nil {
-		authorization.WriteError(w, r, err)
+		authorization.WriteError(w, r, m.logger, err)
 		return
 	}
 

@@ -25,19 +25,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/embedded"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 )
 
 //go:embed all:app
-var embedded embed.FS
+var appFiles embed.FS
 
 // App returns the embedded app's files.
 func App() fs.FS {
-	sub, err := fs.Sub(embedded, "app")
-	if err != nil {
-		panic(err) // the directory is embedded above, so this cannot fail
-	}
-	return sub
+	return embedded.Dir(appFiles, "app")
 }
 
 // Cache-Control values (C99).

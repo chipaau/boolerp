@@ -75,8 +75,10 @@ func SampleSlugs() []string {
 }
 
 // Samples creates the sample tenants, in development only (C143). It writes as
-// the table owner, like Operator: tenancy has no create-tenant operation yet, so
-// this is a recorded exception to seeding through use cases (C50) until it does.
+// the table owner, like Operator, a recorded exception to seeding through use cases
+// (C50): CreateTenant (C197) exists now, but it runs in an operator's request context
+// and does not create the active hosts the samples get, so moving them onto it is
+// still to do.
 // A tenant whose slug exists is left as it is.
 // Each sample, new or existing, gets its platform workspace host,
 // <slug>.<platform domain>, if it has none (C158, C159).

@@ -48,12 +48,13 @@ apps/api/
         migrations/      history migrations.reference_version
       kit/               technical building blocks, no business meaning (C125)
         config/          settings grouped by concern (C44)
+        embedded/        a go:embed directory as its own file system (migrations, policies, the BFF's app)
         request/         reading requests: JSON decoding and validation, list parameters (C210)
         response/        writing success responses: OK, Created, NoContent, Page (C210)
         httpserver/      server limits and graceful shutdown (framework-agnostic)
         seed/            the Seeder interface, the runner, and the shared gofakeit generator (C118)
         observability/   slog logger and redaction, tracing, metrics
-        postgres/        pool, database/sql for Goose, module migrations
+        postgres/        pool, database/sql for Goose, module migrations, list queries (ListQuery)
         problem/         RFC 9457 errors and panic recovery
         redis/           fail-fast Redis client
         requestid/       request IDs

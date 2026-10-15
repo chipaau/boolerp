@@ -12,17 +12,17 @@ import (
 // WriteError answers a request whose check did not allow, never with the data:
 // 403 when denied, 503 when Cerbos could not be asked, and 500 (logged as an error
 // with Cerbos's reason, which names attributes, never their values) when our
-// request was invalid.
-func WriteError(w http.ResponseWriter, r *http.Request, err error) {
+// request was invalid. It logs through logger, the module's, like every log line.
+func WriteError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err error) {
 	switch {
 	case errors.Is(err, ErrDenied):
 		problem.Error(w, r, http.StatusForbidden, "You are not allowed to do this.")
 	case errors.Is(err, ErrUnavailable):
-		slog.WarnContext(r.Context(), "authorization unavailable", "error", err)
+		logger.WarnContext(r.Context(), "authorization unavailable", "error", err)
 		problem.Error(w, r, http.StatusServiceUnavailable, "Permissions could not be checked. Try again shortly.")
 	default:
-		slog.ErrorContext(r.Context(), "authorization request invalid", "error", err)
-		problem.Error(w, r, http.StatusInternalServerError, "The request could not be completed.")
+		logger.ErrorContext(r.Context(), "authorization request invalid", "error", err)
+		problem.Internal(w, r)
 	}
 }
 
@@ -60,7 +60,7 @@ func (g *guardedWriter) decide() {
 		g.refused = true
 		g.logger.ErrorContext(g.r.Context(), "route answered without an authorization decision",
 			"method", g.r.Method, "path", g.r.URL.Path)
-		problem.Error(g.ResponseWriter, g.r, http.StatusInternalServerError, "The request could not be completed.")
+		problem.Internal(g.ResponseWriter, g.r)
 	})
 }
 

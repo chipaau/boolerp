@@ -23,7 +23,7 @@ type legalForm struct {
 func (m *Module) legalForms(authz authorization.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := authz.Can(r.Context(), "list", "reference:legal_form"); err != nil {
-			authorization.WriteError(w, r, err)
+			authorization.WriteError(w, r, m.logger, err)
 			return
 		}
 		l, ok := request.ParseList(w, r, store.LegalFormListSpec)

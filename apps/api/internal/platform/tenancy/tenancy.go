@@ -13,9 +13,13 @@ import (
 	"io/fs"
 	"log/slog"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/embedded"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/adapters/store"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
 )
+
+// tenantKind is the Cerbos resource kind of a tenant (C153), as tenancy/policies names it.
+const tenantKind = "tenancy:tenant"
 
 // DB is what the module needs from PostgreSQL: the pool, as the runtime role. The
 // lookups query it directly; the tenant's own data is read in tenant.ReadTx.
@@ -54,19 +58,11 @@ var policies embed.FS
 
 // Migrations returns the module's tables, applied by cmd/migrate as "tenancy".
 func Migrations() fs.FS {
-	sub, err := fs.Sub(migrations, "migrations")
-	if err != nil {
-		panic(err) // the directory is embedded above, so this cannot fail
-	}
-	return sub
+	return embedded.Dir(migrations, "migrations")
 }
 
 // Policies returns the module's Cerbos policies, their tests, and their schemas
 // (C151), assembled as "tenancy".
 func Policies() fs.FS {
-	sub, err := fs.Sub(policies, "policies")
-	if err != nil {
-		panic(err) // the directory is embedded above, so this cannot fail
-	}
-	return sub
+	return embedded.Dir(policies, "policies")
 }

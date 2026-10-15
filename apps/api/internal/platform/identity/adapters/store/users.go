@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/application"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/domain"
@@ -17,7 +16,6 @@ import (
 // them inside a rolled-back transaction.
 type DB interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
-	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 

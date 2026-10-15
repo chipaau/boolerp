@@ -22,7 +22,7 @@ type country struct {
 func (m *Module) countries(authz authorization.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := authz.Can(r.Context(), "list", "reference:country"); err != nil {
-			authorization.WriteError(w, r, err)
+			authorization.WriteError(w, r, m.logger, err)
 			return
 		}
 		l, ok := request.ParseList(w, r, store.CountryListSpec)
