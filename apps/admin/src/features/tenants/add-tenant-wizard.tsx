@@ -11,6 +11,7 @@ import { TimezoneSelect } from '@workspace/reference/timezone-select'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
+import { ComboboxField } from '@workspace/ui/components/combobox'
 import { DatePicker } from '@workspace/ui/components/date-picker'
 import { Dialog, DialogContent } from '@workspace/ui/components/dialog'
 import { SelectField } from '@workspace/ui/components/select'
@@ -21,6 +22,7 @@ import { cn } from '@workspace/ui/lib/utils'
 import { Field, ReviewCard, StepHeading, fieldClass } from '@/components/form-field'
 import { useCurrentUser } from '@/components/layout/user-context'
 import { useActiveCountries, useChildGeographies, useTopLevelGeographies } from '@/features/geographies/queries'
+import { tenantQueries } from './api'
 import { useAppCatalog, useCoreApps, useTenantDirectory, useTenantProfileActions } from './queries'
 import type { AppName, Nationality, TenantAdmin, TenantApps, TenantProfile } from './types'
 
@@ -52,7 +54,7 @@ type Form = {
   // `addrCountry` is the address step's, still the prototype's geography fixtures.
   name: string; slug: string; code: string; country: string | null; legalFormId: string | null; identityDocument: string | null
   identityNumber: string; registeredOn: string; taxNumber: string; timezone: string | null; types: InstitutionTypesValue
-  email: string; phone: string; tree: 'Standalone' | 'Child'; parent: string
+  email: string; phone: string; tree: 'Standalone' | 'Child'; parentId: string | null
   addr: string; addrCountry: string; district: string; city: string; postal: string; sameAsReg: boolean
   apps: TenantApps; nat: Nationality; aName: string; aId: string; aEmail: string; admins: DraftAdmin[]
 }
@@ -100,7 +102,7 @@ export function AddTenantWizard({
   const [f, setF] = useState<Form>(() => ({
     name: '', slug: '', code: '', country: null, legalFormId: null, identityDocument: null,
     identityNumber: '', registeredOn: '', taxNumber: '', timezone: null, types: { codes: [], primary: null },
-    email: '', phone: '', tree: 'Standalone', parent: '',
+    email: '', phone: '', tree: 'Standalone', parentId: null,
     addr: '', addrCountry: 'Maldives', district: 'Kaafu', city: 'Malé City', postal: '', sameAsReg: true,
     apps: Object.fromEntries(core.map((a) => [a, catalog.find((c) => c.name === a)?.modules ?? []])),
     nat: 'Maldivian', aName: '', aId: '', aEmail: '', admins: [],
@@ -118,7 +120,12 @@ export function AddTenantWizard({
   const cities = useChildGeographies(f.district)
 
   const slugDupe = f.slug.trim() ? tenants.find((t) => t.slug === f.slug.trim()) : undefined
-  const parentOptions = tenants.filter((t) => !t.parentSlug && t.directoryStatus !== 'archived')
+  // A parent is one of the API's tenants, shown by name and chosen by id (C197's parentId).
+  const apiTenants = useQuery(tenantQueries.list({ page: 1, pageSize: 100, sort: 'name' })).data?.items
+  const parentOptions = (apiTenants ?? [])
+    .filter((t) => t.status !== 'archived')
+    .map((t) => ({ value: t.id, label: t.name, detail: t.code, keywords: `${t.code} ${t.slug}` }))
+  const parentName = apiTenants?.find((t) => t.id === f.parentId)?.name
   const adminCount = f.admins.length
 
   /** What still stops step `i` from being complete; empty = passable. */
@@ -136,7 +143,7 @@ export function AddTenantWizard({
       if (!f.types.codes.length) out.push('an institution type')
       if (f.email.trim() && !isEmail(f.email)) out.push('a valid e-mail')
       if (f.phone.trim() && !isPhone(f.phone)) out.push('a phone number in international form')
-      if (f.tree === 'Child' && !f.parent) out.push('a parent tenant')
+      if (f.tree === 'Child' && !f.parentId) out.push('a parent tenant')
     }
     return out
   }
@@ -194,7 +201,7 @@ export function AddTenantWizard({
     return {
       slug, name, abbr: (f.code.trim() || name.slice(0, 4)).toUpperCase(), regNo: f.identityNumber.trim() || '—',
       orgType: 'Not set', entityType: 'Not set',
-      parentSlug: f.tree === 'Child' && f.parent ? f.parent : null,
+      parentSlug: null, // the parent is an API tenant, not one of the prototype's fixtures
       plan: 'Basic', seatsUsed: 0, seatLimit: 0, status,
       activeFrom: status === 'Active' ? today() : '—',
       contact: f.phone.trim() || '—', email: f.email.trim() || '—',
@@ -250,9 +257,10 @@ export function AddTenantWizard({
 
           {step === 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="t-name" label="Name" className="sm:col-span-2">
+              <Field id="t-name" label="Name" required className="sm:col-span-2">
                 <input
                   id="t-name"
+                  required
                   autoFocus
                   value={f.name}
                   placeholder="e.g. National Centre for Information Technology"
@@ -263,29 +271,31 @@ export function AddTenantWizard({
                   }}
                 />
               </Field>
-              <Field id="t-slug" label="Slug" hint={slugDupe ? `Already used by ${slugDupe.abbr}.` : 'The tenant’s web address: slug.bool.mv'} warn={!!slugDupe}>
-                <input id="t-slug" value={f.slug} placeholder="ncit" className={cn(fieldClass, 'font-mono text-compact')} onChange={(e) => (setSlugTouched(true), set('slug', e.target.value))} />
+              <Field id="t-slug" label="Slug" required hint={slugDupe ? `Already used by ${slugDupe.abbr}.` : 'The tenant’s web address: slug.bool.mv'} warn={!!slugDupe}>
+                <input id="t-slug" required value={f.slug} placeholder="ncit" className={cn(fieldClass, 'font-mono text-compact')} onChange={(e) => (setSlugTouched(true), set('slug', e.target.value))} />
               </Field>
-              <Field id="t-code" label="Code" hint="Short name shown across the platform, e.g. NCIT.">
-                <input id="t-code" value={f.code} placeholder="NCIT" className={fieldClass} onChange={(e) => set('code', e.target.value)} />
+              <Field id="t-code" label="Code" required hint="Short name shown across the platform, e.g. NCIT.">
+                <input id="t-code" required value={f.code} placeholder="NCIT" className={fieldClass} onChange={(e) => set('code', e.target.value)} />
               </Field>
 
               <div className="grid gap-4 border-t border-divider pt-[18px] sm:col-span-2 sm:grid-cols-2">
                 <div className="text-overline text-faint sm:col-span-2">Registration</div>
-                <Field id="t-country" label="Country" hint="Where the organisation is registered. Its legal forms follow.">
+                <Field id="t-country" label="Country" required hint="Where the organisation is registered. Its legal forms follow.">
                   <CountrySelect
                     id="t-country"
                     aria-label="Country"
+                    aria-required
                     value={f.country}
                     onValueChange={(country) =>
                       setF((p) => (country === p.country ? p : { ...p, country, legalFormId: null, identityDocument: null, identityNumber: '' }))
                     }
                   />
                 </Field>
-                <Field id="t-legal-form" label="Legal form">
+                <Field id="t-legal-form" label="Legal form" required>
                   <LegalFormSelect
                     id="t-legal-form"
                     aria-label="Legal form"
+                    aria-required
                     country={f.country}
                     value={f.legalFormId}
                     onValueChange={(legalFormId, form) =>
@@ -294,8 +304,8 @@ export function AddTenantWizard({
                   />
                 </Field>
                 {f.identityDocument && (
-                  <Field id="t-identity" label={f.identityDocument} hint="The number on the document this legal form carries. One organisation per number in a country.">
-                    <input id="t-identity" value={f.identityNumber} placeholder="C-1024/2026" className={fieldClass} onChange={(e) => set('identityNumber', e.target.value)} />
+                  <Field id="t-identity" label={f.identityDocument} required hint="The number on the document this legal form carries. One organisation per number in a country.">
+                    <input id="t-identity" required value={f.identityNumber} placeholder="C-1024/2026" className={fieldClass} onChange={(e) => set('identityNumber', e.target.value)} />
                   </Field>
                 )}
                 <Field id="t-registered" label="Registered on">
@@ -304,14 +314,14 @@ export function AddTenantWizard({
                 <Field id="t-tax" label="Tax number" hint="The TIN printed on invoices, if they have one.">
                   <input id="t-tax" value={f.taxNumber} placeholder="1012345GST501" className={fieldClass} onChange={(e) => set('taxNumber', e.target.value)} />
                 </Field>
-                <Field id="t-timezone" label="Time zone" hint="Their working days and times are kept in this zone.">
-                  <TimezoneSelect id="t-timezone" aria-label="Time zone" value={f.timezone} onValueChange={(timezone) => set('timezone', timezone)} />
+                <Field id="t-timezone" label="Time zone" required hint="Their working days and times are kept in this zone.">
+                  <TimezoneSelect id="t-timezone" aria-label="Time zone" aria-required value={f.timezone} onValueChange={(timezone) => set('timezone', timezone)} />
                 </Field>
               </div>
 
               <div className="border-t border-divider pt-[18px] sm:col-span-2">
-                <Field id="t-types" label="Institution types" hint="What they do. Pick one or more; with several, mark the primary one. Their sector follows from it.">
-                  <InstitutionTypesField id="t-types" aria-label="Institution types" value={f.types} onValueChange={(types) => set('types', types)} />
+                <Field id="t-types" label="Institution types" required hint="What they do. Pick one or more; with several, mark the primary one. Their sector follows from it.">
+                  <InstitutionTypesField id="t-types" aria-label="Institution types" aria-required value={f.types} onValueChange={(types) => set('types', types)} />
                 </Field>
               </div>
 
@@ -349,13 +359,17 @@ export function AddTenantWizard({
                   ))}
                 </div>
                 {f.tree === 'Child' && (
-                  <Field id="t-parent" label="Parent tenant" className="mt-3.5 max-w-[420px]" hint="A child keeps its own admins and data; the parent sees nothing inside it.">
-                    <SelectField
+                  <Field id="t-parent" label="Parent tenant" required className="mt-3.5 max-w-[420px]" hint="A child keeps its own admins and data; the parent sees nothing inside it.">
+                    <ComboboxField
                       id="t-parent"
                       aria-label="Parent tenant"
-                      value={f.parent}
-                      onValueChange={(v) => set('parent', v)}
-                      options={[{ value: '', label: 'Pick a parent' }, ...parentOptions.map((t) => ({ value: t.slug, label: t.name }))]}
+                      aria-required
+                      value={f.parentId}
+                      onValueChange={(parentId) => set('parentId', parentId)}
+                      options={parentOptions}
+                      placeholder={apiTenants ? 'Search tenants by name or code' : 'Loading tenants…'}
+                      emptyText="No tenant matches."
+                      disabled={!apiTenants}
                     />
                   </Field>
                 )}
@@ -492,13 +506,13 @@ export function AddTenantWizard({
                   </SegmentedItem>
                 </Segmented>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field id="a-name" label="Full name">
+                  <Field id="a-name" label="Full name" required>
                     <input id="a-name" value={f.aName} placeholder="Aishath Leena" className={fieldClass} onChange={(e) => set('aName', e.target.value)} />
                   </Field>
                   <Field id="a-id" label={f.nat === 'Maldivian' ? 'ID number' : 'Passport number'} hint={f.nat === 'Expatriate' ? 'Expatriate admins also need a work permit number before first sign-in.' : undefined}>
                     <input id="a-id" value={f.aId} placeholder={f.nat === 'Maldivian' ? 'A123566' : 'P-8823441'} className={fieldClass} onChange={(e) => set('aId', e.target.value)} />
                   </Field>
-                  <Field id="a-email" label="E-mail address" className="sm:col-span-2">
+                  <Field id="a-email" label="E-mail address" required className="sm:col-span-2">
                     <input id="a-email" type="email" value={f.aEmail} placeholder="name@tenant.gov.mv" className={fieldClass} onChange={(e) => set('aEmail', e.target.value)} />
                   </Field>
                 </div>
@@ -525,7 +539,7 @@ export function AddTenantWizard({
                   ['Time zone', f.timezone ?? 'Not set'],
                   ['Institution types', f.types.codes.map((c) => `${typeName(c)}${c === f.types.primary && f.types.codes.length > 1 ? ' (primary)' : ''}`).join(', ') || 'Not set'],
                   ['Contact', [f.email.trim(), f.phone.trim()].filter(Boolean).join(' · ') || 'Not set'],
-                  ['Tenant tree', f.tree === 'Child' ? `Child of ${tenants.find((t) => t.slug === f.parent)?.name ?? 'not picked'}` : 'Standalone / can take children'],
+                  ['Tenant tree', f.tree === 'Child' ? `Child of ${parentName ?? 'not picked'}` : 'Standalone / can take children'],
                 ]}
               />
               <ReviewCard

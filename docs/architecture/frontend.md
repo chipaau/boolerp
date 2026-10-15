@@ -147,6 +147,12 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   its own values schema only when its shape differs from the body, with a pure mapper to it.
 - TanStack Form with zod (`onChange` once touched, `onSubmit`); field components in
   `@workspace/ui` take the form's `field`.
+- Required fields are marked with an asterisk (*) after the label (C202): `Label`'s
+  `required` (or a form's `Field` with `required`) draws it in the destructive colour with CSS,
+  so it is not part of the label's text, and the control carries `required` (inputs) or
+  `aria-required` (pickers). A field that is required only in some cases (an identity number
+  when the legal form names a document) is marked while it is required. Optional fields carry
+  no mark; a group that is wholly optional may say so in its heading.
 - A 422's field errors appear on their fields (the `onServer` error), with the server's
   `detail` as the message; errors matching no field show in a banner above the form with the
   request reference. Editing a field clears its server error; submit is disabled only while

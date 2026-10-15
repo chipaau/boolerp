@@ -12,6 +12,7 @@ type Props = {
   'aria-label'?: string
   'aria-invalid'?: boolean
   'aria-describedby'?: string
+  'aria-required'?: boolean
 }
 
 /** Picks a country by its ISO code: type a name or either code. */

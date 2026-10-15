@@ -136,8 +136,9 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
     office; independent institution; statutory body; judiciary / parliament; local
     council (city, atoll, island) — none of
     these carries an identity number; state-owned enterprise, public company (Plc), and
-    private company (Pvt Ltd) — company registration number; partnership / sole
-    proprietorship — business registration number; cooperative society — cooperative
+    private company (Pvt Ltd) — company registration number; partnership — partnership
+    registration number; sole proprietorship — business registration number (the two
+    split 2026-10-15); cooperative society — cooperative
     registration number; association / NGO — association registration number;
     international organisation / mission — none.
   - **Sectors and institution types (global; confirmed 2026-10-04):** the 15 sectors in

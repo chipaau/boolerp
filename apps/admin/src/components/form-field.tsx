@@ -7,11 +7,14 @@ import { cn } from '@workspace/ui/lib/utils'
 export const fieldClass =
   'h-10 w-full rounded-[10px] bg-surface-band px-[13px] text-sm text-foreground outline-none placeholder:text-placeholder focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60'
 
-/** A labelled field: label (tied to `id`), the control, then an optional hint (tan when `warn`). */
-export function Field({ id, label, hint, warn, className, children }: { id?: string; label: string; hint?: ReactNode; warn?: boolean; className?: string; children: ReactNode }) {
+/**
+ * A labelled field: label (tied to `id`), the control, then an optional hint (tan when `warn`).
+ * `required` marks the label with an asterisk (*); give the control `required` or `aria-required` too.
+ */
+export function Field({ id, label, hint, warn, required, className, children }: { id?: string; label: string; hint?: ReactNode; warn?: boolean; required?: boolean; className?: string; children: ReactNode }) {
   return (
     <div className={cn('min-w-0', className)}>
-      <Label htmlFor={id} className="mb-1.5 text-meta font-bold text-muted-foreground">
+      <Label htmlFor={id} required={required} className="mb-1.5 text-meta font-bold text-muted-foreground">
         {label}
       </Label>
       {children}

@@ -11,6 +11,7 @@ type Props = {
   'aria-label'?: string
   'aria-invalid'?: boolean
   'aria-describedby'?: string
+  'aria-required'?: boolean
 }
 
 /** Picks an IANA time zone from the browser's list, grouped by region, its UTC offset beside it. */

@@ -16,6 +16,7 @@ type Props = {
   'aria-label'?: string
   'aria-invalid'?: boolean
   'aria-describedby'?: string
+  'aria-required'?: boolean
 }
 
 /** Keeps the primary among the chosen: the first one picked, until another is marked. */

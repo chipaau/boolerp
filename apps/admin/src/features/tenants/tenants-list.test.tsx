@@ -179,6 +179,11 @@ describe('the tenants list', () => {
     await userEvent.type(within(form).getByLabelText('Name'), 'Test Ministry')
     await userEvent.type(within(form).getByLabelText('Code'), 'TMIN')
     expect(within(form).queryByRole('button', { name: 'Create tenant' })).not.toBeInTheDocument()
+    // Required fields are marked (*), optional ones are not (C202).
+    for (const label of ['Name', 'Slug', 'Code', 'Country', 'Legal form', 'Time zone', 'Institution types'])
+      expect(within(form).getByText(label, { selector: 'label' })).toHaveAttribute('data-required', 'true')
+    for (const label of ['Registered on', 'Tax number', 'E-mail address', 'Phone'])
+      expect(within(form).getByText(label, { selector: 'label' })).not.toHaveAttribute('data-required')
 
     // Step 1 is the creating request (C197): its lists come from the API through the pickers (C199).
     expect(within(form).getByLabelText('Legal form')).toHaveAttribute('placeholder', 'Pick the country first')
@@ -187,6 +192,10 @@ describe('the tenants list', () => {
     await userEvent.type(within(form).getByLabelText('Company registration number'), 'C-0001/2026')
     await pick(form, 'Time zone', 'maldives', /Indian \/ Maldives/)
     await pick(form, 'Institution types', 'hosp', 'Hospital')
+    // A parent is an API tenant: found by its code, shown by its name.
+    await userEvent.click(within(form).getByRole('radio', { name: /Child of another tenant/ }))
+    await pick(form, 'Parent tenant', 't1', /Tenant 1/)
+    expect(within(form).getByLabelText('Parent tenant')).toHaveValue('Tenant 1')
     expect(within(form).queryByLabelText('Owner name')).not.toBeInTheDocument()
 
     await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))

@@ -42,6 +42,19 @@ describe("SelectField", () => {
     expect(screen.getByRole("combobox", { name: "Plan" })).toHaveTextContent("Starter")
   })
 
+  it("shows the chosen option's label, not its value, when the two differ", () => {
+    render(
+      <SelectField
+        aria-label="Parent"
+        value="0192f6a0-0000-7000-8000-000000000001"
+        onValueChange={() => {}}
+        options={[{ value: "0192f6a0-0000-7000-8000-000000000001", label: "Male City Council" }]}
+      />
+    )
+    expect(screen.getByRole("combobox", { name: "Parent" })).toHaveTextContent("Male City Council")
+    expect(screen.getByRole("combobox", { name: "Parent" })).not.toHaveTextContent("0192f6a0")
+  })
+
   it("opens on click, lists every option and emits the picked one", async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

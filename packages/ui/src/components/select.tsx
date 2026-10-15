@@ -127,7 +127,14 @@ function SelectField({
   "aria-invalid"?: boolean
 }) {
   return (
-    <Select value={value} onValueChange={(v) => onValueChange(String(v ?? ""))} disabled={disabled} name={name}>
+    <Select
+      value={value}
+      onValueChange={(v) => onValueChange(String(v ?? ""))}
+      // The labels, so the closed plate shows the chosen option's label rather than its value.
+      items={options.map((o) => ({ value: optionValue(o), label: optionLabel(o) }))}
+      disabled={disabled}
+      name={name}
+    >
       <SelectTrigger id={id} aria-label={ariaLabel} aria-invalid={ariaInvalid} className={className}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>

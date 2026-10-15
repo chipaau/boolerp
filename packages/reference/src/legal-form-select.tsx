@@ -16,6 +16,7 @@ type Props = {
   'aria-label'?: string
   'aria-invalid'?: boolean
   'aria-describedby'?: string
+  'aria-required'?: boolean
 }
 
 /** Picks one of a country's legal forms, grouped by category, with the document each one names. */

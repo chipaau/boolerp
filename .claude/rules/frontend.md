@@ -19,6 +19,8 @@ them by default. See [product scope](../../docs/product/scope.md) and
 - `apps/workspace` and `apps/admin` sign in only through their BFF, following
   [app integration](../../docs/platform/bff-frontend.md): no Kratos or Hydra calls and no
   tokens in the browser. `packages/auth` (the previous design) was removed (C100).
+- Mark every required form field with an asterisk (*) after its label: `Label`/`Field`
+  `required`, and `required` or `aria-required` on the control (C202). Optional fields have no mark.
 - Read [frontend structure](../../docs/architecture/frontend.md). Workspace apps (Control
   Centre, HRMS, Tasks, Inventory, …) are packages `packages/app-<slug>` with a `defineApp`
   manifest (a permission per page) and file routes mounted by the shell's edition (C102);
