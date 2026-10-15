@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Lock } from 'lucide-react'
+import { useForm, useStore } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
+import { useApiMutation } from '@workspace/api'
 import { referenceQueries } from '@workspace/reference/api'
 import { CountrySelect } from '@workspace/reference/country-select'
 import { InstitutionTypesField } from '@workspace/reference/institution-types-field'
-import type { InstitutionTypesValue } from '@workspace/reference/institution-types-field'
 import { LegalFormSelect } from '@workspace/reference/legal-form-select'
 import { TimezoneSelect } from '@workspace/reference/timezone-select'
 import { Badge } from '@workspace/ui/components/badge'
@@ -14,6 +15,7 @@ import { Checkbox } from '@workspace/ui/components/checkbox'
 import { ComboboxField } from '@workspace/ui/components/combobox'
 import { DatePicker } from '@workspace/ui/components/date-picker'
 import { Dialog, DialogContent } from '@workspace/ui/components/dialog'
+import { FormErrorBanner, FormField, TextField } from '@workspace/ui/components/form-field'
 import { SelectField } from '@workspace/ui/components/select'
 import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
 import { Stepper, StepperFooter, StepperLayout } from '@workspace/ui/components/stepper'
@@ -22,8 +24,10 @@ import { cn } from '@workspace/ui/lib/utils'
 import { Field, ReviewCard, StepHeading, fieldClass } from '@/components/form-field'
 import { useCurrentUser } from '@/components/layout/user-context'
 import { useActiveCountries, useChildGeographies, useTopLevelGeographies } from '@/features/geographies/queries'
-import { tenantQueries } from './api'
+import { tenantMutations, tenantQueries } from './api'
 import { useAppCatalog, useCoreApps, useTenantDirectory, useTenantProfileActions } from './queries'
+import { newTenantForm, newTenantFormSchema, toCreateTenantInput } from './schemas'
+import type { NewTenantForm, Tenant } from './schemas'
 import type { AppName, Nationality, TenantAdmin, TenantApps, TenantProfile } from './types'
 
 /** What the list shows after a successful provision: the one-time recovery link for the owner. */
@@ -50,11 +54,8 @@ const appLabel = (a: AppName) => a
 type DraftAdmin = { name: string; idNo: string; email: string; nat: Nationality }
 
 type Form = {
-  // Step 1, the request that creates the tenant (C197). `country` is the tenant's (an ISO code);
-  // `addrCountry` is the address step's, still the prototype's geography fixtures.
-  name: string; slug: string; code: string; country: string | null; legalFormId: string | null; identityDocument: string | null
-  identityNumber: string; registeredOn: string; taxNumber: string; timezone: string | null; types: InstitutionTypesValue
-  email: string; phone: string; tree: 'Standalone' | 'Child'; parentId: string | null
+  // The later steps, still the prototype's (the address uses its geography fixtures). Step 1, the
+  // request that creates the tenant (C197), is the TanStack form below.
   addr: string; addrCountry: string; district: string; city: string; postal: string; sameAsReg: boolean
   apps: TenantApps; nat: Nationality; aName: string; aId: string; aEmail: string; admins: DraftAdmin[]
 }
@@ -63,8 +64,13 @@ const slugify = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^\w\s
 const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 const today = () => fmt(new Date())
 const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
-/** The API's phone format: + and 6 to 15 digits (E.164). */
-const isPhone = (s: string) => /^\+[0-9]{6,15}$/.test(s.replace(/[\s-]/g, ''))
+
+/** What each step 1 field is called when a toast says what is still missing. */
+const STEP1_LABELS: Record<string, string> = {
+  name: 'a name', slug: 'a valid slug', code: 'a valid code', country: 'the country', legalFormId: 'the legal form',
+  identityNumber: 'the identity number', timezone: 'the time zone', institutionTypes: 'institution types with one primary',
+  email: 'a valid e-mail', phone: 'a phone number in international form', parentId: 'a parent tenant',
+}
 
 /**
  * Add a tenant in a large stepped dialog (the New employee pattern): a Stepper rail on the left,
@@ -73,21 +79,20 @@ const isPhone = (s: string) => /^\+[0-9]{6,15}$/.test(s.replace(/[\s-]/g, ''))
  * code, country, legal form (and the number of the document it names), time zone, and institution
  * types are required; the reference lists come from the API (C199) through @workspace/reference.
  * "Create tenant" is offered as soon as step 1 is complete: owners are needed to activate a tenant
- * (C198), not to create it. Until POST /api/v1/tenants exists it saves nothing in preview, and only
- * the prototype's fixture profile otherwise.
+ * (C198), not to create it. Step 1 is a TanStack form validated by zod (C176); with `onCreated` it
+ * sends POST /api/v1/tenants, and the API's 422 lands on its fields (useApiMutation) or, for what
+ * no field can show, in the banner above them. Without it (the design prototype's page) it saves
+ * the prototype's fixture profile.
  */
 export function AddTenantWizard({
   onClose,
   onProvisioned,
-  preview = false,
+  onCreated,
 }: {
   onClose: () => void
   onProvisioned: (p: Provisioned) => void
-  /**
-   * Opened from the API-backed list before creating exists (F3): the form works, but "Create tenant"
-   * and "Save as draft" save nothing, not even to the prototype's fixtures, and say so.
-   */
-  preview?: boolean
+  /** Creates the tenant through the API (F3) and hands it back; without it, the prototype's fixtures. */
+  onCreated?: (tenant: Tenant) => void
 }) {
   const toast = useToast()
   const user = useCurrentUser()
@@ -100,50 +105,57 @@ export function AddTenantWizard({
   const [step, setStep] = useState(0)
   const [slugTouched, setSlugTouched] = useState(false)
   const [f, setF] = useState<Form>(() => ({
-    name: '', slug: '', code: '', country: null, legalFormId: null, identityDocument: null,
-    identityNumber: '', registeredOn: '', taxNumber: '', timezone: null, types: { codes: [], primary: null },
-    email: '', phone: '', tree: 'Standalone', parentId: null,
     addr: '', addrCountry: 'Maldives', district: 'Kaafu', city: 'Malé City', postal: '', sameAsReg: true,
     apps: Object.fromEntries(core.map((a) => [a, catalog.find((c) => c.name === a)?.modules ?? []])),
     nat: 'Maldivian', aName: '', aId: '', aEmail: '', admins: [],
   }))
   const set = <TKey extends keyof Form>(k: TKey, v: Form[TKey]) => setF((prev) => ({ ...prev, [k]: v }))
+
+  // Step 1: the creating request (C176, C197).
+  const form = useForm({
+    defaultValues: newTenantForm,
+    validators: { onChange: newTenantFormSchema, onSubmit: newTenantFormSchema },
+    onSubmit: async ({ value }) => {
+      if (!onCreated) return createInPrototype(value)
+      try {
+        const tenant = await create.mutateAsync(toCreateTenantInput(value))
+        toast(`${tenant.name} created`)
+        onCreated(tenant)
+      } catch {
+        // A 422 is on the form; anything else went through the one error policy (C185).
+      }
+    },
+  })
+  const create = useApiMutation({ ...tenantMutations.create(), form })
+  const values = useStore(form.store, (state) => state.values)
   // The pickers' lists, from the same cache, to name the choices on the review step.
   const refCountries = useQuery(referenceQueries.countries()).data
-  const legalForms = useQuery(referenceQueries.legalForms(f.country ?? '')).data
+  const legalForms = useQuery(referenceQueries.legalForms(values.country)).data
   const institutionTypes = useQuery(referenceQueries.institutionTypes()).data
   const countryName = (code: string | null) => (code ? (refCountries?.find((c) => c.code === code)?.name ?? code) : undefined)
-  const legalFormName = legalForms?.find((l) => l.id === f.legalFormId)?.name
+  const legalFormName = legalForms?.find((l) => l.id === values.legalFormId)?.name
   const typeName = (code: string) => institutionTypes?.find((t) => t.code === code)?.name ?? code
 
   const districts = useTopLevelGeographies(f.addrCountry)
   const cities = useChildGeographies(f.district)
 
-  const slugDupe = f.slug.trim() ? tenants.find((t) => t.slug === f.slug.trim()) : undefined
+  // The prototype's fixtures name a slug they hold; the API names its own (a 422 on the slug).
+  const slugDupe = !onCreated && values.slug.trim() ? tenants.find((t) => t.slug === values.slug.trim()) : undefined
   // A parent is one of the API's tenants, shown by name and chosen by id (C197's parentId).
   const apiTenants = useQuery(tenantQueries.list({ page: 1, pageSize: 100, sort: 'name' })).data?.items
   const parentOptions = (apiTenants ?? [])
     .filter((t) => t.status !== 'archived')
     .map((t) => ({ value: t.id, label: t.name, detail: t.code, keywords: `${t.code} ${t.slug}` }))
-  const parentName = apiTenants?.find((t) => t.id === f.parentId)?.name
+  const parentName = apiTenants?.find((t) => t.id === values.parentId)?.name
   const adminCount = f.admins.length
 
   /** What still stops step `i` from being complete; empty = passable. */
   const missing = (i: number): string[] => {
     const out: string[] = []
     if (i === 0) {
-      if (!f.name.trim()) out.push('a name')
-      if (!f.slug.trim()) out.push('a slug')
-      else if (slugDupe) out.push(`a slug not already used by ${slugDupe.abbr}`)
-      if (!f.code.trim()) out.push('a code')
-      if (!f.country) out.push('the country')
-      if (!f.legalFormId) out.push('the legal form')
-      else if (f.identityDocument && !f.identityNumber.trim()) out.push(`the ${f.identityDocument.toLowerCase()}`)
-      if (!f.timezone) out.push('the time zone')
-      if (!f.types.codes.length) out.push('an institution type')
-      if (f.email.trim() && !isEmail(f.email)) out.push('a valid e-mail')
-      if (f.phone.trim() && !isPhone(f.phone)) out.push('a phone number in international form')
-      if (f.tree === 'Child' && !f.parentId) out.push('a parent tenant')
+      const parsed = newTenantFormSchema.safeParse(values)
+      if (!parsed.success) out.push(...new Set(parsed.error.issues.map((issue) => STEP1_LABELS[String(issue.path[0])] ?? String(issue.path[0]))))
+      if (slugDupe) out.push(`a slug not already used by ${slugDupe.abbr}`)
     }
     return out
   }
@@ -199,12 +211,12 @@ export function AddTenantWizard({
     const apps: TenantApps = { ...f.apps }
     for (const a of core) apps[a] = apps[a] ?? catalog.find((c) => c.name === a)?.modules ?? []
     return {
-      slug, name, abbr: (f.code.trim() || name.slice(0, 4)).toUpperCase(), regNo: f.identityNumber.trim() || '—',
+      slug, name, abbr: (values.code.trim() || name.slice(0, 4)).toUpperCase(), regNo: values.identityNumber.trim() || '—',
       orgType: 'Not set', entityType: 'Not set',
       parentSlug: null, // the parent is an API tenant, not one of the prototype's fixtures
       plan: 'Basic', seatsUsed: 0, seatLimit: 0, status,
       activeFrom: status === 'Active' ? today() : '—',
-      contact: f.phone.trim() || '—', email: f.email.trim() || '—',
+      contact: values.phone.trim() || '—', email: values.email.trim() || '—',
       country: f.addrCountry, district: f.city && f.city !== '—' ? f.city : f.district,
       addr: f.addr.trim() || '—', mail: f.sameAsReg ? 'Same as registered address' : '—',
       apps, admins,
@@ -212,27 +224,23 @@ export function AddTenantWizard({
     }
   }
 
-  const create_ = () => {
-    if (blocked(0)) return setStep(0)
-    const input = { name: f.name.trim(), slug: f.slug.trim() }
-    if (preview) {
-      toast('Preview only: nothing was saved. Creating tenants comes next (F3).', { ok: false })
-      return onClose()
-    }
-    // Fixtures only (F2f): this used to POST /api/v1/tenants. Creating a tenant for real — the
-    // endpoint, the form, and the API's field errors on it — is F3, in the new list.
+  /** The prototype's create: its fixture profile, as before the API (F2f). */
+  const createInPrototype = (value: NewTenantForm) => {
+    const input = { name: value.name.trim(), slug: value.slug.trim() }
     saveProfile(profileFrom(input.slug, input.name, 'Active'))
     toast(`${input.name} created`)
     onProvisioned({ name: input.name, recoveryLink: 'Not provisioned — this is the design prototype.' })
   }
 
+  /** Validates step 1 (showing its errors on the fields) and submits it. */
+  const create_ = () => {
+    if (blocked(0)) setStep(0)
+    void form.handleSubmit()
+  }
+
   const saveDraft = () => {
-    if (preview) {
-      toast('Preview only: nothing was saved. Creating tenants comes next (F3).', { ok: false })
-      return onClose()
-    }
-    const name = f.name.trim() || 'Untitled tenant'
-    const slug = f.slug.trim() || slugify(name) || `draft-${Date.now()}`
+    const name = values.name.trim() || 'Untitled tenant'
+    const slug = values.slug.trim() || slugify(name) || `draft-${Date.now()}`
     saveProfile(profileFrom(slug, name, 'Draft'))
     toast('Draft saved. It stays in the tenant list marked Draft.')
     onClose()
@@ -257,121 +265,215 @@ export function AddTenantWizard({
 
           {step === 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="t-name" label="Name" required className="sm:col-span-2">
-                <input
-                  id="t-name"
-                  required
-                  autoFocus
-                  value={f.name}
-                  placeholder="e.g. National Centre for Information Technology"
-                  className={fieldClass}
-                  onChange={(e) => {
-                    const name = e.target.value
-                    setF((p) => ({ ...p, name, slug: slugTouched ? p.slug : slugify(name) }))
-                  }}
-                />
-              </Field>
-              <Field id="t-slug" label="Slug" required hint={slugDupe ? `Already used by ${slugDupe.abbr}.` : 'The tenant’s web address: slug.bool.mv'} warn={!!slugDupe}>
-                <input id="t-slug" required value={f.slug} placeholder="ncit" className={cn(fieldClass, 'font-mono text-compact')} onChange={(e) => (setSlugTouched(true), set('slug', e.target.value))} />
-              </Field>
-              <Field id="t-code" label="Code" required hint="Short name shown across the platform, e.g. NCIT.">
-                <input id="t-code" required value={f.code} placeholder="NCIT" className={fieldClass} onChange={(e) => set('code', e.target.value)} />
-              </Field>
+              <FormErrorBanner errors={create.formErrors} className="sm:col-span-2" />
+              <form.Field
+                name="name"
+                listeners={{ onChange: ({ value }) => !slugTouched && form.setFieldValue('slug', slugify(value)) }}
+              >
+                {(field) => (
+                  <TextField field={field} label="Name" required autoFocus className="sm:col-span-2" placeholder="e.g. National Centre for Information Technology" />
+                )}
+              </form.Field>
+              <form.Field
+                name="slug"
+                // Typed by hand once it differs from what the name gives; then the name no longer sets it.
+                listeners={{ onChange: ({ value }) => setSlugTouched(value !== slugify(form.getFieldValue('name'))) }}
+              >
+                {(field) => (
+                  <TextField
+                    field={field}
+                    label="Slug"
+                    required
+                    hint={slugDupe ? `Already used by ${slugDupe.abbr}.` : 'The tenant’s web address: slug.bool.mv'}
+                    placeholder="ncit"
+                    inputClassName="font-mono text-compact"
+                  />
+                )}
+              </form.Field>
+              <form.Field name="code">
+                {(field) => <TextField field={field} label="Code" required hint="Short name shown across the platform, e.g. NCIT." placeholder="NCIT" />}
+              </form.Field>
 
               <div className="grid gap-4 border-t border-divider pt-[18px] sm:col-span-2 sm:grid-cols-2">
                 <div className="text-overline text-faint sm:col-span-2">Registration</div>
-                <Field id="t-country" label="Country" required hint="Where the organisation is registered. Its legal forms follow.">
-                  <CountrySelect
-                    id="t-country"
-                    aria-label="Country"
-                    aria-required
-                    value={f.country}
-                    onValueChange={(country) =>
-                      setF((p) => (country === p.country ? p : { ...p, country, legalFormId: null, identityDocument: null, identityNumber: '' }))
-                    }
-                  />
-                </Field>
-                <Field id="t-legal-form" label="Legal form" required>
-                  <LegalFormSelect
-                    id="t-legal-form"
-                    aria-label="Legal form"
-                    aria-required
-                    country={f.country}
-                    value={f.legalFormId}
-                    onValueChange={(legalFormId, form) =>
-                      setF((p) => ({ ...p, legalFormId, identityDocument: form?.identityDocument ?? null, identityNumber: form?.identityDocument ? p.identityNumber : '' }))
-                    }
-                  />
-                </Field>
-                {f.identityDocument && (
-                  <Field id="t-identity" label={f.identityDocument} required hint="The number on the document this legal form carries. One organisation per number in a country.">
-                    <input id="t-identity" required value={f.identityNumber} placeholder="C-1024/2026" className={fieldClass} onChange={(e) => set('identityNumber', e.target.value)} />
-                  </Field>
+                <form.Field
+                  name="country"
+                  listeners={{
+                    // Another country's legal forms are not this one's: the form and its number go.
+                    onChange: () => {
+                      form.setFieldValue('legalFormId', '')
+                      form.setFieldValue('identityDocument', null)
+                      form.setFieldValue('identityNumber', '')
+                    },
+                  }}
+                >
+                  {(field) => (
+                    <FormField field={field} label="Country" required hint="Where the organisation is registered. Its legal forms follow.">
+                      {(c) => (
+                        <CountrySelect
+                          id={c.id}
+                          aria-label="Country"
+                          aria-required
+                          aria-invalid={c.invalid}
+                          aria-describedby={c.describedBy}
+                          value={c.value || null}
+                          onValueChange={(country) => c.onChange(country ?? '')}
+                        />
+                      )}
+                    </FormField>
+                  )}
+                </form.Field>
+                <form.Field name="legalFormId">
+                  {(field) => (
+                    <FormField field={field} label="Legal form" required>
+                      {(c) => (
+                        <LegalFormSelect
+                          id={c.id}
+                          aria-label="Legal form"
+                          aria-required
+                          aria-invalid={c.invalid}
+                          aria-describedby={c.describedBy}
+                          country={values.country || null}
+                          value={c.value || null}
+                          onValueChange={(legalFormId, legalForm) => {
+                            c.onChange(legalFormId ?? '')
+                            form.setFieldValue('identityDocument', legalForm?.identityDocument ?? null)
+                            if (!legalForm?.identityDocument) form.setFieldValue('identityNumber', '')
+                          }}
+                        />
+                      )}
+                    </FormField>
+                  )}
+                </form.Field>
+                {values.identityDocument && (
+                  <form.Field name="identityNumber">
+                    {(field) => (
+                      <TextField
+                        field={field}
+                        label={values.identityDocument ?? ''}
+                        required
+                        hint="The number on the document this legal form carries. One organisation per number in a country."
+                        placeholder="C-1024/2026"
+                      />
+                    )}
+                  </form.Field>
                 )}
-                <Field id="t-registered" label="Registered on">
-                  <DatePicker id="t-registered" value={f.registeredOn} onChange={(iso) => set('registeredOn', iso)} placeholder="Pick the registration date" />
-                </Field>
-                <Field id="t-tax" label="Tax number" hint="The TIN printed on invoices, if they have one.">
-                  <input id="t-tax" value={f.taxNumber} placeholder="1012345GST501" className={fieldClass} onChange={(e) => set('taxNumber', e.target.value)} />
-                </Field>
-                <Field id="t-timezone" label="Time zone" required hint="Their working days and times are kept in this zone.">
-                  <TimezoneSelect id="t-timezone" aria-label="Time zone" aria-required value={f.timezone} onValueChange={(timezone) => set('timezone', timezone)} />
-                </Field>
+                <form.Field name="registeredOn">
+                  {(field) => (
+                    <FormField field={field} label="Registered on">
+                      {(c) => <DatePicker id={c.id} value={c.value} onChange={c.onChange} placeholder="Pick the registration date" />}
+                    </FormField>
+                  )}
+                </form.Field>
+                <form.Field name="taxNumber">
+                  {(field) => <TextField field={field} label="Tax number" hint="The TIN printed on invoices, if they have one." placeholder="1012345GST501" />}
+                </form.Field>
+                <form.Field name="timezone">
+                  {(field) => (
+                    <FormField field={field} label="Time zone" required hint="Their working days and times are kept in this zone.">
+                      {(c) => (
+                        <TimezoneSelect
+                          id={c.id}
+                          aria-label="Time zone"
+                          aria-required
+                          aria-invalid={c.invalid}
+                          aria-describedby={c.describedBy}
+                          value={c.value || null}
+                          onValueChange={(timezone) => c.onChange(timezone ?? '')}
+                        />
+                      )}
+                    </FormField>
+                  )}
+                </form.Field>
               </div>
 
               <div className="border-t border-divider pt-[18px] sm:col-span-2">
-                <Field id="t-types" label="Institution types" required hint="What they do. Pick one or more; with several, mark the primary one. Their sector follows from it.">
-                  <InstitutionTypesField id="t-types" aria-label="Institution types" aria-required value={f.types} onValueChange={(types) => set('types', types)} />
-                </Field>
+                <form.Field name="institutionTypes">
+                  {(field) => (
+                    <FormField
+                      field={field}
+                      label="Institution types"
+                      required
+                      hint="What they do. Pick one or more; with several, mark the primary one. Their sector follows from it."
+                    >
+                      {(c) => (
+                        <InstitutionTypesField
+                          id={c.id}
+                          aria-label="Institution types"
+                          aria-required
+                          aria-invalid={c.invalid}
+                          aria-describedby={c.describedBy}
+                          value={{ codes: c.value.map((t) => t.code), primary: c.value.find((t) => t.primary)?.code ?? null }}
+                          onValueChange={(types) => c.onChange(types.codes.map((code) => ({ code, primary: code === types.primary })))}
+                        />
+                      )}
+                    </FormField>
+                  )}
+                </form.Field>
               </div>
 
               <div className="grid gap-4 border-t border-divider pt-[18px] sm:col-span-2 sm:grid-cols-2">
                 <div className="text-overline text-faint sm:col-span-2">Contact · optional</div>
-                <Field id="t-email" label="E-mail address" hint={f.email.trim() && !isEmail(f.email) ? 'That doesn’t look like an e-mail address.' : undefined} warn>
-                  <input id="t-email" type="email" value={f.email} placeholder="info@tenant.gov.mv" className={fieldClass} onChange={(e) => set('email', e.target.value)} />
-                </Field>
-                <Field
-                  id="t-phone"
-                  label="Phone"
-                  hint={f.phone.trim() && !isPhone(f.phone) ? 'Write it in international form, starting with + and the country code.' : 'International form, e.g. +960 332 4568.'}
-                  warn={!!f.phone.trim() && !isPhone(f.phone)}
-                >
-                  <input id="t-phone" value={f.phone} placeholder="+960 332 4568" inputMode="tel" className={fieldClass} onChange={(e) => set('phone', e.target.value)} />
-                </Field>
+                <form.Field name="email">
+                  {(field) => <TextField field={field} label="E-mail address" type="email" placeholder="info@tenant.gov.mv" />}
+                </form.Field>
+                <form.Field name="phone">
+                  {(field) => (
+                    <TextField field={field} label="Phone" hint="International form, e.g. +960 332 4568." placeholder="+960 332 4568" inputMode="tel" />
+                  )}
+                </form.Field>
               </div>
 
               <div className="border-t border-divider pt-[18px] sm:col-span-2">
                 <div className="mb-2 text-overline text-faint">Place in the tenant tree</div>
-                <div role="radiogroup" aria-label="Place in the tenant tree" className="grid gap-2.5 sm:grid-cols-2">
-                  {(
-                    [
-                      ['Standalone', 'Standalone or parent', 'Stands on its own. Other tenants can later be added under it.'],
-                      ['Child', 'Child of another tenant', 'Its parent may publish data for it to read.'],
-                    ] as const
-                  ).map(([k, label, sub]) => (
-                    <PickCard key={k} on={f.tree === k} onClick={() => set('tree', k)}>
-                      <Radio on={f.tree === k} />
-                      <span className="min-w-0">
-                        <span className="block text-ui-sm font-bold text-foreground">{label}</span>
-                        <span className="mt-0.5 block text-caption leading-[1.45] text-faint">{sub}</span>
-                      </span>
-                    </PickCard>
-                  ))}
-                </div>
-                {f.tree === 'Child' && (
-                  <Field id="t-parent" label="Parent tenant" required className="mt-3.5 max-w-[420px]" hint="A child keeps its own admins and data; the parent sees nothing inside it.">
-                    <ComboboxField
-                      id="t-parent"
-                      aria-label="Parent tenant"
-                      aria-required
-                      value={f.parentId}
-                      onValueChange={(parentId) => set('parentId', parentId)}
-                      options={parentOptions}
-                      placeholder={apiTenants ? 'Search tenants by name or code' : 'Loading tenants…'}
-                      emptyText="No tenant matches."
-                      disabled={!apiTenants}
-                    />
-                  </Field>
+                <form.Field name="tree">
+                  {(field) => (
+                    <div role="radiogroup" aria-label="Place in the tenant tree" className="grid gap-2.5 sm:grid-cols-2">
+                      {(
+                        [
+                          ['Standalone', 'Standalone or parent', 'Stands on its own. Other tenants can later be added under it.'],
+                          ['Child', 'Child of another tenant', 'Its parent may publish data for it to read.'],
+                        ] as const
+                      ).map(([k, label, sub]) => (
+                        <PickCard key={k} on={field.state.value === k} onClick={() => field.handleChange(k)}>
+                          <Radio on={field.state.value === k} />
+                          <span className="min-w-0">
+                            <span className="block text-ui-sm font-bold text-foreground">{label}</span>
+                            <span className="mt-0.5 block text-caption leading-[1.45] text-faint">{sub}</span>
+                          </span>
+                        </PickCard>
+                      ))}
+                    </div>
+                  )}
+                </form.Field>
+                {values.tree === 'Child' && (
+                  <form.Field name="parentId">
+                    {(field) => (
+                      <FormField
+                        field={field}
+                        label="Parent tenant"
+                        required
+                        className="mt-3.5 max-w-[420px]"
+                        hint="A child keeps its own admins and data; the parent sees nothing inside it."
+                      >
+                        {(c) => (
+                          <ComboboxField
+                            id={c.id}
+                            aria-label="Parent tenant"
+                            aria-required
+                            aria-invalid={c.invalid}
+                            aria-describedby={c.describedBy}
+                            value={c.value || null}
+                            onValueChange={(parentId) => c.onChange(parentId ?? '')}
+                            options={parentOptions}
+                            placeholder={apiTenants ? 'Search tenants by name or code' : 'Loading tenants…'}
+                            emptyText="No tenant matches."
+                            disabled={!apiTenants}
+                          />
+                        )}
+                      </FormField>
+                    )}
+                  </form.Field>
                 )}
               </div>
             </div>
@@ -529,17 +631,17 @@ export function AddTenantWizard({
                 title="Tenant details"
                 onEdit={() => setStep(0)}
                 lines={[
-                  ['Name', f.name.trim() || 'Not set'],
-                  ['Slug · code', `${f.slug.trim() || '—'} · ${f.code.trim() || '—'}`],
-                  ['Country', countryName(f.country) ?? 'Not set'],
+                  ['Name', values.name.trim() || 'Not set'],
+                  ['Slug · code', `${values.slug.trim() || '—'} · ${values.code.trim() || '—'}`],
+                  ['Country', countryName(values.country || null) ?? 'Not set'],
                   ['Legal form', legalFormName ?? 'Not set'],
-                  ...(f.identityDocument ? [[f.identityDocument, f.identityNumber.trim() || 'Not set'] as [string, string]] : []),
-                  ['Registered on', f.registeredOn ? fmt(new Date(`${f.registeredOn}T00:00`)) : 'Not set'],
-                  ['Tax number', f.taxNumber.trim() || 'Not set'],
-                  ['Time zone', f.timezone ?? 'Not set'],
-                  ['Institution types', f.types.codes.map((c) => `${typeName(c)}${c === f.types.primary && f.types.codes.length > 1 ? ' (primary)' : ''}`).join(', ') || 'Not set'],
-                  ['Contact', [f.email.trim(), f.phone.trim()].filter(Boolean).join(' · ') || 'Not set'],
-                  ['Tenant tree', f.tree === 'Child' ? `Child of ${parentName ?? 'not picked'}` : 'Standalone / can take children'],
+                  ...(values.identityDocument ? [[values.identityDocument, values.identityNumber.trim() || 'Not set'] as [string, string]] : []),
+                  ['Registered on', values.registeredOn ? fmt(new Date(`${values.registeredOn}T00:00`)) : 'Not set'],
+                  ['Tax number', values.taxNumber.trim() || 'Not set'],
+                  ['Time zone', values.timezone || 'Not set'],
+                  ['Institution types', values.institutionTypes.map((t) => `${typeName(t.code)}${t.primary && values.institutionTypes.length > 1 ? ' (primary)' : ''}`).join(', ') || 'Not set'],
+                  ['Contact', [values.email.trim(), values.phone.trim()].filter(Boolean).join(' · ') || 'Not set'],
+                  ['Tenant tree', values.tree === 'Child' ? `Child of ${parentName ?? 'not picked'}` : 'Standalone / can take children'],
                 ]}
               />
               <ReviewCard
@@ -568,9 +670,12 @@ export function AddTenantWizard({
           )}
 
           <StepperFooter note={notes[step]}>
-            <Button variant="ghost" onClick={saveDraft}>
-              Save as draft
-            </Button>
+            {/* No drafts once creating is real: the tenant is created in provisioning (C197). */}
+            {!onCreated && (
+              <Button variant="ghost" onClick={saveDraft}>
+                Save as draft
+              </Button>
+            )}
             {step > 0 && (
               <Button variant="outline" onClick={() => setStep((s) => Math.max(0, s - 1))}>
                 Back
@@ -582,8 +687,8 @@ export function AddTenantWizard({
               </Button>
             )}
             {(ready || step === last) && (
-              <Button onClick={create_}>
-                Create tenant
+              <Button onClick={create_} disabled={create.isPending}>
+                {create.isPending ? 'Creating…' : 'Create tenant'}
               </Button>
             )}
           </StepperFooter>

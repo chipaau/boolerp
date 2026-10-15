@@ -14,10 +14,10 @@ const route = getRouteApi('/_admin/tenants/')
 
 /**
  * The tenants list (C174, C179), in the tenants page's design: every tenant from the API, searched,
- * filtered, sorted, and paged on the server, with its state in the URL. Creating a tenant (F3) and
- * the lifecycle actions show disabled until their endpoints exist; "New tenant" opens the create form
- * as a preview that saves nothing until F3 builds the endpoint. The design prototype this
- * replaces is at /tenants-prototype until this is accepted.
+ * filtered, sorted, and paged on the server, with its state in the URL. "New tenant" opens the create
+ * form, whose step 1 creates the tenant through the API (F3, C197); the lifecycle actions show
+ * disabled until their endpoints exist. The design prototype this replaces is at
+ * /tenants-prototype until this is accepted.
  */
 export function TenantsList() {
   const search = route.useSearch()
@@ -39,7 +39,7 @@ export function TenantsList() {
 
   return (
     <div className="min-h-0 w-full overflow-y-auto">
-      {creating && <AddTenantWizard preview onClose={() => setCreating(false)} onProvisioned={() => setCreating(false)} />}
+      {creating && <AddTenantWizard onClose={() => setCreating(false)} onProvisioned={() => setCreating(false)} onCreated={() => setCreating(false)} />}
       <div className="px-8 pt-[26px] pb-24">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-5">
           <div className="min-w-0">

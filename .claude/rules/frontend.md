@@ -19,6 +19,10 @@ them by default. See [product scope](../../docs/product/scope.md) and
 - `apps/workspace` and `apps/admin` sign in only through their BFF, following
   [app integration](../../docs/platform/bff-frontend.md): no Kratos or Hydra calls and no
   tokens in the browser. `packages/auth` (the previous design) was removed (C100).
+- Forms (C176): TanStack Form with the feature's zod schema as its validator; save through
+  `useApiMutation({ ...mutation, form })` from `@workspace/api` so the API's 422 lands on the
+  fields (never by feeding server errors into zod), with `FormErrorBanner` for the rest; fields
+  from `@workspace/ui/components/form-field` (`FormField`, `TextField`) bound to `form.Field`'s `field`.
 - Mark every required form field with an asterisk (*) after its label: `Label`/`Field`
   `required`, and `required` or `aria-required` on the control (C202). Optional fields have no mark.
 - Read [frontend structure](../../docs/architecture/frontend.md). Workspace apps (Control

@@ -157,6 +157,14 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   `detail` as the message; errors matching no field show in a banner above the form with the
   request reference. Editing a field clears its server error; submit is disabled only while
   sending.
+- Built (F3): `useApiMutation({ ...mutation, form })` in `@workspace/api` saves a form: on a 422
+  it puts each `ApiError.fieldErrors` path on its field (`applyServerErrors`; `a.1.b` is the field
+  `a[1].b`, falling back to the nearest field that exists) and returns `formErrors` for the
+  rest. `@workspace/ui/components/form-field` has `FormField` (any control, given `id`, `value`,
+  `onChange`, `onBlur`, `invalid`), `TextField`, and `FormErrorBanner`, bound to the `field`
+  that `form.Field` gives (typed structurally, so `ui` needs no form dependency); a field shows
+  its errors once touched, and its `onChange` clears the server's error. The first form is the
+  admin console's create-tenant step 1 (`newTenantFormSchema` → `toCreateTenantInput`).
 
 ### The first list: tenants (C187)
 
