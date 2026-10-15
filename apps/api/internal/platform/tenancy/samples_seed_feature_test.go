@@ -38,7 +38,7 @@ func TestFeatureTheSampleSeederCreatesTenantsInDev(t *testing.T) {
 		  JOIN tenant_institution_types it ON it.tenant_id = t.id AND it.is_primary
 		 WHERE t.slug = 'x-hospital'`).Scan(&parent, &status, &primary, &types))
 	assert.Equal(t, "x-ministry", parent)
-	assert.Equal(t, "active", status)
+	assert.Equal(t, "provisioning", status, "SampleMembers activates it with its owner (C197, C198)")
 	assert.Equal(t, "x_tenancy_type", primary, "the first type is the primary")
 	assert.Equal(t, 2, types)
 

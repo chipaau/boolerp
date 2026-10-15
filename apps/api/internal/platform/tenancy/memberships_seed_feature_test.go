@@ -88,6 +88,31 @@ func TestFeatureTheSampleMembersSeederAddsTheTeamToEverySample(t *testing.T) {
 	assert.Equal(t, 4, testdb.Count(t, w.tx, "memberships", map[string]any{"user_id": u1}), "running again never duplicates")
 }
 
+func TestFeatureTheMemberSeedersActivateWhatTheyOwn(t *testing.T) {
+	w := newWorld(t)
+	w.addTypes(t)
+	op := w.operator(t)
+	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
+		VALUES ($1, 'x_tenancy_type', true)`, op)
+	require.NoError(t, seeds.NewSamplesFrom(w.tx, []byte(testSamples), "x-tenancy.test").Run(t.Context(), seedEnvFor("dev")))
+	w.user(t, 1)
+	team := []seeds.Member{{Email: "member1@x-tenancy.test", Owner: true}}
+
+	require.NoError(t, seeds.NewOperatorMembers(w.tx, team).Run(t.Context(), seedEnvFor("dev")))
+	require.NoError(t, seeds.NewSampleMembersFrom(w.tx, []byte(testSamples), team).Run(t.Context(), seedEnvFor("dev")))
+	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`) // every active tenant has its owner and primary type
+
+	testdb.AssertHas(t, w.tx, "tenants", map[string]any{"id": op, "status": "active"})
+	for slug, status := range map[string]string{
+		"x-ministry": "active", "x-hospital": "active", "x-company": "active",
+		"x-new": "provisioning", // no types: not ready
+	} {
+		testdb.AssertHas(t, w.tx, "tenants", map[string]any{"slug": slug, "status": status})
+	}
+	require.NoError(t, seeds.NewSampleMembersFrom(w.tx, []byte(testSamples), team).Run(t.Context(), seedEnvFor("dev")),
+		"running again leaves active tenants as they are")
+}
+
 func TestFeatureTheSampleMembersSeederRunsOnlyInDev(t *testing.T) {
 	w := newWorld(t)
 	u1 := w.user(t, 1)

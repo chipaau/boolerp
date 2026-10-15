@@ -40,8 +40,10 @@ var Bool = Tenant{
 	PrimaryType: "it_services",
 }
 
-// Operator creates the operator tenant, active, if there is none, and gives the
-// operator its platform workspace host if it has none (C158). An existing
+// Operator creates the operator tenant, in provisioning, if there is none, and gives
+// the operator its platform workspace host if it has none (C158). It becomes active
+// when OperatorMembers gives it its owner (C197, C198): a tenant outside provisioning
+// needs one, checked at commit. An existing
 // operator is left as it is, so changes made later (in the admin console) stay.
 type Operator struct {
 	db             DB
@@ -95,8 +97,8 @@ func (o *Operator) create(ctx context.Context, tx pgx.Tx) (string, error) {
 	var id string
 	err := tx.QueryRow(ctx, `
 		INSERT INTO tenants (slug, code, name, country, legal_form_id, identity_number, registered_on,
-		                     timezone, email, phone, is_operator, status, activated_at)
-		SELECT $1, $2, $3, $4, lf.id, $6, $7::date, $8, $9, $10, true, 'active', now()
+		                     timezone, email, phone, is_operator)
+		SELECT $1, $2, $3, $4, lf.id, $6, $7::date, $8, $9, $10, true
 		  FROM legal_forms lf WHERE lf.country = $4 AND lf.code = $5
 		RETURNING id`,
 		t.Slug, t.Code, t.Name, t.Country, t.LegalForm, t.IdentityNumber, t.RegisteredOn,

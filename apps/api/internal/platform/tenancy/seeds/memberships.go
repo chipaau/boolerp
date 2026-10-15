@@ -63,6 +63,10 @@ func (s *OperatorMembers) Run(ctx context.Context, env seed.Env) error {
 			}
 			count(added, &created, &existing)
 		}
+		// The operator is created provisioning; with its owner it can now be active.
+		if _, err := activateIfReady(ctx, tx, tenantID); err != nil {
+			return fmt.Errorf("activate the operator: %w", err)
+		}
 		// Counts only: emails are personal data, never logged (C94).
 		env.Logger.InfoContext(ctx, "operator members ensured", "created", created, "existing", existing)
 		return nil
@@ -125,7 +129,26 @@ func (s *SampleMembers) Run(ctx context.Context, env seed.Env) error {
 			}
 			count(added, &created, &existing)
 		}
-		env.Logger.InfoContext(ctx, "sample members seeded", "created", created, "existing", existing)
+		// Samples are created provisioning; those classified (with types) and now owned go
+		// live, as the activate operation will (C197). One without types stays provisioning.
+		var activated int
+		for _, sample := range samples {
+			if len(sample.Types) == 0 {
+				continue
+			}
+			var tenantID string
+			if err := tx.QueryRow(ctx, `SELECT id FROM tenants WHERE slug = $1`, sample.Slug).Scan(&tenantID); err != nil {
+				return fmt.Errorf("sample %s: %w", sample.Slug, err)
+			}
+			ok, err := activateIfReady(ctx, tx, tenantID)
+			if err != nil {
+				return fmt.Errorf("activate sample %s: %w", sample.Slug, err)
+			}
+			if ok {
+				activated++
+			}
+		}
+		env.Logger.InfoContext(ctx, "sample members seeded", "created", created, "existing", existing, "activated", activated)
 		return nil
 	})
 }
@@ -166,4 +189,21 @@ func count(added bool, created, existing *int) {
 	} else {
 		*existing++
 	}
+}
+
+// activateIfReady makes a provisioning tenant active when it has what activation needs:
+// a primary institution type (C138) and an invited or active owner (C197, C198), the
+// same conditions the database checks at commit. It reports whether it activated the
+// tenant; one already active, or not yet ready, is left as it is.
+func activateIfReady(ctx context.Context, tx pgx.Tx, tenantID string) (bool, error) {
+	tag, err := tx.Exec(ctx, `
+		UPDATE tenants SET status = 'active', activated_at = now()
+		 WHERE id = $1 AND status = 'provisioning'
+		   AND EXISTS (SELECT 1 FROM tenant_institution_types it WHERE it.tenant_id = $1 AND it.is_primary)
+		   AND EXISTS (SELECT 1 FROM memberships m
+		                WHERE m.tenant_id = $1 AND m.is_owner AND m.status IN ('invited', 'active'))`, tenantID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
 }

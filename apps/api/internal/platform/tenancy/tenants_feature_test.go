@@ -26,6 +26,7 @@ type world struct {
 	tx               pgx.Tx
 	formXT, formXU   string
 	formXTNoDocument string
+	owner            string // the user activate makes each tenant's owner, created on first use
 }
 
 func newWorld(t *testing.T) *world {
@@ -85,12 +86,18 @@ func (w *world) visible(t *testing.T) []string {
 	return codes
 }
 
-// activate makes tenant active, with x_tenancy_type as its primary type, then runs the commit-time checks at once (SET CONSTRAINTS ALL IMMEDIATE),
-// as the test's transaction never commits.
+// activate makes tenant active as the real flow does: with x_tenancy_type as its primary
+// type and an owner (C197, C198), then runs the commit-time checks at once (SET
+// CONSTRAINTS ALL IMMEDIATE), as the test's transaction never commits.
 func (w *world) activate(t *testing.T, tenant string) {
 	t.Helper()
 	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
 		VALUES ($1, 'x_tenancy_type', true)`, tenant)
+	if w.owner == "" {
+		w.owner = w.user(t, 999999)
+	}
+	exec(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at, is_owner)
+		VALUES ($1, $2, 'active', now(), true)`, tenant, w.owner)
 	exec(t, w.tx, `UPDATE tenants SET status = 'active', activated_at = now() WHERE id = $1`, tenant)
 	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
 }

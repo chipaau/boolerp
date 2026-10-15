@@ -263,7 +263,7 @@ users never become members (C133).
 | `tenant_id` | `uuid` | Not null; references `tenants.id`, `ON DELETE RESTRICT`. |
 | `user_id` | `uuid` | Not null; references `users.id`, `ON DELETE RESTRICT` (a cross-module key, C134); indexed. |
 | `status` | `text` | Not null, default `invited`; `invited`, `active`, `disabled` (reversible), or `ended` (final). |
-| `is_owner` | `boolean` | Not null, default false; only when invited or active; at most one per tenant. |
+| `is_owner` | `boolean` | Not null, default false; only when invited or active; one or more per tenant (C198). |
 | `invited_by` | `uuid` | Nullable; references `users.id`; null when provisioning or a seed created it. |
 | `invite_expires_at` | `timestamptz` | Required when invited; an invited row past it is an expired invitation. |
 | `joined_at` | `timestamptz` | Required when active or disabled. |
@@ -273,8 +273,10 @@ users never become members (C133).
 
 One live membership per person and tenant (unique while not ended); an ended membership is
 frozen history and rejoining is a new row. Tenant and user never change (a trigger). Seats
-are the tenant's invited and active memberships. To transfer ownership, unflag the old owner
-before flagging the new one. Row-level security: members read and change their tenant's
+are the tenant's invited and active memberships. A tenant may have several owners; one outside
+`provisioning` keeps at least one invited or active owner, checked at commit by constraint
+triggers on `tenants` and `memberships` (C198, changed 2026-10-15 in the original migration,
+C140): ownership moves by adding an owner, then the old one stepping down. Row-level security: members read and change their tenant's
 memberships (Cerbos decides who); the operator also reads, creates, and changes owner
 memberships of any tenant, and nothing else outside its own; nothing deletes one. Two
 lookups owned by `erp_lookup` (C131): `lookup.active_membership(tenant, user)` for
