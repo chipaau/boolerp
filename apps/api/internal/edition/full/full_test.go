@@ -198,6 +198,10 @@ func TestRegisterModulesMountsTheTenantBehindTheTenantChain(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/tenant", nil))
 	assert.Equal(t, http.StatusUnauthorized, rec.Code, "mounted, and authentication comes first")
+
+	rec = httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/countries", nil))
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "the reference lists need an authenticated caller")
 }
 
 func TestPrincipalNeedsACaller(t *testing.T) {
@@ -208,7 +212,8 @@ func TestPrincipalNeedsACaller(t *testing.T) {
 // The route walk C144 asks for: every route outside /api/auth (whose /me routes
 // use the authentication pieces on their own, C157) has Authenticate and a
 // caller-kind guard, and any route that resolves a tenant also requires
-// membership. Middlewares are compared by their function's code pointer, which a
+// membership. Only the routes named in outsideTenant (the Authenticated chain's,
+// C199) may skip the caller-kind guard and the tenant. Middlewares are compared by their function's code pointer, which a
 // method value shares across receivers.
 func TestEveryRouteIsProtected(t *testing.T) {
 	r := chi.NewRouter()
@@ -232,6 +237,9 @@ func TestEveryRouteIsProtected(t *testing.T) {
 		requireMember = code((&tenancy.Module{}).RequireMember)
 		requireActive = code((&tenancy.Module{}).RequireActiveTenant)
 	)
+	outsideTenant := map[string]bool{
+		"/api/v1/countries": true, "/api/v1/legal-forms": true, "/api/v1/institution-types": true,
+	}
 	routes := 0
 	require.NoError(t, chi.Walk(r, func(method, route string, _ http.Handler, mws ...func(http.Handler) http.Handler) error {
 		if strings.HasPrefix(route, "/api/auth/") {
@@ -243,8 +251,12 @@ func TestEveryRouteIsProtected(t *testing.T) {
 			has[code(mw)] = true
 		}
 		assert.True(t, has[authenticate], "%s %s: Authenticate", method, route)
-		assert.True(t, has[requireUser], "%s %s: a caller-kind guard", method, route)
 		assert.True(t, has[recordActor], "%s %s: the actor for the audit", method, route)
+		if outsideTenant[route] {
+			assert.False(t, has[resolveTenant] || has[resolveOp], "%s %s: listed as outside a tenant", method, route)
+			return nil
+		}
+		assert.True(t, has[requireUser], "%s %s: a caller-kind guard", method, route)
 		assert.True(t, has[resolveTenant] || has[resolveOp], "%s %s: a tenant or the operator", method, route)
 		if has[resolveTenant] || has[resolveOp] {
 			assert.True(t, has[loadCaps], "%s %s: the caller's capabilities", method, route)

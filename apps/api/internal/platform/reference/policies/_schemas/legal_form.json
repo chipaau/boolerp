@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "reference:legal_form (C151)",
+  "description": "The legal forms list. Only list is asked, which carries no record, so no attributes are accepted.",
+  "type": "object",
+  "additionalProperties": false
+}

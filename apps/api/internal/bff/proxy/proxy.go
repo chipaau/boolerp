@@ -92,7 +92,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	in, ok, err := p.sessions.Current(ctx)
 	if err != nil {
 		p.logger.ErrorContext(ctx, "loading the session failed", "error", err)
-		problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+		problem.Unavailable(w, r)
 		return
 	}
 	if !ok {
@@ -116,7 +116,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if err != nil {
 			p.logger.WarnContext(ctx, "refreshing the access token failed", "error", err)
-			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+			problem.Unavailable(w, r)
 			return
 		}
 		in.Tokens = tokens

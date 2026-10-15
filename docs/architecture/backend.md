@@ -146,6 +146,19 @@ Each edition has its own `main` packages (`cmd/api`, `cmd/migrate`, `cmd/deploy`
 not compiled into its binaries, and a binary and its migrator always agree. There is
 no generic `Module` interface or container.
 
+**Files inside a module (C200):** one `routes.go` lists the module's routes and nothing
+else; the handlers are one file per resource (`countries.go`, `legal_forms.go`;
+`employees.go`, `documents.go`), each holding that resource's handlers and its request
+and response types. Endpoint tests split the same way (`countries_endpoint_feature_test.go`),
+with the shared test world and router in `routes_feature_test.go`. A small platform
+module stays flat, in its root package (`reference`, `identity/auth`); a business module
+keeps routes and handlers together in `adapters/http/`, with `requests.go` and
+`responses.go` for types shared across its resources, and its use cases in `application/`.
+HRMS is a group of capability modules (`internal/modules/hrms/<capability>`, mounted at
+`/api/hrms/<capability>`), split when a capability has its own data and rules, never
+because of endpoint count. No folder per kind (`handlers/`, `routes/`): in Go every
+folder is a package.
+
 **Dependencies between modules:** business modules may depend on platform modules. A
 module that needs another business module defines the interface it needs in its own
 `application` package, and the edition passes the other module in. Platform modules

@@ -1,6 +1,7 @@
 package httpinput
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"slices"
@@ -20,10 +21,15 @@ type ListSpec struct {
 	Sorts       []string            // fields sort may name, such as "name", "createdAt"
 	DefaultSort string              // such as "name" or "-createdAt"
 	Filters     map[string][]string // filter name → allowed values (nil: any non-blank value)
+	Required    []string            // filters the request must give, such as a legal form's country
 	Search      bool                // whether q is accepted
+	// The page size when none is given, and the most a request may ask for; zero means
+	// DefaultPageSize and MaxPageSize. A short reference list may allow more than the
+	// usual maximum so it arrives in one page (C68 allows a per-endpoint maximum).
+	DefaultPageSize, MaxPageSize int
 }
 
-// The page size limits (C68).
+// The usual page size limits (C68).
 const (
 	DefaultPageSize = 25
 	MaxPageSize     = 100
@@ -47,6 +53,25 @@ type SortField struct {
 // Offset is the row offset of the page.
 func (l List) Offset() int { return (l.Page - 1) * l.PageSize }
 
+// Page is one page of a list in the agreed envelope (C68): the items, which page it
+// is, its size, and how many items match in all.
+type Page[T any] struct {
+	Items    []T `json:"items"`
+	Page     int `json:"page"`
+	PageSize int `json:"pageSize"`
+	Total    int `json:"total"`
+}
+
+// WritePage answers l's page: 200 with items in the envelope, an empty array (never
+// null) when there are none, and total, how many items match in all.
+func WritePage[T any](w http.ResponseWriter, l List, items []T, total int) {
+	if items == nil {
+		items = []T{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(Page[T]{Items: items, Page: l.Page, PageSize: l.PageSize, Total: total})
+}
+
 // ParseList reads r's list parameters against spec. On failure it writes a 422
 // validation problem naming each bad parameter and returns false.
 func ParseList(w http.ResponseWriter, r *http.Request, spec ListSpec) (List, bool) {
@@ -59,7 +84,14 @@ func ParseList(w http.ResponseWriter, r *http.Request, spec ListSpec) (List, boo
 }
 
 func parseList(q url.Values, spec ListSpec) (List, []problem.FieldError) {
-	l := List{Page: 1, PageSize: DefaultPageSize, Filters: map[string]string{}}
+	defaultSize, maxSize := DefaultPageSize, MaxPageSize
+	if spec.DefaultPageSize > 0 {
+		defaultSize = spec.DefaultPageSize
+	}
+	if spec.MaxPageSize > 0 {
+		maxSize = spec.MaxPageSize
+	}
+	l := List{Page: 1, PageSize: defaultSize, Filters: map[string]string{}}
 	var errs []problem.FieldError
 	bad := func(param, code, detail string) {
 		errs = append(errs, problem.FieldError{Parameter: param, Code: code, Detail: detail})
@@ -90,8 +122,8 @@ func parseList(q url.Values, spec ListSpec) (List, []problem.FieldError) {
 			switch {
 			case err != nil || n < 1:
 				bad(name, "min", "must be a whole number of at least 1")
-			case n > MaxPageSize:
-				bad(name, "max", "must be at most "+strconv.Itoa(MaxPageSize))
+			case n > maxSize:
+				bad(name, "max", "must be at most "+strconv.Itoa(maxSize))
 			default:
 				l.PageSize = n
 			}
@@ -126,6 +158,11 @@ func parseList(q url.Values, spec ListSpec) (List, []problem.FieldError) {
 			default:
 				l.Filters[name] = v
 			}
+		}
+	}
+	for _, name := range spec.Required {
+		if _, given := q[name]; !given {
+			bad(name, "required", "is required")
 		}
 	}
 	if l.Sort == nil {

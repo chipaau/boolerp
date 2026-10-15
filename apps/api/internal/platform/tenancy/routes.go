@@ -74,20 +74,14 @@ func (m *Module) list(authz authorization.Authorizer) http.HandlerFunc {
 		})
 		if err != nil {
 			m.logger.ErrorContext(r.Context(), "listing tenants failed", "error", err)
-			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+			problem.Unavailable(w, r)
 			return
 		}
 		items := make([]item, len(tenants))
 		for i, t := range tenants {
 			items[i] = item{t.ID, t.Slug, t.Code, t.Name, t.Status, t.Country, t.ParentID, t.ParentName, t.WorkspaceHost, t.CreatedAt}
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(struct {
-			Items    []item `json:"items"`
-			Page     int    `json:"page"`
-			PageSize int    `json:"pageSize"`
-			Total    int    `json:"total"`
-		}{items, l.Page, l.PageSize, total})
+		httpinput.WritePage(w, l, items, total)
 	}
 }
 
@@ -99,7 +93,7 @@ func (m *Module) current(authz authorization.Authorizer) http.HandlerFunc {
 		t, err := m.currentTenant(r.Context())
 		if err != nil {
 			m.logger.ErrorContext(r.Context(), "reading the tenant failed", "error", err)
-			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+			problem.Unavailable(w, r)
 			return
 		}
 		if err := authz.Check(r.Context(), "view", authorization.Resource{

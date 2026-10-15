@@ -95,6 +95,54 @@ func TestParseListWritesOneProblemForEveryBadParameter(t *testing.T) {
 	assert.Equal(t, 2, l.Page)
 }
 
+func TestParseListUsesTheListsOwnPageSizes(t *testing.T) {
+	long := ListSpec{Sorts: []string{"name"}, DefaultSort: "name", DefaultPageSize: 300, MaxPageSize: 300}
+	l, errs := parseList(url.Values{}, long)
+	require.Empty(t, errs)
+	assert.Equal(t, 300, l.PageSize, "its own default")
+
+	q, _ := url.ParseQuery("pageSize=250")
+	l, errs = parseList(q, long)
+	require.Empty(t, errs)
+	assert.Equal(t, 250, l.PageSize, "above the usual maximum, within its own")
+
+	q, _ = url.ParseQuery("pageSize=301")
+	_, errs = parseList(q, long)
+	require.Len(t, errs, 1)
+	assert.Equal(t, problem.FieldError{Parameter: "pageSize", Code: "max", Detail: "must be at most 300"}, errs[0])
+}
+
+func TestParseListRequiresItsRequiredFilters(t *testing.T) {
+	byCountry := ListSpec{Sorts: []string{"name"}, DefaultSort: "name",
+		Filters: map[string][]string{"country": nil}, Required: []string{"country"}}
+	_, errs := parseList(url.Values{}, byCountry)
+	require.Len(t, errs, 1)
+	assert.Equal(t, problem.FieldError{Parameter: "country", Code: "required", Detail: "is required"}, errs[0])
+
+	q, _ := url.ParseQuery("country=MV")
+	l, errs := parseList(q, byCountry)
+	require.Empty(t, errs)
+	assert.Equal(t, "MV", l.Filters["country"])
+}
+
 func TestEscape(t *testing.T) {
 	assert.Equal(t, `50\% off\_now \\`, Escape(`50% off_now \`))
+}
+
+func TestWritePageAnswersTheEnvelope(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WritePage(rec, List{Page: 2, PageSize: 10}, []string{"a", "b"}, 12)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	assert.JSONEq(t, `{"items": ["a", "b"], "page": 2, "pageSize": 10, "total": 12}`, rec.Body.String())
+}
+
+func TestWritePageAnswersNoItemsAsAnEmptyArray(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WritePage[string](rec, List{Page: 3, PageSize: 10}, nil, 12)
+	assert.JSONEq(t, `{"items": [], "page": 3, "pageSize": 10, "total": 12}`, rec.Body.String())
+
+	var p Page[string]
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &p))
+	assert.Equal(t, Page[string]{Items: []string{}, Page: 3, PageSize: 10, Total: 12}, p)
 }

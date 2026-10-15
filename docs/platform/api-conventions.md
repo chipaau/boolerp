@@ -67,7 +67,10 @@ GET /api/v1/employees?page=3&pageSize=50
 ```
 
 - `page` starts at 1; `pageSize` has a per-endpoint default and a maximum (normally 100).
-- Values outside the allowed range are a 400 problem response.
+- A handler reads the parameters with `httpinput.ParseList` and answers with
+  `httpinput.WritePage(w, list, items, total)`, the one writer of this envelope
+  (`httpinput.Page[T]`; no items is `[]`, never `null`).
+- Values outside the allowed range are a 422 validation problem (below).
 
 Lists that grow without bound (for example the audit log, step 9, or event feeds) may
 instead use cursor pagination as a documented exception:
@@ -78,6 +81,8 @@ instead use cursor pagination as a documented exception:
 - Filters are named query parameters: `?status=active&departmentId=...`.
 - Ranges use explicit pairs: `?hiredFrom=2025-01-01&hiredTo=2025-12-31`.
 - Free-text search, where supported, uses `q`: `?q=aisha`.
+- A list may require a filter (the legal forms need `country`, C199); a missing one is a
+  422 with `code: required` on that parameter.
 - Sorting uses `sort`, comma-separated, with `-` for descending: `?sort=-hiredAt,lastName`.
 - Every filter and sort field is declared per endpoint (allow-listed). Unknown
   parameters or sort fields are a 400 problem response, never silently ignored, so

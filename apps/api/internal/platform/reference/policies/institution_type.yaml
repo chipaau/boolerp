@@ -1,0 +1,19 @@
+# reference:institution_type (C199): the institution types, a shared reference list. Reference data
+# is not sensitive, so any authenticated caller may list it, with no tenant or
+# capability: a person (user, or account before registering, C157) or a machine client.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: default
+  resource: "reference:institution_type"
+  schemas:
+    principalSchema:
+      ref: cerbos:///authorization/caller.json
+    resourceSchema:
+      ref: cerbos:///reference/institution_type.json
+      # A list has no record.
+      ignoreWhen:
+        actions: ["list"]
+  rules:
+    - actions: ["list"]
+      effect: EFFECT_ALLOW
+      roles: ["user", "account", "client"]

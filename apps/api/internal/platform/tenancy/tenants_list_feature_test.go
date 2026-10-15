@@ -16,6 +16,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity/auth"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy"
 )
 
@@ -62,14 +63,11 @@ func listRouter(w *world, authz authorization.Authorizer) http.Handler {
 	return r
 }
 
-type tenantPage struct {
-	Items []struct {
-		ID, Slug, Code, Name, Status, Country string
-		ParentID, ParentName, WorkspaceHost   *string
-		CreatedAt                             string
-	}
-	Page, PageSize, Total int
-}
+type tenantPage = httpinput.Page[struct {
+	ID, Slug, Code, Name, Status, Country string
+	ParentID, ParentName, WorkspaceHost   *string
+	CreatedAt                             string
+}]
 
 func listTenants(t *testing.T, h http.Handler, token, query string) (*httptest.ResponseRecorder, tenantPage) {
 	t.Helper()
