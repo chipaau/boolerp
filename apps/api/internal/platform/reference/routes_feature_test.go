@@ -211,6 +211,8 @@ func TestFeatureTheReferenceListsRefuse(t *testing.T) {
 
 	rec, _ := get[country](t, referenceRouter(tx, &stated{allow: true}), "/api/v1/countries?sort=alpha3")
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "an unknown sort")
+	rec, _ = get[country](t, referenceRouter(tx, &stated{allow: true}), "/api/v1/institution-types?sort=sectorCode")
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "an unknown sort")
 }
 
 func TestFeatureAFailedReadIsUnavailable(t *testing.T) {
@@ -218,6 +220,8 @@ func TestFeatureAFailedReadIsUnavailable(t *testing.T) {
 	h := referenceRouter(tx, &stated{allow: true})
 	_, err := tx.Exec(t.Context(), `SELECT 1/0`) // the transaction is now aborted
 	require.Error(t, err)
-	rec, _ := get[country](t, h, "/api/v1/countries")
-	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	for _, path := range []string{"/api/v1/countries", "/api/v1/legal-forms?country=XA", "/api/v1/institution-types"} {
+		rec, _ := get[country](t, h, path)
+		assert.Equal(t, http.StatusServiceUnavailable, rec.Code, path)
+	}
 }

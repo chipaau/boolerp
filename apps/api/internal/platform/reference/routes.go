@@ -1,7 +1,6 @@
 package reference
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -35,16 +34,28 @@ type country struct {
 }
 
 // countries answers the current countries (GET /api/v1/countries), all in one page.
+// Cerbos decides first: reference:country list.
 func (m *Module) countries(authz authorization.Authorizer) http.HandlerFunc {
-	return list(m, authz, "reference:country", store.CountryListSpec,
-		func(ctx context.Context, l httpinput.List) ([]country, int, error) {
-			rows, total, err := store.ListCountries(ctx, m.db, l)
-			items := make([]country, len(rows))
-			for i, c := range rows {
-				items[i] = country{c.Code, c.Alpha3, c.Name, c.PhonePrefix}
-			}
-			return items, total, err
-		})
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := authz.Can(r.Context(), "list", "reference:country"); err != nil {
+			authorization.WriteError(w, r, err)
+			return
+		}
+		l, ok := httpinput.ParseList(w, r, store.CountryListSpec)
+		if !ok {
+			return
+		}
+		rows, total, err := store.ListCountries(r.Context(), m.db, l)
+		if err != nil {
+			m.unavailable(w, r, "listing countries failed", err)
+			return
+		}
+		items := make([]country, len(rows))
+		for i, c := range rows {
+			items[i] = country{c.Code, c.Alpha3, c.Name, c.PhonePrefix}
+		}
+		httpinput.WritePage(w, l, items, total)
+	}
 }
 
 type legalForm struct {
@@ -56,16 +67,28 @@ type legalForm struct {
 }
 
 // legalForms answers a country's current legal forms (GET /api/v1/legal-forms?country=MV).
+// Cerbos decides first: reference:legal_form list.
 func (m *Module) legalForms(authz authorization.Authorizer) http.HandlerFunc {
-	return list(m, authz, "reference:legal_form", store.LegalFormListSpec,
-		func(ctx context.Context, l httpinput.List) ([]legalForm, int, error) {
-			rows, total, err := store.ListLegalForms(ctx, m.db, l)
-			items := make([]legalForm, len(rows))
-			for i, f := range rows {
-				items[i] = legalForm{f.ID, f.Code, f.Name, f.Category, f.IdentityDocument}
-			}
-			return items, total, err
-		})
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := authz.Can(r.Context(), "list", "reference:legal_form"); err != nil {
+			authorization.WriteError(w, r, err)
+			return
+		}
+		l, ok := httpinput.ParseList(w, r, store.LegalFormListSpec)
+		if !ok {
+			return
+		}
+		rows, total, err := store.ListLegalForms(r.Context(), m.db, l)
+		if err != nil {
+			m.unavailable(w, r, "listing legal forms failed", err)
+			return
+		}
+		items := make([]legalForm, len(rows))
+		for i, f := range rows {
+			items[i] = legalForm{f.ID, f.Code, f.Name, f.Category, f.IdentityDocument}
+		}
+		httpinput.WritePage(w, l, items, total)
+	}
 }
 
 type sector struct {
@@ -80,38 +103,32 @@ type institutionType struct {
 }
 
 // institutionTypes answers the current institution types with their sectors
-// (GET /api/v1/institution-types).
+// (GET /api/v1/institution-types). Cerbos decides first: reference:institution_type list.
 func (m *Module) institutionTypes(authz authorization.Authorizer) http.HandlerFunc {
-	return list(m, authz, "reference:institution_type", store.InstitutionTypeListSpec,
-		func(ctx context.Context, l httpinput.List) ([]institutionType, int, error) {
-			rows, total, err := store.ListInstitutionTypes(ctx, m.db, l)
-			items := make([]institutionType, len(rows))
-			for i, it := range rows {
-				items[i] = institutionType{it.Code, it.Name, sector{it.SectorCode, it.SectorName}}
-			}
-			return items, total, err
-		})
-}
-
-// list answers one page of a reference list (C68, C69): Cerbos decides first (list on
-// kind), then the parameters are read against spec and the page is read with read.
-func list[T any](m *Module, authz authorization.Authorizer, kind string, spec httpinput.ListSpec,
-	read func(ctx context.Context, l httpinput.List) ([]T, int, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := authz.Can(r.Context(), "list", kind); err != nil {
+		if err := authz.Can(r.Context(), "list", "reference:institution_type"); err != nil {
 			authorization.WriteError(w, r, err)
 			return
 		}
-		l, ok := httpinput.ParseList(w, r, spec)
+		l, ok := httpinput.ParseList(w, r, store.InstitutionTypeListSpec)
 		if !ok {
 			return
 		}
-		items, total, err := read(r.Context(), l)
+		rows, total, err := store.ListInstitutionTypes(r.Context(), m.db, l)
 		if err != nil {
-			m.logger.ErrorContext(r.Context(), "reading a reference list failed", "kind", kind, "error", err)
-			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
+			m.unavailable(w, r, "listing institution types failed", err)
 			return
+		}
+		items := make([]institutionType, len(rows))
+		for i, it := range rows {
+			items[i] = institutionType{it.Code, it.Name, sector{it.SectorCode, it.SectorName}}
 		}
 		httpinput.WritePage(w, l, items, total)
 	}
+}
+
+// unavailable logs a failed read and answers 503, never the error itself.
+func (m *Module) unavailable(w http.ResponseWriter, r *http.Request, msg string, err error) {
+	m.logger.ErrorContext(r.Context(), msg, "error", err)
+	problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
 }
