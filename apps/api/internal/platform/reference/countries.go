@@ -38,6 +38,6 @@ func (m *Module) countries(authz authorization.Authorizer) http.HandlerFunc {
 		for i, c := range rows {
 			items[i] = country{c.Code, c.Alpha3, c.Name, c.PhonePrefix}
 		}
-		httpinput.WritePage(w, l, items, total)
+		httpinput.WritePage(w, r, l, items, total)
 	}
 }

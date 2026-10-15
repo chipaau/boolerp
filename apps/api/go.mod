@@ -15,6 +15,7 @@ require (
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-chi/cors v1.2.2
 	github.com/go-chi/httplog/v3 v3.5.0
+	github.com/go-chi/render v1.0.3
 	github.com/go-chi/traceid v0.3.0
 	github.com/go-jose/go-jose/v4 v4.1.5
 	github.com/go-playground/validator/v10 v10.30.5
@@ -47,6 +48,7 @@ require (
 	cel.dev/expr v0.25.3 // indirect
 	connectrpc.com/connect v1.21.0 // indirect
 	connectrpc.com/otelconnect v0.9.0 // indirect
+	github.com/ajg/form v1.5.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.24.4 // indirect

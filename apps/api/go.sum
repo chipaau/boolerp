@@ -16,6 +16,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/Shopify/toxiproxy/v2 v2.12.0 h1:d1x++lYZg/zijXPPcv7PH0MvHMzEI5aX/YuUi/Sw+yg=
 github.com/Shopify/toxiproxy/v2 v2.12.0/go.mod h1:R9Z38Pw6k2cGZWXHe7tbxjGW9azmY1KbDQJ1kd+h7Tk=
+github.com/ajg/form v1.5.1 h1:t9c7v8JUKu/XxOGBU0yjNpaMloxGEJhUkqFRq0ibGeU=
+github.com/ajg/form v1.5.1/go.mod h1:uL1WgH+h2mgNtvBq0339dVnzXdBETtL2LeUXaIv25UY=
 github.com/alexedwards/scs/goredisstore v0.0.0-20251002162104-209de6e426de h1:DGAYeKmY1cUjNbNe1Fu4VG1Sxz+CtC3ahudm6c19NyM=
 github.com/alexedwards/scs/goredisstore v0.0.0-20251002162104-209de6e426de/go.mod h1:ovMqA1cbRPYuGLSeyFGmD8HbbfzN5hXG4WahAmkf/5A=
 github.com/alexedwards/scs/v2 v2.9.0 h1:xa05mVpwTBm1iLeTMNFfAWpKUm4fXAW7CeAViqBVS90=
@@ -92,6 +94,8 @@ github.com/go-chi/cors v1.2.2 h1:Jmey33TE+b+rB7fT8MUy1u0I4L+NARQlK6LhzKPSyQE=
 github.com/go-chi/cors v1.2.2/go.mod h1:sSbTewc+6wYHBBCW7ytsFSn836hqM7JxpglAy2Vzc58=
 github.com/go-chi/httplog/v3 v3.5.0 h1:QTd0cRZGznBMC1J9hm4reEfgneV92hvSHOoPR97f/aE=
 github.com/go-chi/httplog/v3 v3.5.0/go.mod h1:tDhJo9G+F4mioDgX4pKbyA0uVZwCtHejoSsDkvJkFkU=
+github.com/go-chi/render v1.0.3 h1:AsXqd2a1/INaIfUSKq3G5uA8weYx20FOsM7uSoCyyt4=
+github.com/go-chi/render v1.0.3/go.mod h1:/gr3hVkmYR0YlEy3LxCuVRFzEu9Ruok+gFqbIofjao0=
 github.com/go-chi/traceid v0.3.0 h1:BYITxMnIeQasU7/U7+InZWANWxVZeCUBGTAqWleQOeg=
 github.com/go-chi/traceid v0.3.0/go.mod h1:XFfEEYZjqgML4ySh+wYBU29eqJkc2um7oEzgIc63e74=
 github.com/go-jose/go-jose/v4 v4.1.5 h1:RjgjO2LOtWOJKUC5wpwY9LR3B3vwVAz6JS2YHfYU6eA=

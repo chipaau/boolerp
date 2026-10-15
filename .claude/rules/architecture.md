@@ -33,7 +33,10 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   - requests: `httpinput.Decode` (body, `validate` tags), `httpinput.ParseList` with a `ListSpec`,
     the shared tags (`phone`, `slug`, `notblank`, plus the validator's own), and
     `httpinput.RegisterStructValidation` for a request's own rules (C208);
-  - responses: `httpinput.WritePage` for every list (C68), `problem.Unavailable` for a failed
+  - responses: JSON through go-chi/render (`render.JSON`, with `render.Status` for a status
+    other than 200), never a hand-written encoder; `httpinput.WritePage` for every list (C68,
+    itself on `render.JSON`); `problem.Write`/`problem.Error` for errors (their own content
+    type); `problem.Unavailable` for a failed
     dependency, `problem.Error` for other statuses, `authorization.WriteError` after a Cerbos check;
   - field errors from a use case: `var v problem.ValidationError; v.Add(path, code, detail)`,
     `return v.Err()`, or `problem.Invalid(path, code, detail)` for one field; paths are JSON

@@ -39,6 +39,6 @@ func (m *Module) legalForms(authz authorization.Authorizer) http.HandlerFunc {
 		for i, f := range rows {
 			items[i] = legalForm{f.ID, f.Code, f.Name, f.Category, f.IdentityDocument}
 		}
-		httpinput.WritePage(w, l, items, total)
+		httpinput.WritePage(w, r, l, items, total)
 	}
 }

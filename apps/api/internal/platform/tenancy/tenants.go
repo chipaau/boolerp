@@ -2,7 +2,6 @@ package tenancy
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	// the same way whatever the host has installed (the API image has none).
 	_ "time/tzdata"
 
+	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -73,7 +73,7 @@ func (m *Module) list(authz authorization.Authorizer) http.HandlerFunc {
 		for i, t := range tenants {
 			items[i] = tenantItem(t)
 		}
-		httpinput.WritePage(w, l, items, total)
+		httpinput.WritePage(w, r, l, items, total)
 	}
 }
 
@@ -166,10 +166,9 @@ func (m *Module) create(authz authorization.Authorizer) http.HandlerFunc {
 			problem.Unavailable(w, r)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Location", "/api/v1/tenants/"+t.ID)
-		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(tenantItem(t))
+		render.Status(r, http.StatusCreated)
+		render.JSON(w, r, tenantItem(t))
 	}
 }
 

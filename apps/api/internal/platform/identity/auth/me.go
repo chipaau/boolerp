@@ -1,9 +1,10 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
+
+	"github.com/go-chi/render"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
@@ -22,7 +23,7 @@ func (m *Module) me(w http.ResponseWriter, r *http.Request) {
 		authorization.WriteError(w, r, err)
 		return
 	}
-	writeCaller(w, caller)
+	writeCaller(w, r, caller)
 }
 
 // ownUser is the caller's own user as a Cerbos resource; a machine client acting
@@ -76,11 +77,11 @@ func (m *Module) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	caller.User = &user
-	writeCaller(w, caller)
+	writeCaller(w, r, caller)
 }
 
 // writeCaller writes the caller as GET and POST /api/auth/me answer it.
-func writeCaller(w http.ResponseWriter, caller Caller) {
+func writeCaller(w http.ResponseWriter, r *http.Request, caller Caller) {
 	type user struct {
 		ID          string `json:"id"`
 		Email       string `json:"email"`
@@ -95,6 +96,5 @@ func writeCaller(w http.ResponseWriter, caller Caller) {
 	if u := caller.User; u != nil {
 		body.User = &user{ID: u.ID, Email: u.Email, Phone: u.Phone, DisplayName: u.DisplayName, AvatarURL: u.AvatarURL}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(body)
+	render.JSON(w, r, body)
 }

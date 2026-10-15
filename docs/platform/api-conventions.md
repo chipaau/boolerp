@@ -136,6 +136,12 @@ submitted values:
   application layer and database constraints, which return `problem.ValidationError`;
   the response has the same format.
 
+**Writing JSON (C209):** every JSON response goes through go-chi/render: `render.JSON(w, r, v)`,
+with `render.Status(r, code)` before it for a status other than 200 (a create answers
+`201` with `Location`); lists through `httpinput.WritePage`, built on it. Problem responses
+keep `problem.Write` for their own content type. Decoding stays `httpinput.Decode`, for our
+validation and error format; render's binding is not used.
+
 **Where each rule lives (C208):** the request holds every rule that needs no data; the
 module holds the rules that need data; the database guards them all.
 

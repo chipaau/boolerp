@@ -2,9 +2,9 @@ package tenancy
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/render"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
@@ -33,8 +33,7 @@ func (m *Module) current(authz authorization.Authorizer) http.HandlerFunc {
 			authorization.WriteError(w, r, err)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(struct {
+		render.JSON(w, r, struct {
 			ID     string `json:"id"`
 			Code   string `json:"code"`
 			Name   string `json:"name"`

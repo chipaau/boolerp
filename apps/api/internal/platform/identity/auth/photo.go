@@ -1,9 +1,10 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
+
+	"github.com/go-chi/render"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/identity"
@@ -30,8 +31,7 @@ func (m *Module) portraits(w http.ResponseWriter, r *http.Request) {
 	for _, p := range m.users.Portraits() {
 		body.Portraits = append(body.Portraits, portrait{ID: p.ID, URL: p.URL})
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(body)
+	render.JSON(w, r, body)
 }
 
 // setPhoto changes the caller's picture (PUT /api/auth/me/photo, C196): one of
@@ -66,5 +66,5 @@ func (m *Module) setPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	caller.User = &user
-	writeCaller(w, caller)
+	writeCaller(w, r, caller)
 }
