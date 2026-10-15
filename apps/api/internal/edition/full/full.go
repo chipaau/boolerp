@@ -48,7 +48,20 @@ var Migrations = []postgres.ModuleMigrations{
 
 // Apps are the edition's apps (C165): the platform's own, then each business module's.
 // The authorization.apps seed file mirrors them into the apps table.
-var Apps = []authorization.App{authorization.Admin, authorization.ControlCentre}
+var Apps = []authorization.App{authorization.Admin, authorization.ControlCentre, authorization.Calendar}
+
+// DefaultApps are the keys of the apps every new tenant starts with (C204): the edition's
+// apps marked IsDefault. Creating a tenant turns them on; the seeds give them to the
+// tenants they create, as creating would.
+func DefaultApps() []string {
+	keys := []string{}
+	for _, a := range Apps {
+		if a.IsDefault {
+			keys = append(keys, a.Key)
+		}
+	}
+	return keys
+}
 
 // Roles are the edition's global roles (C167, C177), mirrored by the authorization.roles
 // seed file.
@@ -175,7 +188,7 @@ func DataSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 		authorizationseeds.NewCapabilities(db, Apps),
 		authorizationseeds.NewRoles(db, Roles, Apps),
 		tenancyseeds.NewOperator(db, tenancyseeds.Bool, s.PlatformDomain),
-		authorizationseeds.NewOperatorApps(db, authorization.Admin.Key, authorization.ControlCentre.Key),
+		authorizationseeds.NewOperatorApps(db, append([]string{authorization.Admin.Key}, DefaultApps()...)...),
 	}
 }
 
@@ -187,7 +200,7 @@ func SampleSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 	return []seed.Seeder{
 		tenancyseeds.NewSamples(db, s.PlatformDomain),
 		tenancyseeds.NewSampleDomains(db),
-		authorizationseeds.NewSampleApps(db, tenancyseeds.SampleSlugs(), authorization.ControlCentre.Key),
+		authorizationseeds.NewSampleApps(db, tenancyseeds.SampleSlugs(), DefaultApps()...),
 	}
 }
 

@@ -124,7 +124,8 @@ func TestTheEditionsAppsAreValid(t *testing.T) {
 	for i, a := range Apps {
 		keys[i] = a.Key
 	}
-	assert.Equal(t, []string{"admin", "control-centre"}, keys)
+	assert.Equal(t, []string{"admin", "control-centre", "calendar"}, keys)
+	assert.Equal(t, []string{"control-centre", "calendar"}, DefaultApps(), "every new tenant starts with these (C204)")
 }
 
 func TestPrincipalForEachKindOfCaller(t *testing.T) {

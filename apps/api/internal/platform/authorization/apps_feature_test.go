@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -20,7 +21,7 @@ import (
 // rolled-back transaction with test apps (x-…).
 
 var (
-	xHR    = authorization.App{Key: "x-hr", Name: "Test HR", Kind: authorization.Workspace, Description: "People"}
+	xHR    = authorization.App{Key: "x-hr", Name: "Test HR", Kind: authorization.Workspace, Description: "People", IsDefault: true}
 	xAdmin = authorization.App{Key: "x-admin", Name: "Test admin", Kind: authorization.Operator}
 )
 
@@ -35,15 +36,15 @@ func TestFeatureTheAppsSeederMirrorsTheCatalogue(t *testing.T) {
 	seedApps(t, tx, xHR, xAdmin)
 	seedApps(t, tx, xHR, xAdmin) // running again is fine
 
-	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-hr", "name": "Test HR", "kind": "workspace", "description": "People"})
-	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-admin", "kind": "operator", "description": nil, "active_to": nil})
+	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-hr", "name": "Test HR", "kind": "workspace", "description": "People", "is_default": true})
+	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-admin", "kind": "operator", "description": nil, "is_default": false, "active_to": nil})
 	assert.Equal(t, 1, testdb.Count(t, tx, "apps", map[string]any{"key": "x-hr"}))
 
 	// A renamed app is updated; one no longer listed is retired, never deleted.
 	renamed := xHR
-	renamed.Name = "Test people"
+	renamed.Name, renamed.IsDefault = "Test people", false
 	seedApps(t, tx, renamed)
-	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-hr", "name": "Test people", "active_to": nil})
+	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-hr", "name": "Test people", "is_default": false, "active_to": nil})
 	var retired bool
 	require.NoError(t, tx.QueryRow(t.Context(), `SELECT active_to IS NOT NULL FROM apps WHERE key = 'x-admin'`).Scan(&retired))
 	assert.True(t, retired)
@@ -57,14 +58,29 @@ func TestFeatureTheAppsSeederRefusesABadCatalogue(t *testing.T) {
 	tx := testdb.OwnerTx(t)
 	env := seed.NewEnv("test", slog.New(slog.DiscardHandler))
 	for name, apps := range map[string][]authorization.App{
-		"bad key":      {{Key: "X HR", Name: "x", Kind: authorization.Workspace}},
-		"twice":        {xHR, xHR},
-		"blank name":   {{Key: "x-blank", Name: " ", Kind: authorization.Workspace}},
-		"unknown kind": {{Key: "x-kind", Name: "x", Kind: "portal"}},
+		"bad key":              {{Key: "X HR", Name: "x", Kind: authorization.Workspace}},
+		"twice":                {xHR, xHR},
+		"blank name":           {{Key: "x-blank", Name: " ", Kind: authorization.Workspace}},
+		"unknown kind":         {{Key: "x-kind", Name: "x", Kind: "portal"}},
+		"default operator app": {{Key: "x-op", Name: "x", Kind: authorization.Operator, IsDefault: true}},
 	} {
 		assert.Error(t, seeds.NewApps(tx, apps).Run(t.Context(), env), name)
 	}
 	testdb.AssertMissing(t, tx, "apps", map[string]any{"key": "x-hr"})
+}
+
+func TestFeatureOnlyAWorkspaceAppCanBeADefaultApp(t *testing.T) {
+	tx := testdb.OwnerTx(t)
+	for _, kind := range []string{"operator", "product"} {
+		_, err := tx.Exec(t.Context(), `SAVEPOINT s`)
+		require.NoError(t, err)
+		_, err = tx.Exec(t.Context(), `INSERT INTO apps (key, name, kind, is_default) VALUES ('x-default', 'x', $1, true)`, kind)
+		var pgErr *pgconn.PgError
+		require.ErrorAs(t, err, &pgErr, kind)
+		assert.Equal(t, "23514", pgErr.Code, "a CHECK violation for a default %s app", kind)
+		_, err = tx.Exec(t.Context(), `ROLLBACK TO SAVEPOINT s`)
+		require.NoError(t, err)
+	}
 }
 
 func TestFeatureTheRuntimeRoleOnlyReadsApps(t *testing.T) {

@@ -319,11 +319,12 @@ partitions live in the `audit` schema, which it cannot use. Partitions are creat
 `audit.create_partitions` (the `audit.partitions` seed file); a default partition keeps any
 other row. The migration is `apps/api/internal/platform/audit/migrations/00001_audit_log.sql`.
 
-### `apps` (authorization module, C165)
+### `apps` (authorization module, C165, C204)
 
 Fields confirmed 2026-10-06 by the user, with the first rows: `admin` (Admin console,
 operator) and `control-centre` (Control Centre, workspace); business apps are added with
-their backend modules. The catalogue of Bool's apps, mirrored from code: each module
+their backend modules. `is_default` and the `calendar` row (Calendar, workspace, default)
+confirmed 2026-10-15 by the user (C204); Control Centre is default too. The catalogue of Bool's apps, mirrored from code: each module
 declares its app and the edition lists them (`full.Apps`); the `authorization.apps` seed
 file writes them here on every `cmd/deploy` and `cmd/seed`. Global, not tenant-scoped.
 
@@ -333,6 +334,7 @@ file writes them here on every `cmd/deploy` and `cmd/seed`. Global, not tenant-s
 | `name` | `text` | Not null, not blank. |
 | `kind` | `text` | Not null; `workspace` (a tenant's members use it), `operator` (only the operator tenant may activate it), or `product` (a separate product across tenants, such as FindCare). |
 | `description` | `text` | Nullable. |
+| `is_default` | `boolean` | Not null, `false` default; only a `workspace` app may be `true`. Every new tenant starts with its default apps (C204); a tenant may turn one off later. |
 | `active_from` | `timestamptz` | Not null, `now()` default. |
 | `active_to` | `timestamptz` | Nullable, not before `active_from`; set when the app leaves the code. |
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
