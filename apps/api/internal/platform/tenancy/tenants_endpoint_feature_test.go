@@ -384,11 +384,13 @@ func TestFeatureCreatingATenantChecksItsRules(t *testing.T) {
 		"missing fields": {func(b map[string]any) { delete(b, "name"); delete(b, "timezone"); delete(b, "institutionTypes") },
 			map[string]string{"#/name": "required", "#/timezone": "required", "#/institutionTypes": "required"}},
 		"bad slug and code": {func(b map[string]any) { b["slug"], b["code"] = "X_Bad", "x" },
-			map[string]string{"#/slug": "format", "#/code": "format"}},
+			map[string]string{"#/slug": "slug", "#/code": "min"}},
+		"a lowercase code":                  {func(b map[string]any) { b["code"] = "xnew" }, map[string]string{"#/code": "uppercase"}},
 		"a reserved slug":                   {func(b map[string]any) { b["slug"] = "admin" }, map[string]string{"#/slug": "reserved"}},
 		"no such time zone":                 {func(b map[string]any) { b["timezone"] = "Mars/Olympus" }, map[string]string{"#/timezone": "timezone"}},
 		"Local is not a zone":               {func(b map[string]any) { b["timezone"] = "Local" }, map[string]string{"#/timezone": "timezone"}},
-		"a phone not in international form": {func(b map[string]any) { b["phone"] = "3324568" }, map[string]string{"#/phone": "format"}},
+		"a phone not in international form": {func(b map[string]any) { b["phone"] = "3324568" }, map[string]string{"#/phone": "phone"}},
+		"a blank name":                      {func(b map[string]any) { b["name"] = "   " }, map[string]string{"#/name": "notblank"}},
 		"an unknown country": {func(b map[string]any) { b["country"] = "XZ" },
 			map[string]string{"#/country": "exists", "#/legalFormId": "country"}},
 		"another country's legal form": {func(b map[string]any) { b["legalFormId"] = w.formXU },
@@ -405,9 +407,12 @@ func TestFeatureCreatingATenantChecksItsRules(t *testing.T) {
 		"two primary types": {func(b map[string]any) {
 			b["institutionTypes"] = []map[string]any{{"code": "x_tenancy_type", "primary": true}, {"code": "x_tenancy_other", "primary": true}}
 		}, map[string]string{"#/institutionTypes": "primary"}},
-		"a type twice and an unknown one": {func(b map[string]any) {
-			b["institutionTypes"] = []map[string]any{{"code": "x_tenancy_type", "primary": true}, {"code": "x_tenancy_type"}, {"code": "x_nope"}}
-		}, map[string]string{"#/institutionTypes/1/code": "unique", "#/institutionTypes/2/code": "exists"}},
+		"a type twice": {func(b map[string]any) {
+			b["institutionTypes"] = []map[string]any{{"code": "x_tenancy_type", "primary": true}, {"code": "x_tenancy_type"}}
+		}, map[string]string{"#/institutionTypes/1/code": "unique"}},
+		"an unknown type": {func(b map[string]any) {
+			b["institutionTypes"] = []map[string]any{{"code": "x_tenancy_type", "primary": true}, {"code": "x_nope"}}
+		}, map[string]string{"#/institutionTypes/1/code": "exists"}},
 		"values another tenant holds": {func(b map[string]any) {
 			b["slug"], b["code"], b["identityNumber"], b["taxNumber"] = "x-held", "XHELD", "c-77", "tin-77"
 		}, map[string]string{"#/slug": "unique", "#/code": "unique", "#/identityNumber": "unique", "#/taxNumber": "unique"}},

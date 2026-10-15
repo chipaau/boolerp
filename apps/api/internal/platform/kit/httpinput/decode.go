@@ -15,10 +15,12 @@ import (
 	"mime"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/go-playground/validator/v10/non-standard/validators"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 )
@@ -35,8 +37,40 @@ var validate = func() *validator.Validate {
 		}
 		return name
 	})
+	// The shared formats every module's requests use (C208), registered here only: a new
+	// one is added here with its message, never in a module. notblank is the validator's
+	// own, from its non-standard set.
+	for tag, fn := range map[string]validator.Func{
+		"phone": matches(phonePattern), "slug": matches(slugPattern), "notblank": validators.NotBlank,
+	} {
+		if err := v.RegisterValidation(tag, fn); err != nil {
+			panic(err) // the tags are fixed above, so this cannot fail
+		}
+	}
 	return v
 }()
+
+var (
+	// phonePattern is a phone number in international form: + and 6 to 15 digits.
+	phonePattern = regexp.MustCompile(`^\+[0-9]{6,15}$`)
+	// slugPattern is a lowercase DNS label of 3 to 63 characters, as a host's first
+	// label needs; it may start with a digit.
+	slugPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$`)
+)
+
+func matches(re *regexp.Regexp) validator.Func {
+	return func(fl validator.FieldLevel) bool { return re.MatchString(fl.Field().String()) }
+}
+
+// RegisterStructValidation adds a module's rules for one of its request types that span
+// several fields or are its own knowledge without needing data, such as reserved slugs or
+// exactly one primary item (C208). fn reports each failure with ReportError, naming the
+// field by its JSON path ("slug", "institutionTypes[1].code") and a code as the tag;
+// Decode then answers them as field errors with the other rules'. Call it once, from the
+// module's package initialisation.
+func RegisterStructValidation(fn validator.StructLevelFunc, types ...any) {
+	validate.RegisterStructValidation(fn, types...)
+}
 
 // Decode reads r's JSON body into dst and validates it. On failure it writes
 // the problem response and returns false; the handler then just returns.
@@ -182,6 +216,26 @@ func message(fe validator.FieldError) string {
 		return "must be exactly " + p + unit
 	case "oneof":
 		return "must be one of: " + strings.Join(strings.Fields(p), ", ")
+	case "notblank":
+		return "must not be blank"
+	case "phone":
+		return "must be in international form: + and 6 to 15 digits"
+	case "slug":
+		return "must be 3 to 63 lowercase letters, digits, and hyphens, not starting or ending with a hyphen"
+	case "timezone":
+		return "must be an IANA time zone, such as Indian/Maldives"
+	case "datetime":
+		return "must be a date in the form " + p
+	case "uppercase":
+		return "must be in capital letters"
+	case "alphanum":
+		return "must be letters and digits only"
+	case "reserved":
+		return "is a name the platform uses"
+	case "unique":
+		return "is listed twice"
+	case "primary":
+		return "must mark exactly one item as primary"
 	default:
 		return fmt.Sprintf("fails the %q rule", fe.Tag())
 	}

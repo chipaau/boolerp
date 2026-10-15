@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 	"time"
 	// The IANA time zone database inside the binary, so a tenant's time zone is checked
 	// the same way whatever the host has installed (the API image has none).
 	_ "time/tzdata"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -78,26 +78,54 @@ func (m *Module) list(authz authorization.Authorizer) http.HandlerFunc {
 }
 
 // createRequest is POST /api/v1/tenants's body (C197): step 1 of the admin console's
-// wizard. Its tags check the shape; the rules that need data are CreateTenant's.
+// wizard. The request holds every rule that needs no data (C208): its tags check each
+// field, and validateCreateRequest the rules across fields and tenancy's own knowledge;
+// the rules that need data are CreateTenant's. Each is also guarded by the database.
 type createRequest struct {
-	Name             string                  `json:"name" validate:"required,max=200"`
-	Slug             string                  `json:"slug" validate:"required,max=63"`
-	Code             string                  `json:"code" validate:"required,max=10"`
+	Name             string                  `json:"name" validate:"required,notblank,max=200"`
+	Slug             string                  `json:"slug" validate:"required,slug"`
+	Code             string                  `json:"code" validate:"required,min=2,max=10,uppercase,alphanum"`
 	Country          string                  `json:"country" validate:"required,len=2"`
 	LegalFormID      string                  `json:"legalFormId" validate:"required,uuid"`
-	Timezone         string                  `json:"timezone" validate:"required,max=64"`
+	Timezone         string                  `json:"timezone" validate:"required,timezone"`
 	InstitutionTypes []institutionTypeChoice `json:"institutionTypes" validate:"required,min=1,max=20,dive"`
 	ParentID         string                  `json:"parentId" validate:"omitempty,uuid"`
 	IdentityNumber   string                  `json:"identityNumber" validate:"omitempty,max=50"`
 	RegisteredOn     string                  `json:"registeredOn" validate:"omitempty,datetime=2006-01-02"`
 	TaxNumber        string                  `json:"taxNumber" validate:"omitempty,max=50"`
 	Email            string                  `json:"email" validate:"omitempty,email,max=254"`
-	Phone            string                  `json:"phone" validate:"omitempty,max=16"`
+	Phone            string                  `json:"phone" validate:"omitempty,phone"`
 }
 
 type institutionTypeChoice struct {
 	Code    string `json:"code" validate:"required,max=50"`
 	Primary bool   `json:"primary"`
+}
+
+func init() { httpinput.RegisterStructValidation(validateCreateRequest, createRequest{}) }
+
+// validateCreateRequest checks createRequest's rules that span fields or are tenancy's
+// knowledge without needing data (C208): a slug the platform does not use itself, and
+// institution types listed once each with exactly one primary (C138). The database guards
+// each too (the slug CHECK, the primary key, and the primary-type trigger).
+func validateCreateRequest(sl validator.StructLevel) {
+	req := sl.Current().Interface().(createRequest)
+	if reservedSlugs[req.Slug] {
+		sl.ReportError(req.Slug, "slug", "Slug", "reserved", "")
+	}
+	seen, primaries := map[string]bool{}, 0
+	for i, it := range req.InstitutionTypes {
+		if seen[it.Code] {
+			sl.ReportError(it.Code, fmt.Sprintf("institutionTypes[%d].code", i), "Code", "unique", "")
+		}
+		seen[it.Code] = true
+		if it.Primary {
+			primaries++
+		}
+	}
+	if len(req.InstitutionTypes) > 0 && primaries != 1 {
+		sl.ReportError(req.InstitutionTypes, "institutionTypes", "InstitutionTypes", "primary", "")
+	}
 }
 
 // create creates a tenant in provisioning (POST /api/v1/tenants, C197) for the operator's
@@ -178,16 +206,11 @@ type InstitutionTypeChoice struct {
 // Created is the tenant creating made.
 type Created = store.TenantItem
 
-var (
-	slugPattern  = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$`)
-	codePattern  = regexp.MustCompile(`^[A-Z0-9]{2,10}$`)
-	phonePattern = regexp.MustCompile(`^\+[0-9]{6,15}$`)
-	// Names the platform uses itself, as the tenants table's CHECK lists them.
-	reservedSlugs = map[string]bool{"admin": true, "api": true, "app": true, "auth": true, "identity": true,
-		"login": true, "www": true, "mail": true, "smtp": true, "imap": true, "ftp": true, "oidc": true,
-		"static": true, "assets": true, "cdn": true, "status": true, "docs": true, "help": true,
-		"support": true, "billing": true, "bool": true, "operator": true, "root": true, "system": true}
-)
+// reservedSlugs are names the platform uses itself, as the tenants table's CHECK lists them.
+var reservedSlugs = map[string]bool{"admin": true, "api": true, "app": true, "auth": true, "identity": true,
+	"login": true, "www": true, "mail": true, "smtp": true, "imap": true, "ftp": true, "oidc": true,
+	"static": true, "assets": true, "cdn": true, "status": true, "docs": true, "help": true,
+	"support": true, "billing": true, "bool": true, "operator": true, "root": true, "system": true}
 
 // CreateTenant creates a tenant in provisioning (C197) for the operator's staff, in the
 // operator's transaction (ctx carries the operator tenant and the actor): the tenant, its
@@ -243,55 +266,16 @@ func (m *Module) CreateTenant(ctx context.Context, n NewTenant) (Created, error)
 	return created, err
 }
 
-// checkNewTenant checks what can be checked before the transaction: the formats the
-// table would refuse, and the reference rules (C136, C197).
+// checkNewTenant checks the rules that need data, before the transaction: the reference
+// rules (C136, C197), and the time zone, which the request checks but no database
+// constraint does, so a caller other than HTTP is held to it too.
 func (m *Module) checkNewTenant(ctx context.Context, n NewTenant) ([]problem.FieldError, error) {
 	var errs []problem.FieldError
-	add := func(field, code, detail string) {
-		errs = append(errs, problem.FieldError{Pointer: "#/" + field, Code: code, Detail: detail})
+	if _, err := time.LoadLocation(n.Timezone); err != nil || n.Timezone == "" || strings.EqualFold(n.Timezone, "local") {
+		errs = append(errs, problem.FieldError{Pointer: "#/timezone", Code: "timezone", Detail: "must be an IANA time zone, such as Indian/Maldives"})
 	}
-	switch {
-	case !slugPattern.MatchString(n.Slug):
-		add("slug", "format", "must be 3 to 63 lowercase letters, digits, and hyphens, not starting or ending with a hyphen")
-	case reservedSlugs[n.Slug]:
-		add("slug", "reserved", "is a name the platform uses")
-	}
-	if !codePattern.MatchString(n.Code) {
-		add("code", "format", "must be 2 to 10 capital letters and digits")
-	}
-	if strings.TrimSpace(n.Name) == "" {
-		add("name", "required", "is required")
-	}
-	if n.Phone != "" && !phonePattern.MatchString(n.Phone) {
-		add("phone", "format", "must be in international form: + and 6 to 15 digits")
-	}
-	if n.Timezone == "Local" || n.Timezone == "" {
-		add("timezone", "timezone", "must be an IANA time zone, such as Indian/Maldives")
-	} else if _, err := time.LoadLocation(n.Timezone); err != nil {
-		add("timezone", "timezone", "must be an IANA time zone, such as Indian/Maldives")
-	}
-	errs = append(errs, checkInstitutionTypes(n.InstitutionTypes)...)
 	ref, err := m.checkReference(ctx, n)
 	return append(errs, ref...), err
-}
-
-// checkInstitutionTypes requires one or more distinct types, exactly one of them primary (C138).
-func checkInstitutionTypes(types []InstitutionTypeChoice) []problem.FieldError {
-	var errs []problem.FieldError
-	seen, primaries := map[string]bool{}, 0
-	for i, it := range types {
-		if seen[it.Code] {
-			errs = append(errs, problem.FieldError{Pointer: fmt.Sprintf("#/institutionTypes/%d/code", i), Code: "unique", Detail: "is listed twice"})
-		}
-		seen[it.Code] = true
-		if it.Primary {
-			primaries++
-		}
-	}
-	if len(types) > 0 && primaries != 1 {
-		errs = append(errs, problem.FieldError{Pointer: "#/institutionTypes", Code: "primary", Detail: "must mark exactly one type as primary"})
-	}
-	return errs
 }
 
 // checkReference checks the request against the reference lists: a current country, a

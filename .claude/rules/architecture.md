@@ -24,6 +24,11 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   action (`create.go`, `list.go`) or a kind of code (`checks.go`, `lists.go`). Shared code
   goes in the file named for the package; exceptions are `middleware.go` and
   `store/lookups.go`. `kit/*`, `bootstrap`, and `bff/*` are organised by concern.
+- Validation (C208, [API conventions](../../docs/platform/api-conventions.md)): the request
+  struct holds every rule needing no data (`validate` tags; shared formats only from
+  `httpinput`; a struct-level rule beside the request for the module's own), only if the
+  database also guards it or it is pure shape; the use case holds the rules needing data,
+  in the writing transaction. No validation tag queries the database.
 - A module owns its persistence writes. Do not reach into another module's SQL package.
 - Design every module so it can become a separate service later, all services sharing
   one PostgreSQL database (C134). Foreign keys across modules are allowed, always
