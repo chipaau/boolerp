@@ -24,6 +24,8 @@ packages/
   app-kit/                 defineApp and the manifest types (C102)
   app-control-centre/      an app: index.ts (manifest), rail.tsx, routes/, features/<feature>/
   org/                     the organisation record and people UI every app reads (C106)
+  reference/               the reference lists (countries, legal forms, institution types, time
+                           zones) and their pickers, for the admin console and every app (C201)
   session/                 sign-in, the signed-in user, sign-out through the BFF
   ui/                      the design system and generic helpers (dates, CSV, brand, page titles)
   assets/                  brand artwork
@@ -119,6 +121,24 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   `shouldRetry`, the `meta` types), `schemas.ts` (`listOf`, `listSearch`, `id`, `timestamp`),
   `keys.ts` (`createKeys`).
 - Tests fake the network with MSW; the fetch core's own tests stub `fetch`.
+
+### Pickers for long lists (C201)
+
+- `@workspace/ui`'s `Combobox` is the searchable picker: type to narrow, arrows and Enter to
+  choose. It is Base UI's Combobox with shadcn's base parts (`ComboboxInput`,
+  `ComboboxContent`, `ComboboxItem`, `ComboboxChips`, …), drawn like `Select`.
+  `ComboboxField` (one value) and `ComboboxMultiField` (several, as chips) take
+  `{ value, label, keywords?, group?, detail? }` options. `Select` stays for a handful of fixed
+  choices.
+- The reference lists' pickers are `@workspace/reference`'s: `CountrySelect`,
+  `LegalFormSelect` (a country's forms; it hands back the chosen form, whose
+  `identityDocument` the form asks for), `InstitutionTypesField` (one or more types, one
+  primary), and `TimezoneSelect`. Their queries live in the package's `api.ts`, the only file
+  there that calls the API (C184), and are kept for the session (`staleTime: Infinity`).
+- Time zones come from the browser (`Intl.supportedValuesOf('timeZone')`), not the API; the
+  API still checks the chosen zone.
+- An app that renders the package adds `@source "../../../packages/reference/src"` to its
+  stylesheet, and Compose shadows the package's `node_modules` like the others.
 
 ### Types and forms (C176)
 

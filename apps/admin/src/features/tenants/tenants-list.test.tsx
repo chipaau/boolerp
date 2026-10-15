@@ -34,6 +34,38 @@ function listApi(items: unknown[], total = items.length) {
   return seen
 }
 
+/** Answers the reference lists the create form picks from (C199). */
+function referenceApi() {
+  const page = (items: unknown[]) => HttpResponse.json({ items, page: 1, pageSize: 100, total: items.length })
+  server.use(
+    http.get('/api/v1/countries', () => page([{ code: 'MV', alpha3: 'MDV', name: 'Maldives', phonePrefix: '+960' }])),
+    http.get('/api/v1/legal-forms', ({ request }) =>
+      page(
+        new URL(request.url).searchParams.get('country') === 'MV'
+          ? [
+              { id: '0192f6a0-0000-7000-8000-0000000000f1', code: 'ministry', name: 'Government ministry', category: 'government', identityDocument: null },
+              { id: '0192f6a0-0000-7000-8000-0000000000f2', code: 'private_company', name: 'Private company', category: 'private', identityDocument: 'Company registration number' },
+            ]
+          : []
+      )
+    ),
+    http.get('/api/v1/institution-types', () =>
+      page([
+        { code: 'ministry', name: 'Ministry', sector: { code: 'government', name: 'Government' } },
+        { code: 'hospital', name: 'Hospital', sector: { code: 'health', name: 'Health' } },
+      ])
+    )
+  )
+}
+
+/** Chooses `option` in the searchable picker labelled `label`, typing `query` to find it. */
+async function pick(form: HTMLElement, label: string, query: string, option: RegExp | string) {
+  const input = within(form).getByLabelText(label)
+  await waitFor(() => expect(input).toBeEnabled())
+  await userEvent.type(input, query)
+  await userEvent.click(await screen.findByRole('option', { name: option }))
+}
+
 const search = () => screen.getByLabelText('Filter by name, code, or slug')
 
 describe('the tenants list', () => {
@@ -133,6 +165,7 @@ describe('the tenants list', () => {
 
   it('opens the create form as a preview that sends nothing to the API', async () => {
     listApi([tenant(1)])
+    referenceApi()
     const writes: string[] = []
     server.events.on('request:start', ({ request }) => {
       if (request.method !== 'GET') writes.push(`${request.method} ${new URL(request.url).pathname}`)
@@ -145,10 +178,18 @@ describe('the tenants list', () => {
     expect(within(form).getByText('Who they are')).toBeInTheDocument()
     await userEvent.type(within(form).getByLabelText('Name'), 'Test Ministry')
     await userEvent.type(within(form).getByLabelText('Code'), 'TMIN')
-    await userEvent.type(within(form).getByLabelText('Owner name'), 'Aishath Leena')
-    await userEvent.type(within(form).getByLabelText('Owner email'), 'leena@example.test')
+    expect(within(form).queryByRole('button', { name: 'Create tenant' })).not.toBeInTheDocument()
 
-    await userEvent.click(within(form).getByRole('button', { name: 'Save as draft' }))
+    // Step 1 is the creating request (C197): its lists come from the API through the pickers (C199).
+    expect(within(form).getByLabelText('Legal form')).toHaveAttribute('placeholder', 'Pick the country first')
+    await pick(form, 'Country', 'mdv', /Maldives/)
+    await pick(form, 'Legal form', 'private', /Private company/)
+    await userEvent.type(within(form).getByLabelText('Company registration number'), 'C-0001/2026')
+    await pick(form, 'Time zone', 'maldives', /Indian \/ Maldives/)
+    await pick(form, 'Institution types', 'hosp', 'Hospital')
+    expect(within(form).queryByLabelText('Owner name')).not.toBeInTheDocument()
+
+    await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))
     expect(await screen.findByText(/Preview only: nothing was saved/)).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(writes).toEqual([])

@@ -21,6 +21,7 @@ x-node: &node
     - /w/packages/ui/node_modules
     - /w/packages/api/node_modules
     - /w/packages/api-client/node_modules
+    - /w/packages/reference/node_modules
     # pnpm's content-addressable store also needs to be off the bind mount: hard-linking large
     # packages through the host bind mount (osxfs/virtiofs) corrupts the store silently. The dev
     # image points pnpm here (pnpm_config_store_dir, docker/node.Dockerfile), so the services share it.
