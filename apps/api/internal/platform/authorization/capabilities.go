@@ -28,16 +28,15 @@ func CapabilitiesFrom(ctx context.Context) []string {
 }
 
 // capabilitiesOf are a membership's capabilities now (C170, C177): from assignments live
-// now, of roles not archived, whose app is on in the tenant, through capabilities not
-// retired. RequireMember has already checked the membership is active. Read in the
+// now, of roles not archived, whose app is on in the tenant (tenancy's tenant_apps_on,
+// C206), through capabilities not retired. RequireMember has already checked the membership is active. Read in the
 // tenant's transaction, so row-level security limits it to the tenant's own rows and the
 // global roles.
 const capabilitiesOf = `
 SELECT DISTINCT rc.capability
   FROM role_assignments ra
   JOIN roles r            ON r.id = ra.role_id AND r.archived_at IS NULL
-  JOIN tenant_apps ta     ON ta.tenant_id = ra.tenant_id AND ta.app_key = r.app_key
-                         AND ta.active_from <= now() AND ta.active_to IS NULL
+  JOIN tenant_apps_on ta  ON ta.tenant_id = ra.tenant_id AND ta.app_key = r.app_key
   JOIN role_capabilities rc ON rc.role_id = r.id
   JOIN capabilities c     ON c.key = rc.capability AND c.active_to IS NULL
  WHERE ra.membership_id = $1

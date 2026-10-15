@@ -14,7 +14,7 @@ import (
 )
 
 // Capabilities mirrors the edition's apps' capabilities into the capabilities table
-// (C168), as the migration role, after authorization.apps: a new one is added, a changed
+// (C168), as the migration role, after tenancy.apps: a new one is added, a changed
 // one updated (and made active again if it had left), and one no longer declared gets
 // active_to. No row is ever deleted.
 type Capabilities struct {

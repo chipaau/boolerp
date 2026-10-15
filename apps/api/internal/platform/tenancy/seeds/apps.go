@@ -1,5 +1,3 @@
-// Package seeds holds the authorization module's seed files (C135): the app catalogue,
-// mirrored from code into the apps table on every cmd/deploy and cmd/seed (C165).
 package seeds
 
 import (
@@ -15,12 +13,9 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/seed"
 )
 
-// DB is what the seeder needs: a pool, or a transaction in tests (C79).
-type DB interface {
-	Begin(ctx context.Context) (pgx.Tx, error)
-}
-
-// Apps mirrors the edition's apps into the apps table, as the migration role: a new
+// Apps mirrors the app catalogue (C165, C206): tenancy owns which apps exist and which a
+// tenant has on; each app is declared in code as an authorization.App, whose capabilities
+// the authorization module mirrors. Apps mirrors the edition's apps into the apps table, as the migration role: a new
 // app is added, a changed one updated (and made active again if it had left), and an
 // app no longer in the list gets active_to. No row is ever deleted.
 type Apps struct {
@@ -32,13 +27,13 @@ type Apps struct {
 func NewApps(db DB, apps []authorization.App) *Apps { return &Apps{db: db, apps: apps} }
 
 // Name implements seed.Seeder.
-func (*Apps) Name() string { return "authorization.apps" }
+func (*Apps) Name() string { return "tenancy.apps" }
 
 var appKey = regexp.MustCompile(`^[a-z][a-z0-9-]{1,30}$`)
 
-// Check rejects a list the table would refuse, before anything is written: a bad or
+// CheckApps rejects a list the table would refuse, before anything is written: a bad or
 // repeated key, a blank name, or an unknown kind.
-func Check(apps []authorization.App) error {
+func CheckApps(apps []authorization.App) error {
 	seen := map[string]bool{}
 	for _, a := range apps {
 		switch {
@@ -60,7 +55,7 @@ func Check(apps []authorization.App) error {
 
 // Run implements seed.Seeder, in one transaction.
 func (s *Apps) Run(ctx context.Context, env seed.Env) error {
-	if err := Check(s.apps); err != nil {
+	if err := CheckApps(s.apps); err != nil {
 		return err
 	}
 	keys := make([]string, len(s.apps))

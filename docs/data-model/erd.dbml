@@ -279,8 +279,8 @@ Table apps {
   updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
 
   Note: '''
-  Confirmed 2026-10-06 (C165), is_default 2026-10-15 (C204); migration platform/authorization/migrations/00001_apps.sql.
-  The app catalogue, mirrored from code by the authorization.apps seed file. Global; everyone
+  Confirmed 2026-10-06 (C165), is_default 2026-10-15 (C204); migration platform/tenancy/migrations/00006_apps.sql (tenancy's since C206).
+  The app catalogue, mirrored from code by the tenancy.apps seed file. Global; everyone
   reads, only the seed file writes. Audited.
   '''
 }
@@ -301,7 +301,7 @@ Table tenant_apps {
   }
 
   Note: '''
-  Confirmed 2026-10-06 (C166); migration platform/authorization/migrations/00002_tenant_apps.sql.
+  Confirmed 2026-10-06 (C166); migration platform/tenancy/migrations/00007_tenant_apps.sql (tenancy's since C206; published as the view tenant_apps_on).
   Which apps a tenant has on, with history. Operator apps only in the operator tenant; retired
   apps refused; tenant and app locked; ended rows frozen. RLS: a tenant reads its own; the
   operator reads all and alone turns apps on and off; none deleted. Audited.
@@ -325,7 +325,7 @@ Table roles {
   }
 
   Note: '''
-  Confirmed 2026-10-06 (C167); migration platform/authorization/migrations/00003_roles.sql.
+  Confirmed 2026-10-06 (C167); migration platform/authorization/migrations/00001_roles.sql.
   Tenant, app, and key fixed; a tenant's role needs its app on and may not repeat a global
   role's name. RLS: a tenant reads its own and the global roles, writes its own; global roles
   come only from the seed file; none deleted. Audited.
@@ -343,7 +343,7 @@ Table capabilities {
   updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
 
   Note: '''
-  Confirmed 2026-10-06 (C168); migration platform/authorization/migrations/00004_capabilities.sql.
+  Confirmed 2026-10-06 (C168); migration platform/authorization/migrations/00002_capabilities.sql.
   Mirrored from each app's code by the authorization.capabilities seed file. Global; everyone
   reads, only the seed file writes. Audited.
   '''
@@ -360,7 +360,7 @@ Table role_capabilities {
   }
 
   Note: '''
-  Confirmed 2026-10-06 (C169); migration platform/authorization/migrations/00005_role_capabilities.sql.
+  Confirmed 2026-10-06 (C169); migration platform/authorization/migrations/00003_role_capabilities.sql.
   Added and removed, never updated. RLS: a tenant reads its own roles' and the global roles',
   writes its own roles'. Audited (tenant from tenant_id).
   '''
@@ -383,7 +383,7 @@ Table role_assignments {
   }
 
   Note: '''
-  Confirmed 2026-10-06 (C170); migration platform/authorization/migrations/00006_role_assignments.sql.
+  Confirmed 2026-10-06 (C170); migration platform/authorization/migrations/00004_role_assignments.sql.
   No membership, no role. Tenant, membership, role fixed; ended rows frozen. RLS: a tenant reads
   and changes its own; none deleted. Audited.
   '''

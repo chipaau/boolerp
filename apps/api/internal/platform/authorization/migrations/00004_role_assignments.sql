@@ -58,8 +58,7 @@ BEGIN
         RAISE EXCEPTION 'role % is archived', NEW.role_id
             USING ERRCODE = 'check_violation';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM tenant_apps WHERE tenant_id = NEW.tenant_id AND app_key = r.app_key
-                                               AND active_to IS NULL) THEN
+    IF NOT EXISTS (SELECT 1 FROM tenant_apps_on WHERE tenant_id = NEW.tenant_id AND app_key = r.app_key) THEN
         RAISE EXCEPTION 'app % is not on in this tenant', r.app_key
             USING ERRCODE = 'check_violation';
     END IF;

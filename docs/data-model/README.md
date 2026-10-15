@@ -319,13 +319,13 @@ partitions live in the `audit` schema, which it cannot use. Partitions are creat
 `audit.create_partitions` (the `audit.partitions` seed file); a default partition keeps any
 other row. The migration is `apps/api/internal/platform/audit/migrations/00001_audit_log.sql`.
 
-### `apps` (authorization module, C165, C204)
+### `apps` (tenancy module, C165, C204, C206)
 
 Fields confirmed 2026-10-06 by the user, with the first rows: `admin` (Admin console,
 operator) and `control-centre` (Control Centre, workspace); business apps are added with
 their backend modules. `is_default` and the `calendar` row (Calendar, workspace, default)
 confirmed 2026-10-15 by the user (C204); Control Centre is default too. The catalogue of Bool's apps, mirrored from code: each module
-declares its app and the edition lists them (`full.Apps`); the `authorization.apps` seed
+declares its app and the edition lists them (`full.Apps`); the `tenancy.apps` seed
 file writes them here on every `cmd/deploy` and `cmd/seed`. Global, not tenant-scoped.
 
 | Column | Type | Rule |
@@ -342,9 +342,9 @@ file writes them here on every `cmd/deploy` and `cmd/seed`. Global, not tenant-s
 Everyone reads; no write policy, so only the seed file (the owning migration role) changes
 it. An app no longer in the code is retired (`active_to`), never deleted, and listed again
 it becomes active. Audited. The migration is
-`apps/api/internal/platform/authorization/migrations/00001_apps.sql`.
+`apps/api/internal/platform/tenancy/migrations/00006_apps.sql`.
 
-### `tenant_apps` (authorization module, C116, C166)
+### `tenant_apps` (tenancy module, C116, C166, C206)
 
 Fields confirmed 2026-10-06 by the user. Which apps each tenant has turned on, with
 history; only the operator tenant turns them on and off for now (the user's choice: apps
@@ -365,10 +365,12 @@ on again is a new row, and an ended one is frozen. A trigger refuses an `operato
 outside the operator tenant, a retired app, and changing an activation's tenant or app.
 Who turned an app off is in the audit log. Row-level security: a tenant reads its own; the
 operator tenant reads every tenant's and alone creates and ends them; nothing deletes one.
-Seeds: `authorization.operator_apps` turns on `admin` and `control-centre` for the operator
-(every database); `authorization.sample_apps` turns on `control-centre` for each sample
-tenant (development). The migration is
-`apps/api/internal/platform/authorization/migrations/00002_tenant_apps.sql`.
+Seeds: `tenancy.operator_apps` turns on `admin` and the default apps (`control-centre`,
+`calendar`) for the operator (every database); `tenancy.sample_apps` turns on the default
+apps for each sample tenant (development), as creating a tenant does (C204). Other modules
+read it through the view `tenant_apps_on` (`tenant_id`, `app_key` of each live
+activation; `security_invoker`, read-only), never the table (C134, C206). The migration is
+`apps/api/internal/platform/tenancy/migrations/00007_tenant_apps.sql`.
 
 ### `roles` (authorization module, C167)
 
@@ -394,7 +396,7 @@ that is on in that tenant, and refuses a tenant role named like a global one (a 
 added later may share a tenant role's name). Row-level security: a tenant reads its own and
 the global roles and creates and changes only its own; global roles are written only by the
 seed file; nothing deletes a role. Audited. The migration is
-`apps/api/internal/platform/authorization/migrations/00003_roles.sql`.
+`apps/api/internal/platform/authorization/migrations/00001_roles.sql`.
 
 ### `capabilities` (authorization module, C168)
 
@@ -415,7 +417,7 @@ console; other apps' capabilities come with their routes, each agreed first.
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
 
 Global: everyone reads, only the seed file writes; retired, never deleted. Audited. The
-migration is `apps/api/internal/platform/authorization/migrations/00004_capabilities.sql`.
+migration is `apps/api/internal/platform/authorization/migrations/00002_capabilities.sql`.
 
 ### `role_capabilities` (authorization module, C169)
 
@@ -433,7 +435,7 @@ Rows are added and removed (the audit keeps the history), never updated. A trigg
 the tenant from the role and refuses a capability of another app or a retired one.
 Row-level security: a tenant reads its own roles' and the global roles' capabilities, and
 adds and removes only its own roles'; global roles' come only from the seed file. Audited.
-The migration is `apps/api/internal/platform/authorization/migrations/00005_role_capabilities.sql`.
+The migration is `apps/api/internal/platform/authorization/migrations/00003_role_capabilities.sql`.
 
 ### `role_assignments` (authorization module, C116, C170)
 
@@ -458,7 +460,7 @@ in the tenant; tenant, membership, and role never change; an ended assignment is
 membership is active and whose role's app is on, so ending a membership or turning an app
 off removes access without touching assignments. Row-level security: a tenant reads and
 changes only its own; nothing deletes one. Audited. The migration is
-`apps/api/internal/platform/authorization/migrations/00006_role_assignments.sql`.
+`apps/api/internal/platform/authorization/migrations/00004_role_assignments.sql`.
 
 ### `billing_agreements` (billing module, C171)
 
