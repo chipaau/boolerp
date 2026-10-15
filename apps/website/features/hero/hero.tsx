@@ -14,7 +14,9 @@ import { LANDING } from './scene'
 // Runs before the hero paints: unless the visitor prefers reduced motion, hold the opening state
 // (globals.css: the tablet out of focus, the landed bee and the supporting copy waiting) so nothing
 // flashes before the opening starts.
-const MOTION_GATE = `try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.dataset.heroMotion='pending'}catch(e){}`
+// A reload starts at the hero: the page's pinned sections are only laid out once the scripts run, so
+// a restored scroll position lands somewhere else (inside the scroll story, often), not where it was
+const MOTION_GATE = `try{if(!location.hash){history.scrollRestoration='manual';scrollTo(0,0)}}catch(e){}try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.dataset.heroMotion='pending'}catch(e){}`
 
 /**
  * The homepage hero. A server component: the tablet with the real dashboard on its screen, the copy

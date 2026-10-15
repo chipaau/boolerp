@@ -1,4 +1,5 @@
 import Image, { type StaticImageData } from 'next/image'
+import { Rise } from '@/components/rise'
 import analytics from '@workspace/assets/logos/analytics.png'
 import asset from '@workspace/assets/logos/asset.png'
 import controlCentre from '@workspace/assets/logos/control-centre-glyph.png'
@@ -69,8 +70,8 @@ const COMING: { app: string; icon: StaticImageData; body: string }[] = [
 export function Apps() {
   return (
     <section id="product" className="relative bg-background py-24 lg:py-32">
-      <div className="mx-auto max-w-7xl px-6 2xl:max-w-[88rem]">
-        <div className="max-w-2xl">
+      <Rise className="mx-auto max-w-7xl px-6 2xl:max-w-[88rem]">
+        <div data-rise="" className="max-w-2xl">
           <p className="text-overline tracking-[0.28em] text-muted-foreground">The apps</p>
           <h2 className="mt-4 text-balance text-[clamp(2rem,3vw,3rem)] font-light leading-[1.05] tracking-[-0.03em] text-foreground">
             Every app your team runs on, sharing one record.
@@ -85,7 +86,7 @@ export function Apps() {
             <ScreenCard key={a.app} {...a} />
           ))}
         </div>
-        <div className="app-card mt-4 grid gap-6 p-6 sm:grid-cols-2 md:grid-cols-3 lg:mt-5 lg:grid-cols-5 lg:p-8">
+        <div data-rise="" className="app-card mt-4 grid gap-6 p-6 sm:grid-cols-2 md:grid-cols-3 lg:mt-5 lg:grid-cols-5 lg:p-8">
             <p className="text-overline tracking-[0.28em] text-muted-foreground sm:col-span-full">Coming to the workspace</p>
             {COMING.map(({ app, icon, body }) => (
               <div key={app} className="flex items-start gap-3">
@@ -97,7 +98,7 @@ export function Apps() {
               </div>
             ))}
         </div>
-      </div>
+      </Rise>
     </section>
   )
 }
@@ -105,7 +106,7 @@ export function Apps() {
 /** An app that exists: its name and a line above, a real screen of it below, bleeding off the card's edge. */
 function ScreenCard({ app, icon, title, body, screen, span, frame }: Shown) {
   return (
-    <article className={cn('app-card group flex flex-col overflow-hidden', span)}>
+    <article data-rise="" className={cn('app-card group flex flex-col overflow-hidden', span)}>
       <div className="flex items-start gap-3 p-6 pb-5 lg:p-7 lg:pb-5">
         <AppMark icon={icon} />
         <div className="leading-snug">

@@ -4,6 +4,7 @@ import { Apps } from '@/features/apps/apps'
 import { Hero } from '@/features/hero/hero'
 import { Local } from '@/features/local/local'
 import { Office } from '@/features/office/office'
+import { Rise } from '@/components/rise'
 import {
   Card,
   CardContent,
@@ -27,15 +28,15 @@ export default function Home() {
 
         {/* Deployment */}
         <section id="deployment" className="border-t border-border/60">
-          <div className="mx-auto max-w-6xl px-6 py-20">
-            <div className="mx-auto max-w-2xl text-center">
+          <Rise className="mx-auto max-w-6xl px-6 py-20">
+            <div data-rise="" className="mx-auto max-w-2xl text-center">
               <h2 className="text-3xl font-semibold tracking-tight">Deploy your way</h2>
               <p className="mt-3 text-muted-foreground">
                 The same product, whether we run it for you or you run it yourself.
               </p>
             </div>
             <div className="mt-12 grid gap-6 md:grid-cols-2">
-              <Card>
+              <Card data-rise="">
                 <CardHeader>
                   <CardTitle>Cloud SaaS</CardTitle>
                   <CardDescription>
@@ -47,7 +48,7 @@ export default function Home() {
                   Best for single institutions and groups that want zero infrastructure to manage.
                 </CardContent>
               </Card>
-              <Card>
+              <Card data-rise="">
                 <CardHeader>
                   <CardTitle>Self-hosted</CardTitle>
                   <CardDescription>
@@ -60,26 +61,26 @@ export default function Home() {
                 </CardContent>
               </Card>
             </div>
-          </div>
+          </Rise>
         </section>
 
         <Local />
 
         {/* Contact / CTA */}
         <section id="contact" className="border-t border-border/60">
-          <div className="mx-auto max-w-6xl px-6 py-24 text-center">
-            <h2 className="text-3xl font-semibold tracking-tight">Ready to get started?</h2>
-            <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+          <Rise className="mx-auto max-w-6xl px-6 py-24 text-center">
+            <h2 data-rise="" className="text-3xl font-semibold tracking-tight">Ready to get started?</h2>
+            <p data-rise="" className="mx-auto mt-4 max-w-xl text-muted-foreground">
               SaaS onboarding and on-premises setup are handled with you directly. Reach out and
               we’ll get your institution provisioned.
             </p>
-            <div className="mt-8">
+            <div data-rise="" className="mt-8">
               <Button size="lg" render={<a href="mailto:sales@bool.mv?subject=Bool%20ERP%20enquiry" />}>
                 Contact sales
               </Button>
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">sales@bool.mv</p>
-          </div>
+            <p data-rise="" className="mt-4 text-sm text-muted-foreground">sales@bool.mv</p>
+          </Rise>
         </section>
       </main>
 

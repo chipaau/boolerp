@@ -302,12 +302,16 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 /* "Inside your workspace" (features/office): drafting paper (a fine grid with a stronger line every
    fourth square, fading out at the edges), its crosshairs, and the step hairlines */
 .office-grid {
-  /* one even 48px square, fixed to the page so its lines run straight on through every section */
+  /* the drafting paper: a fine 40px square with every fourth line stronger, centred on the page so
+     it falls the same on both sides */
   background-image:
-    linear-gradient(to right, rgb(165 144 111 / 0.09) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(165 144 111 / 0.09) 1px, transparent 1px);
-  background-size: 48px 48px;
-  background-attachment: fixed;
+    linear-gradient(to right, rgb(165 144 111 / 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(165 144 111 / 0.12) 1px, transparent 1px),
+    linear-gradient(to right, rgb(165 144 111 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(165 144 111 / 0.05) 1px, transparent 1px);
+  background-size: 160px 160px, 160px 160px, 40px 40px, 40px 40px;
+  background-position: center top;
+  mask-image: radial-gradient(80% 75% at 55% 50%, black 40%, transparent);
 }
 .office-cross {
   color: rgb(140 122 92 / 0.45);
@@ -316,22 +320,41 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 .office-grid-dark {
   background-image:
     linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
-  background-size: 48px 48px;
-  background-attachment: fixed;
+    linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(to right, rgb(255 255 255 / 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.02) 1px, transparent 1px);
+  background-size: 160px 160px, 160px 160px, 40px 40px, 40px 40px;
+  background-position: center top;
 }
-/* the workspace map: an inactive island sits under a cream veil (soft-edged, so it reads as faded,
-   not boxed); the current one is clear, with warm light pooled under it */
-.office-veil {
-  border-radius: 14%;
-  background: radial-gradient(closest-side, rgb(241 236 226 / 0.8) 72%, rgb(241 236 226 / 0));
-  transform: scale(1.14);
+/* the workspace map: a room rests in grey, a little faded, and comes forward in colour, with warm
+   light pooled under it (--c: 0 to 1, set by the story) */
+.office-tile {
+  --c: 1;
 }
-.office-island-glow {
-  border-radius: 14%;
-  background: radial-gradient(closest-side, rgb(246 162 77 / 0.3), rgb(246 162 77 / 0));
-  transform: scale(1.25);
-  filter: blur(16px);
+#workspace[data-live] .office-tile {
+  --c: 0;
+}
+.office-tile img {
+  filter: grayscale(calc(1 - var(--c))) contrast(calc(0.9 + var(--c) * 0.1));
+  opacity: calc(0.5 + var(--c) * 0.5);
+}
+.office-tile-glow {
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(246 162 77 / 0.32), rgb(246 162 77 / 0));
+  filter: blur(18px);
+  opacity: var(--c);
+}
+.office-hub {
+  animation: office-breathe 3.2s ease-in-out infinite;
+}
+@keyframes office-breathe {
+  50% {
+    box-shadow: 0 0 0 10px rgb(246 162 77 / 0.1), 0 18px 40px -18px rgb(90 70 40 / 0.45);
+  }
+}
+.office-spark {
+  fill: #f0913a;
+  filter: drop-shadow(0 0 4px rgb(240 145 58 / 0.7));
 }
 /* the routes into the hub: dashes marching inward, faint at rest, amber for the current app */
 .office-route-rest,
@@ -357,8 +380,12 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 }
 @media (prefers-reduced-motion: reduce) {
   .office-route-rest,
-  .office-route {
+  .office-route,
+  .office-hub {
     animation: none;
+  }
+  .office-spark {
+    display: none;
   }
 }
 /* the apps' list, ruled like the reference (--on: 0 to 1, set by the story) */
@@ -381,12 +408,6 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
   font-weight: 700;
   color: color-mix(in oklab, var(--foreground) calc(35% + var(--on) * 65%), transparent);
 }
-.office-body {
-  max-height: calc(var(--on) * 4.5rem);
-  margin-top: calc(var(--on) * 0.4rem);
-  overflow: hidden;
-  opacity: var(--on);
-}
 .office-card {
   /* solid and lifted: it sits on the drawing, it does not blend into it */
   border-radius: 1rem;
@@ -397,17 +418,16 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
     0 18px 40px -12px rgb(80 56 24 / 0.32);
 }
 
-/* a slice of a real app screen on the map's story panel */
+/* a look at a real app screen, on the app's card */
 .office-ui {
   border-radius: 12px;
   background-repeat: no-repeat;
   box-shadow: 0 0 0 1px rgb(168 148 118 / 0.22), 0 12px 28px -14px rgb(80 56 24 / 0.35);
 }
-.office-logo {
-  opacity: calc(0.45 + var(--on, 1) * 0.55);
-  filter: grayscale(calc(1 - var(--on, 1)));
+/* the island chain (features/local): it fades out at the screen's top and bottom edges */
+.local-chain {
+  mask-image: linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
 }
-
 /* the island chain (features/local): little lights that blink on the islands, and soft swells on the sea */
 .local-light {
   background: var(--brand-soft);
