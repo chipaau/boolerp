@@ -2,6 +2,7 @@ import { Button } from '@workspace/ui/components/button'
 import { SiteHeader } from '@/components/site-header'
 import { Apps } from '@/features/apps/apps'
 import { Hero } from '@/features/hero/hero'
+import { Office } from '@/features/office/office'
 import {
   Card,
   CardContent,
@@ -18,6 +19,8 @@ export default function Home() {
 
       <main>
         <Hero />
+
+        <Office />
 
         <Apps />
 
