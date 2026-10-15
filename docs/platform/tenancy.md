@@ -369,8 +369,8 @@ request is confirmed (C197); the rest is open (see below).
   way: `tenants_create` requires `NOT is_operator`, and `tenants_update` requires the flag
   to keep the value it had, so the runtime role can neither create an operator tenant nor
   promote one.
-- Provisioning requests carry an idempotency key, so a retry cannot create a second
-  tenant.
+- A retry cannot create a second tenant: `slug` and `code` are unique, so a repeated
+  request answers 422 on them instead (C205; no idempotency key).
 - Sector templates are deferred with classification; every tenant starts from the same
   defaults.
 
@@ -412,19 +412,29 @@ confirmation, the field list table by table (see
 - ~~**What the request accepts.**~~ Decided (C197): step 1 of the wizard creates the tenant
   (`provisioning`) from its own details and institution types; later steps and the
   details page fill in the rest; no wizard state is stored.
-- **Whether the default domain is part of it.** The flow above creates one; `domains` is
-  built (C158), but what host a new tenant gets, and whether the caller may choose it, is
-  not written down.
-- **Which apps a new tenant starts with**, and what roles it starts with — see the role
-  templates note under Apps above, which is the same open question from the other side.
+- ~~**Whether the default domain is part of it.**~~ Decided (C203): not at creation. The
+  platform host `<slug>.<APP_PLATFORM_DOMAIN>` (C159) is created when the tenant is first
+  activated, in the activation's transaction, active and primary unless one is already
+  chosen; the caller does not choose it. The slug may change freely while provisioning, so
+  the host is built from the final slug at the moment the slug locks. Until then the tenant
+  has no workspace host (the list shows none; screens may show the address it will get).
+- ~~**Which apps a new tenant starts with**, and what roles it starts with.~~ Decided
+  (C204): creating a tenant turns on every default app (`apps.is_default`: Control Centre
+  and Calendar) in the same transaction, `activated_by` the operator who created it; other
+  apps start off and are turned on afterwards, from the wizard's apps step or the details
+  page. A default app can be turned off later like any other. No roles are created: global
+  roles reach every tenant (C167).
 - **The owner.** Not part of creating the tenant (C197): owners are added afterwards, and
   activation needs at least one (C198). **Adding a person** (an owner or an admin, in the
   wizard or on the details page, C198): the e-mail is required; name and phone are required
   only when no account has that e-mail, since an existing account keeps its own details;
   "owner" is a checkbox; no nationality or ID/passport until identity documents are designed
   as country data. Still open: how the invitation reaches them (application e-mail, 12b).
-- **Idempotency.** The key is required above; where it is stored and how long it is honoured
-  is not designed.
+- ~~**Idempotency.**~~ Decided (C205): creating a tenant takes no idempotency key. It is one
+  transaction calling no outside service, and `slug` and `code` are unique, so a retry
+  cannot create a second tenant: it answers 422 on those fields, naming the tenant that
+  holds them. A generic `Idempotency-Key` mechanism comes with step 12, for operations with
+  no natural unique key.
 
 No historical schema-per-tenant, hierarchy, or visible-set design is inherited.
 See [identity](identity.md), [authorization](authorization.md), [deployment](deployment.md), and

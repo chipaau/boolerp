@@ -19,12 +19,14 @@ func Migrations() fs.FS {
 }
 
 // App is an app tenants activate (C165): its key (the frontend manifest's slug), name,
-// kind, description, and the capabilities its roles may grant (C168). Each module
+// kind, description, whether every new tenant starts with it (IsDefault, C204; workspace
+// apps only), and the capabilities its roles may grant (C168). Each module
 // declares its own; the edition lists them, and the authorization.apps and
 // authorization.capabilities seed files mirror them into the apps and capabilities tables.
 type App struct {
 	Key, Name, Description string
 	Kind                   AppKind
+	IsDefault              bool
 	Capabilities           []Capability
 }
 
@@ -48,7 +50,9 @@ const (
 
 // The platform's own apps (the user's choice, 2026-10-06): the admin console, where
 // the operator's staff manage tenants, and Control Centre, a tenant's own
-// administration (members, roles, audit). Business apps are declared by their modules.
+// administration (members, roles, audit); and Calendar (2026-10-15), declared here until
+// a calendar module owns it. Control Centre and Calendar are default apps: every new
+// tenant starts with them (C204). Business apps are declared by their modules.
 var (
 	Admin = App{Key: "admin", Name: "Admin console", Kind: Operator,
 		Description: "Bool's staff manage tenants, their domains, and their owners.",
@@ -57,8 +61,10 @@ var (
 			{Key: "tenancy:tenant:manage", Name: "Manage tenants",
 				Description: "Create, change, suspend, reactivate, and archive tenants; includes viewing them."},
 		}}
-	ControlCentre = App{Key: "control-centre", Name: "Control Centre", Kind: Workspace,
+	ControlCentre = App{Key: "control-centre", Name: "Control Centre", Kind: Workspace, IsDefault: true,
 		Description: "A tenant's own administration: members, roles, and audit."}
+	Calendar = App{Key: "calendar", Name: "Calendar", Kind: Workspace, IsDefault: true,
+		Description: "A tenant's shared calendar: holidays, events, and each member's schedule."}
 )
 
 // Role is a global role (C167): Bool's, declared in code for one app and mirrored into

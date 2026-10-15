@@ -50,6 +50,8 @@ func Check(apps []authorization.App) error {
 			return fmt.Errorf("app %s: blank name", a.Key)
 		case a.Kind != authorization.Workspace && a.Kind != authorization.Operator && a.Kind != authorization.Product:
 			return fmt.Errorf("app %s: kind %q", a.Key, a.Kind)
+		case a.IsDefault && a.Kind != authorization.Workspace:
+			return fmt.Errorf("app %s: only a workspace app can be a default app (C204)", a.Key)
 		}
 		seen[a.Key] = true
 	}
@@ -69,12 +71,13 @@ func (s *Apps) Run(ctx context.Context, env seed.Env) error {
 	err := actor.Tx(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
 		for _, a := range s.apps {
 			tag, err := tx.Exec(ctx, `
-				INSERT INTO apps (key, name, kind, description) VALUES ($1, $2, $3, nullif($4, ''))
+				INSERT INTO apps (key, name, kind, description, is_default) VALUES ($1, $2, $3, nullif($4, ''), $5)
 				ON CONFLICT (key) DO UPDATE
-				SET name = excluded.name, kind = excluded.kind, description = excluded.description, active_to = NULL
-				WHERE (apps.name, apps.kind, apps.description, apps.active_to)
-				      IS DISTINCT FROM (excluded.name, excluded.kind, excluded.description, NULL::timestamptz)`,
-				a.Key, a.Name, string(a.Kind), a.Description)
+				SET name = excluded.name, kind = excluded.kind, description = excluded.description,
+				    is_default = excluded.is_default, active_to = NULL
+				WHERE (apps.name, apps.kind, apps.description, apps.is_default, apps.active_to)
+				      IS DISTINCT FROM (excluded.name, excluded.kind, excluded.description, excluded.is_default, NULL::timestamptz)`,
+				a.Key, a.Name, string(a.Kind), a.Description, a.IsDefault)
 			if err != nil {
 				return fmt.Errorf("app %s: %w", a.Key, err)
 			}

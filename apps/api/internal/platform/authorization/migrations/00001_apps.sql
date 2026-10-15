@@ -1,4 +1,4 @@
--- Apps (C165; fields and rows confirmed 2026-10-06): the catalogue of Bool's apps that
+-- Apps (C165; fields and rows confirmed 2026-10-06, is_default 2026-10-15, C204): the catalogue of Bool's apps that
 -- tenants activate, mirrored from code. The code is the source of truth (each module
 -- declares its app; the edition lists them); the authorization.apps seed file writes the
 -- edition's apps here on every cmd/deploy and cmd/seed, so tenant_apps and roles can
@@ -14,6 +14,9 @@ CREATE TABLE apps (
     -- tenants on Bool's own domain (FindCare).
     kind        text        NOT NULL CHECK (kind IN ('workspace', 'operator', 'product')),
     description text,
+    -- Turned on for every tenant when it is created (C204); only a workspace app can be.
+    -- It applies to tenants created afterwards, and a tenant may turn it off later.
+    is_default  boolean     NOT NULL DEFAULT false CHECK (NOT is_default OR kind = 'workspace'),
     active_from timestamptz NOT NULL DEFAULT now(),
     active_to   timestamptz CHECK (active_to >= active_from),
     created_at  timestamptz NOT NULL DEFAULT now(),
