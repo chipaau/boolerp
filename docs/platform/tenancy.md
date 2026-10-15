@@ -332,12 +332,11 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   two-person approval of role requests, and support-access grants.
 
 **Subscription and enabled apps**
-- The app catalogue is code (the app packages), like capabilities and role templates.
-  `tenant_apps` records `(tenant_id, app_key, activated_by, active_from, active_to)`;
-  history is kept. **Role templates are not settled**: nothing copies a template into a
-  tenant today, and roles are either global — `roles.tenant_id IS NULL`, seeded from code
-  (C177) — or a tenant's own. Whether activating an app should seed the tenant roles, and
-  from what, is undecided; the admin console's two global roles cover the console itself.
+- Tenancy owns the app catalogue (`apps`, mirrored from code) and `tenant_apps` (C206):
+  `(tenant_id, app_key, activated_by, active_from, active_to)`, history kept. Other modules
+  read which apps a tenant has on through the view `tenant_apps_on`. Every new tenant starts
+  with the default apps (C204). Turning an app on copies no roles: roles are global
+  (`roles.tenant_id IS NULL`, from code, reaching every tenant) or a tenant's own (C167).
 - `subscriptions` and plans were replaced (C171): there is no plan catalogue; what each
   tenant pays is its billing agreement, priced per client, monthly or yearly
   ([billing](billing.md)).

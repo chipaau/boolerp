@@ -25,13 +25,13 @@ type TenantApps struct {
 
 // NewOperatorApps returns the seeder that turns apps on for the operator tenant.
 func NewOperatorApps(db DB, apps ...string) *TenantApps {
-	return &TenantApps{db: db, name: "authorization.operator_apps", apps: apps}
+	return &TenantApps{db: db, name: "tenancy.operator_apps", apps: apps}
 }
 
 // NewSampleApps returns the development seeder that turns apps on for the sample
 // tenants with these slugs.
 func NewSampleApps(db DB, slugs []string, apps ...string) *TenantApps {
-	return &TenantApps{db: db, name: "authorization.sample_apps", devOnly: true, slugs: slugs, apps: apps}
+	return &TenantApps{db: db, name: "tenancy.sample_apps", devOnly: true, slugs: slugs, apps: apps}
 }
 
 // Name implements seed.Seeder.

@@ -1,8 +1,10 @@
--- Apps (C165; fields and rows confirmed 2026-10-06, is_default 2026-10-15, C204): the catalogue of Bool's apps that
--- tenants activate, mirrored from code. The code is the source of truth (each module
--- declares its app; the edition lists them); the authorization.apps seed file writes the
--- edition's apps here on every cmd/deploy and cmd/seed, so tenant_apps and roles can
--- reference them. Global, not tenant-scoped. An app that leaves the code gets active_to;
+-- Apps (C165; fields and rows confirmed 2026-10-06, is_default 2026-10-15, C204): the
+-- catalogue of Bool's apps that tenants activate, mirrored from code. Tenancy owns it with
+-- tenant_apps (C206): which apps exist and which a tenant has on; the authorization module
+-- references it for what each app grants (capabilities, roles). The code is the source of
+-- truth (each module declares its app as an authorization.App; the edition lists them);
+-- the tenancy.apps seed file writes the edition's apps here on every cmd/deploy and
+-- cmd/seed, so tenant_apps, capabilities, and roles can reference them. Global, not tenant-scoped. An app that leaves the code gets active_to;
 -- none is ever deleted, so history keeps resolving.
 
 -- +goose Up

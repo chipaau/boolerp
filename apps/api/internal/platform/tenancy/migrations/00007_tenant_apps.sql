@@ -1,9 +1,9 @@
--- Tenant apps (C116, C166; fields confirmed 2026-10-06): which apps each tenant has
--- turned on, with history. Turning an app off sets active_to; turning it on again is a
--- new row. Who turned it off is in the audit log. Only the operator tenant turns apps on
--- and off for now (the user's choice): apps follow what the customer bought (D10).
--- Turning an app on will copy its role templates into the tenant's roles (built with
--- roles).
+-- Tenant apps (C116, C166; fields confirmed 2026-10-06; tenancy's since C206): which apps
+-- each tenant has turned on, with history. Turning an app off sets active_to; turning it
+-- on again is a new row. Who turned it off is in the audit log. Only the operator tenant
+-- turns apps on and off for now (the user's choice): apps follow what the customer bought
+-- (D10). Creating a tenant turns on the default apps (C204). Other modules read it through
+-- tenant_apps_on, below.
 
 -- +goose Up
 CREATE TABLE tenant_apps (
@@ -75,3 +75,13 @@ CREATE POLICY tenant_apps_update ON tenant_apps FOR UPDATE
 
 -- Every change is audited (C164).
 SELECT audit.enable('tenant_apps');
+
+-- The apps each tenant has on now, published for other modules (C134, C206): the
+-- authorization module counts a role only while its app is on. security_invoker, so the
+-- reader's own row-level security on tenant_apps applies. DISTINCT makes it a view
+-- PostgreSQL cannot write through, and changes nothing: a tenant has at most one live
+-- activation of an app.
+CREATE VIEW tenant_apps_on WITH (security_invoker = true) AS
+    SELECT DISTINCT tenant_id, app_key
+      FROM tenant_apps
+     WHERE active_from <= now() AND active_to IS NULL;

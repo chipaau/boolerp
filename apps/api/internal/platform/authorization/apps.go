@@ -21,7 +21,7 @@ func Migrations() fs.FS {
 // App is an app tenants activate (C165): its key (the frontend manifest's slug), name,
 // kind, description, whether every new tenant starts with it (IsDefault, C204; workspace
 // apps only), and the capabilities its roles may grant (C168). Each module
-// declares its own; the edition lists them, and the authorization.apps and
+// declares its own; the edition lists them, and the tenancy.apps (C206) and
 // authorization.capabilities seed files mirror them into the apps and capabilities tables.
 type App struct {
 	Key, Name, Description string

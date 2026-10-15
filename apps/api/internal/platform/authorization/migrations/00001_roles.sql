@@ -48,9 +48,8 @@ BEGIN
     IF NEW.tenant_id IS NULL THEN
         RETURN NEW;
     END IF;
-    IF TG_OP = 'INSERT' AND NOT EXISTS (SELECT 1 FROM tenant_apps
-                                         WHERE tenant_id = NEW.tenant_id AND app_key = NEW.app_key
-                                           AND active_to IS NULL) THEN
+    IF TG_OP = 'INSERT' AND NOT EXISTS (SELECT 1 FROM tenant_apps_on
+                                         WHERE tenant_id = NEW.tenant_id AND app_key = NEW.app_key) THEN
         RAISE EXCEPTION 'app % is not on in this tenant', NEW.app_key
             USING ERRCODE = 'check_violation';
     END IF;

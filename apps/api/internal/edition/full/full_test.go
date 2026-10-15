@@ -22,6 +22,7 @@ import (
 	identityseeds "github.com/boolmv/erp/apps/api/internal/platform/identity/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/config"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy"
+	tenancyseeds "github.com/boolmv/erp/apps/api/internal/platform/tenancy/seeds"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
 )
 
@@ -32,7 +33,7 @@ func TestMigrationsListEveryModuleWithItsTables(t *testing.T) {
 	}
 	assert.Equal(t, []string{"audit", "reference", "identity", "tenancy", "authorization", "billing"}, names, "in dependency order, audit first")
 
-	for name, file := range map[int]string{0: "00001_audit_log.sql", 1: "00001_countries.sql", 2: "00001_users.sql", 3: "00001_tenants.sql", 4: "00001_apps.sql"} {
+	for name, file := range map[int]string{0: "00001_audit_log.sql", 1: "00001_countries.sql", 2: "00001_users.sql", 3: "00006_apps.sql", 4: "00001_roles.sql"} {
 		files, err := fs.Glob(Migrations[name].FS, "*.sql")
 		require.NoError(t, err)
 		assert.Contains(t, files, file)
@@ -74,7 +75,7 @@ func TestDeploySeedersInOrder(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "authorization.capabilities", "authorization.roles", "tenancy.operator", "authorization.operator_apps", "identity.team_accounts", "tenancy.operator_members", "authorization.team_roles"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.apps", "authorization.capabilities", "authorization.roles", "tenancy.operator", "tenancy.operator_apps", "identity.team_accounts", "tenancy.operator_members", "authorization.team_roles"}, names)
 }
 
 func TestDataSeedersAreTheSeedFiles(t *testing.T) {
@@ -83,7 +84,7 @@ func TestDataSeedersAreTheSeedFiles(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "authorization.apps", "authorization.capabilities", "authorization.roles", "tenancy.operator", "authorization.operator_apps"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.apps", "authorization.capabilities", "authorization.roles", "tenancy.operator", "tenancy.operator_apps"}, names)
 }
 
 func TestSampleSeeders(t *testing.T) {
@@ -92,7 +93,7 @@ func TestSampleSeeders(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"tenancy.sample_tenants", "tenancy.sample_domains", "authorization.sample_apps"}, names)
+	assert.Equal(t, []string{"tenancy.sample_tenants", "tenancy.sample_domains", "tenancy.sample_apps"}, names)
 }
 
 func TestMembershipSeeders(t *testing.T) {
@@ -117,7 +118,7 @@ func TestTheTeamOwnerIsOneOfTheTeam(t *testing.T) {
 }
 
 func TestTheEditionsAppsAreValid(t *testing.T) {
-	require.NoError(t, authorizationseeds.Check(Apps))
+	require.NoError(t, tenancyseeds.CheckApps(Apps))
 	require.NoError(t, authorizationseeds.CheckCapabilities(Apps))
 	require.NoError(t, authorizationseeds.CheckRoles(Roles, Apps))
 	keys := make([]string, len(Apps))
