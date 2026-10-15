@@ -102,6 +102,7 @@ func RegisterModules(ctx context.Context, r chi.Router, d bootstrap.Deps) error 
 		TenantUser: chi.Chain(authModule.Authenticate, auth.RequireUser, auth.Actor,
 			tenancyModule.ResolveTenant, tenancyModule.RequireMember, tenancyModule.RequireActiveTenant,
 			capabilities, authorization.Enforce(d.Logger)),
+		User: chi.Chain(authModule.Authenticate, auth.RequireUser, auth.Actor, authorization.Enforce(d.Logger)),
 		Operator: chi.Chain(authModule.Authenticate, auth.RequireUser, auth.Actor,
 			tenancyModule.ResolveOperator, tenancyModule.RequireMember, tenancyModule.RequireActiveTenant,
 			capabilities, authorization.Enforce(d.Logger)),

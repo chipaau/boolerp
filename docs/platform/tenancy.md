@@ -145,9 +145,9 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
     `reference/seeds/institution_types.csv` (for example health: hospital, health centre,
     clinic, pharmacy, laboratory).
 - Classification is required before a tenant becomes active, not at creation (C136).
-- **Read through the API** (C199), behind the `Operator` chain for now, since the admin
-  console's create-tenant form is their only user; each answers current rows only (not
-  retired, or retired in the future) in the list envelope (C68):
+- **Read through the API** (C199) by any signed-in person, in the admin console or a
+  workspace, behind the `User` chain (reference data is not sensitive); each answers
+  current rows only (not retired, or retired in the future) in the list envelope (C68):
   - `GET /api/v1/countries`: `{code, alpha3, name, phonePrefix}`, by name, `q` on the name
     or either code; `pageSize` defaults to and is at most 300, so one page holds them all.
   - `GET /api/v1/legal-forms?country=MV`: `country` is required;
@@ -156,8 +156,8 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   - `GET /api/v1/institution-types`: `{code, name, sector: {code, name}}`, by sector then
     name, optional `sector` filter and `q` on the name; types of a retired sector are left out.
   - Cerbos (`reference:country`, `reference:legal_form`, `reference:institution_type`)
-    allows `list` to any member of the operator tenant, with no capability. Control Centre
-    gets its own routes when it needs the lists.
+    allows `list` to role `user`, with no tenant or capability; unregistered accounts and
+    machine clients are refused.
 
 **`memberships`** (C160, confirmed 2026-10-05; [data model](../data-model/README.md))
 - `id`, `tenant_id`, `user_id`; unique `(tenant_id, id)` so tenant tables reference a

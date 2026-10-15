@@ -15,13 +15,12 @@ import (
 )
 
 // Routes returns the reference lists' routes, relative to where the edition mounts
-// them (/api/v1), behind the Operator chain for now: the admin console's create-tenant
-// form is their only user (the user's choice, 2026-10-15). Workspace routes come when
-// Control Centre needs the lists.
+// them (/api/v1), behind the User chain: reference data is not sensitive, so any
+// signed-in person may read it, in the admin console or a workspace (C199).
 func (m *Module) Routes(s platform.Services) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Group(func(r chi.Router) {
-			r.Use(s.Operator...)
+			r.Use(s.User...)
 			r.Get("/countries", m.countries(s.Authz))
 			r.Get("/legal-forms", m.legalForms(s.Authz))
 			r.Get("/institution-types", m.institutionTypes(s.Authz))

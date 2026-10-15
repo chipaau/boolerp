@@ -23,8 +23,8 @@ import (
 )
 
 // Endpoint tests (C156) for the reference lists through the real router and
-// PostgreSQL. The Operator chain's membership checks are tenancy's and tested there;
-// here the chain is the record-or-deny backstop (C155) behind a faked caller, and
+// PostgreSQL. The User chain is the edition's; here it is the record-or-deny backstop
+// (C155) alone, since the routes need no caller of their own, and
 // Cerbos is an Authorizer stating allow or deny. Test rows use ISO's user-assigned
 // codes (XA…), which no real country has, and the seeded rows are filtered out.
 
@@ -88,7 +88,7 @@ func referenceWorld(t *testing.T) pgx.Tx {
 // referenceRouter mounts the module under /api/v1 as the edition does, over tx.
 func referenceRouter(tx pgx.Tx, authz authorization.Authorizer) http.Handler {
 	logger := slog.New(slog.DiscardHandler)
-	s := platform.Services{Authz: authz, Logger: logger, Operator: chi.Chain(authorization.Enforce(logger))}
+	s := platform.Services{Authz: authz, Logger: logger, User: chi.Chain(authorization.Enforce(logger))}
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(r chi.Router) { r.Group(reference.New(tx, logger).Routes(s)) })
 	return r

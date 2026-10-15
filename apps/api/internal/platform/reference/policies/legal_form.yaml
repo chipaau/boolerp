@@ -1,14 +1,13 @@
-# reference:legal_form (C151, C153): the legal forms, a shared reference list. Reference data is
-# not sensitive, so any member of the operator tenant may list it, with no capability:
-# the admin console's create-tenant form reads it (the user's choice, 2026-10-15).
-# Workspace members get it when Control Centre needs it.
+# reference:legal_form (C199): the legal forms, a shared reference list. Reference data
+# is not sensitive, so any signed-in person may list it, with no tenant or capability,
+# checked like identity:user (C154).
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
   version: default
   resource: "reference:legal_form"
   schemas:
     principalSchema:
-      ref: cerbos:///authorization/principal.json
+      ref: cerbos:///authorization/caller.json
     resourceSchema:
       ref: cerbos:///reference/legal_form.json
       # A list has no record.
@@ -17,7 +16,4 @@ resourcePolicy:
   rules:
     - actions: ["list"]
       effect: EFFECT_ALLOW
-      roles: ["member"]
-      condition:
-        match:
-          expr: P.attr.in_operator_tenant == true
+      roles: ["user"]

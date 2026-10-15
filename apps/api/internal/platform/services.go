@@ -30,6 +30,12 @@ type Services struct {
 	// before answering, in that order (C144, C155, C164).
 	TenantUser chi.Middlewares
 
+	// User protects a route any signed-in person may use, wherever they are: no
+	// tenant, membership, or capability is needed (shared reference lists, C199).
+	// Authenticate, require a person, record the actor, and require an authorization
+	// decision before answering.
+	User chi.Middlewares
+
 	// Operator protects the admin console's routes: authenticate, require a person,
 	// record the actor, resolve the operator tenant, require the person's active
 	// membership of it, require it active, load their capabilities, and require an
