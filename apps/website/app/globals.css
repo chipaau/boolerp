@@ -313,12 +313,49 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 .office-cross {
   color: rgb(140 122 92 / 0.45);
 }
-.office-step {
+/* the drafting grid on the demo's dark stage: the same paper, in light lines */
+.office-grid-dark {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(to right, rgb(255 255 255 / 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.02) 1px, transparent 1px);
+  background-size: 160px 160px, 160px 160px, 40px 40px, 40px 40px;
+}
+/* the building in grey while the story runs; the current room comes back in colour over it */
+#workspace[data-live] .office-base {
+  filter: grayscale(1) contrast(0.92) brightness(1.04);
+  opacity: 0.8;
+}
+.office-colour {
+  filter: saturate(1.35);
+}
+/* the apps' timeline (--on: 0 to 1, set by the story) */
+.office-item {
+  --on: 1;
+}
+#workspace[data-live] .office-item {
   --on: 0;
-  height: 2px;
-  width: calc(1.25rem + var(--on) * 1.75rem);
-  border-radius: 2px;
-  background: color-mix(in oklab, var(--brand-soft) calc(var(--on) * 100%), rgb(140 122 92 / 0.25));
+}
+.office-dot {
+  background: color-mix(in oklab, var(--brand-soft) calc(var(--on) * 100%), var(--background));
+  box-shadow:
+    0 0 0 1.5px color-mix(in oklab, var(--brand-soft) calc(var(--on) * 100%), rgb(140 122 92 / 0.45)),
+    0 0 0 calc(var(--on) * 5px) rgb(240 154 67 / 0.16);
+}
+.office-num {
+  color: color-mix(in oklab, var(--brand) calc(var(--on) * 100%), var(--faint));
+}
+.office-title {
+  font-weight: 700;
+  color: color-mix(in oklab, var(--foreground) calc(40% + var(--on) * 60%), transparent);
+}
+.office-body {
+  /* the description opens under the current app only */
+  max-height: calc(var(--on) * 5rem);
+  margin-top: calc(var(--on) * 0.25rem);
+  overflow: hidden;
+  opacity: var(--on);
 }
 .office-card {
   border-radius: 1rem;
