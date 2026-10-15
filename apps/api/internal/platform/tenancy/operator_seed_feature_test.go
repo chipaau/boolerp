@@ -32,12 +32,12 @@ func seedEnvFor(environment string) seed.Env {
 	return seed.NewEnv(environment, slog.New(slog.DiscardHandler))
 }
 
-func TestFeatureTheOperatorSeederCreatesAnActiveOperator(t *testing.T) {
+func TestFeatureTheOperatorSeederCreatesTheOperatorInProvisioning(t *testing.T) {
 	w := newWorld(t)
 	s := seeds.NewOperator(w.tx, testOperator, "x-tenancy.test")
 	assert.Equal(t, "tenancy.operator", s.Name())
 	require.NoError(t, s.Run(t.Context(), seedEnv()))
-	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`) // an active tenant has its primary type
+	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`) // a provisioning tenant needs no owner yet
 
 	var slug, status, primary, form string
 	var isOperator bool
@@ -48,7 +48,7 @@ func TestFeatureTheOperatorSeederCreatesAnActiveOperator(t *testing.T) {
 		  JOIN legal_forms lf ON lf.id = t.legal_form_id
 		 WHERE t.is_operator`).Scan(&slug, &status, &isOperator, &primary, &form))
 	assert.Equal(t, "x-operator", slug)
-	assert.Equal(t, "active", status)
+	assert.Equal(t, "provisioning", status, "OperatorMembers activates it with its owner (C197, C198)")
 	assert.True(t, isOperator)
 	assert.Equal(t, "x_tenancy_type", primary)
 	assert.Equal(t, "test_company", form)

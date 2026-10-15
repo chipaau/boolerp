@@ -54,7 +54,6 @@ func TestFeatureMembershipConstraints(t *testing.T) {
 
 	for name, sql := range map[string]string{
 		"second live membership":    `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, '` + u + `', now())`,
-		"second owner":              `INSERT INTO memberships (tenant_id, user_id, status, joined_at, is_owner) VALUES ($1, '` + v + `', 'active', now(), true)`,
 		"unknown status":            `INSERT INTO memberships (tenant_id, user_id, status) VALUES ($1, '` + v + `', 'pending')`,
 		"invited without expiry":    `INSERT INTO memberships (tenant_id, user_id) VALUES ($1, '` + v + `')`,
 		"active without joining":    `INSERT INTO memberships (tenant_id, user_id, status) VALUES ($1, '` + v + `', 'active')`,
@@ -108,13 +107,55 @@ func TestFeatureDisablingIsReversible(t *testing.T) {
 	testdb.AssertHas(t, w.tx, "memberships", map[string]any{"id": m, "status": "active"})
 }
 
-func TestFeatureTheOwnerCanBeTransferred(t *testing.T) {
+func TestFeatureATenantHasSeveralOwners(t *testing.T) {
 	w := newWorld(t)
 	a := w.tenant(t, "x-a", "XTA")
-	old := w.member(t, a, w.user(t, 1), true)
-	next := w.member(t, a, w.user(t, 2), false)
-	exec(t, w.tx, `UPDATE memberships SET is_owner = false WHERE id = $1`, old)
-	exec(t, w.tx, `UPDATE memberships SET is_owner = true WHERE id = $1`, next)
+	w.member(t, a, w.user(t, 1), true)
+	w.member(t, a, w.user(t, 2), true)
+	w.invite(t, a, w.user(t, 3))
+	exec(t, w.tx, `UPDATE memberships SET is_owner = true WHERE tenant_id = $1 AND status = 'invited'`, a)
+	assert.Equal(t, 3, testdb.Count(t, w.tx, "memberships", map[string]any{"tenant_id": a, "is_owner": true}),
+		"an invited member may be an owner too (C198)")
+}
+
+func TestFeatureActivationNeedsAnOwner(t *testing.T) {
+	w := newWorld(t)
+	a := w.tenant(t, "x-a", "XTA")
+	exec(t, w.tx, `INSERT INTO tenant_institution_types (tenant_id, institution_type, is_primary)
+		VALUES ($1, 'x_tenancy_type', true)`, a)
+	w.member(t, a, w.user(t, 1), false)
+	err := w.commitCheck(t, `UPDATE tenants SET status = 'active', activated_at = now() WHERE id = $1`, a)
+	assert.Equal(t, "23514", code(t, err), "a member who is not an owner is not enough")
+
+	w.invite(t, a, w.user(t, 2))
+	exec(t, w.tx, `UPDATE memberships SET is_owner = true WHERE tenant_id = $1 AND status = 'invited'`, a)
+	require.NoError(t, w.commitCheck(t, `UPDATE tenants SET status = 'active', activated_at = now() WHERE id = $1`, a),
+		"an invited owner is enough")
+}
+
+func TestFeatureAProvisioningTenantNeedsNoOwner(t *testing.T) {
+	w := newWorld(t)
+	w.tenant(t, "x-a", "XTA")
+	exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
+}
+
+func TestFeatureAnActiveTenantKeepsAtLeastOneOwner(t *testing.T) {
+	w := newWorld(t)
+	a := w.tenant(t, "x-a", "XTA")
+	w.activate(t, a) // its owner: w.owner
+	last := id(t, w.tx, `SELECT id FROM memberships WHERE tenant_id = $1 AND is_owner`, a)
+
+	for name, sql := range map[string]string{
+		"unflagging the last owner": `UPDATE memberships SET is_owner = false WHERE id = $1`,
+		"deleting the last owner":   `DELETE FROM memberships WHERE id = $1`,
+	} {
+		err := w.commitCheck(t, sql, last)
+		assert.Equal(t, "23514", code(t, err), name)
+	}
+
+	// Ownership moves by adding another owner, then stepping down.
+	next := w.member(t, a, w.user(t, 2), true)
+	require.NoError(t, w.commitCheck(t, `UPDATE memberships SET is_owner = false WHERE id = $1`, last))
 	testdb.AssertHas(t, w.tx, "memberships", map[string]any{"id": next, "is_owner": true})
 }
 

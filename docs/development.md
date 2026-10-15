@@ -322,14 +322,17 @@ countries it references, `reference.sectors` for `sectors.csv`, and `reference.i
 `institution_types.csv`, after the sectors.
 
 `tenancy.operator` creates Bool's operator tenant (`workspace`, C142) if none exists, after
-the reference lists; an existing operator is left as it is. It then gives the operator its
+the reference lists, in `provisioning`; an existing operator is left as it is. It becomes
+active when `tenancy.operator_members` gives it its owner (C197, C198), as the real flow
+does: a tenant outside `provisioning` needs at least one owner. It then gives the operator its
 platform workspace host, `workspace.<APP_PLATFORM_DOMAIN>` (C158, C159), active and
 primary, if it has none.
 
 In development, `tenancy.sample_tenants` (C143) then adds the sample tenants in
 `tenancy/seeds/sample_tenants.csv` (ministries, atoll hospitals, health centres, clinics,
 councils, schools, colleges), as the table owner, until tenancy has a create-tenant
-operation, and gives each one without a platform workspace host `<slug>.<APP_PLATFORM_DOMAIN>`
+operation, in `provisioning`; `tenancy.sample_members` later activates each classified one
+once it has its owner. It gives each one without a platform workspace host `<slug>.<APP_PLATFORM_DOMAIN>`
 (`cyryx.bool.test`), active, and primary unless the tenant already has a primary.
 
 `tenancy.sample_domains` then adds the hosts in `tenancy/seeds/sample_domains.csv` (dev

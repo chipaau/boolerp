@@ -152,8 +152,9 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
 - `status` invited / active / disabled (reversible) / ended (final history, never
   reused: rejoining is a new row), with `invite_expires_at`, `joined_at`, `disabled_at`,
   and `ended_at` following it; an expired invitation is an invited row past its expiry.
-  `is_owner` (one per tenant, invited or active, transferred only by a dedicated action);
-  `invited_by`.
+  `is_owner` (invited or active only); `invited_by`. **One or more owners (C198):** a
+  tenant outside provisioning keeps at least one invited or active owner, checked at commit;
+  ownership moves by adding an owner, then the old one stepping down.
 - One live membership per person and tenant; tenant and user never change.
 - Row-level security: members read and change their tenant's memberships (Cerbos decides
   who); operators read, create, and change only owner memberships of other tenants; none
@@ -339,9 +340,9 @@ request is confirmed (C197); the rest is open (see below).
   add, such as its default domain). It calls no outside service, so it never half-succeeds.
 - **The owner comes afterwards:** their Kratos account is found by e-mail or created
   (idempotent, reused on retry, since an account cannot be rolled back), then their owner
-  membership is written. **Activation** (`provisioning` to `active`) needs an invited or
-  active owner and a primary institution type: the operation answers with field errors, and
-  the database refuses the change at commit (C138, C197).
+  membership is written. **Activation** (`provisioning` to `active`) needs at least one
+  invited or active owner and a primary institution type: the operation answers with field
+  errors, and the database refuses the change at commit (C138, C197, C198).
 - **Audit rows are not written by that transaction.** Every table carries an `audit.enable`
   trigger (C164), so the rows appear on their own; what the transaction must do is open
   through `tenant.Tx` or `actor.Tx`, which carry the actor the trigger records.
@@ -403,10 +404,12 @@ confirmation, the field list table by table (see
   not written down.
 - **Which apps a new tenant starts with**, and what roles it starts with — see the role
   templates note under Apps above, which is the same open question from the other side.
-- **The owner.** Not part of creating the tenant (C197): it is added afterwards, and
-  activation needs an invited or active owner (checked by the operation and by the
-  database). Still open: how an owner is added (an e-mail that may already have an account,
-  what happens when it does) and how the invitation reaches them.
+- **The owner.** Not part of creating the tenant (C197): owners are added afterwards, and
+  activation needs at least one (C198). **Adding a person** (an owner or an admin, in the
+  wizard or on the details page, C198): the e-mail is required; name and phone are required
+  only when no account has that e-mail, since an existing account keeps its own details;
+  "owner" is a checkbox; no nationality or ID/passport until identity documents are designed
+  as country data. Still open: how the invitation reaches them (application e-mail, 12b).
 - **Idempotency.** The key is required above; where it is stored and how long it is honoured
   is not designed.
 

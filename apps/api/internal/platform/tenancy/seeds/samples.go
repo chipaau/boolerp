@@ -24,8 +24,9 @@ var sampleTenantsCSV []byte
 const sampleTimezone = "Indian/Maldives"
 
 // Sample is one row of sample_tenants.csv: a tenant, its legal form by code in its
-// country, its parent by slug, and its types, the primary first. No types means
-// still provisioning.
+// country, its parent by slug, and its types, the primary first. Samples are created
+// in provisioning; SampleMembers activates those with types once they have their owner
+// (C197, C198). No types means still provisioning.
 type Sample struct {
 	Slug, Code, Name, Country, LegalForm, IdentityNumber, Parent string
 	Types                                                        []string
@@ -162,17 +163,13 @@ func (s *Samples) Run(ctx context.Context, env seed.Env) error {
 func createSample(ctx context.Context, tx pgx.Tx, sm Sample) (string, error) {
 	var id string
 	err := tx.QueryRow(ctx, `
-		INSERT INTO tenants (slug, code, name, country, parent_id, legal_form_id, identity_number,
-		                     timezone, status, activated_at)
+		INSERT INTO tenants (slug, code, name, country, parent_id, legal_form_id, identity_number, timezone)
 		SELECT $1, $2, $3, $7, (SELECT p.id FROM tenants p WHERE p.slug = nullif($4, '')),
-		       lf.id, nullif($6, ''), $8,
-		       CASE WHEN $9 THEN 'provisioning' ELSE 'active' END,
-		       CASE WHEN $9 THEN NULL ELSE now() END
+		       lf.id, nullif($6, ''), $8
 		  FROM legal_forms lf
 		 WHERE lf.country = $7 AND lf.code = $5
 		RETURNING id`,
-		sm.Slug, sm.Code, sm.Name, sm.Parent, sm.LegalForm, sm.IdentityNumber, sm.Country, sampleTimezone,
-		len(sm.Types) == 0).Scan(&id)
+		sm.Slug, sm.Code, sm.Name, sm.Parent, sm.LegalForm, sm.IdentityNumber, sm.Country, sampleTimezone).Scan(&id)
 	if err != nil {
 		return "", fmt.Errorf("sample %s (legal form %q): %w", sm.Slug, sm.LegalForm, err)
 	}

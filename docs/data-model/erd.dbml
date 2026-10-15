@@ -211,7 +211,7 @@ Table memberships {
   tenant_id uuid [not null, ref: > tenants.id, note: 'ON DELETE RESTRICT']
   user_id uuid [not null, ref: > users.id, note: 'ON DELETE RESTRICT (C134)']
   status text [not null, default: 'invited', note: 'invited | active | disabled | ended']
-  is_owner boolean [not null, default: false, note: 'invited or active only; one per tenant']
+  is_owner boolean [not null, default: false, note: 'invited or active only; one or more per tenant; at least one outside provisioning (C198)']
   invited_by uuid [ref: > users.id, note: 'null when provisioning or a seed created it']
   invite_expires_at timestamptz [note: 'required when invited; past = expired']
   joined_at timestamptz [note: 'required when active or disabled']
@@ -223,7 +223,7 @@ Table memberships {
   indexes {
     (tenant_id, id) [unique, note: 'for tenant-aware foreign keys']
     (tenant_id, user_id) [unique, note: 'partial: WHERE status <> ended']
-    tenant_id [unique, note: 'partial: WHERE is_owner']
+    tenant_id [note: 'partial: WHERE is_owner (the at-least-one-owner check)']
     user_id
   }
 

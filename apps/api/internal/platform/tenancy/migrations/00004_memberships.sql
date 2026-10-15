@@ -2,8 +2,9 @@
 -- work in. One account, many memberships (C115): each has its own status, and ending
 -- one removes access to that tenant only. A membership is not employment: the employee
 -- record is HRMS's. Portal users (students, patients) never become members (C133).
--- Seats are the tenant's invited and active memberships. The schema only: no membership
--- is created by a migration (C135).
+-- Seats are the tenant's invited and active memberships. A tenant has one or more owners
+-- (C198): a tenant outside provisioning always keeps at least one, checked at commit. The
+-- schema only: no membership is created by a migration (C135).
 
 -- +goose Up
 CREATE TABLE memberships (
@@ -17,7 +18,9 @@ CREATE TABLE memberships (
     -- invite_expires_at has passed, not a status.
     status            text        NOT NULL DEFAULT 'invited'
                       CHECK (status IN ('invited', 'active', 'disabled', 'ended')),
-    -- One owner per tenant, changed only by a dedicated transfer.
+    -- An owner of the tenant's account (C198): it cannot be locked out, and other owners
+    -- are added and removed by owners. A tenant may have several; one outside
+    -- provisioning always has at least one (checked at commit, below).
     is_owner          boolean     NOT NULL DEFAULT false,
     -- Who invited them; null when provisioning or a seed created the membership.
     invited_by        uuid        REFERENCES users (id) ON DELETE RESTRICT,
@@ -35,15 +38,14 @@ CREATE TABLE memberships (
     CHECK (status NOT IN ('active', 'disabled') OR joined_at IS NOT NULL),
     CHECK (status <> 'disabled' OR disabled_at IS NOT NULL),
     CHECK (status <> 'ended' OR ended_at IS NOT NULL),
-    -- The owner is invited or active: never disabled or ended without a transfer.
+    -- An owner is invited or active: it stops being an owner before it is disabled or ended.
     CHECK (NOT is_owner OR status IN ('invited', 'active'))
 );
 
 -- One live membership per person and tenant; an ended one is history, never reused.
 CREATE UNIQUE INDEX memberships_one_live ON memberships (tenant_id, user_id) WHERE status <> 'ended';
--- At most one owner per tenant. A partial unique index cannot be deferred, so a
--- transfer unflags the old owner before flagging the new one.
-CREATE UNIQUE INDEX memberships_one_owner ON memberships (tenant_id) WHERE is_owner;
+-- A tenant's owners (the "at least one owner" check below).
+CREATE INDEX memberships_owners ON memberships (tenant_id) WHERE is_owner;
 -- A person's memberships across tenants (the switcher, RequireMember).
 CREATE INDEX memberships_user ON memberships (user_id);
 
@@ -69,6 +71,51 @@ $$;
 -- +goose StatementEnd
 CREATE TRIGGER memberships_locked BEFORE UPDATE ON memberships
     FOR EACH ROW EXECUTE FUNCTION memberships_locked();
+
+-- At least one owner (C197, C198): a tenant outside provisioning has at least one invited or
+-- active owner membership. The rule spans two tables, so it is a constraint trigger on each,
+-- checked at commit, like the primary institution type (C138): within one transaction a
+-- tenant can be given an owner and activated in either order, and owners can be swapped.
+-- +goose StatementBegin
+CREATE FUNCTION tenants_check_owner(tenant uuid) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    tenant_status text;
+BEGIN
+    SELECT t.status INTO tenant_status FROM tenants t WHERE t.id = tenant;
+    IF NOT FOUND OR tenant_status = 'provisioning' THEN
+        RETURN;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM memberships m
+                    WHERE m.tenant_id = tenant AND m.is_owner AND m.status IN ('invited', 'active')) THEN
+        RAISE EXCEPTION 'tenant % is % without an owner', tenant, tenant_status
+            USING ERRCODE = 'check_violation';
+    END IF;
+END;
+$$;
+
+CREATE FUNCTION tenants_owner_from_tenant() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    PERFORM tenants_check_owner(NEW.id);
+    RETURN NULL;
+END;
+$$;
+
+CREATE FUNCTION tenants_owner_from_membership() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    PERFORM tenants_check_owner(OLD.tenant_id);
+    RETURN NULL;
+END;
+$$;
+-- +goose StatementEnd
+
+CREATE CONSTRAINT TRIGGER tenants_have_owner
+    AFTER INSERT OR UPDATE OF status ON tenants
+    DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW EXECUTE FUNCTION tenants_owner_from_tenant();
+CREATE CONSTRAINT TRIGGER memberships_keep_owner
+    AFTER UPDATE OR DELETE ON memberships
+    DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW EXECUTE FUNCTION tenants_owner_from_membership();
 
 -- The lookups, as erp_lookup (C131): they run before the request's tenant is set (row-
 -- level security would hide every row), each reading only the columns granted here.
