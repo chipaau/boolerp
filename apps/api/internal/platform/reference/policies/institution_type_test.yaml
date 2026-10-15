@@ -24,7 +24,7 @@ resources:
     kind: "reference:institution_type"
     id: list
 tests:
-  - name: Any signed-in person lists the institution types, in a tenant or not; others do not
+  - name: Any authenticated caller, a person or a machine, lists the institution types, in a tenant or not
     input:
       principals: [person, operator_member, customer_member, unregistered, machine]
       resources: [list]
@@ -33,5 +33,5 @@ tests:
       - { principal: person, resource: list, actions: { list: EFFECT_ALLOW } }
       - { principal: operator_member, resource: list, actions: { list: EFFECT_ALLOW } }
       - { principal: customer_member, resource: list, actions: { list: EFFECT_ALLOW } }
-      - { principal: unregistered, resource: list, actions: { list: EFFECT_DENY } }
-      - { principal: machine, resource: list, actions: { list: EFFECT_DENY } }
+      - { principal: unregistered, resource: list, actions: { list: EFFECT_ALLOW } }
+      - { principal: machine, resource: list, actions: { list: EFFECT_ALLOW } }

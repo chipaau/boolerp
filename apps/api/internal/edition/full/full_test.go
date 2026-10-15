@@ -201,7 +201,7 @@ func TestRegisterModulesMountsTheTenantBehindTheTenantChain(t *testing.T) {
 
 	rec = httptest.NewRecorder()
 	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/countries", nil))
-	assert.Equal(t, http.StatusUnauthorized, rec.Code, "the reference lists need a signed-in person")
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "the reference lists need an authenticated caller")
 }
 
 func TestPrincipalNeedsACaller(t *testing.T) {
@@ -212,8 +212,8 @@ func TestPrincipalNeedsACaller(t *testing.T) {
 // The route walk C144 asks for: every route outside /api/auth (whose /me routes
 // use the authentication pieces on their own, C157) has Authenticate and a
 // caller-kind guard, and any route that resolves a tenant also requires
-// membership. Only the routes named in outsideTenant (the User chain's, C199) may
-// skip the tenant. Middlewares are compared by their function's code pointer, which a
+// membership. Only the routes named in outsideTenant (the Authenticated chain's,
+// C199) may skip the caller-kind guard and the tenant. Middlewares are compared by their function's code pointer, which a
 // method value shares across receivers.
 func TestEveryRouteIsProtected(t *testing.T) {
 	r := chi.NewRouter()
@@ -251,12 +251,12 @@ func TestEveryRouteIsProtected(t *testing.T) {
 			has[code(mw)] = true
 		}
 		assert.True(t, has[authenticate], "%s %s: Authenticate", method, route)
-		assert.True(t, has[requireUser], "%s %s: a caller-kind guard", method, route)
 		assert.True(t, has[recordActor], "%s %s: the actor for the audit", method, route)
 		if outsideTenant[route] {
 			assert.False(t, has[resolveTenant] || has[resolveOp], "%s %s: listed as outside a tenant", method, route)
 			return nil
 		}
+		assert.True(t, has[requireUser], "%s %s: a caller-kind guard", method, route)
 		assert.True(t, has[resolveTenant] || has[resolveOp], "%s %s: a tenant or the operator", method, route)
 		if has[resolveTenant] || has[resolveOp] {
 			assert.True(t, has[loadCaps], "%s %s: the caller's capabilities", method, route)

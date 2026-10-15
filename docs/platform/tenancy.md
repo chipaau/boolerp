@@ -145,8 +145,8 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
     `reference/seeds/institution_types.csv` (for example health: hospital, health centre,
     clinic, pharmacy, laboratory).
 - Classification is required before a tenant becomes active, not at creation (C136).
-- **Read through the API** (C199) by any signed-in person, in the admin console or a
-  workspace, behind the `User` chain (reference data is not sensitive); each answers
+- **Read through the API** (C199) by any authenticated caller, a person or a machine
+  client, behind the `Authenticated` chain (reference data is not sensitive); each answers
   current rows only (not retired, or retired in the future) in the list envelope (C68):
   - `GET /api/v1/countries`: `{code, alpha3, name, phonePrefix}`, by name, `q` on the name
     or either code; `pageSize` defaults to and is at most 300, so one page holds them all.
@@ -156,8 +156,7 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   - `GET /api/v1/institution-types`: `{code, name, sector: {code, name}}`, by sector then
     name, optional `sector` filter and `q` on the name; types of a retired sector are left out.
   - Cerbos (`reference:country`, `reference:legal_form`, `reference:institution_type`)
-    allows `list` to role `user`, with no tenant or capability; unregistered accounts and
-    machine clients are refused.
+    allows `list` to roles `user`, `account`, and `client`, with no tenant or capability.
 
 **`memberships`** (C160, confirmed 2026-10-05; [data model](../data-model/README.md))
 - `id`, `tenant_id`, `user_id`; unique `(tenant_id, id)` so tenant tables reference a
