@@ -25,6 +25,8 @@ export type Room = {
   features: string[]
   /** Where the card stands, on the drawing. */
   pin: [number, number]
+  /** Each island's walkway into the hub, island end first (one per area). */
+  routes: [number, number][][]
 }
 
 // UI fixtures: marketing content, not live data
@@ -38,6 +40,7 @@ export const ROOMS: Room[] = [
     areas: [[563, 28, 1284, 600], [2091, 159, 2841, 722], [1406, 1491, 2156, 1988]],
     features: ['Stock levels per site', 'Low-stock alerts', 'Receiving against orders', 'Transfers between stores'],
     pin: [1290, 640],
+    routes: [[[1088, 469], [1238, 544], [1313, 600]], [[2316, 638], [2203, 694], [1988, 825]], [[1838, 1519], [1875, 1425]]],
   },
   {
     id: 'requests',
@@ -48,6 +51,7 @@ export const ROOMS: Room[] = [
     areas: [[544, 1369, 1200, 1875], [2194, 1294, 2822, 1809]],
     features: ['Goods and service requests', 'Approval chains', 'Status at every step'],
     pin: [860, 1400],
+    routes: [[[938, 1425], [1050, 1350], [1163, 1256]], [[2250, 1444], [2138, 1350], [1988, 1256]]],
   },
   {
     id: 'purchasing',
@@ -58,6 +62,7 @@ export const ROOMS: Room[] = [
     areas: [[1369, 9, 1959, 459]],
     features: ['Orders from approved requests', 'Supplier quotes', 'Delivery tracking'],
     pin: [1960, 470],
+    routes: [[[1650, 430], [1660, 560]]],
   },
   {
     id: 'assets',
@@ -68,6 +73,7 @@ export const ROOMS: Room[] = [
     areas: [[2353, 769, 2981, 1294]],
     features: ['Assigned to people and sites', 'Verification rounds', 'Full history'],
     pin: [2560, 820],
+    routes: [[[2363, 1013], [2250, 1088]]],
   },
   {
     id: 'calendar',
@@ -78,6 +84,7 @@ export const ROOMS: Room[] = [
     areas: [[84, 469, 759, 994], [1509, 459, 1969, 769]],
     features: ['Room booking', 'Invites and replies', 'Shared notes'],
     pin: [380, 500],
+    routes: [[[563, 863], [844, 975]], [[1700, 640], [1660, 740]]],
   },
   {
     id: 'reports',
@@ -88,6 +95,7 @@ export const ROOMS: Room[] = [
     areas: [[113, 994, 806, 1509]],
     features: ['Across every app', 'Pending and overdue', 'Export to Excel'],
     pin: [420, 1030],
+    routes: [[[750, 1181], [900, 1125]]],
   },
 ]
 

@@ -19,7 +19,7 @@ function zoomFor(room: Room) {
   const t = Math.min(...room.areas.map((a) => a[1]))
   const b = Math.max(...room.areas.map((a) => a[3]))
   const fill = Math.max((r - l) / OFFICE.width, (b - t) / OFFICE.height)
-  return Math.min(1.4, Math.max(1, 0.62 / fill))
+  return Math.min(1.35, Math.max(0.95, 0.5 / fill))
 }
 
 /**
@@ -53,9 +53,11 @@ export function Office() {
         const shot = (c: { x: number; y: number }, scale: number) => ({
           scale,
           x: () => stage.clientWidth * 0.5 - c.x * camera.offsetWidth * scale,
-          y: () => stage.clientHeight * 0.5 - c.y * camera.offsetHeight * scale,
+          y: () => stage.clientHeight * 0.6 - c.y * camera.offsetHeight * scale, // a little low: the heading is above
         })
-        const whole = shot({ x: 0.5, y: 0.5 }, 1)
+        // the whole map, as large as fits under the heading
+        const fit = () => Math.min(1, (stage.clientHeight * 0.74) / camera.offsetHeight)
+        const whole = { scale: fit, x: () => stage.clientWidth * 0.5 - 0.5 * camera.offsetWidth * fit(), y: () => stage.clientHeight * 0.58 - 0.5 * camera.offsetHeight * fit() }
         ROOMS.forEach((r) => {
           const p = parts(r.id)
           gsap.set([...p.lit, ...p.card], { autoAlpha: 0 })
@@ -64,7 +66,7 @@ export function Office() {
         })
         gsap.set(camera, { transformOrigin: '0 0', ...whole })
         // each card keeps its size whatever its step's zoom
-        ROOMS.forEach((r) => gsap.set(q(`[data-office-card="${r.id}"] [data-office-face]`), { scale: 1 / zoomFor(r), transformOrigin: '0% 100%' }))
+        ROOMS.forEach((r) => gsap.set(q(`[data-office-card="${r.id}"] [data-office-face]`), { scale: () => 1 / (zoomFor(r) * fit()), transformOrigin: '0% 100%' }))
 
         const tl = gsap.timeline()
         tl.addLabel('start', 0)
@@ -78,7 +80,7 @@ export function Office() {
               .to(from.veil, { autoAlpha: 1, duration: 0.4, ease: 'power1.inOut' }, at + 0.05)
               .to(from.item, { '--on': 0, duration: 0.35, ease: 'power1.inOut' }, at)
           }
-          tl.to(camera, { ...shot(centreOf(room), zoomFor(room)), duration: 0.7, ease: 'power3.inOut' }, at + 0.05)
+          tl.to(camera, { ...shot(centreOf(room), zoomFor(room) * fit()), duration: 0.7, ease: 'power3.inOut' }, at + 0.05)
             .to(to.item, { '--on': 1, duration: 0.35, ease: 'power1.inOut' }, at + 0.3)
             .to(to.veil, { autoAlpha: 0, duration: 0.45, ease: 'power1.inOut', stagger: 0.06 }, at + 0.4)
             .to(to.lit, { autoAlpha: 1, duration: 0.4, ease: 'power1.inOut', stagger: 0.06 }, at + 0.45)
@@ -127,25 +129,24 @@ export function Office() {
     <section ref={section} id="workspace" className="relative overflow-hidden bg-background lg:h-svh">
       <div aria-hidden="true" className="office-grid pointer-events-none absolute inset-0" />
 
-      {/* the map fills the right of the screen, edge to edge; the camera moves inside it */}
-      <div data-office-stage="" className="relative aspect-[3/2] overflow-hidden lg:absolute lg:inset-y-0 lg:left-[36%] lg:right-0 lg:aspect-auto lg:[mask-image:linear-gradient(to_right,transparent,black_8%)]">
+      {/* the map fills the screen; the camera moves inside it */}
+      <div data-office-stage="" className="relative aspect-[3/2] overflow-hidden lg:absolute lg:inset-0 lg:aspect-auto">
         <div data-office-camera="" className="isolate absolute left-0 top-0 aspect-[3/2] w-full will-change-transform">
-          {/* the routes into the hub: dashes that keep marching, faint until their app comes forward */}
-          <svg aria-hidden="true" viewBox={`0 0 ${OFFICE.width} ${OFFICE.height}`} className="absolute inset-0 size-full overflow-visible">
+          <img src={OFFICE.src} alt="The Bool workspace as a hub, with each app an island connected to it" width={OFFICE.width} height={OFFICE.height} decoding="async" className="office-base absolute inset-0 size-full select-none" draggable={false} />
+          {/* the walkways into the hub: dashes marching inward along them, faint until their app comes forward */}
+          <svg aria-hidden="true" viewBox={`0 0 ${OFFICE.width} ${OFFICE.height}`} className="absolute inset-0 z-10 size-full overflow-visible">
             {ROOMS.flatMap((r) =>
-              r.areas.map((a, i) => {
-                const [hx, hy] = [(HUB[0] + HUB[2]) / 2, (HUB[1] + HUB[3]) / 2]
-                const [x, y] = [(a[0] + a[2]) / 2, (a[1] + a[3]) / 2]
+              r.routes.map((route, i) => {
+                const points = route.map(([x, y]) => `${x},${y}`).join(' ')
                 return (
                   <g key={`${r.id}-${i}`}>
-                    <line x1={hx} y1={hy} x2={x} y2={y} className="office-route-rest" vectorEffect="non-scaling-stroke" />
-                    <line data-office-route={r.id} x1={hx} y1={hy} x2={x} y2={y} className="office-route invisible" vectorEffect="non-scaling-stroke" />
+                    <polyline points={points} className="office-route-rest" vectorEffect="non-scaling-stroke" />
+                    <polyline data-office-route={r.id} points={points} className="office-route invisible" vectorEffect="non-scaling-stroke" />
                   </g>
                 )
               }),
             )}
           </svg>
-          <img src={OFFICE.src} alt="The Bool workspace as a hub, with each app an island connected to it" width={OFFICE.width} height={OFFICE.height} decoding="async" className="office-base absolute inset-0 size-full select-none" draggable={false} />
           {/* each app's islands: a warm glow under it when it comes forward, a cream veil over it when it does not */}
           {ROOMS.flatMap((r) =>
             r.areas.map((a, i) => {
@@ -184,31 +185,26 @@ export function Office() {
         </div>
       </div>
 
-      {/* the left: a large title at the top, the apps as a ruled list at the foot */}
-      <div className="relative mx-auto flex w-full max-w-7xl flex-col px-6 py-16 lg:h-full lg:py-0 2xl:max-w-[88rem]">
-        <div className="flex flex-col lg:h-full lg:max-w-[30%] lg:pb-14 lg:pt-28">
-          <p className="text-overline tracking-[0.28em] text-muted-foreground">Inside your workspace</p>
-          <h2 className="mt-5 text-[clamp(2.25rem,3.3vw,3.75rem)] font-light leading-[1.02] tracking-[-0.04em] text-foreground">
-            One workspace,
-            <br />
-            <span className="text-(--brand)">every app connected.</span>
-          </h2>
-          <ol className="mt-12 border-t border-border/70 lg:mt-auto">
-            {ROOMS.map((room, i) => (
-              <li key={room.id} data-office-item={room.id} className="office-item border-b border-border/70">
-                <button type="button" onClick={() => go(room.id)} className="w-full py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <span className="flex items-baseline gap-3">
-                    <span className="office-num w-6 text-xs tabular-nums">{String(i + 1).padStart(2, '0')}</span>
-                    <span className="office-title text-[17px]">{room.title}</span>
-                    <span className="office-tags ml-auto text-[10px] font-bold uppercase tracking-[0.14em]">{room.tags.join(', ')}</span>
-                  </span>
-                  <span className="office-body block pl-9 text-[13px] leading-relaxed text-muted-foreground">{room.body}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
-        </div>
+      {/* the heading, at the top over a soft cream fade */}
+      <div className="pointer-events-none relative px-6 pt-24 text-center lg:absolute lg:inset-x-0 lg:top-0 lg:z-20 lg:bg-[linear-gradient(var(--background)_60%,transparent)] lg:pb-20 lg:pt-24">
+        <p className="text-overline tracking-[0.28em] text-muted-foreground">Inside your workspace</p>
+        <h2 className="mt-3 text-[clamp(2rem,3vw,3.25rem)] font-light leading-[1.05] tracking-[-0.035em] text-foreground">
+          One workspace, <span className="text-(--brand)">every app connected.</span>
+        </h2>
       </div>
+
+      {/* where the visitor is: a dot per app, the current one amber; clicking one goes to it */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 hidden h-28 bg-[linear-gradient(transparent,var(--background)_70%)] lg:block" />
+      <ol aria-label="Apps" className="absolute inset-x-0 bottom-8 z-20 hidden justify-center gap-5 lg:flex">
+        {ROOMS.map((room) => (
+          <li key={room.id} data-office-item={room.id} className="office-item">
+            <button type="button" onClick={() => go(room.id)} className="group flex flex-col items-center gap-2 outline-none">
+              <span aria-hidden="true" className="office-dot size-2.5 rounded-full" />
+              <span className="office-title text-[11px] font-bold uppercase tracking-[0.14em]">{room.title}</span>
+            </button>
+          </li>
+        ))}
+      </ol>
     </section>
   )
 }

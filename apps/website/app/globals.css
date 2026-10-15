@@ -340,12 +340,12 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 .office-route {
   fill: none;
   stroke-linecap: round;
-  stroke-dasharray: 2 10;
+  stroke-dasharray: 2 12;
   animation: office-march 1.2s linear infinite;
 }
 .office-route-rest {
-  stroke: rgb(165 144 111 / 0.35);
-  stroke-width: 1.5;
+  stroke: rgb(165 144 111 / 0.4);
+  stroke-width: 2;
 }
 .office-route {
   stroke: #f0913a;
@@ -354,7 +354,7 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 }
 @keyframes office-march {
   to {
-    stroke-dashoffset: 12;
+    stroke-dashoffset: -14;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -369,6 +369,10 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 }
 #workspace[data-live] .office-item {
   --on: 0;
+}
+.office-dot {
+  background: color-mix(in oklab, var(--brand-soft) calc(var(--on) * 100%), rgb(140 122 92 / 0.3));
+  box-shadow: 0 0 0 calc(var(--on) * 5px) rgb(240 154 67 / 0.18);
 }
 .office-num,
 .office-tags {
