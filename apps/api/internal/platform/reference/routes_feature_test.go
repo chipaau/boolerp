@@ -18,6 +18,7 @@ import (
 
 	"github.com/boolmv/erp/apps/api/internal/platform"
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/httpinput"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 	"github.com/boolmv/erp/apps/api/internal/platform/reference"
 )
@@ -94,16 +95,11 @@ func referenceRouter(tx pgx.Tx, authz authorization.Authorizer) http.Handler {
 	return r
 }
 
-type page[T any] struct {
-	Items                 []T
-	Page, PageSize, Total int
-}
-
-func get[T any](t *testing.T, h http.Handler, path string) (*httptest.ResponseRecorder, page[T]) {
+func get[T any](t *testing.T, h http.Handler, path string) (*httptest.ResponseRecorder, httpinput.Page[T]) {
 	t.Helper()
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
-	var p page[T]
+	var p httpinput.Page[T]
 	if rec.Code == http.StatusOK {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &p))
 	}

@@ -81,13 +81,7 @@ func (m *Module) list(authz authorization.Authorizer) http.HandlerFunc {
 		for i, t := range tenants {
 			items[i] = item{t.ID, t.Slug, t.Code, t.Name, t.Status, t.Country, t.ParentID, t.ParentName, t.WorkspaceHost, t.CreatedAt}
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(struct {
-			Items    []item `json:"items"`
-			Page     int    `json:"page"`
-			PageSize int    `json:"pageSize"`
-			Total    int    `json:"total"`
-		}{items, l.Page, l.PageSize, total})
+		httpinput.WritePage(w, l, items, total)
 	}
 }
 

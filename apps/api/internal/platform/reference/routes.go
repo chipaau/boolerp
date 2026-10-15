@@ -2,7 +2,6 @@ package reference
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -113,12 +112,6 @@ func list[T any](m *Module, authz authorization.Authorizer, kind string, spec ht
 			problem.Error(w, r, http.StatusServiceUnavailable, "The service is unavailable right now.")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(struct {
-			Items    []T `json:"items"`
-			Page     int `json:"page"`
-			PageSize int `json:"pageSize"`
-			Total    int `json:"total"`
-		}{items, l.Page, l.PageSize, total})
+		httpinput.WritePage(w, l, items, total)
 	}
 }

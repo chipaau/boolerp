@@ -67,6 +67,9 @@ GET /api/v1/employees?page=3&pageSize=50
 ```
 
 - `page` starts at 1; `pageSize` has a per-endpoint default and a maximum (normally 100).
+- A handler reads the parameters with `httpinput.ParseList` and answers with
+  `httpinput.WritePage(w, list, items, total)`, the one writer of this envelope
+  (`httpinput.Page[T]`; no items is `[]`, never `null`).
 - Values outside the allowed range are a 422 validation problem (below).
 
 Lists that grow without bound (for example the audit log, step 9, or event feeds) may
