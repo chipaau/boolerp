@@ -64,7 +64,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       const captions = one<HTMLElement>('[data-story-captions]')
       const cta = one<HTMLElement>('[data-story-cta]')
       const backdrop = one<HTMLElement>('[data-story-backdrop]')
-      const cue = one<HTMLElement>('[data-scroll-cue]')
+      const tours = q('[data-story-tour]') as HTMLElement[]
       const compactCaption = one<HTMLElement>('[data-compact-captions]')
       const slab = one<HTMLElement>('[data-tablet="sharp"] .tablet')
       const storyFade = [...q('[data-story-fade]'), ...q('[data-tablet="sharp"] .tablet-shadow')]
@@ -237,7 +237,7 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
           captions,
           backdrop,
           cta,
-          tour: cue,
+          tours,
           // standing on the big tablet as it steps back: it moves with it
           onTabletMove: () => {
             if (at === 'story' && !moving) perch('story')

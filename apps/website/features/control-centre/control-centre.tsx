@@ -25,8 +25,8 @@ export function ControlCentre() {
             </h1>
             <p className="section-lead mt-6 max-w-md text-muted-foreground">Set up your organisation once. Change it here, and it lands everywhere.</p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Button size="lg" variant="brand" className={CTA} render={<a href="/contact" />}>
-                Let’s talk
+              <Button size="lg" variant="brand" className={CTA} render={<a href="/contact?topic=demo" />}>
+                Book a demo
                 <ButtonArrow className={CTA_ARROW} />
               </Button>
               <Button size="lg" variant="outline" render={<a href="/#workspace" />}>

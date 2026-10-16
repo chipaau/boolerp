@@ -28,7 +28,7 @@ export type StoryParts = {
   captions: HTMLElement
   backdrop: HTMLElement // the dark grey behind the story, faded in as the tablet comes forward
   cta: HTMLElement // the call to action that comes in at the close
-  tour?: HTMLElement | null // clicked, glides into the story's first chapter (the hero's scroll cue)
+  tours?: HTMLElement[] // clicked, glide into the story's first chapter (the scroll cue, See it in action)
   /**
    * Where the bee belongs at this point of the story, told on every update: on the hero's tablet at
    * the top, away while the tablet moves and the first chapters play, and on the tablet's corner,
@@ -249,13 +249,17 @@ export function scrollStory(p: StoryParts) {
   // while the story runs the tablet grows past the hero's edges: let it
   gsap.set([hero, scene.parentElement!], { overflow: 'visible' })
 
-  // the scroll cue, clicked: glide to where the tablet has settled and the recording plays
-  const tour = () => glideTo(trigger.start + (trigger.end - trigger.start) * holdAt, 2.1, () => {})
-  p.tour?.addEventListener('click', tour)
+  // the scroll cue or See it in action, clicked: glide to where the tablet has settled and the
+  // recording plays (in place of the link's own jump)
+  const tour = (e: Event) => {
+    e.preventDefault()
+    glideTo(trigger.start + (trigger.end - trigger.start) * holdAt, 2.1, () => {})
+  }
+  p.tours?.forEach((el) => el.addEventListener('click', tour))
 
   return () => {
     delete html.dataset.story
-    p.tour?.removeEventListener('click', tour)
+    p.tours?.forEach((el) => el.removeEventListener('click', tour))
     trigger.kill()
     tl.kill()
     video.removeEventListener('timeupdate', follow)

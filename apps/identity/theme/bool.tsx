@@ -113,7 +113,7 @@ function Brand() {
   return (
     <div className="flex items-center gap-3">
       <img src={logo.src} alt="" aria-hidden="true" width={34} height={39} className="h-[39px] w-[34px] object-contain" />
-      <span className="text-2xl font-bold uppercase tracking-[0.02em] text-foreground">{BRAND}</span>
+      <span className="text-2xl font-bold tracking-[-0.03em] text-foreground">{BRAND}</span>
     </div>
   )
 }

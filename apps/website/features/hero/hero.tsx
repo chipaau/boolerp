@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { Play } from 'lucide-react'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { HexGlyph } from '@workspace/ui/components/hex-glyph'
 import { Hexagon } from '@workspace/ui/components/hexagon'
@@ -41,7 +42,7 @@ export function Hero() {
           {/* the drafting paper the next section is drawn on, here in light lines */}
           <div className="office-grid-dark absolute inset-0" />
         </div>
-        <div className="relative order-2 overflow-hidden lg:order-none lg:flex lg:items-center lg:[grid-area:1/1]">
+        <div id="demo" className="relative order-2 overflow-hidden lg:order-none lg:flex lg:items-center lg:[grid-area:1/1]">
           <Scene />
         </div>
 
@@ -55,9 +56,14 @@ export function Hero() {
               Tasks, inventory, assets, procurement, notes and analytics. Connected in one workspace.
             </p>
             <div data-hero-reveal="cta" className="mt-9 flex flex-wrap items-center gap-3">
-              <Button size="lg" variant="brand" className={CTA} render={<a href="/contact" />}>
-                Let’s talk
+              <Button size="lg" variant="brand" className={CTA} render={<a href="/contact?topic=demo" />}>
+                Book a demo
                 <ButtonArrow className={CTA_ARROW} />
+              </Button>
+              {/* the demo itself: on desktop it glides into the scroll story (story.ts), on phones down to the recording */}
+              <Button size="lg" variant="outline" data-story-tour="" render={<a href="#demo" />}>
+                <Play className="size-4 fill-current" strokeWidth={1.6} />
+                See it in action
               </Button>
             </div>
             {/* who uses it: a few faces and the teams they come from */}
@@ -131,6 +137,7 @@ function ScrollCue() {
       <button
         type="button"
         data-scroll-cue=""
+        data-story-tour=""
         data-hero-reveal="copy"
         className="group pointer-events-auto flex flex-col items-center gap-3 rounded-full px-4 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
@@ -180,8 +187,8 @@ function StoryCaptions() {
 function StoryCta() {
   return (
     <div data-story-cta="" className="invisible absolute inset-x-0 top-[89%] z-40 hidden justify-center opacity-0 lg:flex">
-      <Button size="lg" variant="brand" className={CTA} render={<a href="/contact" />}>
-        Let’s talk
+      <Button size="lg" variant="brand" className={CTA} render={<a href="/contact?topic=demo" />}>
+        Book a demo
         <ButtonArrow className={CTA_ARROW} />
       </Button>
     </div>
