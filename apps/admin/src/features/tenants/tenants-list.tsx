@@ -39,7 +39,8 @@ export function TenantsList() {
 
   return (
     <div className="min-h-0 w-full overflow-y-auto">
-      {creating && <AddTenantWizard onClose={() => setCreating(false)} onProvisioned={() => setCreating(false)} onCreated={() => setCreating(false)} />}
+      {/* Creating keeps the wizard open on the tenant's address (C223); the list refetches meanwhile. */}
+      {creating && <AddTenantWizard onClose={() => setCreating(false)} onProvisioned={() => setCreating(false)} onCreated={() => {}} />}
       <div className="px-4 sm:px-8 pt-[26px] pb-24">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-5">
           <div className="min-w-0">

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FieldApi, FormApi } from '@tanstack/react-form'
 import { ApiError } from './error'
-import { applyServerErrors, fieldCandidates } from './form'
+import { applyServerErrors, fieldCandidates, formAt } from './form'
 
 const values = { slug: '', name: '', institutionTypes: [{ code: 'clinic', primary: true }] }
 
@@ -45,5 +45,17 @@ describe('applyServerErrors', () => {
       'parentId: is not a tenant that can be a parent',
       'is invalid',
     ])
+  })
+})
+
+describe('formAt', () => {
+  it("puts a part's errors on its fields under the prefix", () => {
+    const form = new FormApi({ defaultValues: { registered: { line1: '', country: '' }, mailing: { line1: '' } } })
+    form.mount()
+    for (const name of ['registered.line1', 'registered.country', 'mailing.line1']) new FieldApi({ form, name: name as never }).mount()
+    const unmatched = applyServerErrors(formAt(form, 'registered'), invalid({ line1: ['is required'], postalCode: ['is too long'] }))
+    expect(form.getFieldMeta('registered.line1')?.errorMap.onServer).toBe('is required')
+    expect(form.getFieldMeta('mailing.line1')?.errorMap.onServer).toBeUndefined()
+    expect(unmatched).toEqual(['postalCode: is too long'])
   })
 })

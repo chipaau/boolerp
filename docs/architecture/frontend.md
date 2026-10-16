@@ -173,6 +173,9 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   that `form.Field` gives (typed structurally, so `ui` needs no form dependency); a field shows
   its errors once touched, and its `onChange` clears the server's error. The first form is the
   admin console's create-tenant step 1 (`newTenantFormSchema` → `toCreateTenantInput`).
+- A form saving several resources (C223) gives each its own `useApiMutation` with
+  `form: formAt(form, prefix)`, so each 422 lands under its part of the form (`registered.line1`).
+  The create wizard's step 2 does: the registered address, then the mailing one when it differs.
 
 ### The first list: tenants (C187)
 

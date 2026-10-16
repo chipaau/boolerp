@@ -3,6 +3,7 @@
 // error naming the field. (types.ts holds the design prototype's fixture types.)
 import { z } from 'zod'
 import { id, listOf, listSearch, timestamp } from '@workspace/api'
+import { geographySchema } from '@workspace/reference/schemas'
 
 export const tenantStatuses = ['provisioning', 'active', 'suspended', 'archived'] as const
 export type TenantStatus = (typeof tenantStatuses)[number]
@@ -117,5 +118,81 @@ export function toCreateTenantInput(v: NewTenantForm): CreateTenantInput {
     taxNumber: optional(v.taxNumber),
     email: optional(v.email),
     phone: v.phone ? compactPhone(v.phone) : undefined,
+  }
+}
+
+/** A tenant's address kinds (C215): the registered address and, when it differs, the mailing one. */
+export const addressKinds = ['registered', 'mailing'] as const
+export type AddressKind = (typeof addressKinds)[number]
+
+/** PUT /api/v1/tenants/{id}/addresses/{kind}'s body (C217): the whole address; what is not set is left out. */
+export const addressInputSchema = z.object({
+  country: z.string(),
+  geographyId: id.optional(),
+  typedPlaces: z.record(z.string(), z.string()),
+  line1: z.string(),
+  line2: z.string().optional(),
+  postalCode: z.string().optional(),
+})
+export type AddressInput = z.infer<typeof addressInputSchema>
+
+/** A tenant's address as the API returns it (C217): its places from level 1 down to the one picked. */
+export const tenantAddressSchema = z.object({
+  kind: z.enum(addressKinds),
+  country: z.string(),
+  geographyId: id.nullable(),
+  places: z.array(geographySchema),
+  typedPlaces: z.record(z.string(), z.string()),
+  line1: z.string(),
+  line2: z.string().nullable(),
+  postalCode: z.string().nullable(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  updatedAt: timestamp,
+})
+export type TenantAddress = z.infer<typeof tenantAddressSchema>
+
+/**
+ * One address in a form (C176): the country, the places picked from level 1 down (the last is the
+ * address's geographyId), the typed levels by type code, and the street part. The browser checks the
+ * country and line 1; the levels are the API's to check (C217), and its errors land on these fields.
+ */
+export const addressFormSchema = z.object({
+  country: z.string().min(1, 'is required'),
+  places: z.array(z.object({ id, level: z.number(), hasChildren: z.boolean(), name: z.string() })),
+  geographyId: z.string(),
+  typedPlaces: z.record(z.string(), z.string()),
+  line1: z.string().trim().min(1, 'is required').max(200, 'must be at most 200 characters'),
+  line2: z.string().max(200, 'must be at most 200 characters'),
+  postalCode: z.string().max(20, 'must be at most 20 characters'),
+})
+export type AddressForm = z.infer<typeof addressFormSchema>
+
+/** Step 2's values: the registered address, and the mailing one when it is not the same. */
+export const addressStepSchema = z
+  // The mailing address is checked only when it is not the registered one.
+  .object({ registered: addressFormSchema, mailingIsRegistered: z.boolean(), mailing: z.custom<AddressForm>() })
+  .superRefine((v, ctx) => {
+    if (v.mailingIsRegistered) return
+    const mailing = addressFormSchema.safeParse(v.mailing)
+    for (const issue of mailing.success ? [] : mailing.error.issues) ctx.addIssue({ code: 'custom', message: issue.message, path: ['mailing', ...issue.path] })
+  })
+export type AddressStep = z.infer<typeof addressStepSchema>
+
+/** An empty address in `country`. */
+export const emptyAddress = (country: string): AddressForm => ({
+  country, places: [], geographyId: '', typedPlaces: {}, line1: '', line2: '', postalCode: '',
+})
+
+/** An address form's values as the PUT's body (C217): what is set, trimmed. */
+export function toAddressInput(a: AddressForm): AddressInput {
+  const optional = (s: string) => (s.trim() ? s.trim() : undefined)
+  return {
+    country: a.country,
+    geographyId: a.places.at(-1)?.id,
+    typedPlaces: Object.fromEntries(Object.entries(a.typedPlaces).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()])),
+    line1: a.line1.trim(),
+    line2: optional(a.line2),
+    postalCode: optional(a.postalCode),
   }
 }
