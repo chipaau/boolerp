@@ -231,6 +231,10 @@ scaling). Nothing overflows down to 360 px (the base Galaxy S), though a line ma
   `sort` (`-` for descending), one key per filter. The route validates it with a zod schema
   in `validateSearch`; invalid values fall back to defaults. Changing search, a filter, or the
   sort resets `page` to 1 and replaces the history entry.
+- The page size a viewer chooses is remembered in their browser (C222): `DataTable` saves it
+  (`rememberPageSize` in `@workspace/ui/lib/page-size`), and `listSearch` opens every list at it
+  when the URL names none; the URL still wins. Lost in a private window or with storage cleared,
+  when lists fall back to 25.
 - The route's loader prefetches the feature's `queryOptions`; the page uses the same options
   with `keepPreviousData`.
 - `@workspace/ui`'s `DataTable` (TanStack Table v8, manual mode) renders typed columns (a

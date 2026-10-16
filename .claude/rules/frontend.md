@@ -35,6 +35,9 @@ them by default. See [product scope](../../docs/product/scope.md) and
   centred). A list's footer count names no noun ("Showing [25 ▾] of 249"; the page names what is
   listed), and on a phone it is one line: "[25 ▾] of 249" and the pager "‹ 3 / 10 ›".
   Check a change in the browser at 390, 768, 1024, 1440, and 2560 px.
+- A list's page size comes from the URL, or else the size the viewer last chose anywhere in the app,
+  remembered in the browser (C222); use `listSearch` and `DataTable`, which do both, never a
+  list's own storage.
 - Tabs on a landing page are paths (C218): each tab is its own route at `/<section>/<tab>`
   (`/geographies/countries`), with its own `validateSearch`, loader, and list state; `/<section>`
   redirects to its first tab. Never a `?tab=` parameter. The tab bar navigates between the paths.

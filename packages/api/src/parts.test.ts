@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { ApiError, pointerToPath } from './error'
 import { createKeys } from './keys'
@@ -70,5 +70,16 @@ describe('listSearch', () => {
   it('falls back on invalid values instead of failing', () => {
     expect(s.parse({ page: '0', pageSize: '500', sort: 'slug', q: 'x'.repeat(101) })).toEqual({ page: 1, pageSize: 25 })
     expect(s.parse({ q: '   ' })).toEqual({ page: 1, pageSize: 25 })
+  })
+  it('opens at the page size this browser remembers, which the URL overrides (C222)', () => {
+    const stored = new Map<string, string>([['bool:list:page-size', '50']])
+    vi.stubGlobal('localStorage', { getItem: (k: string) => stored.get(k) ?? null, setItem: (k: string, v: string) => stored.set(k, v) })
+    try {
+      expect(s.parse({})).toEqual({ page: 1, pageSize: 50 })
+      expect(s.parse({ pageSize: '500' }), 'an invalid size falls back to it too').toEqual({ page: 1, pageSize: 50 })
+      expect(s.parse({ pageSize: '10' }), 'the URL wins').toEqual({ page: 1, pageSize: 10 })
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
