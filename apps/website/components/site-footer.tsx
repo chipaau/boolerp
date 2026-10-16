@@ -44,7 +44,7 @@ export function SiteFooter() {
       </div>
 
       {/* the brand and the small print, then Back to top: one ruled bar, its cells filling with
-          hexagons on hover as the header's do */}
+          hexagons on hover as the header's do, and its last cell in amber like the header's Contact us */}
       <div className="flex min-h-14 flex-wrap border-t border-border">
         <div className="flex items-center gap-4 px-6 py-3">
           <Brand className="text-[1.3rem] [&_img]:h-7" />
@@ -57,7 +57,7 @@ export function SiteFooter() {
               <span className={CELL_LABEL}>{l}</span>
             </a>
           ))}
-          <a href="#" className={`${CELL} px-5 sm:w-[8.5rem]`}>
+          <a href="#" className={`${CELL} header-cell-accent px-5 sm:w-[8.5rem] xl:w-[9.5rem]`}>
             <HexFill />
             <span className={CELL_LABEL}>Back to top</span>
             <ArrowUp className="relative size-4" strokeWidth={1.8} />
