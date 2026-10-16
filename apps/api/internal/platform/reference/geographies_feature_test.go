@@ -3,6 +3,7 @@
 package reference_test
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -10,7 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
+	"github.com/boolmv/erp/apps/api/internal/platform/reference"
 )
 
 // geographyWorld adds, as the owner, country XA with three levels (region 1, town 2,
@@ -193,4 +196,117 @@ func TestFeatureGeographyUpdatedAtFollowsChanges(t *testing.T) {
 			SELECT 'XA', id, 'South', '2000-01-01' FROM geography_types WHERE country = 'XA' AND code = 'region'`,
 		`UPDATE geographies SET short_name = 'S.' WHERE country = 'XA' AND name = 'South'`,
 		`SELECT updated_at = now() FROM geographies WHERE country = 'XA' AND name = 'South'`)
+}
+
+// addressWorldTx is XA's address levels and places for checking addresses (C215): region
+// and city at level 1, town at 2, and ward at 3, all listed somewhere, and street at 4,
+// listed nowhere, so typed. North (a region) holds Port (a town, holding the ward Old
+// Quarter) and Quay (a town without wards); Capital (a city) has nothing under it; Gone
+// is a retired region. XB is another country with a place.
+type addressTestWorld struct {
+	tx                              pgx.Tx
+	north, port, quay, quarter, cap string
+	gone, elsewhere                 string
+}
+
+func addressWorld(t *testing.T) addressTestWorld {
+	t.Helper()
+	tx := testdb.OwnerTx(t)
+	insertTestCountry(t, tx)
+	w := addressTestWorld{tx: tx}
+	testdb.Exec(t, tx, `INSERT INTO countries (code, alpha3, name, phone_prefix) VALUES ('XB', 'XBB', 'Otherland', '+998')`)
+	testdb.Exec(t, tx, `INSERT INTO geography_types (country, code, name, level) VALUES
+		('XA', 'region', 'Region', 1), ('XA', 'city', 'City', 1), ('XA', 'town', 'Town', 2),
+		('XA', 'ward', 'Ward', 3), ('XA', 'street', 'Street', 4), ('XB', 'region', 'Region', 1)`)
+	add := func(country, typ, parent, name string, extra ...string) string {
+		cols, vals := "", ""
+		if len(extra) > 0 {
+			cols, vals = ", "+extra[0], ", "+extra[1]
+		}
+		return testdb.ID(t, tx, `INSERT INTO geographies (country, type_id, parent_id, name`+cols+`)
+			SELECT $1, (SELECT id FROM geography_types WHERE country = $1 AND code = $2), nullif($3, '')::uuid, $4`+vals+`
+			RETURNING id::text`, country, typ, parent, name)
+	}
+	w.north = add("XA", "region", "", "North", "short_name, latitude, longitude", "'N.', 4.175, 73.509")
+	w.cap = add("XA", "city", "", "Capital")
+	w.gone = add("XA", "region", "", "Gone", "active_from, active_to", "now() - interval '2 days', now() - interval '1 day'")
+	w.port = add("XA", "town", w.north, "Port")
+	w.quay = add("XA", "town", w.north, "Quay")
+	w.quarter = add("XA", "ward", w.port, "Old Quarter")
+	w.elsewhere = add("XB", "region", "", "South")
+	return w
+}
+
+func checkAddress(t *testing.T, w addressTestWorld, country, place string, typed map[string]string) map[string]string {
+	t.Helper()
+	err := reference.New(w.tx, slog.New(slog.DiscardHandler)).CheckAddress(t.Context(), country, place, typed)
+	if err == nil {
+		return nil
+	}
+	var invalid *problem.ValidationError
+	require.ErrorAs(t, err, &invalid)
+	out := map[string]string{}
+	for _, e := range invalid.Errors {
+		out[e.Pointer] = e.Code
+	}
+	return out
+}
+
+// CheckAddress holds an address to its country's levels (C215): picked where places are
+// listed, down to a place with nothing under it; typed, and required, where none are.
+func TestFeatureAnAddressFollowsItsCountrysLevels(t *testing.T) {
+	w := addressWorld(t)
+	street := map[string]string{"street": "Sosun Magu"}
+	for name, c := range map[string]struct {
+		country, place string
+		typed          map[string]string
+		want           map[string]string
+	}{
+		"a ward, and its street":                   {"XA", w.quarter, street, nil},
+		"a town without wards":                     {"XA", w.quay, street, nil},
+		"a city with nothing under it":             {"XA", w.cap, street, nil},
+		"no place in another country listing them": {"XB", "", nil, map[string]string{"#/geographyId": "required"}},
+		"no place where places are listed":         {"XA", "", street, map[string]string{"#/geographyId": "required"}},
+		"a place with places under it":             {"XA", w.port, street, map[string]string{"#/geographyId": "deeper"}},
+		"a retired place":                          {"XA", w.gone, nil, map[string]string{"#/geographyId": "exists"}},
+		"no such place":                            {"XA", "0192f6a0-0000-7000-8000-000000000000", nil, map[string]string{"#/geographyId": "exists"}},
+		"a place of another country":               {"XA", w.elsewhere, nil, map[string]string{"#/geographyId": "country"}},
+		"an unknown country":                       {"XQ", "", nil, map[string]string{"#/country": "exists"}},
+		"the typed level missing":                  {"XA", w.quay, nil, map[string]string{"#/typedPlaces/street": "required"}},
+		"a level that is not the country's":        {"XA", w.quay, map[string]string{"street": "x", "lane": "y"}, map[string]string{"#/typedPlaces/lane": "exists"}},
+		"a listed level typed":                     {"XA", w.quay, map[string]string{"street": "x", "ward": "Typed Ward"}, map[string]string{"#/typedPlaces/ward": "excluded"}},
+		"a level above the place typed":            {"XA", w.quarter, map[string]string{"street": "x", "region": "North"}, map[string]string{"#/typedPlaces/region": "excluded"}},
+	} {
+		assert.Equal(t, c.want, checkAddress(t, w, c.country, c.place, c.typed), name)
+	}
+}
+
+func TestFeatureACountryWithoutLevelsNeedsNoPlaces(t *testing.T) {
+	w := addressWorld(t)
+	testdb.Exec(t, w.tx, `INSERT INTO countries (code, alpha3, name, phone_prefix) VALUES ('XC', 'XCC', 'Plainland', '+997')`)
+	assert.Nil(t, checkAddress(t, w, "XC", "", nil))
+	assert.Equal(t, map[string]string{"#/typedPlaces/city": "exists"}, checkAddress(t, w, "XC", "", map[string]string{"city": "x"}))
+}
+
+func TestFeatureTwoTypedTypesOfOneLevelAreOneLevel(t *testing.T) {
+	w := addressWorld(t)
+	testdb.Exec(t, w.tx, `INSERT INTO geography_types (country, code, name, level) VALUES ('XA', 'lane', 'Lane', 4)`)
+	assert.Nil(t, checkAddress(t, w, "XA", w.quay, map[string]string{"lane": "x"}), "either names level 4")
+	assert.Equal(t, map[string]string{"#/typedPlaces/street": "unique"},
+		checkAddress(t, w, "XA", w.quay, map[string]string{"lane": "x", "street": "y"}))
+}
+
+func TestFeatureAPlacesPathRunsFromLevelOne(t *testing.T) {
+	w := addressWorld(t)
+	path, err := reference.New(w.tx, slog.New(slog.DiscardHandler)).PlacePath(t.Context(), w.quarter)
+	require.NoError(t, err)
+	got := []string{}
+	for _, g := range path {
+		got = append(got, g.Name)
+	}
+	assert.Equal(t, []string{"North", "Port", "Old Quarter"}, got)
+	assert.Equal(t, "ward", path[2].Type)
+	path, err = reference.New(w.tx, slog.New(slog.DiscardHandler)).PlacePath(t.Context(), "not-a-place")
+	require.NoError(t, err)
+	assert.Empty(t, path)
 }

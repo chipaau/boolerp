@@ -241,6 +241,7 @@ func TestEveryRouteIsProtected(t *testing.T) {
 	)
 	outsideTenant := map[string]bool{
 		"/api/v1/countries": true, "/api/v1/legal-forms": true, "/api/v1/institution-types": true,
+		"/api/v1/geography-types": true, "/api/v1/geographies": true,
 	}
 	routes := 0
 	require.NoError(t, chi.Walk(r, func(method, route string, _ http.Handler, mws ...func(http.Handler) http.Handler) error {

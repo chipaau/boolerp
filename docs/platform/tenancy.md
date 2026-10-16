@@ -156,8 +156,17 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
     carries none), by name, `q` on the name.
   - `GET /api/v1/institution-types`: `{code, name, sector: {code, name}}`, by sector then
     name, optional `sector` filter and `q` on the name; types of a retired sector are left out.
-  - Cerbos (`reference:country`, `reference:legal_form`, `reference:institution_type`)
-    allows `list` to roles `user`, `account`, and `client`, with no tenant or capability.
+  - `GET /api/v1/geography-types?country=MV` (C215, C217): `country` is required; the
+    country's address levels `{id, code, name, level}`, by level; a form shows a picker or a
+    text field for each, labelled by its name.
+  - `GET /api/v1/geographies?country=MV[&parent=<id>]` (C215, C217): `country` is required;
+    the places under `parent`, or at level 1 without it, as one picker's choices
+    `{id, type, typeName, level, code, name, shortName, latitude, longitude, hasChildren}`,
+    by name, `q` on the name, short name, or code; `hasChildren` says whether the next
+    picker has choices. `pageSize` defaults to and is at most 300.
+  - Cerbos (`reference:country`, `reference:legal_form`, `reference:institution_type`,
+    `reference:geography_type`, `reference:geography`) allows `list` to roles `user`,
+    `account`, and `client`, with no tenant or capability.
 
 **`memberships`** (C160, confirmed 2026-10-05; [data model](../data-model/README.md))
 - `id`, `tenant_id`, `user_id`; unique `(tenant_id, id)` so tenant tables reference a
@@ -274,6 +283,22 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   its institution types, and its default apps (`activated_by` the caller); no domain (C203), no
   owner (C198), no idempotency key (C205). `201` with the tenant as the list shows it and
   `Location: /api/v1/tenants/{id}`.
+- **A tenant's addresses** (C215, C217), behind the `Operator` chain:
+  `GET /api/v1/tenants/{tenantID}/addresses` (its addresses, registered first, in the list
+  envelope), `PUT …/addresses/{registered|mailing}` (the whole address: `201` with
+  `Location` when new, `200` when it replaces one), and `DELETE …/addresses/{kind}` (`204`;
+  removing the mailing address sends mail to the registered one). Cerbos first asks
+  `tenancy:tenant` `list`, so only staff who may know of tenants learn which exist (an unknown
+  tenant or kind is `404`), then `view` or `update` on the tenant, with its `tenant_id` and
+  `status`. The body: `country` and `line1` required; `geographyId` (the deepest place picked),
+  `typedPlaces` (`{typeCode: text}`), `line2`, `postalCode`, and `latitude` with `longitude`
+  optional. An address answers its `places` from level 1 down to the one picked, read through
+  `tenancy.Reference`. The levels are checked by the reference module's `CheckAddress`, for
+  any module's addresses: a place with current places under it needs one of them
+  (`geographyId` `deeper`), a country that lists places needs one (`required`), and every level
+  below the place that lists no places anywhere in the country is typed and required
+  (`typedPlaces/<code>` `required`); typed names only those levels (`exists`, `excluded`, one
+  per level, `unique`).
 - The lookup before any tenant is known (C131): a `SECURITY DEFINER` function owned by
   `erp_lookup`, a `NOLOGIN BYPASSRLS` role with column-level `SELECT` on only the
   columns it reads and no writes. It pins `search_path`, schema-qualifies its tables,

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "reference:geography_type (C151, C215)",
+  "description": "The address levels list. Only list is asked, which carries no record, so no attributes are accepted.",
+  "type": "object",
+  "additionalProperties": false
+}
