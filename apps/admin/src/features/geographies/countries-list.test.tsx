@@ -65,9 +65,10 @@ describe('the countries tab', () => {
 describe('the geographies tabs (C218)', () => {
   it('has each tab at its own path: /geographies opens the first, and the tabs move between them', async () => {
     countriesApi([country('MV', 'Maldives', 407)])
+    server.use(http.get('/api/v1/geographies', () => HttpResponse.json({ items: [], page: 1, pageSize: 25, total: 0 })))
     const { router } = renderRoute('/geographies')
     await waitFor(() => expect(router.state.location.pathname).toBe('/geographies/geographies'))
-    expect(await screen.findByRole('button', { name: 'Add a geography' })).toBeInTheDocument()
+    expect(await screen.findByRole('tab', { name: 'Geographies', selected: true })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('tab', { name: 'Countries' }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/geographies/countries'))

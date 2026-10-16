@@ -162,11 +162,13 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
     name or code. With `country`, one country's, for a form's picker or text field per level,
     labelled by its name; without, every country's, for the admin console. `placeCount` is how
     many current places of the level are listed (none: the level is typed).
-  - `GET /api/v1/geographies?country=MV[&parent=<id>]` (C215, C217): `country` is required;
-    the places under `parent`, or at level 1 without it, as one picker's choices
-    `{id, type, typeName, level, code, name, shortName, latitude, longitude, hasChildren}`,
-    by name, `q` on the name, short name, or code; `hasChildren` says whether the next
-    picker has choices. `pageSize` defaults to and is at most 300.
+  - `GET /api/v1/geographies` (C215, C217, C221): the places
+    `{id, type, typeName, level, country, code, name, shortName, parentId, parentName, latitude,
+    longitude, childCount, hasChildren}`, by the country's name, then level, then name; `q` on
+    the name, short name, or code; optional `country` and `type` (a type's code). A picker asks
+    `parent=none` for a country's level 1 and `parent=<id>` for the places under one, with
+    `pageSize` up to 300; without `parent`, every place at every level (the admin console's
+    list). `hasChildren` (`childCount` above zero) says whether the next picker has choices.
   - Cerbos (`reference:country`, `reference:legal_form`, `reference:institution_type`,
     `reference:geography_type`, `reference:geography`) allows `list` to roles `user`,
     `account`, and `client`, with no tenant or capability.

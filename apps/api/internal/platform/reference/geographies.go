@@ -14,27 +14,36 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/reference/adapters/store"
 )
 
-// Geography is a place as the pickers and addresses show it (C215).
+// Geography is a place as the pickers, lists, and addresses show it (C215, C221): its type and
+// level, its country and parent, and how many current places are under it (hasChildren: whether
+// the next picker has choices).
 type Geography struct {
 	ID          string   `json:"id"`
 	Type        string   `json:"type"`
 	TypeName    string   `json:"typeName"`
 	Level       int      `json:"level"`
+	Country     string   `json:"country"`
 	Code        *string  `json:"code"`
 	Name        string   `json:"name"`
 	ShortName   *string  `json:"shortName"`
+	ParentID    *string  `json:"parentId"`
+	ParentName  *string  `json:"parentName"`
 	Latitude    *float64 `json:"latitude"`
 	Longitude   *float64 `json:"longitude"`
+	ChildCount  int      `json:"childCount"`
 	HasChildren bool     `json:"hasChildren"`
 }
 
 func geography(g store.Geography) Geography {
-	return Geography{g.ID, g.Type, g.TypeName, g.Level, g.Code, g.Name, g.ShortName, g.Latitude, g.Longitude, g.HasChildren}
+	return Geography{ID: g.ID, Type: g.Type, TypeName: g.TypeName, Level: g.Level, Country: g.Country, Code: g.Code,
+		Name: g.Name, ShortName: g.ShortName, ParentID: g.ParentID, ParentName: g.ParentName, Latitude: g.Latitude,
+		Longitude: g.Longitude, ChildCount: g.ChildCount, HasChildren: g.HasChildren()}
 }
 
-// geographies answers a country's places under one parent, or its level 1 without one
-// (GET /api/v1/geographies?country=MV&parent=…, C215): one picker's choices, each saying
-// whether it has places under it for the next. Cerbos decides first: reference:geography list.
+// geographies answers the places (GET /api/v1/geographies, C215, C221): with parent=none a
+// country's level 1 and with parent=<id> the places under it, one picker's choices, each saying
+// whether it has places under it for the next; without parent every place, of a country and a
+// type when given, for the admin console's list. Cerbos decides first: reference:geography list.
 func (m *Module) geographies(authz authorization.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := authz.Can(r.Context(), "list", "reference:geography"); err != nil {
@@ -113,7 +122,7 @@ func (m *Module) CheckAddress(ctx context.Context, country, geographyID string, 
 		case p.Country != country:
 			v.Add("geographyId", "country", "is not a place of the address's country")
 			return v.Err()
-		case p.HasChildren:
+		case p.HasChildren():
 			v.Add("geographyId", "deeper", "has places under it: pick one of them")
 		}
 		deepest = p.Level
