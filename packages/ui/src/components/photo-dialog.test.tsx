@@ -49,6 +49,6 @@ describe("PhotoDialog", () => {
     await userEvent.click(screen.getByTitle("Portrait 1"))
     await userEvent.click(screen.getByRole("button", { name: "Save" }))
     expect(onClose).not.toHaveBeenCalled()
-    expect(await screen.findByText("Your photo could not be saved. Try again shortly.")).toBeInTheDocument()
+    expect(await screen.findByText("Your photo could not be saved. Try again shortly.", { selector: '[data-slot="toast"] *' })).toBeInTheDocument()
   })
 })

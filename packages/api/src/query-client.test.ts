@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MutationObserver } from '@tanstack/react-query'
 import { ApiError } from './error'
+import { INVALID_FORM_MESSAGE } from './policy'
 import { createQueryClient } from './query-client'
 
 afterEach(() => vi.restoreAllMocks())
@@ -27,6 +28,13 @@ describe('createQueryClient (C185)', () => {
     await m.mutate().catch(() => {})
     expect(notify).toHaveBeenCalledWith('This was changed by someone else, so it has been reloaded.', { reference: undefined })
     expect(refetched).toHaveBeenCalledWith({ queryKey: ['things', 'list'] })
+  })
+
+  it("toasts a form's 422 with the form's one message", async () => {
+    const notify = vi.fn()
+    const qc = createQueryClient({ notify })
+    await new MutationObserver(qc, { mutationFn: fail(422), meta: { form: true } }).mutate().catch(() => {})
+    expect(notify).toHaveBeenCalledWith(INVALID_FORM_MESSAGE, { reference: 'req-9' })
   })
 
   it('leaves statuses a mutation handles to it', async () => {

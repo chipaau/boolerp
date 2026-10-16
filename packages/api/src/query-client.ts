@@ -9,6 +9,8 @@ export type ApiMeta = {
   handles?: readonly number[]
   /** For a mutation: keys to refetch when it succeeds, and on a 404 or 409. */
   invalidates?: readonly QueryKey[]
+  /** For a mutation: it saves a form (set by useApiMutation), so a 422 toasts the form's message. */
+  form?: boolean
 }
 
 declare module '@tanstack/react-query' {
@@ -50,7 +52,7 @@ export function createQueryClient({ notify }: { notify: Notify }): QueryClient {
     }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) =>
-        act(error, decide(error, { operation: 'mutation', handles: mutation.meta?.handles }), mutation.meta?.invalidates),
+        act(error, decide(error, { operation: 'mutation', handles: mutation.meta?.handles, form: mutation.meta?.form }), mutation.meta?.invalidates),
       onSuccess: (_data, _variables, _context, mutation) => {
         for (const queryKey of mutation.meta?.invalidates ?? []) void client.invalidateQueries({ queryKey })
       },

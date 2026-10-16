@@ -55,8 +55,8 @@ export function applyServerErrors(form: FormLike, error: ApiError): string[] {
 /**
  * A mutation that saves a form (C176): on a 422 it puts the errors on the form's fields
  * (`applyServerErrors`), returning what matched no field as `formErrors`, with the request's
- * reference, until the next submit. The one error policy (C185) still toasts every failure, a
- * 422 included (its detail says how many fields are invalid). Without a form it is useMutation.
+ * reference, until the next submit. The one error policy (C185) still toasts every failure; a
+ * 422's toast is the form's one message (INVALID_FORM_MESSAGE). Without a form it is useMutation.
  */
 export function useApiMutation<TData, TVariables, TContext = unknown>(
   options: UseMutationOptions<TData, Error, TVariables, TContext> & { form?: FormLike },
@@ -65,6 +65,7 @@ export function useApiMutation<TData, TVariables, TContext = unknown>(
   const [formErrors, setFormErrors] = useState<FormErrors | null>(null)
   const result = useMutation<TData, Error, TVariables, TContext>({
     ...mutation,
+    meta: form ? { ...mutation.meta, form: true } : mutation.meta,
     onMutate: (...args) => {
       setFormErrors(null)
       return mutation.onMutate?.(...args) as TContext | Promise<TContext>

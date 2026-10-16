@@ -105,7 +105,8 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
 - General errors are handled in one place (C185): `createQueryClient({ notify })` applies one
   policy to every query and mutation. 401 sends the browser to sign-in and back; 403 and 404
   are the screen's state for a query, a toast for a mutation; 409 toasts and refetches; 422
-  toasts its detail and, from a form, also shows on the fields; 429, 5xx, network, and timeout are the screen's error state on a first
+  from a form shows on the fields and toasts "Check the highlighted fields and try again." (without a form, the
+  problem's detail); 429, 5xx, network, and timeout are the screen's error state on a first
   load and a toast otherwise (with the request reference). A query or mutation opts out of a
   status with `meta: { handles: [...] }`. Queries retry network and 5xx errors twice, never a
   4xx; mutations never retry.
@@ -154,10 +155,16 @@ being decided one area at a time on the admin console's tenants (roadmap F1, C12
   no mark; a group that is wholly optional may say so in its heading.
 - A 422's field errors appear on their fields (the `onServer` error), with the server's
   `detail` as the message; errors matching no field show in a banner above the form with the
-  request reference; and a toast says the save failed (the problem's `detail`, such as "The
-  request has 2 invalid fields.", C185). Invalid values the form itself catches show on their
-  fields with a toast naming what is missing, and are never sent. Editing a field clears its server error; submit is disabled only while
+  request reference; and a toast says "Check the highlighted fields and try again." (`INVALID_FORM_MESSAGE`,
+  C185). Invalid values the form itself catches show on every field with the same toast, and
+  are never sent. Editing a field clears its server error; submit is disabled only while
   sending.
+- Toasts (C214): `useToast()` from `@workspace/ui/components/toast`, built on Base UI's Toast
+  (the library the shadcn components use), which times them, pauses them on hover, stacks up to
+  three, lets them be swiped away, and announces them in a live region (errors urgently). The
+  design is a bottom-centre pill; an error's carries the request reference on a second line,
+  stays 6.5 seconds, and can be dismissed. Tests find a toast's text with the selector
+  `[data-slot="toast"] *`, since the live region holds a copy.
 - Built (F3): `useApiMutation({ ...mutation, form })` in `@workspace/api` saves a form: on a 422
   it puts each `ApiError.fieldErrors` path on its field (`applyServerErrors`; `a.1.b` is the field
   `a[1].b`, falling back to the nearest field that exists) and returns `formErrors` for the

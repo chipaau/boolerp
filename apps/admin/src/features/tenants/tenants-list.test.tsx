@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
+import { INVALID_FORM_MESSAGE } from '@workspace/api'
 import { server } from '@/test/server'
 import { renderRoute } from '@/test/render'
 
@@ -67,6 +68,9 @@ async function pick(form: HTMLElement, label: string, query: string, option: Reg
 }
 
 const search = () => screen.getByLabelText('Filter by name, code, or slug')
+
+/** Finds text in a toast, not in the copy Base UI keeps for screen readers (C214). */
+const inToast = { selector: '[data-slot="toast"] *' }
 
 describe('the tenants list', () => {
   it('shows the API tenants, with the lifecycle actions disabled', async () => {
@@ -208,14 +212,14 @@ describe('the tenants list', () => {
 
     const lists = seen.length
     await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(form).not.toBeInTheDocument())
     expect(body).toEqual({
       name: 'Test Clinic', slug: 'test-clinic', code: 'TCLN', country: 'MV',
       legalFormId: '0192f6a0-0000-7000-8000-0000000000f2', timezone: 'Indian/Maldives',
       institutionTypes: [{ code: 'hospital', primary: true }], parentId: tenant(1).id,
       identityNumber: 'C-0001/2026', phone: '+9603324568',
     })
-    expect(await screen.findByText('Test Clinic created')).toBeInTheDocument()
+    expect(await screen.findByText('Test Clinic created', inToast)).toBeInTheDocument()
     await waitFor(() => expect(seen.length).toBeGreaterThan(lists), { timeout: 3000 })
   })
 
@@ -255,8 +259,8 @@ describe('the tenants list', () => {
     const banner = within(form).getByText('It could not be saved').closest('[role="alert"]') as HTMLElement
     expect(banner).toHaveTextContent('registrationAuthority: is not taken here')
     expect(banner).toHaveTextContent('Reference 0192f6a0-0000-7000-8000-0000000000aa')
-    expect(await screen.findByText(/^The request has 2 invalid fields./)).toBeInTheDocument() // the toast (C185)
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByText(INVALID_FORM_MESSAGE, inToast)).toBeInTheDocument() // the toast: the form's one message (C185)
+    expect(form).toBeInTheDocument()
 
     // Editing the field clears the API's error on it (C176).
     await userEvent.type(within(form).getByLabelText('Slug'), '-2')
@@ -276,7 +280,7 @@ describe('the tenants list', () => {
     await userEvent.type(within(form).getByLabelText('Phone'), '12ab')
 
     await userEvent.click(within(form).getByRole('button', { name: 'Continue' }))
-    expect(await screen.findByText(/^Tenant details still needs a valid code, the country/)).toBeInTheDocument()
+    expect(await screen.findByText(INVALID_FORM_MESSAGE, inToast)).toBeInTheDocument() // the same toast as the API's 422
     // Every field the toast names shows its error, touched or not.
     for (const label of ['Code', 'Country', 'Legal form', 'Time zone', 'Institution types', 'Phone'])
       await waitFor(() => expect(within(form).getByLabelText(label)).toHaveAttribute('aria-invalid', 'true'))
@@ -306,8 +310,8 @@ describe('the tenants list', () => {
     await pick(form, 'Time zone', 'maldives', /Indian \/ Maldives/)
     await pick(form, 'Institution types', 'minis', 'Ministry')
     await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))
-    expect(await screen.findByText(/You don’t have permission to do this|You don't have permission to do this/)).toBeInTheDocument()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByText(/You don’t have permission to do this|You don't have permission to do this/, inToast)).toBeInTheDocument()
+    expect(form).toBeInTheDocument()
   })
 
   it('keeps the design prototype at /tenants-prototype until this list is accepted', async () => {

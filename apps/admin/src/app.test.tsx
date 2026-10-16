@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MutationObserver } from '@tanstack/react-query'
 import { HttpResponse, http } from 'msw'
 import { ApiError } from '@workspace/api'
@@ -31,7 +32,15 @@ describe('the console', () => {
       mutationFn: () => Promise.reject(new ApiError({ kind: 'http', status: 503, title: 'Service Unavailable', requestId: 'req-503' })),
     })
     await failing.mutate().catch(() => {})
-    expect(await screen.findByText('The service is unavailable right now. Try again shortly. Reference: req-503')).toBeInTheDocument()
+    // An error toast (Base UI's Toast, C214): the reference on its own line, dismissed by hand.
+    // The toast's text, not the copy Base UI keeps for screen readers.
+    const message = await screen.findByText('The service is unavailable right now. Try again shortly.', { selector: '[data-slot="toast"] *' })
+    const toast = message.closest('[data-slot="toast"]') as HTMLElement
+    expect(within(toast).getByText('Reference req-503')).toBeInTheDocument()
+    // Base UI hides the toast's buttons from screen readers until its area has focus (F6); they
+    // hear the live region. A pointer reaches them as usual.
+    await userEvent.click(within(toast).getByLabelText('Dismiss'))
+    await waitFor(() => expect(screen.queryByText('Reference req-503', { selector: '[data-slot="toast"] *' })).not.toBeInTheDocument())
   })
 
   it('passes its QueryClient to every route through the router context', () => {

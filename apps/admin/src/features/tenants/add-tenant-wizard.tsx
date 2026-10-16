@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { Lock } from 'lucide-react'
 import { useForm, useStore } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
-import { useApiMutation } from '@workspace/api'
+import { INVALID_FORM_MESSAGE, useApiMutation } from '@workspace/api'
 import { referenceQueries } from '@workspace/reference/api'
 import { CountrySelect } from '@workspace/reference/country-select'
 import { InstitutionTypesField } from '@workspace/reference/institution-types-field'
@@ -66,13 +66,6 @@ const today = () => fmt(new Date())
 const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
 /** A value the form sets itself: the field is neither touched nor validated (which would touch it). */
 const quietly = { dontUpdateMeta: true, dontValidate: true } as const
-
-/** What each step 1 field is called when a toast says what is still missing. */
-const STEP1_LABELS: Record<string, string> = {
-  name: 'a name', slug: 'a valid slug', code: 'a valid code', country: 'the country', legalFormId: 'the legal form',
-  identityNumber: 'the identity number', timezone: 'the time zone', institutionTypes: 'institution types with one primary',
-  email: 'a valid e-mail', phone: 'a phone number in international form', parentId: 'a parent tenant',
-}
 
 /**
  * Add a tenant in a large stepped dialog (the New employee pattern): a Stepper rail on the left,
@@ -156,7 +149,7 @@ export function AddTenantWizard({
     const out: string[] = []
     if (i === 0) {
       const parsed = newTenantFormSchema.safeParse(values)
-      if (!parsed.success) out.push(...new Set(parsed.error.issues.map((issue) => STEP1_LABELS[String(issue.path[0])] ?? String(issue.path[0]))))
+      if (!parsed.success) out.push(...new Set(parsed.error.issues.map((issue) => String(issue.path[0]))))
       if (slugDupe) out.push(`a slug not already used by ${slugDupe.abbr}`)
     }
     return out
@@ -172,11 +165,12 @@ export function AddTenantWizard({
   const blocked = (i: number) => {
     const m = missing(i)
     if (!m.length) return false
-    toast(`${STEPS[i].title} still needs ${m.join(', ')}.`, { ok: false })
     if (i === 0) {
+      // The API's 422 says the same (C185); each field says what is wrong with it.
+      toast(INVALID_FORM_MESSAGE, { ok: false })
       void form.validateAllFields('submit')
       void form.validate('submit')
-    }
+    } else toast(`${STEPS[i].title} still needs ${m.join(', ')}.`, { ok: false })
     return true
   }
   /** Back is always allowed; forward only past complete steps (lands on the first incomplete one). */
