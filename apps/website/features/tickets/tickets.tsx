@@ -333,7 +333,7 @@ export function Tickets() {
         <div className="office-grid absolute inset-0" />
       </div>
       {/* the heading, large, in the middle of the screen (the tickets fly over it) */}
-      <div data-tickets-heading="" className="relative z-0 mx-auto max-w-5xl px-6 pt-24 text-center lg:motion-safe:absolute lg:motion-safe:inset-x-0 lg:motion-safe:top-1/2 lg:motion-safe:-translate-y-1/2 lg:motion-safe:pt-0">
+      <div data-tickets-heading="" className="relative z-0 mx-auto max-w-5xl gutter pt-24 text-center lg:motion-safe:absolute lg:motion-safe:inset-x-0 lg:motion-safe:top-1/2 lg:motion-safe:-translate-y-1/2 lg:motion-safe:pt-0">
         <p className="text-overline tracking-[0.28em] text-white/80">Our solutions</p>
         <h2 className="mt-5 text-balance text-[clamp(2.75rem,6.4vw,6.5rem)] font-light leading-[0.98] tracking-[-0.04em] text-white [text-shadow:0_2px_24px_rgb(150_70_10/0.25)]">
           Start where you are, <span className="text-[#fff1dc]">grow from there.</span>
@@ -341,7 +341,7 @@ export function Tickets() {
       </div>
 
       {/* the tickets */}
-      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 items-center justify-items-center gap-8 px-6 py-16 sm:grid-cols-3 sm:gap-6 lg:motion-safe:h-full lg:motion-safe:pb-0 lg:motion-safe:pt-[12svh]">
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 items-center justify-items-center gap-8 gutter py-16 sm:grid-cols-3 sm:gap-6 lg:motion-safe:h-full lg:motion-safe:pb-0 lg:motion-safe:pt-[12svh]">
         {TICKETS.map((t) => (
           <div key={t.id} className="w-full max-w-[min(21rem,calc((100svh-12rem)*524/740))] lg:motion-safe:[&>[data-ticket]]:invisible">
             <TicketCard t={t} />

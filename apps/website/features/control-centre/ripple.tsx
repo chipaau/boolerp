@@ -69,7 +69,7 @@ export function Ripple() {
       <div aria-hidden="true" className="office-grid-dark pointer-events-none absolute inset-0" />
 
       {/* the caption: what happens, then what came of it */}
-      <div className="section-t relative mx-auto grid max-w-3xl px-6 text-center">
+      <div className="section-t relative mx-auto grid max-w-3xl gutter text-center">
         <h2 data-ripple-caption="start" className="section-title text-[#f6eee3] [grid-area:1/1]">
           One change in Control Centre.
         </h2>
@@ -133,7 +133,7 @@ export function Ripple() {
       </div>
 
       {/* below lg, and with reduced motion: what each app does */}
-      <ul className="section-b relative mx-auto grid max-w-5xl gap-3 px-6 pt-10 sm:grid-cols-2 lg:motion-safe:hidden">
+      <ul className="section-b relative mx-auto grid max-w-5xl gap-3 gutter pt-10 sm:grid-cols-2 lg:motion-safe:hidden">
         {APPS.map(({ id, icon: Icon, name, does }) => (
           <li key={id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-(--brand-soft)/20 text-(--brand-soft)">

@@ -241,7 +241,7 @@ export function Tour() {
   return (
     <section ref={section} className="relative">
       <div aria-hidden="true" className="office-grid pointer-events-none absolute inset-0" />
-      <div className="section-b relative mx-auto grid w-full max-w-6xl gap-(--section-y) px-6">
+      <div className="section-b relative mx-auto grid w-full max-w-6xl gap-(--section-y) gutter">
         {FEATURES.map(({ id, tab, title, body, Art }, i) => (
           <div key={id} data-feature={id} className="grid items-center gap-8 lg:grid-cols-2 lg:gap-16">
             <div data-copy="" className={i % 2 ? 'lg:order-2' : ''}>

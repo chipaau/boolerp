@@ -46,7 +46,7 @@ export function Hero() {
           <Scene />
         </div>
 
-        <div data-story-fade="" className="relative z-10 mx-auto w-full max-w-7xl px-6 2xl:max-w-[88rem] pb-10 pt-24 lg:[grid-area:1/1] lg:self-center lg:py-0 lg:pt-4">
+        <div data-story-fade="" className="relative z-10 mx-auto w-full max-w-7xl gutter 2xl:max-w-[88rem] pb-10 pt-24 lg:[grid-area:1/1] lg:self-center lg:py-0 lg:pt-4">
           <div className="max-w-xl lg:max-w-[38%]">
             <p className="text-overline tracking-[0.28em] text-muted-foreground">One workspace. Multiple apps.</p>
             <h1 className="mt-5 text-balance text-[clamp(2.5rem,min(3.9vw,7svh),4.75rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
@@ -158,7 +158,7 @@ function ScrollCue() {
  */
 function StoryCaptions() {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[88svh] z-40 hidden px-6 lg:block">
+    <div className="pointer-events-none absolute inset-x-0 top-[88svh] z-40 hidden gutter lg:block">
       {/* plain text on the dark room under the tablet, like subtitles under a screen: nothing over the product */}
       <div data-story-captions="" className="invisible mx-auto grid w-full max-w-4xl justify-items-center text-center opacity-0">
         {CHAPTERS.map((c) => (
@@ -202,7 +202,7 @@ function StoryCta() {
  */
 function CompactCaptions() {
   return (
-    <p data-compact-captions="" className="invisible order-3 mx-auto -mt-2 max-w-md px-6 pb-10 text-center text-sm opacity-0 lg:hidden">
+    <p data-compact-captions="" className="invisible order-3 mx-auto -mt-2 max-w-md gutter pb-10 text-center text-sm opacity-0 lg:hidden">
       {CHAPTERS.map((c, i) => (
         <span key={c.id} data-compact-caption="" hidden={i > 0}>
           <span className="font-medium text-foreground">{c.title}.</span> <span className="text-muted-foreground">{c.body}</span>

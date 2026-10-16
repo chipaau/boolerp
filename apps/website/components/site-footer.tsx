@@ -20,7 +20,7 @@ export function SiteFooter({ call = true }: { call?: boolean }) {
 
       {/* the last call (not on the contact page, which is the call) */}
       {call && (
-        <div className="section-y relative mx-auto grid w-full max-w-7xl gap-8 px-6 lg:min-h-[calc(100svh-3.5rem)] lg:grid-cols-[1.2fr_1fr] lg:content-center lg:items-end 2xl:max-w-[88rem]">
+        <div className="section-y relative mx-auto grid w-full max-w-7xl gap-8 gutter lg:min-h-[calc(100svh-3.5rem)] lg:grid-cols-[1.2fr_1fr] lg:content-center lg:items-end 2xl:max-w-[88rem]">
           <div>
             <p className="text-overline tracking-[0.28em] text-muted-foreground">Ready to simplify your operations?</p>
             <h2 className="section-title mt-4 text-foreground">
@@ -47,7 +47,7 @@ export function SiteFooter({ call = true }: { call?: boolean }) {
       {/* the brand and the small print, then Back to top: one ruled bar, its cells filling with
           hexagons on hover as the header's do, and its last cell in amber like the header's Let's talk */}
       <div className={`flex min-h-14 flex-wrap ${call ? 'border-t border-border' : ''}`}>
-        <div className="flex items-center gap-4 px-6 py-3">
+        <div className="flex items-center gap-4 gutter py-3">
           <Brand className="text-[1.3rem] [&_img]:h-7" />
           <span className="text-[13px] text-muted-foreground">© {new Date().getFullYear()} · Malé, Maldives</span>
         </div>

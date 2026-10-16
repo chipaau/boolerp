@@ -49,6 +49,13 @@
 @utility section-t-header {
   padding-top: calc(var(--section-y) + 3.5rem);
 }
+/* the page's side margin, tied to the window's width the same way: about 4% of it, never under
+   1.5rem (phones) or over 4rem, so content never sits tight to the edges where the window is only
+   as wide as the content (1280px). The header's and footer's logos keep to it, aligned with the
+   content below */
+@utility gutter {
+  padding-inline: var(--gutter);
+}
 @utility scene {
   @media (width >= 64rem) {
     min-height: 100svh;
@@ -61,6 +68,7 @@
 /* the shared typeface, self-hosted by Next (app/layout.tsx) instead of loaded from Google's stylesheet */
 :root {
   --section-y: clamp(4rem, 12svh, 9rem);
+  --gutter: clamp(1.5rem, 4vw, 4rem);
   --font-sans: var(--font-lato), -apple-system, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   /* the website's focus ring in a muted honey rather than the apps' sage: the brand's own orange is
      too light to see on the cream (about 2:1); this one keeps the 3:1 a focus ring needs, calmly */

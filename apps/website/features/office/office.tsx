@@ -199,7 +199,7 @@ export function Office() {
   return (
     <section ref={section} id="workspace" className="relative overflow-hidden bg-background lg:motion-safe:h-svh">
       <div aria-hidden="true" className="office-grid pointer-events-none absolute inset-0" />
-      <div className="relative mx-auto grid h-full w-full max-w-7xl gap-10 px-6 py-20 lg:motion-safe:grid-cols-[minmax(0,0.36fr)_minmax(0,0.64fr)] lg:items-start lg:gap-6 lg:motion-safe:pb-24 lg:motion-safe:pt-[16svh] 2xl:max-w-[88rem]">
+      <div className="relative mx-auto grid h-full w-full max-w-7xl gap-10 gutter py-20 lg:motion-safe:grid-cols-[minmax(0,0.36fr)_minmax(0,0.64fr)] lg:items-start lg:gap-6 lg:motion-safe:pb-24 lg:motion-safe:pt-[16svh] 2xl:max-w-[88rem]">
         {/* the story: the promise, then the current app's card */}
         <div className="relative z-10">
           <p className="text-overline tracking-[0.28em] text-muted-foreground">Inside your workspace</p>
@@ -275,7 +275,7 @@ export function Office() {
       {/* the apps, in order, as a line along the foot of the screen: where the story is, and a way
           to go to any of them */}
       <div className="absolute inset-x-0 bottom-0 hidden bg-linear-to-t from-background from-55% to-transparent pb-8 pt-14 lg:motion-safe:block">
-        <ol className="mx-auto grid w-full max-w-7xl grid-cols-6 gap-3 px-6 2xl:max-w-[88rem]">
+        <ol className="mx-auto grid w-full max-w-7xl grid-cols-6 gap-3 gutter 2xl:max-w-[88rem]">
           {ROOMS.map((room) => (
             <li key={room.id} data-office-step={room.id} className="office-item">
               <button type="button" onClick={() => go(room.id)} className="pointer-events-auto block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">

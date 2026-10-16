@@ -9,7 +9,7 @@ import { HexFill } from './hex-fill'
 import { NAV, PRODUCTS } from './nav-links'
 
 /** A row of the menu: ruled off below, its label at the left, filling with hexagons on hover. */
-const ROW = 'header-cell relative flex h-14 items-center justify-between overflow-hidden border-b border-border px-6 outline-none'
+const ROW = 'header-cell relative flex h-14 items-center justify-between overflow-hidden border-b border-border gutter outline-none'
 
 /**
  * The header's sections on phones and small tablets, where they don't fit the bar: a Menu cell
@@ -31,7 +31,7 @@ export function MobileMenu() {
         <SheetTitle className="sr-only">Menu</SheetTitle>
         {/* the bar again, its Menu cell now Close */}
         <div className="flex h-14 border-b border-border">
-          <div className="flex items-center px-6">
+          <div className="flex items-center gutter">
             <Brand className="text-[1.3rem] [&_img]:h-7" />
           </div>
           <SheetClose className={`${CELL} ml-auto`}>

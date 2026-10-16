@@ -32,7 +32,7 @@ export function Deploy() {
         className="office-grid pointer-events-none absolute inset-0"
         style={{ backgroundPosition: 'center 80px', maskImage: 'linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent)' }}
       />
-      <Rise className="section-y relative mx-auto w-full max-w-7xl px-6 2xl:max-w-[88rem]">
+      <Rise className="section-y relative mx-auto w-full max-w-7xl gutter 2xl:max-w-[88rem]">
         <div data-rise="" className="max-w-2xl">
           <p className="text-overline tracking-[0.28em] text-muted-foreground">Deploy your way</p>
           <h2 className="section-title mt-4 text-foreground">

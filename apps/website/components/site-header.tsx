@@ -16,7 +16,7 @@ export function SiteHeader({ className }: { className?: string }) {
   return (
     <HeaderMotion className={className}>
       <div className="flex h-14 border-b border-border bg-background">
-        <div className="flex items-center px-6">
+        <div className="flex items-center gutter">
           <Brand className="text-[1.3rem] [&_img]:h-7" />
         </div>
         <div className="ml-auto flex h-full">
