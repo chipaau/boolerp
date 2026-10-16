@@ -13,7 +13,7 @@ export default function ContactPage() {
     // the page fills the window at least, so the footer sits at its foot
     <div className="flex min-h-svh flex-col">
       <SiteHeader />
-      <main className="grow">
+      <main className="flex grow flex-col">
         <Contact />
       </main>
       <SiteFooter call={false} />

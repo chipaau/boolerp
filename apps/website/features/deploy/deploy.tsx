@@ -24,7 +24,7 @@ const OPTIONS: { icon: LucideIcon; title: string; body: string; fit: string }[] 
  */
 export function Deploy() {
   return (
-    <section id="deployment" className="deploy-sheet relative z-10 bg-background">
+    <section id="deployment" className="deploy-sheet scene relative z-10 bg-background">
       {/* the drafting paper, carried on from the Maldives section above: its lines off the top edge,
           and faded in from it, so the two sections meet without a seam */}
       <div
@@ -32,7 +32,7 @@ export function Deploy() {
         className="office-grid pointer-events-none absolute inset-0"
         style={{ backgroundPosition: 'center 80px', maskImage: 'linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent)' }}
       />
-      <Rise className="relative mx-auto w-full max-w-7xl px-6 py-24 2xl:max-w-[88rem]">
+      <Rise className="section-y relative mx-auto w-full max-w-7xl px-6 2xl:max-w-[88rem]">
         <div data-rise="" className="max-w-2xl">
           <p className="text-overline tracking-[0.28em] text-muted-foreground">Deploy your way</p>
           <h2 className="section-title mt-4 text-foreground">

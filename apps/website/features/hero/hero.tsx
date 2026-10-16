@@ -62,8 +62,9 @@ export function Hero() {
               </Button>
               {/* the demo itself: on desktop it glides into the scroll story (story.ts), on phones down to the recording */}
               <Button size="lg" variant="outline" data-story-tour="" render={<a href="#demo" />}>
-                <Play className="size-4 fill-current" strokeWidth={1.6} />
                 See it in action
+                {/* just the play mark, outlined in the muted grey, filling in on hover */}
+                <Play className="size-4 text-muted-foreground transition-[color,fill] duration-200 group-hover/btn:fill-current group-hover/btn:text-foreground" strokeWidth={1.8} />
               </Button>
             </div>
             {/* who uses it: a few faces and the teams they come from */}

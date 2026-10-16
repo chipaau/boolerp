@@ -20,7 +20,7 @@ export function SiteFooter({ call = true }: { call?: boolean }) {
 
       {/* the last call (not on the contact page, which is the call) */}
       {call && (
-        <div className="relative mx-auto grid w-full max-w-7xl gap-8 px-6 py-24 lg:grid-cols-[1.2fr_1fr] lg:items-end 2xl:max-w-[88rem]">
+        <div className="section-y relative mx-auto grid w-full max-w-7xl gap-8 px-6 lg:min-h-[calc(100svh-3.5rem)] lg:grid-cols-[1.2fr_1fr] lg:content-center lg:items-end 2xl:max-w-[88rem]">
           <div>
             <p className="text-overline tracking-[0.28em] text-muted-foreground">Ready to simplify your operations?</p>
             <h2 className="section-title mt-4 text-foreground">

@@ -32,8 +32,35 @@
   text-transform: uppercase;
 }
 
+/* the site's vertical rhythm, tied to the screen rather than fixed: a section's space above and below
+   is about an eighth of the window's height (never under 4rem or over 9rem), so the page breathes the
+   same on a small laptop and a large monitor. section-y/-t/-b apply it; section-t-header adds the fixed
+   header's height above a page's first section. A scene is a section that is one composition: on
+   desktop it fills at least one screen, its content centred top to bottom, so it is always seen whole */
+@utility section-y {
+  padding-block: var(--section-y);
+}
+@utility section-t {
+  padding-top: var(--section-y);
+}
+@utility section-b {
+  padding-bottom: var(--section-y);
+}
+@utility section-t-header {
+  padding-top: calc(var(--section-y) + 3.5rem);
+}
+@utility scene {
+  @media (width >= 64rem) {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
 /* the shared typeface, self-hosted by Next (app/layout.tsx) instead of loaded from Google's stylesheet */
 :root {
+  --section-y: clamp(4rem, 12svh, 9rem);
   --font-sans: var(--font-lato), -apple-system, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   /* the website's focus ring in a muted honey rather than the apps' sage: the brand's own orange is
      too light to see on the cream (about 2:1); this one keeps the 3:1 a focus ring needs, calmly */
