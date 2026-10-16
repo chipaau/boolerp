@@ -1,6 +1,5 @@
-import Image from 'next/image'
-import logo from '@workspace/assets/logos/bool-logo.png'
 import { Button } from '@workspace/ui/components/button'
+import { Brand } from './brand'
 import { CTA } from './cta'
 import { HeaderMotion } from './header-motion'
 import { NavLinks } from './nav-links'
@@ -14,10 +13,7 @@ export function SiteHeader({ className }: { className?: string }) {
   return (
     <HeaderMotion className={className}>
       <div className="mx-auto flex h-20 max-w-7xl items-center gap-8 px-6 2xl:max-w-[88rem]">
-        <a href="/" className="flex items-center gap-2.5 text-[1.6rem] font-bold tracking-[-0.03em] text-foreground">
-          <Image src={logo} alt="" priority className="h-9 w-auto" />
-          Bool
-        </a>
+        <Brand className="text-[1.6rem]" />
         <NavLinks />
         <div className="ml-auto flex items-center lg:ml-0">
           <Button render={<a href="#sign-in" />}>

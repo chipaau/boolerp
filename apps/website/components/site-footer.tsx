@@ -1,7 +1,6 @@
-import Image from 'next/image'
 import { ArrowUp } from 'lucide-react'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
-import logo from '@workspace/assets/logos/bool-logo.png'
+import { Brand } from './brand'
 import { CTA, CTA_ARROW } from './cta'
 
 const LEGAL = ['Privacy', 'Terms', 'Security']
@@ -40,10 +39,7 @@ export function SiteFooter() {
 
       {/* the brand, and Back to top */}
       <div className="relative mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-6 border-t border-border/60 px-6 py-8 2xl:max-w-[88rem]">
-        <a href="/" className="flex items-center gap-2.5 text-[1.5rem] font-bold tracking-[-0.03em] text-foreground">
-          <Image src={logo} alt="" className="h-9 w-auto" />
-          Bool
-        </a>
+        <Brand className="text-[1.5rem]" />
         <Button size="lg" variant="outline" render={<a href="#" />}>
           Back to top
           <ButtonArrow>

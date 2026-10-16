@@ -338,22 +338,28 @@ html.lenis body {
   filter: contrast(1.06) saturate(1.12);
 }
 
-/* the header's sections (components/nav-links.tsx): the hand-drawn stroke under the item the
-   pointer is on. Once the menu's script runs (data-live) its hexagon draws the strokes; until then,
-   or without script, a plain wipe on hover and focus */
-.nav-stroke {
-  clip-path: inset(-50% 105% -50% -5%);
+/* the header menu's marker (components/nav-links.tsx): a small amber hexagon under the item the
+   pointer or keyboard is on. It fades in where it is first wanted, slides along to the next item while
+   it is showing, and fades out in place when the pointer leaves the menu */
+.nav-hex {
+  --x: 0px;
+  opacity: 0;
+  transform: translateX(calc(var(--x) - 50%)) scale(0.6);
+  transition:
+    opacity 0.2s ease-out,
+    transform 0.2s ease-out;
 }
-nav:not([data-live]) .nav-stroke {
-  transition: clip-path 0.35s var(--ease-bool);
-}
-nav:not([data-live]) .nav-item:hover .nav-stroke,
-nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
-  clip-path: inset(-50% -5% -50% -5%);
+.nav-hex[data-on] {
+  opacity: 1;
+  transform: translateX(calc(var(--x) - 50%)) scale(1);
+  transition:
+    opacity 0.2s ease-out,
+    transform 0.32s cubic-bezier(0.3, 0.7, 0.2, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .nav-stroke {
-    transition: none;
+  .nav-hex,
+  .nav-hex[data-on] {
+    transition: opacity 0.15s linear;
   }
 }
 
@@ -638,4 +644,43 @@ a:not([data-slot]):focus-visible,
   background:
     radial-gradient(60% 55% at 50% 55%, rgb(255 214 160 / 0.5), rgb(255 214 160 / 0) 70%),
     linear-gradient(to bottom, #eda15c, #e98f42 50%, #ec9a52);
+}
+
+
+/* The Control Centre page (features/control-centre): the dark stage and band, ruled faintly like the
+   home page's drafting paper; the pieces on the stage floating gently, out of step; and the home
+   map's dotted walkway between the record and the apps */
+.cc-stage-grid {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse at 50% 45%, #000 40%, transparent 85%);
+}
+.cc-walk {
+  height: 2px;
+  background: radial-gradient(circle, #f0913a 0.9px, transparent 1.3px) 0 50% / 9px 2px repeat-x;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cc-float {
+    animation: cc-float 5s ease-in-out infinite alternate;
+  }
+  .cc-float-2 {
+    animation-duration: 6s;
+    animation-delay: -2s;
+  }
+  .cc-float-3 {
+    animation-duration: 4.4s;
+    animation-delay: -3.5s;
+  }
+  .cc-walk {
+    animation: cc-walk 1.8s linear infinite;
+  }
+}
+@keyframes cc-float {
+  from { translate: 0 4px; }
+  to { translate: 0 -5px; }
+}
+@keyframes cc-walk {
+  to { background-position: 9px 50%; }
 }
