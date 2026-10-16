@@ -18,10 +18,14 @@ const OPTIONS: { icon: LucideIcon; title: string; body: string; fit: string }[] 
   },
 ]
 
-/** "Deploy your way": the same product, run by us or by you. The Maldives section's last point links here (#deployment). */
+/**
+ * "Deploy your way": the same product, run by us or by you. The Maldives section's last point links
+ * here (#deployment). On desktop it is a sheet of paper lying on the solutions section's orange,
+ * which the scroll lifts away (features/tickets).
+ */
 export function Deploy() {
   return (
-    <section id="deployment" className="border-t border-border/60">
+    <section id="deployment" className="deploy-sheet relative z-10 border-t border-border/60 bg-background lg:motion-safe:flex lg:motion-safe:min-h-svh lg:motion-safe:items-center">
       <Rise className="mx-auto w-full max-w-7xl px-6 py-24 2xl:max-w-[88rem]">
         <div data-rise="" className="max-w-2xl">
           <p className="text-overline tracking-[0.28em] text-muted-foreground">Deploy your way</p>

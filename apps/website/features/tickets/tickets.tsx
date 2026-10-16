@@ -279,39 +279,33 @@ export function Tickets() {
         tl.to(q('[data-tickets-heading]'), { y: () => -innerHeight * 0.39, scale: 0.42, duration: 1.1, ease: 'power2.inOut' }, 0)
         // (its small label would shrink past reading: it goes)
         tl.to(q('[data-tickets-heading] p'), { autoAlpha: 0, duration: 0.4 }, 0)
-        // once the tickets are down, the orange gives way to the page's cream again, the title with it
-        const settled = tl.duration()
-        tl.to(q('[data-tickets-cream]'), { autoAlpha: 1, duration: 0.6, ease: 'sine.inOut' }, settled + 0.1)
-          .to(q('[data-tickets-heading] h2'), { color: 'var(--foreground)', textShadow: '0 0 0 rgb(0 0 0 / 0)', duration: 0.6, ease: 'sine.inOut' }, settled + 0.1)
-          .to(q('[data-tickets-heading] h2 span'), { color: 'var(--brand)', duration: 0.6, ease: 'sine.inOut' }, settled + 0.1)
-          .to({}, { duration: 0.2 })
+        // and as they come, the orange fades away completely into the page's cream, the title turning
+        // back to the page's dark and orange with it
+        tl.to(q('[data-tickets-cream]'), { autoAlpha: 1, duration: 1.2, ease: 'sine.inOut' }, 0.15)
+          .to(q('[data-tickets-heading] h2'), { color: 'var(--foreground)', textShadow: '0 0 0 rgb(0 0 0 / 0)', duration: 1.2, ease: 'sine.inOut' }, 0.15)
+          .to(q('[data-tickets-heading] h2 span'), { color: 'var(--brand)', duration: 1.2, ease: 'sine.inOut' }, 0.15)
 
-        // the section before stays put once its end is in view, so this one slides up over it like a
-        // sheet laid on top (globals.css, .tickets-field's rounded top and shadow)
-        const before = section.current!.previousElementSibling as HTMLElement | null
-        const hold = () => {
-          if (before) before.style.top = `${Math.min(0, innerHeight - before.offsetHeight)}px`
-        }
-        if (before) {
-          before.style.position = 'sticky'
-          hold()
-          addEventListener('resize', hold)
-        }
-
-        const st = ScrollTrigger.create({
+        // the section sits a screen up, under the end of Deploy (which lies on it like a sheet of paper,
+        // globals.css .deploy-sheet), and is held still from there: the first screen of scrolling lifts
+        // Deploy away to uncover the orange, the rest plays the tickets
+        const pin = ScrollTrigger.create({
           trigger: section.current,
           start: 'top top',
-          end: () => `+=${innerHeight * 2.1}`,
+          end: () => `+=${innerHeight * 2.9}`,
           pin: true,
-          scrub: 1,
-          animation: tl,
           invalidateOnRefresh: true,
           onToggle: (self) => document.documentElement.toggleAttribute('data-pinned', self.isActive),
         })
+        const play = ScrollTrigger.create({
+          start: () => pin.start + innerHeight,
+          end: () => pin.end,
+          scrub: 1,
+          animation: tl,
+          invalidateOnRefresh: true,
+        })
         return () => {
-          st.kill()
-          removeEventListener('resize', hold)
-          if (before) before.style.position = before.style.top = ''
+          play.kill()
+          pin.kill()
         }
       })
       return () => mm.revert()
@@ -320,9 +314,9 @@ export function Tickets() {
   )
 
   return (
-    <section ref={section} id="solutions" className="tickets-field relative overflow-hidden lg:motion-safe:h-svh">
+    <section ref={section} id="solutions" className="tickets-field relative z-0 overflow-hidden lg:motion-safe:-mt-[100svh] lg:motion-safe:h-svh">
 
-      {/* the cream the orange gives way to once the tickets are down */}
+      {/* the cream the orange fades into as the tickets come */}
       <div data-tickets-cream="" aria-hidden="true" className="invisible absolute inset-0 bg-background opacity-0" />
       {/* the heading, large, in the middle of the screen (the tickets fly over it) */}
       <div data-tickets-heading="" className="relative z-0 mx-auto max-w-5xl px-6 pt-24 text-center lg:motion-safe:absolute lg:motion-safe:inset-x-0 lg:motion-safe:top-1/2 lg:motion-safe:-translate-y-1/2 lg:motion-safe:pt-0">

@@ -160,6 +160,8 @@ export function Office() {
         tl.to(camera, { xPercent: 0, yPercent: 0, scale: 1, duration: 0.5, ease: 'power2.inOut' }, end)
           .to(q('[data-office-tile]'), { '--c': 1, duration: 0.35, stagger: 0.03 }, end + 0.05)
           .to(q('[data-office-route]'), { autoAlpha: 1, duration: 0.3, stagger: 0.03 }, end + 0.05)
+          // and every app in the list along the foot lit with them, not left greyed under full lines
+          .to(q('[data-office-step]'), { '--on': 1, duration: 0.3, stagger: 0.03 }, end + 0.2)
           .fromTo(q('[data-office-all]'), { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.3, ease: 'power2.out', immediateRender: false }, end + 0.15)
           .addLabel('all', end + 0.5)
           .to({}, { duration: 0.15 })
