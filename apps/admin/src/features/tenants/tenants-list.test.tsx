@@ -50,6 +50,27 @@ function referenceApi() {
           : []
       )
     ),
+    http.get('/api/v1/geography-types', () =>
+      page([
+        { id: '0192f6a0-0000-7000-8000-0000000000c1', country: 'MV', code: 'atoll', name: 'Atoll', level: 1, placeCount: 1 },
+        { id: '0192f6a0-0000-7000-8000-0000000000c2', country: 'MV', code: 'island', name: 'Island', level: 2, placeCount: 1 },
+        { id: '0192f6a0-0000-7000-8000-0000000000c3', country: 'MV', code: 'street', name: 'Street', level: 3, placeCount: 0 },
+      ])
+    ),
+    http.get('/api/v1/geographies', ({ request }) => {
+      const parent = new URL(request.url).searchParams.get('parent')
+      const place = (id: string, over: Record<string, unknown>) => ({
+        id, country: 'MV', code: null, shortName: null, parentId: null, parentName: null, latitude: null, longitude: null,
+        childCount: 0, hasChildren: false, ...over,
+      })
+      return page(
+        parent === 'none'
+          ? [place(KAAFU, { type: 'atoll', typeName: 'Atoll', level: 1, name: 'Kaafu', shortName: 'K.', childCount: 1, hasChildren: true })]
+          : parent === KAAFU
+            ? [place(MAAFUSHI, { type: 'island', typeName: 'Island', level: 2, name: 'Maafushi', parentId: KAAFU, parentName: 'Kaafu' })]
+            : []
+      )
+    }),
     http.get('/api/v1/institution-types', () =>
       page([
         { code: 'ministry', name: 'Ministry', sector: { code: 'government', name: 'Government' } },
@@ -58,6 +79,9 @@ function referenceApi() {
     )
   )
 }
+
+const KAAFU = '0192f6a0-0000-7000-8000-0000000000d1'
+const MAAFUSHI = '0192f6a0-0000-7000-8000-0000000000d2'
 
 /** Chooses `option` in the searchable picker labelled `label`, typing `query` to find it. */
 async function pick(form: HTMLElement, label: string, query: string, option: RegExp | string) {
@@ -189,7 +213,9 @@ describe('the tenants list', () => {
     await userEvent.type(within(form).getByLabelText('Name'), 'Test Clinic')
     expect(within(form).getByLabelText('Slug')).toHaveValue('test-clinic')
     await userEvent.type(within(form).getByLabelText('Code'), 'TCLN')
-    expect(within(form).queryByRole('button', { name: 'Create tenant' })).not.toBeInTheDocument()
+    // Step 1's only way on is creating (C223): offered from the start, it checks the form when pressed.
+    expect(within(form).getByRole('button', { name: 'Create tenant' })).toBeInTheDocument()
+    expect(within(form).queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
     expect(within(form).queryByRole('button', { name: 'Save as draft' })).not.toBeInTheDocument()
     // Required fields are marked (*), optional ones are not (C202).
     for (const label of ['Name', 'Slug', 'Code', 'Country', 'Legal form', 'Time zone', 'Institution types'])
@@ -212,7 +238,8 @@ describe('the tenants list', () => {
 
     const lists = seen.length
     await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))
-    await waitFor(() => expect(form).not.toBeInTheDocument())
+    // Created: the wizard stays open on its address (C223).
+    expect(await within(form).findByRole('heading', { name: 'Where they are' })).toBeInTheDocument()
     expect(body).toEqual({
       name: 'Test Clinic', slug: 'test-clinic', code: 'TCLN', country: 'MV',
       legalFormId: '0192f6a0-0000-7000-8000-0000000000f2', timezone: 'Indian/Maldives',
@@ -279,7 +306,7 @@ describe('the tenants list', () => {
     await userEvent.type(within(form).getByLabelText('Name'), 'Tenant One')
     await userEvent.type(within(form).getByLabelText('Phone'), '12ab')
 
-    await userEvent.click(within(form).getByRole('button', { name: 'Continue' }))
+    await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))
     expect(await screen.findByText(INVALID_FORM_MESSAGE, inToast)).toBeInTheDocument() // the same toast as the API's 422
     // Every field the toast names shows its error, touched or not.
     for (const label of ['Code', 'Country', 'Legal form', 'Time zone', 'Institution types', 'Phone'])
@@ -287,6 +314,111 @@ describe('the tenants list', () => {
     expect(within(form).getAllByText('is required')).toHaveLength(3)
     expect(within(form).getByLabelText('Name')).not.toHaveAttribute('aria-invalid')
     expect(sent).toBe(false)
+  })
+
+  describe('step 2, the new tenant’s address (C223)', () => {
+    /** Opens the wizard, creates a tenant in MV, and lands on step 2; returns the PUTs seen. */
+    async function createdTenant(addressAnswer?: () => Response) {
+      listApi([tenant(1)])
+      referenceApi()
+      const puts: { kind: string; body: unknown }[] = []
+      server.use(
+        http.post('/api/v1/tenants', () =>
+          HttpResponse.json(tenant(2, { name: 'Tenant One', slug: 'tenant-one', code: 'TONE', status: 'provisioning', workspaceHost: null }), {
+            status: 201, headers: { Location: '/api/v1/tenants/' + tenant(2).id },
+          })
+        ),
+        http.put('/api/v1/tenants/:id/addresses/:kind', async ({ request, params }) => {
+          const body = await request.json()
+          puts.push({ kind: String(params.kind), body })
+          if (addressAnswer) return addressAnswer()
+          return HttpResponse.json({
+            kind: params.kind, country: 'MV', geographyId: MAAFUSHI, places: [], typedPlaces: { street: 'Sosun Magu' },
+            line1: 'H. Sosun Villa', line2: null, postalCode: null, latitude: null, longitude: null, updatedAt: '2026-10-16T09:00:00Z',
+          }, { status: 201 })
+        })
+      )
+      renderRoute('/tenants')
+      await screen.findByText('T1 · tenant-1')
+      await userEvent.click(screen.getByRole('button', { name: 'New tenant' }))
+      const form = await screen.findByRole('dialog')
+      expect(within(form).queryByRole('button', { name: 'Continue' }), 'nothing to go on to before creating').not.toBeInTheDocument()
+      await userEvent.type(within(form).getByLabelText('Name'), 'Tenant One')
+      await userEvent.type(within(form).getByLabelText('Code'), 'TONE')
+      await pick(form, 'Country', 'mdv', /Maldives/)
+      await pick(form, 'Legal form', 'ministry', /Government ministry/)
+      await pick(form, 'Time zone', 'maldives', /Indian \/ Maldives/)
+      await pick(form, 'Institution types', 'minis', 'Ministry')
+      await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))
+      await within(form).findByRole('heading', { name: 'Where they are' })
+      return { form, puts }
+    }
+
+    it('picks the places level by level, types the level with none listed, and saves it', async () => {
+      const { form, puts } = await createdTenant()
+      expect(within(form).getByLabelText('Registered address country')).toHaveValue('Maldives')
+      await pick(form, 'Registered address atoll', 'kaa', /Kaafu/)
+      await pick(form, 'Registered address island', 'maa', 'Maafushi')
+      await userEvent.type(within(form).getByLabelText('Street'), ' Sosun Magu ')
+      await userEvent.type(within(form).getByLabelText('Address'), 'H. Sosun Villa')
+      await userEvent.click(within(form).getByRole('button', { name: 'Save and continue' }))
+
+      await waitFor(() => expect(puts).toHaveLength(1))
+      expect(puts[0]).toEqual({
+        kind: 'registered',
+        body: { country: 'MV', geographyId: MAAFUSHI, typedPlaces: { street: 'Sosun Magu' }, line1: 'H. Sosun Villa' },
+      })
+      expect(await within(form).findByRole('heading', { name: 'What they can open' })).toBeInTheDocument()
+      expect(within(form).queryByRole('button', { name: 'Create tenant' }), 'never created twice').not.toBeInTheDocument()
+    })
+
+    it('saves a different mailing address too', async () => {
+      const { form, puts } = await createdTenant()
+      await pick(form, 'Registered address atoll', 'kaa', /Kaafu/)
+      await pick(form, 'Registered address island', 'maa', 'Maafushi')
+      await userEvent.type(within(form).getByLabelText('Street'), 'Sosun Magu')
+      await userEvent.type(within(form).getAllByLabelText('Address')[0], 'H. Sosun Villa')
+      await userEvent.click(within(form).getByRole('checkbox', { name: /Mailing address is the same/ }))
+      await pick(form, 'Mailing address atoll', 'kaa', /Kaafu/)
+      await pick(form, 'Mailing address island', 'maa', 'Maafushi')
+      await userEvent.type(within(form).getAllByLabelText('Street')[1], 'Majeedhee Magu')
+      await userEvent.type(within(form).getAllByLabelText('Address')[1], 'PO Box 7')
+      await userEvent.click(within(form).getByRole('button', { name: 'Save and continue' }))
+
+      await waitFor(() => expect(puts.map((p) => p.kind)).toEqual(['registered', 'mailing']))
+      expect(puts[1].body).toMatchObject({ line1: 'PO Box 7', typedPlaces: { street: 'Majeedhee Magu' } })
+    })
+
+    it('cannot be passed without saving, and shows what is missing on its fields', async () => {
+      const { form, puts } = await createdTenant()
+      await userEvent.click(within(form).getByRole('button', { name: 'Save and continue' }))
+      expect(await screen.findByText(INVALID_FORM_MESSAGE, inToast)).toBeInTheDocument()
+      expect(within(form).getByLabelText('Address')).toHaveAttribute('aria-invalid', 'true')
+      expect(puts).toHaveLength(0)
+      expect(within(form).getByRole('heading', { name: 'Where they are' })).toBeInTheDocument()
+      expect(within(form).queryByRole('button', { name: 'Back' }), 'step 1 is done').not.toBeInTheDocument()
+    })
+
+    it('shows the API’s refusal on the address’s fields', async () => {
+      const { form, puts } = await createdTenant(() =>
+        HttpResponse.json(
+          {
+            type: 'https://bool.mv/problems/validation-error', title: 'Unprocessable Content', status: 422,
+            detail: 'The request has 1 invalid field.',
+            errors: [{ pointer: '#/typedPlaces/street', code: 'required', detail: 'is required: Street is typed' }],
+          },
+          { status: 422, headers: { 'Content-Type': 'application/problem+json' } }
+        )
+      )
+      await pick(form, 'Registered address atoll', 'kaa', /Kaafu/)
+      await pick(form, 'Registered address island', 'maa', 'Maafushi')
+      await userEvent.type(within(form).getByLabelText('Street'), 'x')
+      await userEvent.type(within(form).getByLabelText('Address'), 'H. Sosun Villa')
+      await userEvent.click(within(form).getByRole('button', { name: 'Save and continue' }))
+      await waitFor(() => expect(puts).toHaveLength(1))
+      expect(await within(form).findByText('is required: Street is typed')).toBeInTheDocument()
+      expect(within(form).getByRole('heading', { name: 'Where they are' }), 'still on the address').toBeInTheDocument()
+    })
   })
 
   it('says so when the caller may not create tenants', async () => {

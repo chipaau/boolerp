@@ -457,6 +457,8 @@ confirmation, the field list table by table (see
 - ~~**What the request accepts.**~~ Decided (C197): step 1 of the wizard creates the tenant
   (`provisioning`) from its own details and institution types; later steps and the
   details page fill in the rest; no wizard state is stored.
+  Step 2 is the registered address (C223), which must be saved to go on; step 1 is then
+  locked, and the mailing address is optional (the same as the registered one by default).
 - ~~**Whether the default domain is part of it.**~~ Decided (C203): not at creation. The
   platform host `<slug>.<APP_PLATFORM_DOMAIN>` (C159) is created when the tenant is first
   activated, in the activation's transaction, active and primary unless one is already

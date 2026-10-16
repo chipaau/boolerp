@@ -20,6 +20,7 @@ import { SelectField } from '@workspace/ui/components/select'
 import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
 import { Stepper, StepperFooter, StepperLayout } from '@workspace/ui/components/stepper'
 import { useToast } from '@workspace/ui/components/toast'
+import { ADDRESS_FORM_ID, TenantAddressStep } from './tenant-address-step'
 import { cn } from '@workspace/ui/lib/utils'
 import { Field, ReviewCard, StepHeading, fieldClass } from '@/components/form-field'
 import { useCurrentUser } from '@/components/layout/user-context'
@@ -76,8 +77,10 @@ const quietly = { dontUpdateMeta: true, dontValidate: true } as const
  * "Create tenant" is offered as soon as step 1 is complete: owners are needed to activate a tenant
  * (C198), not to create it. Step 1 is a TanStack form validated by zod (C176); with `onCreated` it
  * sends POST /api/v1/tenants, and the API's 422 lands on its fields (useApiMutation) or, for what
- * no field can show, in the banner above them. Without it (the design prototype's page) it saves
- * the prototype's fixture profile.
+ * no field can show, in the banner above them. The created tenant then stays open in the wizard on
+ * step 2, its registered address, which must be saved to go on (C223); step 1 is done and is not
+ * reopened, and the last step ends with Done. Steps 3 to 5 are still the prototype's. Without
+ * `onCreated` (the design prototype's page) it saves the prototype's fixture profile.
  */
 export function AddTenantWizard({
   onClose,
@@ -86,7 +89,7 @@ export function AddTenantWizard({
 }: {
   onClose: () => void
   onProvisioned: (p: Provisioned) => void
-  /** Creates the tenant through the API (F3) and hands it back; without it, the prototype's fixtures. */
+  /** Creates the tenant through the API (F3) and reports it, the wizard staying open on its address; without it, the prototype's fixtures. */
   onCreated?: (tenant: Tenant) => void
 }) {
   const toast = useToast()
@@ -98,6 +101,10 @@ export function AddTenantWizard({
   const countries = useActiveCountries()
 
   const [step, setStep] = useState(0)
+  // The tenant step 1 created (C223): the wizard goes on with it, and step 1 is done.
+  const [created, setCreated] = useState<Tenant | null>(null)
+  const [addressSaved, setAddressSaved] = useState(false)
+  const [savingAddress, setSavingAddress] = useState(false)
   const [slugTouched, setSlugTouched] = useState(false)
   const [f, setF] = useState<Form>(() => ({
     addr: '', addrCountry: 'Maldives', district: 'Kaafu', city: 'Malé City', postal: '', sameAsReg: true,
@@ -115,6 +122,8 @@ export function AddTenantWizard({
       try {
         const tenant = await create.mutateAsync(toCreateTenantInput(value))
         toast(`${tenant.name} created`)
+        setCreated(tenant)
+        setStep(1)
         onCreated(tenant)
       } catch {
         // The one error policy toasted it (C185); a 422 is also on the fields and banner.
@@ -152,9 +161,11 @@ export function AddTenantWizard({
       if (!parsed.success) out.push(...new Set(parsed.error.issues.map((issue) => String(issue.path[0]))))
       if (slugDupe) out.push(`a slug not already used by ${slugDupe.abbr}`)
     }
+    if (i === 1 && created && !addressSaved) out.push('the registered address, saved')
     return out
   }
-  const complete = (i: number) => missing(i).length === 0
+  // With the API, step 2 is complete once its address is saved, not merely when nothing is missing.
+  const complete = (i: number) => (i === 1 && onCreated ? addressSaved : missing(i).length === 0)
   // Creating needs step 1 only (C197); the later steps can be finished on the details page.
   const ready = complete(0)
 
@@ -173,8 +184,16 @@ export function AddTenantWizard({
     } else toast(`${STEPS[i].title} still needs ${m.join(', ')}.`, { ok: false })
     return true
   }
-  /** Back is always allowed; forward only past complete steps (lands on the first incomplete one). */
+  /**
+   * Back is always allowed, except to step 1 once it created the tenant; forward only past complete
+   * steps (lands on the first incomplete one), and past step 1 only once the tenant is created.
+   */
   const go = (n: number) => {
+    if (onCreated && created && n === 0) return toast(`${created.name} is created; its details are changed on its page.`)
+    if (onCreated && !created && n > 0) {
+      if (!blocked(0)) toast('Create the tenant first: the later steps are saved to it.', { ok: false })
+      return setStep(0)
+    }
     if (n > step) {
       for (let i = 0; i < n; i++) if (blocked(i)) return setStep(i)
     }
@@ -252,7 +271,15 @@ export function AddTenantWizard({
   const optional = catalog.filter((a) => !core.includes(a.name))
   const extraApps = optional.filter((a) => f.apps[a.name]).length
   const last = STEPS.length - 1
-  const notes = [
+  const notes = onCreated
+    ? [
+        ready ? 'Ready to create. Its address comes next.' : 'Creating the tenant needs this step only.',
+        addressSaved ? 'Saved. Saving again replaces it.' : 'Needed to go on.',
+        'Not saved yet: the tenant’s page will set these.',
+        'Not saved yet: the tenant’s page will invite them.',
+        `${created?.name ?? 'The tenant'} and its address are saved.`,
+      ]
+    : [
     ready ? 'Ready to create. The other steps are optional.' : 'Creating the tenant needs this step only.',
     'Optional.',
     `Control Centre and Calendar are included${extraApps ? ` · ${extraApps} more ${extraApps === 1 ? 'app' : 'apps'}` : ''}.`,
@@ -264,7 +291,10 @@ export function AddTenantWizard({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[940px]" showCloseButton>
         <StepperLayout rail={<Stepper title="New tenant" steps={STEPS} current={step} complete={complete} onStep={go} />}>
-          <StepHeading title={HEADINGS[step][0]} lede={HEADINGS[step][1]} />
+          <StepHeading
+            title={HEADINGS[step][0]}
+            lede={step === 1 && onCreated ? 'Where the tenant is registered, printed on its invoices. Save it to go on.' : HEADINGS[step][1]}
+          />
 
           {step === 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -483,7 +513,21 @@ export function AddTenantWizard({
             </div>
           )}
 
-          {step === 1 && (
+          {/* Kept mounted, so the address survives going on and coming back. */}
+          {created && (
+            <div hidden={step !== 1}>
+              <TenantAddressStep
+                tenant={created}
+                onBusy={setSavingAddress}
+                onSaved={() => {
+                  setAddressSaved(true)
+                  setStep(2)
+                }}
+              />
+            </div>
+          )}
+
+          {step === 1 && !onCreated && (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
                 <Field id="t-addr-country" label="Country">
@@ -680,20 +724,51 @@ export function AddTenantWizard({
                 Save as draft
               </Button>
             )}
-            {step > 0 && (
-              <Button variant="outline" onClick={() => setStep((s) => Math.max(0, s - 1))}>
-                Back
-              </Button>
-            )}
-            {step < last && (
-              <Button variant={ready ? 'outline' : 'default'} onClick={() => go(step + 1)}>
-                {step === last - 1 ? 'Review' : 'Continue'}
-              </Button>
-            )}
-            {(ready || step === last) && (
-              <Button onClick={create_} disabled={create.isPending}>
-                {create.isPending ? 'Creating…' : 'Create tenant'}
-              </Button>
+            {onCreated ? (
+              <>
+                {step > 1 && (
+                  <Button variant="outline" onClick={() => setStep((s) => s - 1)}>
+                    Back
+                  </Button>
+                )}
+                {step === 0 && (
+                  <Button onClick={create_} disabled={create.isPending}>
+                    {create.isPending ? 'Creating…' : 'Create tenant'}
+                  </Button>
+                )}
+                {step === 1 && addressSaved && (
+                  <Button variant="outline" onClick={() => go(2)}>
+                    Continue
+                  </Button>
+                )}
+                {step === 1 && (
+                  <Button type="submit" form={ADDRESS_FORM_ID} disabled={savingAddress}>
+                    {savingAddress ? 'Saving…' : 'Save and continue'}
+                  </Button>
+                )}
+                {step > 1 && step < last && (
+                  <Button onClick={() => go(step + 1)}>{step === last - 1 ? 'Review' : 'Continue'}</Button>
+                )}
+                {step === last && <Button onClick={onClose}>Done</Button>}
+              </>
+            ) : (
+              <>
+                {step > 0 && (
+                  <Button variant="outline" onClick={() => setStep((s) => Math.max(0, s - 1))}>
+                    Back
+                  </Button>
+                )}
+                {step < last && (
+                  <Button variant={ready ? 'outline' : 'default'} onClick={() => go(step + 1)}>
+                    {step === last - 1 ? 'Review' : 'Continue'}
+                  </Button>
+                )}
+                {(ready || step === last) && (
+                  <Button onClick={create_} disabled={create.isPending}>
+                    {create.isPending ? 'Creating…' : 'Create tenant'}
+                  </Button>
+                )}
+              </>
             )}
           </StepperFooter>
         </StepperLayout>

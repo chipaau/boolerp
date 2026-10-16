@@ -12,6 +12,17 @@ export type FormLike = {
   setFieldMeta(field: string, updater: (meta: any) => any): void // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
+/**
+ * The part of a form under `prefix` as a form of its own, for a request that saves only that part:
+ * an address at "registered" gets its 422's `line1` on the form's `registered.line1` (C176).
+ */
+export function formAt(form: FormLike, prefix: string): FormLike {
+  return {
+    getFieldMeta: (field) => form.getFieldMeta(field ? `${prefix}.${field}` : prefix),
+    setFieldMeta: (field, updater) => form.setFieldMeta(field ? `${prefix}.${field}` : prefix, updater),
+  }
+}
+
 /** What a 422 said that no field of the form can show: for the banner above it (C176). */
 export type FormErrors = { messages: string[]; reference?: string }
 

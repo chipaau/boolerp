@@ -12,7 +12,9 @@
     "./country-select": "./src/country-select.tsx",
     "./legal-form-select": "./src/legal-form-select.tsx",
     "./institution-types-field": "./src/institution-types-field.tsx",
-    "./timezone-select": "./src/timezone-select.tsx"
+    "./timezone-select": "./src/timezone-select.tsx",
+    "./address": "./src/address.ts",
+    "./geography-select": "./src/geography-select.tsx"
   },
   "scripts": {
     "typecheck": "tsc",

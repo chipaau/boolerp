@@ -139,7 +139,7 @@ function TextField({
         <input
           id={c.id}
           name={field.name}
-          value={c.value}
+          value={c.value ?? ""}
           onChange={(e) => c.onChange(e.target.value)}
           onBlur={c.onBlur}
           required={required}

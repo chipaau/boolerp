@@ -2,10 +2,11 @@
 // builders for the route loaders and screens. Components never call the API directly.
 import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 import { api, createKeys } from '@workspace/api'
-import { tenantPageSchema, tenantSchema } from './schemas'
-import type { CreateTenantInput, TenantListSearch } from './schemas'
+import { tenantAddressSchema, tenantPageSchema, tenantSchema } from './schemas'
+import type { AddressInput, AddressKind, CreateTenantInput, TenantListSearch } from './schemas'
 
 export const tenantKeys = createKeys('admin', 'tenants')
+export const tenantAddressKeys = createKeys('admin', 'tenant-addresses')
 
 export const tenantQueries = {
   /** One page of tenants for the operator's staff (GET /api/v1/tenants, C179), as the URL asks. */
@@ -25,5 +26,14 @@ export const tenantMutations = {
   create: () => ({
     mutationFn: (body: CreateTenantInput) => api.post('/api/v1/tenants', { body, schema: tenantSchema }),
     meta: { invalidates: [tenantKeys.lists()] },
+  }),
+  /**
+   * Sets a tenant's address of a kind, the whole of it (PUT /api/v1/tenants/{id}/addresses/{kind},
+   * C217). Use with useApiMutation({ form }) so the API's 422 lands on the address's fields (C176).
+   */
+  setAddress: (tenantId: string, kind: AddressKind) => ({
+    mutationFn: (body: AddressInput) =>
+      api.put(`/api/v1/tenants/${tenantId}/addresses/${kind}`, { body, schema: tenantAddressSchema }),
+    meta: { invalidates: [tenantAddressKeys.lists()] },
   }),
 }
