@@ -22,8 +22,8 @@ export function Tablet({ focus }: { focus: 'soft' | 'sharp' }) {
         style={{
           left: TABLET.left,
           top: TABLET.top,
-          width: `calc(${TABLET.width} * ${TABLET.raster})`,
-          transform: `${TABLET.transform} scale(${1 / TABLET.raster})`,
+          width: `calc(${TABLET.width} * var(--raster))`,
+          transform: `${TABLET.transform} scale(calc(1 / var(--raster)))`,
           aspectRatio: TABLET.aspect,
           padding: `${TABLET.bezel * 100}%`,
         }}

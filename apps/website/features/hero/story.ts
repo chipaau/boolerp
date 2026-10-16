@@ -2,7 +2,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Lenis from 'lenis'
 import { CHAPTERS, loadDemo } from './demo'
-import { TABLET } from './scene'
+import { TABLET, raster } from './scene'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -11,7 +11,7 @@ gsap.registerPlugin(ScrollTrigger)
  * hold while the recording plays, and the close. The page glides between the resting points itself
  * (scrollStory), so the hold is short: only the slack before a scroll carries it on.
  */
-export const STORY = { move: 1.1, hold: 0.16, close: 0.7 } as const
+export const STORY = { move: 1.1, hold: 1.2, close: 0.7 } as const
 
 /**
  * The tablet at the end of its move: centred, flat and as large as fits above the captions, which
@@ -52,12 +52,11 @@ export function storyPerch(tablet: HTMLElement) {
  * unwinds from its lay-back to flat, moves to the centre and grows until the interface nearly fills
  * the screen (scrubbed, so it follows the scroll exactly, both ways), its shadow deepening as it
  * lifts off the page; then the recording fades in on its screen and plays on its own, start to end and
- * round again, the captions following its chapters. Scrolling on while it plays is a short hold; the
- * story does not wait for the recording. Transforms and opacity only.
+ * round again, the captions following its chapters, while the visitor scrolls through a hold of a
+ * little over a screen; the story does not wait for the recording. Transforms and opacity only.
  *
  * The recording carries its own camera: it eases in on what each moment is about (the shots the
- * recording script marked), rendered into the video. A scroll carries the page on to the next resting
- * point.
+ * recording script marked), rendered into the video. Everything follows the scroll continuously.
  *
  * Once the recording reaches its last chapter the bee comes to the tablet's corner to narrate, and
  * stays. At the end the tablet steps back into the hero, still playing, and settles lower, so the
@@ -112,7 +111,7 @@ export function scrollStory(p: StoryParts) {
     return (
       `translate(${toX * e}px, ${toY * e}px) ` +
       `matrix(${m[0]}, ${m[1]}, ${m[2]}, ${m[3]}, 0, 0) perspective(${t.perspective * cqw}px) ` +
-      `rotate3d(${t.axis.join(', ')}, ${t.angle * (1 - e)}deg) scale(${grow / TABLET.raster})`
+      `rotate3d(${t.axis.join(', ')}, ${t.angle * (1 - e)}deg) scale(${grow / raster()})`
     )
   }
 
@@ -187,29 +186,18 @@ export function scrollStory(p: StoryParts) {
   const total = STORY.move + STORY.hold + STORY.close
   const settledAt = STORY.move / total
   const closeAt = 1 - STORY.close / total
-  // between the tablet settling and the close starting: both glides from here move something at once
+  // the middle of the hold, where the recording plays (the scroll cue glides there)
   const holdAt = (settledAt + closeAt) / 2
-  let stop = 0
-  let gliding = false
-  const stops = (st: ScrollTrigger) => [st.start, st.start + (st.end - st.start) * holdAt, st.end]
-  /** Carries the page to a resting point (to and from the recording takes longest: the tablet's whole move). */
-  const goTo = (i: number, st: ScrollTrigger) => {
-    const from = stop
-    stop = i
-    gliding = true
-    glideTo(stops(st)[i], Math.max(from, i) === 1 ? 2.1 : 1.7, () => (gliding = false))
-  }
 
   const tl = gsap.timeline({ defaults: { ease: 'none' } })
-  // linear: the page's glide between resting points does the easing (glideTo)
-  tl.to(move, { e: 1, duration: settledAt, ease: 'none', onUpdate: place }, 0)
+  tl.to(move, { e: 1, duration: settledAt, ease: 'power1.inOut', onUpdate: place }, 0)
     // the copy steps back early, and (scrolling back) returns only once the tablet has cleared it
     .to(fade, { autoAlpha: 0, y: -24, duration: settledAt * 0.25, ease: 'power1.in' }, 0)
     // the room darkens behind the tablet as it comes forward, so the recording plays on dark grey
     .to(backdrop, { autoAlpha: 1, duration: settledAt * 0.7, ease: 'power1.inOut' }, settledAt * 0.15)
     .fromTo(captions, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.05 }, settledAt * 0.92)
     // the close: the tablet steps back into the hero and the captions go, the recording still playing
-    .to(move, { c: 1, duration: 1 - closeAt, ease: 'none', onUpdate: place }, closeAt)
+    .to(move, { c: 1, duration: 1 - closeAt, ease: 'power1.inOut', onUpdate: place }, closeAt)
     .to(captions, { autoAlpha: 0, y: 12, duration: (1 - closeAt) * 0.5, ease: 'power1.in' }, closeAt)
     // and the room brightens back to the page's cream as it steps back into the hero
     .to(backdrop, { autoAlpha: 0, duration: (1 - closeAt) * 0.7, ease: 'power1.inOut' }, closeAt)
@@ -221,29 +209,15 @@ export function scrollStory(p: StoryParts) {
     start: 'top top',
     end: () => `+=${innerHeight * total}`,
     pin: true,
-    // the page itself glides between resting points (eased), so the story follows it directly: no
-    // catch-up lag to drift after the page has stopped or overshoot when the visitor turns back
-    scrub: true,
+    // continuous: the story follows the scroll, eased a little so trackpad steps run together
+    scrub: 0.8,
     animation: tl,
     invalidateOnRefresh: true,
-    onRefresh: (self) => {
+    onRefresh: () => {
       geo = measure()
       place()
-      // the resting point the page is nearest to (after a reload part way down, say)
-      const y = self.scroll()
-      const ys = stops(self)
-      stop = ys.reduce((best, at, i) => (Math.abs(at - y) < Math.abs(ys[best] - y) ? i : best), 0)
     },
     onUpdate: (self) => {
-      // the story has three resting points: the hero, the tablet settled with the recording playing,
-      // and the end. A scroll away from one carries the page on to the next in that direction, so
-      // the visitor never has to find the right spot, and nothing is left half turned
-      if (!gliding) {
-        const y = self.scroll()
-        const here = stops(self)[stop]
-        if (self.direction > 0 && y > here + STEP_SLACK && stop < 2) goTo(stop + 1, self)
-        else if (self.direction < 0 && y < here - STEP_SLACK && stop > 0) goTo(stop - 1, self)
-      }
       const pr = self.progress
       last = { progress: pr, velocity: self.getVelocity() }
       if (pr > 0.002) wake()
@@ -276,7 +250,7 @@ export function scrollStory(p: StoryParts) {
   gsap.set([hero, scene.parentElement!], { overflow: 'visible' })
 
   // the scroll cue, clicked: glide to where the tablet has settled and the recording plays
-  const tour = () => goTo(1, trigger)
+  const tour = () => glideTo(trigger.start + (trigger.end - trigger.start) * holdAt, 2.1, () => {})
   p.tour?.addEventListener('click', tour)
 
   return () => {
@@ -320,7 +294,7 @@ export function compactStory(p: CompactParts) {
     const m = t.matrix.map((v, i) => v + ((i === 0 || i === 3 ? 1 : 0) - v) * e)
     tablet.style.transform =
       `matrix(${m[0]}, ${m[1]}, ${m[2]}, ${m[3]}, 0, 0) perspective(${t.perspective * cqw}px) ` +
-      `rotate3d(${t.axis.join(', ')}, ${t.angle * (1 - e)}deg) scale(${1 / TABLET.raster})`
+      `rotate3d(${t.axis.join(', ')}, ${t.angle * (1 - e)}deg) scale(${1 / raster()})`
     tablet.style.setProperty('--glare', String(e))
   }
   let playing = false
@@ -387,7 +361,7 @@ export function smoothScroll() {
 }
 
 /** How far (px) the visitor scrolls away from a resting point of the story before it carries them on. */
-const STEP_SLACK = 12
+export const STEP_SLACK = 12
 
 /** When the visitor last turned the wheel or swiped the trackpad (ms, performance.now). */
 let lastWheel = 0
@@ -400,7 +374,7 @@ if (typeof window !== 'undefined') addEventListener('wheel', () => (lastWheel = 
  * started the glide (a trackpad's momentum runs on for a second or more) cannot carry it on to the
  * next resting point. One gesture, one step. Without Lenis, the browser's smooth scrolling.
  */
-function glideTo(y: number, duration: number, done: () => void) {
+export function glideTo(y: number, duration: number, done: () => void) {
   if (lenis) {
     const smooth = lenis
     smooth.scrollTo(y, {

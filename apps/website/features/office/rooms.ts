@@ -1,4 +1,24 @@
 import type { StaticImageData } from 'next/image'
+import type { LucideIcon } from 'lucide-react'
+import {
+  BellRing,
+  ChartColumn,
+  ClipboardList,
+  Clock,
+  DoorOpen,
+  Eye,
+  FileCheck,
+  FileSpreadsheet,
+  GitBranch,
+  History,
+  NotebookPen,
+  PackageCheck,
+  Scale,
+  Send,
+  Truck,
+  UserCheck,
+  Wrench,
+} from 'lucide-react'
 import analytics from '@workspace/assets/logos/analytics.png'
 import asset from '@workspace/assets/logos/asset.png'
 import inventory from '@workspace/assets/logos/inventory.png'
@@ -26,13 +46,12 @@ export type Tile = {
 export type Room = {
   id: string
   title: string
-  /** Small labels under the title. */
-  tags: string[]
   /** The app's own logo, from the workspace. */
   logo: StaticImageData
-  /** One line on what the app is worth. */
-  value: string
-  features: string[]
+  /** What it does for the team, as an outcome (the card's headline). */
+  headline: string
+  /** What it does, each with its own small icon. */
+  features: { icon: LucideIcon; text: string }[]
   /** The rooms that are this app's (one, or a few that work together). */
   tiles: Tile[]
 }
@@ -42,58 +61,82 @@ export const ROOMS: Room[] = [
   {
     id: 'inventory',
     title: 'Inventory',
-    tags: ['Stock', 'Receiving', 'Transfers'],
     logo: inventory,
-    value: 'Know what you have, where it is, before anyone runs out.',
-    features: ['Stock levels per site', 'Low-stock alerts', 'Receiving against orders', 'Transfers between stores'],
+    headline: 'Never run out of what you need',
+    features: [
+      { icon: PackageCheck, text: 'See what is in stock at every site, live' },
+      { icon: BellRing, text: 'Get told before anything runs low' },
+      { icon: Truck, text: 'Check deliveries in against the order' },
+    ],
     tiles: [{ src: 'warehouse', angle: 234 }, { src: 'receiving', angle: 198 }, { src: 'transfer', angle: 162 }],
   },
   {
     id: 'purchasing',
     title: 'Purchasing',
-    tags: ['Orders', 'Suppliers'],
     logo: procurement,
-    value: 'Purchase orders that start from approved requests, not emails.',
-    features: ['Orders from approved requests', 'Supplier quotes', 'Delivery tracking'],
+    headline: 'Orders that start from approved requests',
+    features: [
+      { icon: FileCheck, text: 'Turn an approved request into an order in a click' },
+      { icon: Scale, text: 'Compare supplier quotes side by side' },
+      { icon: Truck, text: 'Know when every delivery will arrive' },
+    ],
     tiles: [{ src: 'purchase', angle: -90 }],
   },
   {
     id: 'requests',
     title: 'Requests',
-    tags: ['Goods', 'Services'],
     logo: task,
-    value: 'Every ask approved, ordered and delivered on one record.',
-    features: ['Goods and service requests', 'Approval chains', 'Status at every step'],
+    headline: 'Every ask approved and delivered, on one record',
+    features: [
+      { icon: ClipboardList, text: 'Ask for anything in one form, not ten emails' },
+      { icon: GitBranch, text: 'Approvals route themselves to the right people' },
+      { icon: Eye, text: 'Everyone sees where a request stands' },
+    ],
     tiles: [{ src: 'requests', angle: -54 }],
   },
   {
     id: 'assets',
     title: 'Assets',
-    tags: ['Devices', 'Upkeep'],
     logo: asset,
-    value: 'Who has what, where, and when it was last looked after.',
-    features: ['Assigned to people and sites', 'Maintenance and checks', 'Full history'],
+    headline: 'Know who has what, and when it was checked',
+    features: [
+      { icon: UserCheck, text: 'Know who has every device, at a glance' },
+      { icon: Wrench, text: 'Checks and servicing reminded on time' },
+      { icon: History, text: 'Every item’s full history when audit asks' },
+    ],
     tiles: [{ src: 'maintenance', angle: -18 }, { src: 'storage', angle: 18 }],
   },
   {
     id: 'reports',
     title: 'Reports',
-    tags: ['Insight', 'Exports'],
     logo: analytics,
-    value: 'The numbers from every app, without stitching spreadsheets.',
-    features: ['Across every app', 'Pending and overdue', 'Export to Excel'],
+    headline: 'The whole picture, without the spreadsheets',
+    features: [
+      { icon: ChartColumn, text: 'Live numbers from every app, in one place' },
+      { icon: Clock, text: 'Spot what is pending or overdue before it slips' },
+      { icon: FileSpreadsheet, text: 'Board-ready exports to Excel' },
+    ],
     tiles: [{ src: 'analytics', angle: 54 }],
   },
   {
     id: 'calendar',
     title: 'Calendar & Notes',
-    tags: ['Rooms', 'People', 'Notes'],
     logo: notes,
-    value: 'Rooms, people and what was agreed, in one diary.',
-    features: ['Room booking', 'Invites and replies', 'Shared notes'],
+    headline: 'Meetings, and what was agreed, together',
+    features: [
+      { icon: DoorOpen, text: 'Book a room in a few keystrokes' },
+      { icon: Send, text: 'Invites and replies without the back-and-forth' },
+      { icon: NotebookPen, text: 'Decisions noted right beside the meeting' },
+    ],
     tiles: [{ src: 'meeting', angle: 90 }, { src: 'notes', angle: 126 }],
   },
 ]
+
+/** Where the camera looks for an app: the middle of its rooms (stage pixels). */
+export function focusOf(room: Room) {
+  const ps = room.tiles.map(placeOf)
+  return { x: ps.reduce((a, p) => a + p.x, 0) / ps.length, y: ps.reduce((a, p) => a + p.y, 0) / ps.length }
+}
 
 /** The ring the rooms sit on. */
 const RING = { rx: 610, ry: 385 }

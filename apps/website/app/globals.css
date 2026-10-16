@@ -1,5 +1,42 @@
 @import "@workspace/ui/globals.css";
 
+/* the site's type scale, one per role, so every section speaks at the same sizes:
+   section-title (each section's heading), section-lead (the line under it), card-title,
+   card-body and card-label (the small amber caps over a card's title) */
+@utility section-title {
+  font-size: clamp(2.25rem, 3.4vw, 3.75rem);
+  font-weight: 300;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+@utility section-lead {
+  font-size: clamp(1.0625rem, 1.2vw, 1.25rem);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+@utility card-title {
+  font-size: clamp(1.25rem, 1.5vw, 1.5rem);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+@utility card-body {
+  font-size: clamp(0.9375rem, 1.05vw, 1.0625rem);
+  line-height: 1.6;
+}
+@utility card-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* the shared typeface, self-hosted by Next (app/layout.tsx) instead of loaded from Google's stylesheet */
+:root {
+  --font-sans: var(--font-lato), -apple-system, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
 /* scan this app's own source (the shared UI package is scanned by its own globals.css) */
 @source "../";
 
@@ -73,6 +110,20 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
 [data-tablet="sharp"] {
   will-change: opacity;
 }
+/* how much larger than shown the tablet is laid out, to keep the tilted dashboard sharp (scene.ts,
+   tablet.tsx, story.ts read it): twice on standard screens; once on high-density ones, which are
+   sharp at their own density, and where twice made a layer too large for the GPU to keep (parts of
+   the tablet went blank while it repainted). --rs scales the tablet's own lengths, written for 2×. */
+:root {
+  --raster: 2;
+  --rs: 1;
+}
+@media (min-resolution: 1.5dppx) {
+  :root {
+    --raster: 1;
+    --rs: 0.5;
+  }
+}
 .tablet {
   /* aspect-ratio and padding (the glass edge) come from TABLET in scene.ts */
   position: absolute;
@@ -89,10 +140,10 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
     /* lengths are doubled: the tablet is laid out at TABLET.raster (2×) and scaled down. The rims
        are slightly soft rather than hard 1px rings, so the edge stays smooth when the tilt shrinks
        it (a hard ring stair-steps along the far, most foreshortened top edge). */
-    inset 0 0 0.12cqw 0.1cqw rgb(255 255 255 / 0.95),
-    inset 0.16cqw 0.22cqw 0.36cqw rgb(255 255 255 / 0.9),
-    inset -0.16cqw -0.22cqw 0.44cqw rgb(206 192 172 / 0.35),
-    0 0 0 0.05cqw rgb(168 148 118 / 0.28);
+    inset 0 0 calc(0.12cqw * var(--rs)) calc(0.1cqw * var(--rs)) rgb(255 255 255 / 0.95),
+    inset calc(0.16cqw * var(--rs)) calc(0.22cqw * var(--rs)) calc(0.36cqw * var(--rs)) rgb(255 255 255 / 0.9),
+    inset calc(-0.16cqw * var(--rs)) calc(-0.22cqw * var(--rs)) calc(0.44cqw * var(--rs)) rgb(206 192 172 / 0.35),
+    0 0 0 calc(0.05cqw * var(--rs)) rgb(168 148 118 / 0.28);
 }
 /* its warm shadows on the cream page: on their own layer, so the scroll story can fade them as it lifts
    the tablet onto the dark backdrop, where warm shadows read as an orange glow */
@@ -102,9 +153,9 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
   border-radius: inherit;
   pointer-events: none;
   box-shadow:
-    0 0 0.24cqw 0.08cqw rgb(206 186 156 / 0.4),
-    0 0.2cqw 0.2cqw rgb(230 216 196 / 0.7),
-    0 2.4cqw 4.8cqw -1.2cqw rgb(150 112 64 / 0.22);
+    0 0 calc(0.24cqw * var(--rs)) calc(0.08cqw * var(--rs)) rgb(206 186 156 / 0.4),
+    0 calc(0.2cqw * var(--rs)) calc(0.2cqw * var(--rs)) rgb(230 216 196 / 0.7),
+    0 calc(2.4cqw * var(--rs)) calc(4.8cqw * var(--rs)) calc(-1.2cqw * var(--rs)) rgb(150 112 64 / 0.22);
   opacity: calc(1 - var(--lift, 0));
   will-change: opacity;
 }
@@ -118,12 +169,17 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
   pointer-events: none;
   /* neutral, not warm: by the time it is lifted it stands on the dark backdrop */
   box-shadow:
-    0 1cqw 2cqw rgb(0 0 0 / 0.22),
-    0 4cqw 10cqw -1cqw rgb(0 0 0 / 0.45);
+    0 calc(1cqw * var(--rs)) calc(2cqw * var(--rs)) rgb(0 0 0 / 0.22),
+    0 calc(4cqw * var(--rs)) calc(10cqw * var(--rs)) calc(-1cqw * var(--rs)) rgb(0 0 0 / 0.45);
   opacity: var(--lift, 0);
   will-change: opacity;
 }
 .tablet-screen {
+  /* as the scroll story brings the tablet forward and it grows (story.ts sets --lift, 0 to 1), the
+     screen grows a little within the glass, so the frame thins to about half rather than growing
+     with the tablet; on its own layer, so only the GPU does it */
+  transform: scale(calc(1 + var(--lift, 0) * 0.0135));
+  will-change: transform;
   position: relative; /* the dashboard's live parts are placed on the screen, not the glass around it */
   width: 100%;
   height: 100%;
@@ -131,7 +187,7 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
   border-radius: 3.2% / 4.6%;
   background: #fff;
   /* where the glass meets the screen: a fine, soft line (doubled, see .tablet) */
-  box-shadow: 0 0 0.12cqw 0.07cqw rgb(170 150 120 / 0.38);
+  box-shadow: 0 0 calc(0.12cqw * var(--rs)) calc(0.07cqw * var(--rs)) rgb(170 150 120 / 0.38);
 }
 /*
   The dashboard's live parts (tablet.tsx): an app hexagon lifts toward the viewer over its own
@@ -146,6 +202,15 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
   border-radius: 50%;
   background: radial-gradient(closest-side, rgb(150 104 48 / 0.22), rgb(150 104 48 / 0));
   opacity: 0;
+}
+/* the dashboard's animated parts (tablet.tsx) each on their own layer, so lifting one never makes the
+   browser repaint the whole tablet: a repaint that size is slow, and while it runs the tablet shows
+   blank rectangles where its pieces are not drawn yet */
+[data-live-tile-face],
+.app-tile-shadow,
+.app-tile-glow,
+.today-glow {
+  will-change: transform, opacity;
 }
 .app-tile-glow {
   position: absolute;
@@ -240,10 +305,6 @@ html[data-hero-motion="pending"] [data-tablet="soft"] {
     0 18px 40px -16px rgb(110 76 36 / 0.3),
     0 2px 5px rgb(110 76 36 / 0.08);
 }
-/* an app's icon on the brand hexagon (the shape from @workspace/ui's Hexagon) */
-.app-mark {
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-}
 
 /* the hero's scroll cue (hero.tsx): a drop of amber running down a hairline, again and again */
 .scroll-cue-drop {
@@ -310,9 +371,6 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
   background-position: center top;
   mask-image: radial-gradient(80% 75% at 55% 50%, black 40%, transparent);
 }
-.office-cross {
-  color: rgb(140 122 92 / 0.45);
-}
 /* the drafting grid on the demo's dark stage: the same paper, in light lines */
 .office-grid-dark {
   background-image:
@@ -331,9 +389,16 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 #workspace[data-live] .office-tile {
   --c: 0;
 }
-.office-tile img {
-  filter: grayscale(calc(1 - var(--c))) contrast(calc(0.9 + var(--c) * 0.1));
-  opacity: calc(0.5 + var(--c) * 0.5);
+/* a room at rest is a soft grey drawing; the app's own rooms come up in colour over it. Only the
+   colour copy's opacity changes, so nothing is repainted as the story moves */
+.office-tile-grey {
+  filter: grayscale(1) contrast(0.85);
+  opacity: 0.3;
+}
+/* the app's own rooms in colour, a little softened so the card, not the drawing, holds the eye */
+.office-tile-colour {
+  opacity: calc(var(--c) * 0.8);
+  will-change: opacity;
 }
 .office-tile-glow {
   border-radius: 50%;
@@ -341,13 +406,29 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
   filter: blur(18px);
   opacity: var(--c);
 }
+/* the hub: a cream hexagon round the logo, a soft warm glow breathing behind it */
 .office-hub {
+  filter: drop-shadow(0 10px 14px rgb(90 70 40 / 0.14)) drop-shadow(0 0 0.5px rgb(168 148 118 / 0.45));
+}
+.office-hub::before {
+  content: '';
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(246 162 77 / 0.22), rgb(246 162 77 / 0));
   animation: office-breathe 3.2s ease-in-out infinite;
 }
 @keyframes office-breathe {
-  50% {
-    box-shadow: 0 0 0 10px rgb(246 162 77 / 0.1), 0 18px 40px -18px rgb(90 70 40 / 0.45);
-  }
+  50% { opacity: 0.45; transform: scale(0.92); }
+}
+/* the map runs top to bottom of the screen, fading only near the screen's edges */
+.office-map-frame {
+  mask-image: linear-gradient(to bottom, transparent, black 9%, black 90%, transparent), linear-gradient(to right, transparent 6%, black 24%);
+  mask-composite: intersect;
+}
+/* the apps' list: a small hexagon each, amber for the app in the story */
+.office-hex {
+  fill: color-mix(in oklab, var(--brand-soft) calc(var(--on) * 100%), rgb(140 122 92 / 0.28));
 }
 .office-spark {
   fill: #f0913a;
@@ -378,7 +459,7 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 @media (prefers-reduced-motion: reduce) {
   .office-route-rest,
   .office-route,
-  .office-hub {
+  .office-hub::before {
     animation: none;
   }
   .office-spark {
@@ -392,42 +473,170 @@ nav:not([data-live]) .nav-item:focus-visible .nav-stroke {
 #workspace[data-live] .office-item {
   --on: 0;
 }
-.office-dot {
-  background: color-mix(in oklab, var(--brand-soft) calc(var(--on) * 100%), rgb(140 122 92 / 0.3));
-  box-shadow: 0 0 0 calc(var(--on) * 5px) rgb(240 154 67 / 0.18);
-}
-.office-num,
-.office-tags {
-  color: color-mix(in oklab, var(--brand) calc(var(--on) * 100%), var(--faint));
-}
 .office-title {
   font-weight: 700;
   color: color-mix(in oklab, var(--foreground) calc(35% + var(--on) * 65%), transparent);
 }
 
-/* the island chain (features/local): it starts under the title and fades out at the bottom edge */
-.local-chain {
-  mask-image: linear-gradient(to bottom, transparent 20%, black 34%, black 88%, transparent);
+/* the Maldives section (features/local). Only transforms and opacity move, each on its own layer,
+   so the map is painted once and never repainted as the page scrolls. */
+/* the watercolour chain, warmed toward the page's honey and cream so it is less blue */
+.local-map-art {
+  filter: saturate(0.72) sepia(0.22) hue-rotate(-6deg) brightness(1.02);
 }
-/* the island chain (features/local): little lights that blink on the islands, and soft swells on the sea */
-.local-light {
-  background: var(--brand-soft);
-  box-shadow: 0 0 0 0 rgb(246 162 77 / 0.6);
-  animation: local-blink 3s ease-in-out infinite;
-}
-@keyframes local-blink {
-  0%, 100% { opacity: 0.25; box-shadow: 0 0 0 0 rgb(246 162 77 / 0.5); }
-  50% { opacity: 1; box-shadow: 0 0 0 6px rgb(246 162 77 / 0); }
-}
+/* soft swells drifting down across the chain */
 .local-sea {
-  background: repeating-linear-gradient(170deg, transparent 0 22px, rgb(255 255 255 / 0.35) 22px 24px, transparent 24px 48px);
+  overflow: hidden;
   mask-image: radial-gradient(60% 50% at 50% 50%, black, transparent);
   opacity: 0.5;
+}
+.local-sea::before {
+  content: '';
+  position: absolute;
+  inset: -96px 0 0;
+  background: repeating-linear-gradient(170deg, transparent 0 22px, rgb(255 255 255 / 0.35) 22px 24px, transparent 24px 48px);
+  will-change: transform;
   animation: local-swell 9s linear infinite;
 }
 @keyframes local-swell {
-  to { background-position: 0 96px; }
+  to { transform: translate3d(0, 96px, 0); }
+}
+/* the cards' pictures breathe: a very slow, slight float */
+.local-card-art {
+  animation: local-float 5s ease-in-out infinite alternate;
+}
+@keyframes local-float {
+  from { translate: 0 2px; }
+  to { translate: 0 -3px; }
+}
+/* the bee is never quite still: a soft hover on top of its flight */
+.local-bee-hover {
+  animation: local-hover 2.4s ease-in-out infinite alternate;
+}
+@keyframes local-hover {
+  from { transform: translate3d(0, 3px, 0); }
+  to { transform: translate3d(0, -4px, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .local-light, .local-sea { animation: none; }
+  .local-sea::before, .local-bee-hover, .local-card-art { animation: none; }
+}
+
+/* the solution tickets (features/tickets): two faces on a card that turns over in 3D */
+.ticket-turn {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.ticket-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.ticket-side-back {
+  transform: rotateY(180deg);
+}
+/* the front, in two parts cut at the perforation (548 of the ticket's 740 down; its notches 25 of
+   its 524 wide, so 4.77cqw on the card's width). Each part's shape is a mask; their shadow is drawn
+   by a wrapper's drop-shadow, so it follows the shape and the notches. */
+.ticket-front {
+  position: relative;
+  filter: drop-shadow(0 22px 28px rgb(110 76 36 / 0.16)) drop-shadow(0 2px 4px rgb(110 76 36 / 0.08));
+}
+.ticket-body,
+.ticket-stub {
+  position: absolute;
+  inset-inline: 0;
+  background: linear-gradient(170deg, #ffffff, #fffcf7);
+}
+.ticket-body {
+  top: 0;
+  height: 74.05%;
+  border-radius: 3.8cqw 3.8cqw 0 0;
+  overflow: hidden;
+  mask:
+    radial-gradient(circle 4.77cqw at 0 100%, #0000 98%, #000 100%) left / 51% 100% no-repeat,
+    radial-gradient(circle 4.77cqw at 100% 100%, #0000 98%, #000 100%) right / 51% 100% no-repeat;
+}
+/* the perforation: a dashed line along the cut, between the notches */
+.ticket-body::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  inset-inline: 6.5cqw;
+  border-bottom: 1.5px dashed rgb(214 168 112 / 0.75);
+}
+.ticket-stub {
+  display: block;
+  top: 74.05%;
+  height: 25.95%;
+  border-radius: 0 0 4.2cqw 4.2cqw;
+  mask:
+    radial-gradient(circle 4.77cqw at 0 0, #0000 98%, #000 100%) left / 51% 100% no-repeat,
+    radial-gradient(circle 4.77cqw at 100% 0, #0000 98%, #000 100%) right / 51% 100% no-repeat;
+  transform-origin: 0 0;
+  transition: transform 0.55s cubic-bezier(0.34, 1.45, 0.5, 1);
+}
+/* torn off: the stub drops a little and hangs from its left corner */
+.ticket-stub:hover,
+.ticket-stub:focus-visible {
+  transform: translateY(5px) rotate(5deg);
+}
+/* the barcode, in the call-to-action colour; and the button that takes its place, the same colour,
+   filling the barcode's rectangle */
+.ticket-bars span {
+  background: rgb(215 121 29 / 0.85);
+}
+.ticket-bars {
+  transition: opacity 0.25s ease-out;
+}
+.ticket-button {
+  background: #2a2622;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.3s ease-out 0.08s, background-color 0.2s;
+}
+.ticket-stub:hover .ticket-bars,
+.ticket-stub:focus-visible .ticket-bars {
+  opacity: 0;
+}
+.ticket-stub:hover .ticket-button,
+.ticket-stub:focus-visible .ticket-button {
+  opacity: 1;
+}
+.ticket-stub:hover .ticket-button {
+  background: #1f1c19;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticket-stub { transition: none; }
+}
+
+/* the workspace cards: whiter, like the tickets, so they lift off the map */
+.office-card {
+  background: linear-gradient(170deg, rgb(255 255 255 / 0.96), rgb(255 252 247 / 0.9));
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.9),
+    0 0 0 0.5px rgb(168 148 118 / 0.25),
+    0 24px 44px -22px rgb(110 76 36 / 0.3);
+}
+
+
+/* keyboard focus on the site's plain links, the ticket stubs and the workspace's app list: a clear
+   amber ring (buttons already draw their own) */
+a:not([data-slot]):focus-visible,
+.ticket-stub:focus-visible,
+.office-item button:focus-visible {
+  outline: 2px solid var(--brand-soft);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Our solutions (features/tickets): a warm honey field, laid over the section before like a sheet
+   (rounded top corners and a soft shadow above), the heading in white on it */
+.tickets-field {
+  position: relative;
+  z-index: 1;
+  border-top-left-radius: 2.25rem;
+  border-top-right-radius: 2.25rem;
+  box-shadow: 0 -24px 50px -24px rgb(110 76 36 / 0.3);
+  background:
+    radial-gradient(60% 55% at 50% 55%, rgb(255 214 160 / 0.5), rgb(255 214 160 / 0) 70%),
+    linear-gradient(to bottom, #eda15c, #e98f42 50%, #ec9a52);
 }

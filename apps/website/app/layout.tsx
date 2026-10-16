@@ -1,5 +1,11 @@
 import type { Metadata } from 'next'
+import { Lato } from 'next/font/google'
 import './globals.css'
+
+// Lato, the single typeface shared with the apps (packages/ui), self-hosted and preloaded by Next with a
+// size-matched fallback, so the first paint never swaps fonts and re-flows (globals.css points
+// --font-sans at it)
+const lato = Lato({ subsets: ['latin'], weight: ['300', '400', '700', '900'], style: ['normal', 'italic'], display: 'swap', variable: '--font-lato' })
 
 export const metadata: Metadata = {
   title: 'Bool ERP — one system for your institution',
@@ -15,16 +21,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Lato is the single typeface (300 / 400 / 700 / 900) shared with the app via packages/ui */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" suppressHydrationWarning className={lato.variable}>
       <body className="min-h-svh bg-background text-foreground antialiased">{children}</body>
     </html>
   )

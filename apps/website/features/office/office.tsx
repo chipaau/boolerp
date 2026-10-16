@@ -3,48 +3,43 @@
 import { useRef } from 'react'
 import type { ReactNode } from 'react'
 import Image from 'next/image'
-import { Check } from 'lucide-react'
+import { ArrowRightLeft, KeyRound, ShieldCheck, Users } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { HEX_MASK } from '@/components/hex'
 import boolLogo from '@workspace/assets/logos/bool-logo.png'
-import { HUB, ROOMS, STAGE, TILE, placeOf, walkway } from './rooms'
+import { HUB, ROOMS, STAGE, TILE, focusOf, placeOf, walkway } from './rooms'
 import type { Room, Tile } from './rooms'
 
 gsap.registerPlugin(ScrollTrigger, useGSAP)
 
 const pct = (x: number, y: number) => ({ left: `${(x / STAGE.width) * 100}%`, top: `${(y / STAGE.height) * 100}%` })
 
-/** Something a card lists, with an amber tick. */
-function Point({ children }: { children: ReactNode }) {
+/** Something a card lists, with its own small orange icon. */
+function Point({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
   return (
-    <li className="flex items-start gap-3 text-[16px] leading-snug text-foreground">
-      <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-(--brand)/12">
-        <Check className="size-3 text-(--brand)" strokeWidth={3} />
+    <li className="card-body flex items-center gap-3 text-foreground">
+      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-(--brand)/10">
+        <Icon className="size-4 text-(--brand)" strokeWidth={1.8} />
       </span>
       {children}
     </li>
   )
 }
 
-/** The app's card: what it is, what it is worth, and what it does. */
+/** The app's card: what it does for the team, and what it does. */
 function RoomCard({ room }: { room: Room }) {
   return (
-    <article className="glass-card p-7">
-      <header className="flex items-center gap-3.5">
-        <span className="grid size-12 shrink-0 place-items-center bg-[#f7f1e8]" style={{ mask: HEX_MASK }}>
-          <Image src={room.logo} alt="" className="h-6 w-7 object-contain" />
-        </span>
-        <div>
-          <h3 className="text-[22px] font-medium leading-tight text-foreground">{room.title}</h3>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-(--brand)">{room.tags.join(' · ')}</p>
-        </div>
-      </header>
-      <p className="mt-5 text-[18px] leading-snug text-foreground">{room.value}</p>
-      <ul className="mt-5 grid gap-3 border-t border-border/60 pt-5">
+    <article className="glass-card office-card p-7">
+      <p className="card-label text-(--brand)">{room.title}</p>
+      <h3 className="card-title mt-3 text-balance text-foreground">{room.headline}</h3>
+      <ul className="mt-5 grid gap-2.5 border-t border-border/60 pt-5">
         {room.features.map((f) => (
-          <Point key={f}>{f}</Point>
+          <Point key={f.text} icon={f.icon}>
+            {f.text}
+          </Point>
         ))}
       </ul>
     </article>
@@ -54,14 +49,14 @@ function RoomCard({ room }: { room: Room }) {
 /** The end of the story: what every app shares. */
 function SharedCard() {
   return (
-    <article className="glass-card p-7">
-      <h3 className="text-[22px] font-medium leading-tight text-foreground">Every app, one record</h3>
-      <p className="mt-3 text-[16px] leading-snug text-muted-foreground">Add an app and it already knows your organisation.</p>
-      <ul className="mt-5 grid gap-3 border-t border-border/60 pt-5">
-        <Point>One sign-in for every app</Point>
-        <Point>One set of people, sites and approvals</Point>
-        <Point>Records that follow the work from app to app</Point>
-        <Point>One audit trail across all of it</Point>
+    <article className="glass-card office-card p-7">
+      <p className="card-label text-(--brand)">Every app</p>
+      <h3 className="card-title mt-3 text-balance text-foreground">Add an app and it already knows your organisation</h3>
+      <ul className="mt-5 grid gap-2.5 border-t border-border/60 pt-5">
+        <Point icon={KeyRound}>One sign-in for every app</Point>
+        <Point icon={Users}>One set of people, sites and approvals</Point>
+        <Point icon={ArrowRightLeft}>Records that follow the work from app to app</Point>
+        <Point icon={ShieldCheck}>One audit trail across all of it</Point>
       </ul>
     </article>
   )
@@ -78,7 +73,10 @@ function RoomTile({ room, tile }: { room: Room; tile: Tile }) {
     >
       <div data-office-lift="" className="relative">
         <div aria-hidden="true" className="office-tile-glow absolute inset-x-[8%] bottom-[2%] top-[30%] -z-10" />
-        <img src={`/workspace/${tile.src}.webp`} alt="" width={900} height={675} loading="eager" decoding="async" draggable={false} className="h-auto w-full select-none" />
+        {/* resting in grey, and the same room in colour over it, faded in (opacity only: an animated
+            filter would repaint the picture every frame) */}
+        <img src={`/workspace/${tile.src}.webp`} alt="" width={900} height={675} loading="eager" decoding="async" draggable={false} className="office-tile-grey h-auto w-full select-none" />
+        <img src={`/workspace/${tile.src}.webp`} alt="" width={900} height={675} loading="eager" decoding="async" draggable={false} className="office-tile-colour absolute inset-0 h-auto w-full select-none" />
       </div>
     </div>
   )
@@ -111,8 +109,20 @@ export function Office() {
           card: q(`[data-office-card="${id}"]`),
           step: q(`[data-office-step="${id}"]`),
         })
-        const on = (p: ReturnType<typeof parts>, at: number, tl: gsap.core.Timeline) =>
+        // the camera: leans in toward an app's rooms (origin top-left; the point brought a little right
+        // of the map's middle, away from the card), and back out to the whole workspace at the end
+        const camera = q('[data-office-camera]')
+        const ZOOM = 1.18
+        const look = (room: Room) => {
+          const f = focusOf(room)
+          // half way between the app's rooms and the hub, so the hub (where every app meets) stays in view
+          const x = (f.x + HUB.x) / 2 / STAGE.width
+          const y = (f.y + HUB.y) / 2 / STAGE.height
+          return { xPercent: (0.5 - ZOOM * x) * 100, yPercent: (0.5 - ZOOM * y) * 100, scale: ZOOM }
+        }
+        const on = (p: ReturnType<typeof parts>, at: number, tl: gsap.core.Timeline, room: Room) =>
           tl
+            .to(camera, { ...look(room), duration: 0.5, ease: 'power2.inOut' }, at - 0.05)
             .to(p.tiles, { '--c': 1, duration: 0.3 }, at)
             .to(p.lift, { y: -14, duration: 0.35, ease: 'power2.out', stagger: 0.05 }, at)
             .to(p.route, { autoAlpha: 1, duration: 0.3 }, at + 0.05)
@@ -136,21 +146,28 @@ export function Office() {
             .set(p.step, { '--on': i === 0 ? 1 : 0 }, 0)
             .set(p.card, { autoAlpha: i === 0 ? 1 : 0, y: 0 }, 0)
         })
+        tl.set(camera, { transformOrigin: '0 0', ...look(ROOMS[0]) }, 0)
         tl.set(q('[data-office-all]'), { autoAlpha: 0, y: 24 }, 0).addLabel(ROOMS[0].id, 0)
         ROOMS.slice(1).forEach((room, k) => {
           const at = k + 0.5
           off(parts(ROOMS[k].id), at, tl)
-          on(parts(room.id), at + 0.05, tl)
+          on(parts(room.id), at + 0.05, tl, room)
           tl.addLabel(room.id, at + 0.45)
         })
         // the finale: every room in colour, every walkway lit, and the one line that matters
         const end = ROOMS.length - 0.5
         off(parts(ROOMS[ROOMS.length - 1].id), end, tl)
-        tl.to(q('[data-office-tile]'), { '--c': 1, duration: 0.35, stagger: 0.03 }, end + 0.05)
+        tl.to(camera, { xPercent: 0, yPercent: 0, scale: 1, duration: 0.5, ease: 'power2.inOut' }, end)
+          .to(q('[data-office-tile]'), { '--c': 1, duration: 0.35, stagger: 0.03 }, end + 0.05)
           .to(q('[data-office-route]'), { autoAlpha: 1, duration: 0.3, stagger: 0.03 }, end + 0.05)
           .fromTo(q('[data-office-all]'), { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.3, ease: 'power2.out', immediateRender: false }, end + 0.15)
           .addLabel('all', end + 0.5)
           .to({}, { duration: 0.15 })
+        // each app's segment along the foot of the screen fills while the story is with that app
+        ROOMS.forEach((room, k) => {
+          const from = k === 0 ? 0 : k - 0.45
+          tl.fromTo(q(`[data-office-fill="${room.id}"]`), { scaleX: 0 }, { scaleX: 1, ease: 'none', duration: k + 0.5 - from }, from)
+        })
 
         trigger.current = ScrollTrigger.create({
           trigger: section.current,
@@ -159,6 +176,8 @@ export function Office() {
           pin: true,
           scrub: 0.8,
           animation: tl,
+          // the site's header keeps out of the way while the story holds the screen (header-motion.tsx)
+          onToggle: (self) => document.documentElement.toggleAttribute('data-pinned', self.isActive),
         })
         return () => {
           section.current?.removeAttribute('data-live')
@@ -176,17 +195,17 @@ export function Office() {
   }
 
   return (
-    <section ref={section} id="workspace" className="relative overflow-hidden bg-background lg:h-svh">
+    <section ref={section} id="workspace" className="relative overflow-hidden bg-background lg:motion-safe:h-svh">
       <div aria-hidden="true" className="office-grid pointer-events-none absolute inset-0" />
-      <div className="relative mx-auto grid h-full w-full max-w-7xl gap-10 px-6 py-20 lg:grid-cols-[minmax(0,0.34fr)_minmax(0,0.66fr)] lg:items-center lg:gap-10 lg:py-0 2xl:max-w-[88rem]">
+      <div className="relative mx-auto grid h-full w-full max-w-7xl gap-10 px-6 py-20 lg:motion-safe:grid-cols-[minmax(0,0.36fr)_minmax(0,0.64fr)] lg:items-start lg:gap-6 lg:motion-safe:pb-24 lg:motion-safe:pt-[16svh] 2xl:max-w-[88rem]">
         {/* the story: the promise, then the current app's card */}
-        <div>
+        <div className="relative z-10">
           <p className="text-overline tracking-[0.28em] text-muted-foreground">Inside your workspace</p>
-          <h2 className="mt-4 text-balance text-[clamp(2rem,2.6vw,2.9rem)] font-light leading-[1.05] tracking-[-0.03em] text-foreground">
+          <h2 className="section-title mt-4 text-foreground lg:w-[min(40rem,46vw)]">
             Every app your team runs on, <span className="text-(--brand)">sharing one record.</span>
           </h2>
           {/* desktop: the cards share one place and take turns */}
-          <div className="mt-8 hidden lg:grid">
+          <div className="mt-8 hidden lg:motion-safe:grid">
             {ROOMS.map((room) => (
               <div key={room.id} data-office-card={room.id} className="invisible [grid-area:1/1]">
                 <RoomCard room={room} />
@@ -197,7 +216,7 @@ export function Office() {
             </div>
           </div>
           {/* below lg: every app's card in turn, with its rooms */}
-          <div className="mt-10 grid gap-8 lg:hidden">
+          <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3 lg:motion-safe:hidden">
             {ROOMS.map((room) => (
               <div key={room.id}>
                 <div className="mx-auto mb-2 flex max-w-md justify-center gap-2">
@@ -212,8 +231,11 @@ export function Office() {
         </div>
 
         {/* the map */}
-        <div className="relative hidden lg:block">
-          <div className="relative aspect-[16/10] w-full">
+        <div className="office-map-frame pointer-events-none absolute inset-y-0 left-[30%] right-[-8vw] hidden items-center justify-center lg:motion-safe:flex">
+          {/* the map fills the right of the screen, top to bottom, fading only at the screen's own edges;
+              the camera moves within it */}
+          <div className="relative aspect-[16/10] h-full max-w-none">
+          <div data-office-camera="" className="absolute inset-0 will-change-transform">
             <svg aria-hidden="true" viewBox={`0 0 ${STAGE.width} ${STAGE.height}`} className="absolute inset-0 size-full overflow-visible">
               {ROOMS.flatMap((r) =>
                 r.tiles.map((t) => {
@@ -238,23 +260,37 @@ export function Office() {
             {ROOMS.flatMap((r) => r.tiles.map((t) => <RoomTile key={t.src} room={r} tile={t} />))}
             {/* the hub: the workspace every app joins */}
             <div className="absolute -translate-x-1/2 -translate-y-1/2" style={pct(HUB.x, HUB.y)}>
-              <div className="office-hub grid size-28 place-items-center rounded-[28%] border border-border/70 bg-card shadow-[0_18px_40px_-18px_rgb(90_70_40/0.45)]">
-                <Image src={boolLogo} alt="Bool" className="h-14 w-auto" />
+              {/* a cream hexagon round the logo, the brand's own shape */}
+              <div className="office-hub relative grid size-24 place-items-center">
+                <span aria-hidden="true" className="absolute inset-0 bg-[#fffaf2]/70" style={{ mask: HEX_MASK }} />
+                <Image src={boolLogo} alt="Bool" className="relative h-12 w-auto" />
               </div>
             </div>
           </div>
-          {/* the apps, in order: where the story is, and a way to go to any of them */}
-          <ol className="mt-6 flex flex-wrap justify-center gap-x-7 gap-y-2">
-            {ROOMS.map((room) => (
-              <li key={room.id} data-office-step={room.id} className="office-item">
-                <button type="button" onClick={() => go(room.id)} className="flex flex-col items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <span className="office-dot size-2 rounded-full" />
-                  <span className="office-title text-[11px] font-bold uppercase tracking-[0.16em]">{room.title}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
+          </div>
         </div>
+      </div>
+      {/* the apps, in order, as a line along the foot of the screen: where the story is, and a way
+          to go to any of them */}
+      <div className="absolute inset-x-0 bottom-0 hidden bg-linear-to-t from-background from-55% to-transparent pb-8 pt-14 lg:motion-safe:block">
+        <ol className="mx-auto grid w-full max-w-7xl grid-cols-6 gap-3 px-6 2xl:max-w-[88rem]">
+          {ROOMS.map((room) => (
+            <li key={room.id} data-office-step={room.id} className="office-item">
+              <button type="button" onClick={() => go(room.id)} className="pointer-events-auto block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                {/* the app's part of the story: fills as the story passes through it */}
+                <span aria-hidden="true" className="block h-[2px] overflow-hidden rounded-full bg-foreground/10">
+                  <span data-office-fill={room.id} className="block h-full origin-left scale-x-0 bg-(--brand-soft)" />
+                </span>
+                <span className="mt-3 flex items-center gap-2">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="office-hex size-3 shrink-0">
+                    <path d="M12 2 L20.66 7 V17 L12 22 L3.34 17 V7 Z" />
+                  </svg>
+                  <span className="office-title text-[11px] font-bold uppercase tracking-[0.14em]">{room.title}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   )

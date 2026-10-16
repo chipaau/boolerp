@@ -27,6 +27,7 @@ export const DASHBOARD = { src: '/hero/dashboard.webp', width: 2000, height: 121
 export const TABLET = {
   aspect: 1.55,
   bezel: 0.013,
+  /** On standard screens; high-density ones lay it out once (globals.css, --raster; read with raster()). */
   raster: 2,
   left: '47.342%',
   top: '23.171%',
@@ -78,4 +79,9 @@ export function onScreen(cx: number, cy: number, w: number, h: number) {
     width: x(cx + w / 2) - x(cx - w / 2),
     height: y(cy + h / 2) - y(cy - h / 2),
   }
+}
+
+/** How much larger than shown the tablet is laid out on this screen (globals.css, --raster). */
+export function raster() {
+  return Number(getComputedStyle(document.documentElement).getPropertyValue('--raster')) || TABLET.raster
 }

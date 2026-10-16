@@ -67,6 +67,8 @@ export function HeaderMotion({ className, children }: { className?: string; chil
         'data-[hidden=true]:-translate-y-full data-[floating=true]:bg-background/85 data-[floating=true]:backdrop-blur-md',
         // and out of the way while the hero's scroll story is under way (story.ts sets data-story)
         '[html[data-story=on]_&]:-translate-y-full',
+        // and while a pinned section holds the screen (office.tsx, tickets.tsx set data-pinned)
+        '[html[data-pinned]_&]:-translate-y-full',
         className,
       )}
     >

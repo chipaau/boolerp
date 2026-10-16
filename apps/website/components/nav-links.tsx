@@ -9,12 +9,13 @@ import { HandStroke } from './hand-stroke'
 
 gsap.registerPlugin(useGSAP)
 
-const NAV = [
-  { label: 'Product', href: '#product', menu: true },
+// the page's own sections: the site is the one page about the workspace, so the menu goes to its parts
+const NAV: { label: string; href: string; menu?: boolean }[] = [
+  { label: 'Workspace', href: '#workspace' },
+  { label: 'Built for the Maldives', href: '#local' },
+  { label: 'Deployment', href: '#deployment' },
   { label: 'Solutions', href: '#solutions' },
-  { label: 'Resources', href: '#resources' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'About', href: '#about' },
+  { label: 'Contact', href: '#contact' },
 ]
 
 /**
