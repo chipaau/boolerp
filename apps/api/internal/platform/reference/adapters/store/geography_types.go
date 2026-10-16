@@ -9,30 +9,38 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
 )
 
-// GeographyTypeListSpec is what GET /api/v1/geography-types accepts: a country's address
-// levels (C215), all in one page.
+// GeographyTypeListSpec is what GET /api/v1/geography-types accepts (C215, C220): the address
+// levels of one country (the pickers, in one page) or of every country (the admin console's list),
+// by country (its name, as the list shows it), then level, then name.
 var GeographyTypeListSpec = request.ListSpec{
-	Sorts: []string{"level", "name"}, DefaultSort: "level",
-	Filters: map[string][]string{"country": nil}, Required: []string{"country"},
+	Sorts: []string{"country", "level", "name", "code"}, DefaultSort: "country,level,name", Search: true,
+	Filters:         map[string][]string{"country": nil},
 	DefaultPageSize: 100, MaxPageSize: 100,
 }
 
-// GeographyType is an address level as the list shows it.
+// GeographyType is an address level as the list shows it, with how many current places of it
+// are listed (PlaceCount; none means the level is typed in an address).
 type GeographyType struct {
-	ID, Code, Name string
-	Level          int
+	ID, Country, Code, Name string
+	Level, PlaceCount       int
 }
 
-// ListGeographyTypes reads one page of a country's current address levels.
+// ListGeographyTypes reads one page of the current address levels, of one country when the
+// country filter is given. q matches the name or the code.
 func ListGeographyTypes(ctx context.Context, db Querier, l request.List) ([]GeographyType, int, error) {
-	q := postgres.ListQuery{From: "geography_types t", Key: "t.code",
-		Sorts: map[string]string{"level": "t.level", "name": "t.name"}}
+	q := postgres.ListQuery{From: "geography_types t JOIN countries c ON c.code = t.country", Key: "t.id",
+		Sorts: map[string]string{"country": "c.name", "level": "t.level", "name": "t.name", "code": "t.code"}}
 	q.Where(current("t"))
-	q.Equal("t.country", l.Filters["country"])
+	if country, ok := l.Filters["country"]; ok {
+		q.Equal("t.country", country)
+	}
+	q.Search(l.Q, "t.name", "t.code")
+	columns := `t.id::text, t.country, t.code, t.name, t.level,
+		(SELECT count(*) FROM geographies g WHERE g.type_id = t.id AND ` + current("g") + `)::int`
 	items := []GeographyType{}
-	total, err := q.Run(ctx, db, l, "t.id::text, t.code, t.name, t.level", func(rows pgx.Rows, total *int) error {
+	total, err := q.Run(ctx, db, l, columns, func(rows pgx.Rows, total *int) error {
 		var g GeographyType
-		if err := rows.Scan(&g.ID, &g.Code, &g.Name, &g.Level, total); err != nil {
+		if err := rows.Scan(&g.ID, &g.Country, &g.Code, &g.Name, &g.Level, &g.PlaceCount, total); err != nil {
 			return err
 		}
 		items = append(items, g)

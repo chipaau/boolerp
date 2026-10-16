@@ -242,7 +242,7 @@ scaling). Nothing overflows down to 360 px (the base Galaxy S), though a line ma
   (TanStack Table sorts only columns with one, even in manual mode); `meta.wide` hides a column
   below `lg`. It shows the first load's error (403 as forbidden, others with the reference and a
   retry); when data is shown, a failed refresh keeps it (the error policy toasts, C185).
-  `ListToolbar` (`list-toolbar`): `search` (debounced), `filters` (declared `select` chips),
+  `ListToolbar` (`list-toolbar`): `search` (debounced), `filters` (declared as data: `select` chips, or a searchable `combobox` for a long list such as the countries, C220),
   `summary`, `onClear`.
 - Responses are parsed with zod in every environment; a mismatch is an error naming the field.
 - Types are hand-written zod per feature (`features/<x>/schemas.ts`), camelCase; there is no

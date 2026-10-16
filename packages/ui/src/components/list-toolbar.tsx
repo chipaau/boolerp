@@ -3,21 +3,27 @@ import * as React from "react"
 import { cn } from "@workspace/ui/lib/utils"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import { ComboboxField } from "@workspace/ui/components/combobox"
+import type { ComboboxOption } from "@workspace/ui/components/combobox"
 import { SearchField } from "@workspace/ui/components/search-field"
 import { TableToolbar } from "@workspace/ui/components/table"
 
 /** How long typing settles before the search is applied (C174). */
 export const SEARCH_DEBOUNCE_MS = 300
 
-/** A filter declared as data (C174): one choice among options, shown as chips. */
+/**
+ * A filter declared as data (C174): one choice among options, shown as chips ("select"), or, for
+ * a long list such as the countries, picked in a searchable combobox ("combobox").
+ */
 export type ListFilter = {
   key: string
   label: string
-  type: "select"
-  options: { value: string; label: string }[]
   value: string | undefined
   onChange: (value: string | undefined) => void
-}
+} & (
+  | { type: "select"; options: { value: string; label: string }[] }
+  | { type: "combobox"; options: ComboboxOption[]; placeholder: string }
+)
 
 /**
  * A list's toolbar (C174): a search applied 300 ms after typing stops, filters declared as data
@@ -43,7 +49,18 @@ export function ListToolbar({
   return (
     <TableToolbar className={cn("gap-2.5", className)}>
       {search && <DebouncedSearch {...search} />}
-      {filters.map((f) => (
+      {filters.map((f) =>
+        f.type === "combobox" ? (
+          <ComboboxField
+            key={f.key}
+            aria-label={f.label}
+            value={f.value ?? null}
+            onValueChange={(v) => f.onChange(v ?? undefined)}
+            options={f.options}
+            placeholder={f.placeholder}
+            className="h-8 w-full text-compact sm:w-[220px]"
+          />
+        ) : (
         <div key={f.key} role="group" aria-label={f.label} className="flex flex-wrap items-center gap-1.5">
           <Chip active={f.value === undefined} onClick={() => f.onChange(undefined)}>
             All
@@ -54,7 +71,8 @@ export function ListToolbar({
             </Chip>
           ))}
         </div>
-      ))}
+        )
+      )}
       <span className="flex-1" />
       {summary && <span className="text-meta whitespace-nowrap text-faint">{summary}</span>}
       {on && onClear && (

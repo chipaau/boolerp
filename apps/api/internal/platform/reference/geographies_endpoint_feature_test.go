@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/boolmv/erp/apps/api/internal/platform/authorization/authztest"
+	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
 
 // Endpoint tests (C156) for the pickers' lists, GET /api/v1/geography-types and
@@ -17,8 +18,8 @@ import (
 // (geographies_feature_test.go).
 
 type geographyTypeItem struct {
-	ID, Code, Name string
-	Level          int
+	ID, Country, Code, Name string
+	Level, PlaceCount       int
 }
 
 type geographyItem struct {
@@ -39,11 +40,34 @@ func TestFeatureACountrysAddressLevelsAreListed(t *testing.T) {
 	for _, i := range p.Items {
 		got = append(got, i.Code)
 	}
-	assert.Equal(t, []string{"city", "region", "town", "ward", "street"}, got, "by level, then as stored")
+	assert.Equal(t, []string{"city", "region", "town", "ward", "street"}, got, "by level, then by name")
 	assert.Equal(t, 3, p.Items[3].Level)
+	places := map[string]int{}
+	for _, i := range p.Items {
+		places[i.Code] = i.PlaceCount
+	}
+	assert.Equal(t, map[string]int{"city": 1, "region": 1, "town": 2, "ward": 1, "street": 0}, places,
+		"current places only: Gone is retired; street lists none, so it is typed")
 
-	rec, _ = get[geographyTypeItem](t, referenceRouter(w.tx, authz), "/api/v1/geography-types")
-	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "a country is required")
+	// Without a country, every country's, by the country's name first (as the list shows it, not its
+	// code); q searches the name or the code.
+	h := referenceRouter(w.tx, authz)
+	testdb.Exec(t, w.tx, `UPDATE countries SET name = 'Aardvark Testland' WHERE code = 'XB'`)
+	_, p = get[geographyTypeItem](t, h, "/api/v1/geography-types?q=region&pageSize=100")
+	pairs := []string{}
+	for _, i := range p.Items {
+		if i.Country == "XA" || i.Country == "XB" {
+			pairs = append(pairs, i.Country+"/"+i.Code)
+		}
+	}
+	assert.Equal(t, []string{"XB/region", "XA/region"}, pairs, "Aardvark Testland before Testland")
+	_, p = get[geographyTypeItem](t, h, "/api/v1/geography-types?country=XB")
+	require.Len(t, p.Items, 1)
+	assert.Equal(t, "XB", p.Items[0].Country)
+	rec, _ = get[geographyTypeItem](t, h, "/api/v1/geography-types?sort=-country,level")
+	assert.Equal(t, http.StatusOK, rec.Code)
+	rec, _ = get[geographyTypeItem](t, h, "/api/v1/geography-types?sort=places")
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "an unknown sort")
 }
 
 func TestFeatureAPickerListsThePlacesUnderOneParent(t *testing.T) {
