@@ -3,12 +3,16 @@
 import { z } from 'zod'
 import { id, listOf } from '@workspace/api'
 
-/** A country (GET /api/v1/countries): ISO codes, name, and international dialling prefix. */
+/**
+ * A country (GET /api/v1/countries): ISO codes, name, international dialling prefix, and how many
+ * current places it lists for address pickers (C215).
+ */
 export const countrySchema = z.object({
   code: z.string().length(2),
   alpha3: z.string().length(3),
   name: z.string(),
   phonePrefix: z.string(),
+  geographyCount: z.number().int().nonnegative(),
 })
 export type Country = z.infer<typeof countrySchema>
 export const countryPageSchema = listOf(countrySchema)

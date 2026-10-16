@@ -149,8 +149,9 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
 - **Read through the API** (C199) by any authenticated caller, a person or a machine
   client, behind the `Authenticated` chain (reference data is not sensitive); each answers
   current rows only (not retired, or retired in the future) in the list envelope (C68):
-  - `GET /api/v1/countries`: `{code, alpha3, name, phonePrefix}`, by name, `q` on the name
-    or either code; `pageSize` defaults to and is at most 300, so one page holds them all.
+  - `GET /api/v1/countries`: `{code, alpha3, name, phonePrefix, geographyCount}` (how many
+    current places the country lists for address pickers, C215), by name, `q` on the name or
+    either code; `pageSize` defaults to and is at most 300, so one page holds them all.
   - `GET /api/v1/legal-forms?country=MV`: `country` is required;
     `{id, code, name, category, identityDocument}` (`identityDocument` null when the form
     carries none), by name, `q` on the name.

@@ -280,11 +280,10 @@ export function DataTable<T extends RowData>({
                 limit={pageSize}
                 // RowsShown offers All; the API serves at most MAX_PAGE_SIZE rows a page (C68).
                 onLimit={(n) => onPageSizeChange(Number.isFinite(n) ? n : MAX_PAGE_SIZE)}
-                noun={noun}
               />
             ) : (
               <span className="tabular-nums">
-                {total} {noun}
+                {Math.min(pageSize, total)} of {total}
               </span>
             )}
             {isFetching && !isLoading && <RefreshCw aria-label="Refreshing" className="size-3.5 animate-spin text-faint" />}

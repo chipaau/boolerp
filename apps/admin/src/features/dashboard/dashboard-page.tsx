@@ -45,7 +45,7 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-0 w-full overflow-y-auto">
-      <div className="px-8 pt-7 pb-24">
+      <div className="px-4 sm:px-8 pt-7 pb-24">
         <PageTitle overline="Admin" title="Dashboard" meta="Every tenant on the platform at a glance: who is live, what they pay, and what needs you next." />
 
         <div className="flex flex-wrap items-start gap-x-12 gap-y-5">

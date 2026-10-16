@@ -181,6 +181,50 @@ with `api.test.ts` and `tenants-list.test.tsx`; `routes/_admin/tenants/index.tsx
 `validateSearch`, `loaderDeps`, and the loader. The design prototype is at `/tenants-prototype`
 until the list is accepted. Use it as the pattern for the next list.
 
+### Responsive, mobile first (C219)
+
+Every screen is built for a phone first: a high-end phone, 390–430 px wide (iPhone 15/16 and their
+Plus and Pro Max, Galaxy S and Ultra), holding up to a 32-inch monitor (2560 px at its usual
+scaling). Nothing overflows down to 360 px (the base Galaxy S), though a line may wrap there.
+
+| Width | Device | Tailwind |
+| --- | --- | --- |
+| 390–639 px (no overflow from 360) | phone | unprefixed (the base layout) |
+| 640 px | large phone, small tablet | `sm` |
+| 768 px | tablet | `md` |
+| 1024 px, 1280 px | laptop | `lg`, `xl` |
+| 1536 px and up, to 2560 px | desktop, 27–32-inch monitors | `2xl` |
+
+- **Mobile first:** the unprefixed classes are the phone's layout, and each breakpoint adds to it
+  (`px-4 sm:px-8`, `hidden md:table-cell`). A desktop layout patched down with `max-*` variants is
+  not mobile first.
+- **No horizontal page scroll** at any width. A table hides its secondary columns below `md` and
+  folds their essentials into the first column (`meta.wide`), or scrolls inside its own card.
+  Toolbars and footers wrap rather than overflow. A list's footer count names no noun ("Showing
+  [25 ▾] of 249": the page above names what is listed), and on a phone it is one line: "[25 ▾] of
+  249" and the pager "‹ 3 / 10 ›".
+- **Gutters:** 16 px a side on a phone, 32 px from `sm`; a table's edge padding is 16 px on a phone
+  and 22 px from `sm`.
+- **Touch:** targets are at least 24 × 24 px (WCAG 2.2, 2.5.8) with space between them; nothing
+  depends on hover alone.
+- **Wide screens:** content does not stretch to fill a 32-inch monitor. Running text stays within
+  about 75 characters a line; forms and dialogs keep their own widths; a page's content stops at
+  1920 px (`max-w-[120rem]`) and is centred beyond it, with data tables free to use that width.
+- **Checking:** a change is looked at in the browser at 390, 768, 1024, 1440, and 2560 px;
+  component tests do not replace it.
+
+### Tabs on a landing page (C218)
+
+- A landing page with tabs gives each tab its own path, `/<section>/<tab>`
+  (`/geographies/geographies`, `/geographies/countries`, `/geographies/geography-types`), so a tab
+  can be linked to and survives a reload. Each tab is its own file route with its own
+  `validateSearch` and loader, so its list's state (C174) is only its own and never reaches
+  another tab's API call.
+- `/<section>` redirects to the first tab; an older `?tab=` link redirects to its tab. Never a
+  `?tab=` parameter.
+- Each tab's page renders the section's shared header (title, its own count, the tab bar); the tab
+  bar navigates between the paths.
+
 ### List pages (C174)
 
 - The URL holds the list's state with the API's parameter names: `page`, `pageSize`, `q`,

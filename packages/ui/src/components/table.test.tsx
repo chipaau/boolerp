@@ -96,6 +96,26 @@ describe("TablePagination", () => {
     expect(onPageChange.mock.calls).toEqual([[1], [3], [3]])
   })
 
+  it("shows the first, the last, and the pages around the current one, with a gap for the rest", () => {
+    const { rerender } = render(<TablePagination page={5} pageCount={10} onPageChange={() => {}} />)
+    const pages = () => screen.queryAllByRole("button").map((b) => b.textContent).filter((t) => t && /^\d+$/.test(t))
+    expect(pages()).toEqual(["1", "4", "5", "6", "10"])
+    expect(screen.getAllByText("…")).toHaveLength(2)
+    rerender(<TablePagination page={2} pageCount={10} onPageChange={() => {}} />)
+    expect(pages()).toEqual(["1", "2", "3", "10"])
+    rerender(<TablePagination page={3} pageCount={10} onPageChange={() => {}} />)
+    expect(pages()).toEqual(["1", "2", "3", "4", "10"], "a single page between is shown, not a gap")
+    rerender(<TablePagination page={2} pageCount={4} onPageChange={() => {}} />)
+    expect(pages()).toEqual(["1", "2", "3", "4"])
+    expect(screen.queryByText("…")).not.toBeInTheDocument()
+  })
+
+  it("says which page of how many, for a phone where the page buttons are hidden", () => {
+    render(<TablePagination page={3} pageCount={10} onPageChange={() => {}} />)
+    expect(screen.getByText("Page 3 of 10")).toBeInTheDocument()
+    expect(screen.getByText("3 / 10")).toHaveAttribute("aria-hidden", "true")
+  })
+
   it("disables the arrows at either end", () => {
     const { rerender } = render(<TablePagination page={1} pageCount={2} onPageChange={() => {}} />)
     expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled()

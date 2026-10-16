@@ -38,7 +38,7 @@ export function TenantDetailPage({ slug, tab, onTabChange }: { slug: string; tab
 
   if (!t) {
     return (
-      <div className="px-8 py-7">
+      <div className="px-4 sm:px-8 py-7">
         <BackLink />
         {isLoading ? null : <EmptyState title="No tenant with that address" description={`Nothing is registered under “${slug}”. It may have been renamed or never created.`} />}
       </div>
@@ -62,7 +62,7 @@ function TenantDetail({ tenant: t, tenants, tab, onTabChange }: { tenant: Direct
   const kids = childrenOf(tenants, t.slug)
 
   return (
-    <div className="px-8 py-7">
+    <div className="px-4 sm:px-8 py-7">
       <BackLink />
       <TenantHeader tenant={t} parent={parent} onOpen={setModal} />
 

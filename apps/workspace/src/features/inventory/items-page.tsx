@@ -224,7 +224,7 @@ export function InventoryItemsPage() {
         )}
 
         <TableFooter>
-          <RowsShown shown={pageRows.length} total={rows.length} limit={limit} onLimit={setLimit} noun="items" />
+          <RowsShown shown={pageRows.length} total={rows.length} limit={limit} onLimit={setLimit} />
         </TableFooter>
       </Card>
     </div>

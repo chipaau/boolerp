@@ -14,8 +14,10 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminIndexRouteImport } from './routes/_admin/index'
 import { Route as AdminAdminUsersRouteImport } from './routes/_admin/admin-users'
 import { Route as AdminBillingRouteImport } from './routes/_admin/billing'
-import { Route as AdminGeographiesRouteImport } from './routes/_admin/geographies'
 import { Route as AdminTenantsPrototypeRouteImport } from './routes/_admin/tenants-prototype'
+import { Route as AdminGeographiesIndexRouteImport } from './routes/_admin/geographies/index'
+import { Route as AdminGeographiesCountriesRouteImport } from './routes/_admin/geographies/countries'
+import { Route as AdminGeographiesGeographiesRouteImport } from './routes/_admin/geographies/geographies'
 import { Route as AdminTenantsIndexRouteImport } from './routes/_admin/tenants/index'
 import { Route as AdminTenantsSlugRouteImport } from './routes/_admin/tenants/$slug'
 
@@ -43,16 +45,28 @@ const AdminBillingRoute = AdminBillingRouteImport.update({
   path: '/billing',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminGeographiesRoute = AdminGeographiesRouteImport.update({
-  id: '/geographies',
-  path: '/geographies',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminTenantsPrototypeRoute = AdminTenantsPrototypeRouteImport.update({
   id: '/tenants-prototype',
   path: '/tenants-prototype',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminGeographiesIndexRoute = AdminGeographiesIndexRouteImport.update({
+  id: '/geographies/',
+  path: '/geographies/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminGeographiesCountriesRoute =
+  AdminGeographiesCountriesRouteImport.update({
+    id: '/geographies/countries',
+    path: '/geographies/countries',
+    getParentRoute: () => AdminRoute,
+  } as any)
+const AdminGeographiesGeographiesRoute =
+  AdminGeographiesGeographiesRouteImport.update({
+    id: '/geographies/geographies',
+    path: '/geographies/geographies',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const AdminTenantsIndexRoute = AdminTenantsIndexRouteImport.update({
   id: '/tenants/',
   path: '/tenants/',
@@ -69,19 +83,23 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin-users': typeof AdminAdminUsersRoute
   '/billing': typeof AdminBillingRoute
-  '/geographies': typeof AdminGeographiesRoute
   '/tenants-prototype': typeof AdminTenantsPrototypeRoute
+  '/geographies/countries': typeof AdminGeographiesCountriesRoute
+  '/geographies/geographies': typeof AdminGeographiesGeographiesRoute
   '/tenants/$slug': typeof AdminTenantsSlugRoute
+  '/geographies/': typeof AdminGeographiesIndexRoute
   '/tenants/': typeof AdminTenantsIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin-users': typeof AdminAdminUsersRoute
   '/billing': typeof AdminBillingRoute
-  '/geographies': typeof AdminGeographiesRoute
   '/tenants-prototype': typeof AdminTenantsPrototypeRoute
   '/': typeof AdminIndexRoute
+  '/geographies/countries': typeof AdminGeographiesCountriesRoute
+  '/geographies/geographies': typeof AdminGeographiesGeographiesRoute
   '/tenants/$slug': typeof AdminTenantsSlugRoute
+  '/geographies': typeof AdminGeographiesIndexRoute
   '/tenants': typeof AdminTenantsIndexRoute
 }
 export interface FileRoutesById {
@@ -90,10 +108,12 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_admin/admin-users': typeof AdminAdminUsersRoute
   '/_admin/billing': typeof AdminBillingRoute
-  '/_admin/geographies': typeof AdminGeographiesRoute
   '/_admin/tenants-prototype': typeof AdminTenantsPrototypeRoute
   '/_admin/': typeof AdminIndexRoute
+  '/_admin/geographies/countries': typeof AdminGeographiesCountriesRoute
+  '/_admin/geographies/geographies': typeof AdminGeographiesGeographiesRoute
   '/_admin/tenants/$slug': typeof AdminTenantsSlugRoute
+  '/_admin/geographies/': typeof AdminGeographiesIndexRoute
   '/_admin/tenants/': typeof AdminTenantsIndexRoute
 }
 export interface FileRouteTypes {
@@ -103,19 +123,23 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin-users'
     | '/billing'
-    | '/geographies'
     | '/tenants-prototype'
+    | '/geographies/countries'
+    | '/geographies/geographies'
     | '/tenants/$slug'
+    | '/geographies/'
     | '/tenants/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/admin-users'
     | '/billing'
-    | '/geographies'
     | '/tenants-prototype'
     | '/'
+    | '/geographies/countries'
+    | '/geographies/geographies'
     | '/tenants/$slug'
+    | '/geographies'
     | '/tenants'
   id:
     | '__root__'
@@ -123,10 +147,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/_admin/admin-users'
     | '/_admin/billing'
-    | '/_admin/geographies'
     | '/_admin/tenants-prototype'
     | '/_admin/'
+    | '/_admin/geographies/countries'
+    | '/_admin/geographies/geographies'
     | '/_admin/tenants/$slug'
+    | '/_admin/geographies/'
     | '/_admin/tenants/'
   fileRoutesById: FileRoutesById
 }
@@ -172,18 +198,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBillingRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/_admin/geographies': {
-      id: '/_admin/geographies'
-      path: '/geographies'
-      fullPath: '/geographies'
-      preLoaderRoute: typeof AdminGeographiesRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/_admin/tenants-prototype': {
       id: '/_admin/tenants-prototype'
       path: '/tenants-prototype'
       fullPath: '/tenants-prototype'
       preLoaderRoute: typeof AdminTenantsPrototypeRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/geographies/': {
+      id: '/_admin/geographies/'
+      path: '/geographies'
+      fullPath: '/geographies/'
+      preLoaderRoute: typeof AdminGeographiesIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/geographies/countries': {
+      id: '/_admin/geographies/countries'
+      path: '/geographies/countries'
+      fullPath: '/geographies/countries'
+      preLoaderRoute: typeof AdminGeographiesCountriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/geographies/geographies': {
+      id: '/_admin/geographies/geographies'
+      path: '/geographies/geographies'
+      fullPath: '/geographies/geographies'
+      preLoaderRoute: typeof AdminGeographiesGeographiesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_admin/tenants/': {
@@ -206,20 +246,24 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminAdminUsersRoute: typeof AdminAdminUsersRoute
   AdminBillingRoute: typeof AdminBillingRoute
-  AdminGeographiesRoute: typeof AdminGeographiesRoute
   AdminTenantsPrototypeRoute: typeof AdminTenantsPrototypeRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminGeographiesCountriesRoute: typeof AdminGeographiesCountriesRoute
+  AdminGeographiesGeographiesRoute: typeof AdminGeographiesGeographiesRoute
   AdminTenantsSlugRoute: typeof AdminTenantsSlugRoute
+  AdminGeographiesIndexRoute: typeof AdminGeographiesIndexRoute
   AdminTenantsIndexRoute: typeof AdminTenantsIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminUsersRoute: AdminAdminUsersRoute,
   AdminBillingRoute: AdminBillingRoute,
-  AdminGeographiesRoute: AdminGeographiesRoute,
   AdminTenantsPrototypeRoute: AdminTenantsPrototypeRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminGeographiesCountriesRoute: AdminGeographiesCountriesRoute,
+  AdminGeographiesGeographiesRoute: AdminGeographiesGeographiesRoute,
   AdminTenantsSlugRoute: AdminTenantsSlugRoute,
+  AdminGeographiesIndexRoute: AdminGeographiesIndexRoute,
   AdminTenantsIndexRoute: AdminTenantsIndexRoute,
 }
 
