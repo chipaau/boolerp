@@ -298,6 +298,31 @@ unflag the old row before flagging the new one. Row-level security as for `tenan
 operator may delete rows. The migration is
 `apps/api/internal/platform/tenancy/migrations/00002_tenant_institution_types.sql`.
 
+### `tenant_addresses` (tenancy module, C172, C215)
+
+Fields confirmed 2026-10-16 by the user, keeping `typed_places`. A tenant's registered
+address (the legal one, printed on invoices) and, when it differs, its mailing address; no
+mailing row means mail goes to the registered one. Earlier versions are the audit log's.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default. |
+| `tenant_id` | `uuid` | Not null; references `tenants.id`, `ON DELETE RESTRICT`. |
+| `kind` | `text` | Not null; `registered` or `mailing`; unique with `tenant_id`. |
+| `country` | `char(2)` | Not null; references `countries.code`, `ON DELETE RESTRICT`. |
+| `geography_id` | `uuid` | Nullable: the deepest place picked (a ward, an island, a state); `(geography_id, country)` references `geographies (id, country)`, `ON DELETE RESTRICT`, so the place is in the address's country; indexed. |
+| `typed_places` | `jsonb` | Not null, `'{}'` default: the levels typed rather than picked, keyed by their type's code (`{"city": "San Diego"}`); CHECK `is_typed_places` (an object of type codes to non-blank text). |
+| `line1` | `text` | Not null, not blank: house or building, and street. |
+| `line2` | `text` | Nullable, not blank: unit, floor, other. |
+| `postal_code` | `text` | Nullable, not blank; no format check (formats differ by country). |
+| `latitude`, `longitude` | `numeric(8,6)`, `numeric(9,6)` | Nullable: the address's own point (a map pin); within ±90 and ±180; both or neither. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger on every update. |
+
+Checks needing data are the use case's (C208): `typed_places`' codes are levels of the
+address's country deeper than the place picked. Row-level security: a tenant reads its own
+addresses; the operator tenant reads all and alone creates, changes, and deletes them.
+Audited. The migration is `apps/api/internal/platform/tenancy/migrations/00008_tenant_addresses.sql`.
+
 ### `domains` (tenancy module, C158)
 
 Fields confirmed 2026-10-05 by the user, after example rows, keeping `is_primary` with no
