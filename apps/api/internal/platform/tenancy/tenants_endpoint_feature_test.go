@@ -22,6 +22,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
+	"github.com/boolmv/erp/apps/api/internal/platform/reference"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy"
 )
 
@@ -213,11 +214,14 @@ func TestFeatureTheTenantListLeavesARootsParentEmpty(t *testing.T) {
 // and PostgreSQL, with row-level security forced on tenants; authentication, Cerbos, and
 // the reference lists (the reference module, read outside this transaction) are faked.
 
-// lists is the reference module faked: what it states is current.
+// lists is the reference module faked: what it states is current, and for addresses
+// (tenant_addresses_endpoint_feature_test.go) what checking one finds and each place's path.
 type lists struct {
 	countries map[string]bool
 	forms     map[string][2]string // id → country, identity document
 	types     map[string]bool
+	address   error                            // what CheckAddress finds
+	paths     map[string][]reference.Geography // place id → its path from level 1
 	down      bool
 }
 

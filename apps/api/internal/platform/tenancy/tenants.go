@@ -19,6 +19,7 @@ import (
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/problem"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/request"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/response"
+	"github.com/boolmv/erp/apps/api/internal/platform/reference"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/adapters/store"
 	"github.com/boolmv/erp/apps/api/internal/platform/tenancy/tenant"
 )
@@ -170,11 +171,12 @@ func (m *Module) create(authz authorization.Authorizer) http.HandlerFunc {
 	}
 }
 
-// Reference is what creating a tenant needs from the reference lists (C134: another
-// module's data comes through its owner): whether a country, a legal form, and
-// institution types are current, and which identity document a legal form names. The
-// edition passes the reference module. The database's foreign keys still guard that each
-// exists and that the legal form is of the tenant's country.
+// Reference is what tenancy needs from the reference lists (C134: another module's data
+// comes through its owner): for creating a tenant, whether a country, a legal form, and
+// institution types are current, and which identity document a legal form names; for its
+// addresses, their places checked against the country's levels and named from level 1
+// down (C215). The edition passes the reference module. The database's foreign keys still
+// guard that each exists and is of the right country.
 type Reference interface {
 	// CountryCurrent reports whether code is a country in use.
 	CountryCurrent(ctx context.Context, code string) (bool, error)
@@ -183,6 +185,11 @@ type Reference interface {
 	LegalForm(ctx context.Context, id string) (country, identityDocument string, ok bool, err error)
 	// InstitutionTypesCurrent returns which of codes are current institution types.
 	InstitutionTypesCurrent(ctx context.Context, codes []string) (map[string]bool, error)
+	// CheckAddress checks an address's place and typed levels against its country's
+	// levels, returning a *problem.ValidationError for what breaks them.
+	CheckAddress(ctx context.Context, country, geographyID string, typed map[string]string) error
+	// PlacePath returns a place and its parents, from level 1 down to it.
+	PlacePath(ctx context.Context, id string) ([]reference.Geography, error)
 }
 
 // NewTenant is what creating a tenant takes (C197): step 1 of the admin console's

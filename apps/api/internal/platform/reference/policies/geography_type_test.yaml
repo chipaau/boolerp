@@ -1,0 +1,37 @@
+# Tests for reference:geography_type (C199, C215), run by cerbos compile in CI.
+name: ReferenceGeographyType
+principals:
+  person:
+    id: 0192f6a0-0000-7000-8000-00000000a001
+    roles: ["user"]
+  operator_member:
+    id: 0192f6a0-0000-7000-8000-00000000b001
+    roles: ["user", "member"]
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000bb, in_operator_tenant: true }
+  customer_member:
+    id: 0192f6a0-0000-7000-8000-00000000a002
+    roles: ["user", "member"]
+    attr: { tenant_id: 0192f6a0-0000-7000-8000-0000000000aa, in_operator_tenant: false }
+  unregistered:
+    id: 0192f6a0-0000-7000-8000-0000000ac001
+    roles: ["account"]
+    attr: { account_id: 0192f6a0-0000-7000-8000-0000000ac001 }
+  machine:
+    id: hrms-sync
+    roles: ["client"]
+resources:
+  list:
+    kind: "reference:geography_type"
+    id: list
+tests:
+  - name: Any authenticated caller, a person or a machine, lists the address levels, in a tenant or not
+    input:
+      principals: [person, operator_member, customer_member, unregistered, machine]
+      resources: [list]
+      actions: [list]
+    expected:
+      - { principal: person, resource: list, actions: { list: EFFECT_ALLOW } }
+      - { principal: operator_member, resource: list, actions: { list: EFFECT_ALLOW } }
+      - { principal: customer_member, resource: list, actions: { list: EFFECT_ALLOW } }
+      - { principal: unregistered, resource: list, actions: { list: EFFECT_ALLOW } }
+      - { principal: machine, resource: list, actions: { list: EFFECT_ALLOW } }
