@@ -30,10 +30,15 @@ CREATE TABLE geographies (
     -- The name in other languages, for documents written in them: {"dv": "މާފުށި"}.
     name_translations jsonb NOT NULL DEFAULT '{}' CHECK (is_translations(name_translations)),
     short_name  text        CHECK (btrim(short_name) <> ''),  -- as addresses write it ("K.")
+    -- A point for the place (its centre), for maps and rough distances; null where none is
+    -- known. An address's own point is the address's, not this.
+    latitude    numeric(8,6) CHECK (latitude BETWEEN -90 AND 90),
+    longitude   numeric(9,6) CHECK (longitude BETWEEN -180 AND 180),
     active_from timestamptz NOT NULL DEFAULT now(),
     active_to   timestamptz CHECK (active_to >= active_from),  -- retired; null = in use
     created_at  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now(),
+    CHECK ((latitude IS NULL) = (longitude IS NULL)),  -- both or neither
     UNIQUE (country, code),
     -- The target of two-column foreign keys (parent_id, country) here and from addresses:
     -- a place's parent, and an address's place, are of the same country.

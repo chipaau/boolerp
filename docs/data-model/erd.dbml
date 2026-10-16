@@ -152,6 +152,8 @@ Table geographies {
   name text [not null, note: 'not blank; unique among siblings, case-insensitive']
   name_translations jsonb [not null, default: `'{}'`, note: 'the name in other languages (C216), e.g. {"dv": "..."}; CHECK is_translations']
   short_name text [note: 'as addresses write it, e.g. K.; not blank']
+  latitude numeric(8,6) [note: 'the place\'s point (its centre); null = none known; CHECK -90..90; both or neither']
+  longitude numeric(9,6) [note: 'CHECK -180..180']
   active_from timestamptz [not null, default: `now()`]
   active_to timestamptz [note: 'retired; null = in use; CHECK active_to >= active_from']
   created_at timestamptz [not null, default: `now()`]
@@ -166,7 +168,8 @@ Table geographies {
   }
 
   Note: '''
-  Confirmed 2026-10-16 (C215), with short_name and name_translations (C216); migration
+  Confirmed 2026-10-16 (C215), with short_name, name_translations (C216), and latitude and
+  longitude; migration
   platform/reference/migrations/00006_geographies.sql. The places addresses pick from
   (MV atolls, cities, islands, Malé's wards; US states). Triggers keep the levels: a place
   of level 1 has no parent, any other a parent of a lower level (levels may be skipped);

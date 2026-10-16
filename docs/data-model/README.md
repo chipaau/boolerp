@@ -186,8 +186,8 @@ rows will come from a seed file with `geographies`. The migration is
 
 ### `geographies` (platform reference data, C215)
 
-Fields confirmed 2026-10-16 by the user, adding `short_name` and `name_translations` (the
-translations pattern, C216). The places addresses pick
+Fields confirmed 2026-10-16 by the user, adding `short_name`, `name_translations` (the
+translations pattern, C216), and `latitude` and `longitude`. The places addresses pick
 from: the Maldives' atolls, cities, islands, and Malé's wards; a country's states. Global
 reference data, not tenant-scoped.
 
@@ -201,6 +201,7 @@ reference data, not tenant-scoped.
 | `name` | `text` | Not null, not blank; unique among its siblings, ignoring case (`country, parent_id, type_id, lower(name)`, nulls not distinct): island names repeat across atolls. |
 | `name_translations` | `jsonb` | Not null, `'{}'` default: the name in other languages, keyed by language tag (`{"dv": "މާފުށި"}`); CHECK `is_translations` (C216). |
 | `short_name` | `text` | Nullable, not blank: the short form addresses write ("K." for Kaafu). |
+| `latitude`, `longitude` | `numeric(8,6)`, `numeric(9,6)` | Nullable: the place's point (its centre), for maps and rough distances; within ±90 and ±180; both or neither. An address's own point belongs to the address. |
 | `active_from` | `timestamptz` | Not null, `now()` default. |
 | `active_to` | `timestamptz` | Nullable: retired; null = in use; not before `active_from`. |
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger on every update. |
@@ -212,6 +213,33 @@ above it; and a type's level may not change once it has places. A unique constra
 `(id, country)` is the target of the parent key and, later, of addresses. Row-level
 security as for `countries`. The migration is
 `apps/api/internal/platform/reference/migrations/00006_geographies.sql`.
+
+**Seed rows** (`reference/seeds/geography_types.csv` and `geographies.csv`, loaded by
+`cmd/deploy` and `cmd/seed` after the institution types; Maldives rows confirmed 2026-10-16):
+
+- The Maldives (407 places): the 18 administrative atolls by their letter names with ISO
+  3166-2 codes and short forms (HA., K., GDh.), and Seenu (S., no code of its own); five
+  cities, which addresses name in full: Malé City (MV-MLE), Addu City (MV-01: Hithadhoo,
+  Maradhoo, Maradhoofeydhoo, Feydhoo), Fuvahmulah City (MV-29), Kulhudhuffushi City and
+  Thinadhoo City (no codes), each holding its islands; Seenu holds Meedhoo, Hulhudhoo
+  (separate from Addu City since 2025-26), and its resorts. 190 inhabited islands (Census
+  2022's 186 administrative islands, with Malé City's four) under their official English
+  names (Presidential Decree 2/2025); 189 resort islands (Statistical Yearbook 2026, table
+  10.14, the resorts open at the end of 2025, less the Centara lagoon pair, which has no
+  official island name); Malé island's wards H. Henveiru, G. Galolhu, M. Machchangolhi,
+  Ma. Maafannu. Sources: the [Maldives Bureau of Statistics](https://statisticsmaldives.gov.mv)
+  (Census 2022 tables P3 and P5; Statistical Yearbook 2026, tables 10.14 and 10.15), the
+  President's Office (Decree 2/2025 and its amendments, the 2025-26 Addu and Hirimaradhoo
+  decrees), the [Local Government Authority](https://lga.gov.mv) council directory, and Malé
+  City Council, fetched 2026-10-16. They state no licence; the names are facts, compiled for
+  Bool and cited.
+- Other countries (5,006 places in 198 countries): the regular ISO 3166-2 subdivisions with
+  their English names and containment from [Unicode CLDR](https://github.com/unicode-org/cldr)
+  (Unicode-3.0, its notice kept in the file), and their ISO categories as types, as listed by
+  Debian iso-codes.
+- Coordinates from [Wikidata](https://www.wikidata.org) (CC0): by ISO code (4,879 of 5,006),
+  and for Maldives islands by name nearest their atoll (368 of 407); the rest are empty until
+  filled.
 
 ### `tenants` (tenancy module, C115, C136, C139, C141, C195)
 

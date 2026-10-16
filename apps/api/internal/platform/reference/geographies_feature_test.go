@@ -29,10 +29,10 @@ func geographyWorld(t *testing.T) pgx.Tx {
 			SELECT 'XA', id, 'XA-N', 'North', 'N.' FROM geography_types WHERE country = 'XA' AND code = 'region'`,
 		`INSERT INTO geographies (country, type_id, parent_id, name)
 			SELECT 'XA', t.id, g.id, 'Port' FROM geography_types t, geographies g
-			WHERE t.country = 'XA' AND t.code = 'town' AND g.name = 'North'`,
+			WHERE t.country = 'XA' AND t.code = 'town' AND g.country = 'XA' AND g.name = 'North'`,
 		`INSERT INTO geographies (country, type_id, parent_id, name)
 			SELECT 'XA', t.id, g.id, 'Old Quarter' FROM geography_types t, geographies g
-			WHERE t.country = 'XA' AND t.code = 'ward' AND g.name = 'Port'`,
+			WHERE t.country = 'XA' AND t.code = 'ward' AND g.country = 'XA' AND g.name = 'Port'`,
 	} {
 		_, err := tx.Exec(t.Context(), sql)
 		require.NoError(t, err, sql)
@@ -46,7 +46,7 @@ func place(t *testing.T, tx pgx.Tx, country, typeCode, parent, name string) erro
 	t.Helper()
 	_, err := tx.Exec(t.Context(), `INSERT INTO geographies (country, type_id, parent_id, name)
 		SELECT $1, (SELECT id FROM geography_types WHERE code = $2 AND country = $1),
-		       (SELECT id FROM geographies WHERE name = $3), $4`, country, typeCode, parent, name)
+		       (SELECT id FROM geographies WHERE country = $1 AND name = $3), $4`, country, typeCode, parent, name)
 	return err
 }
 
@@ -73,7 +73,7 @@ func TestFeatureGeographyConstraints(t *testing.T) {
 			SELECT 'XA', id, 'South' FROM geography_types WHERE country = 'XB'`,
 		"a parent in another country": `INSERT INTO geographies (country, type_id, parent_id, name)
 			SELECT 'XB', t.id, g.id, 'South' FROM geography_types t, geographies g
-			WHERE t.country = 'XB' AND g.name = 'North'`,
+			WHERE t.country = 'XB' AND g.country = 'XA' AND g.name = 'North'`,
 		"blank name": `INSERT INTO geographies (country, type_id, name)
 			SELECT 'XA', id, '  ' FROM geography_types WHERE country = 'XA' AND code = 'region'`,
 		"blank code": `INSERT INTO geographies (country, type_id, code, name)
@@ -92,9 +92,15 @@ func TestFeatureGeographyConstraints(t *testing.T) {
 			SELECT 'XA', id, 'XA-N', 'South' FROM geography_types WHERE country = 'XA' AND code = 'region'`,
 		"a sibling's name, in other case": `INSERT INTO geographies (country, type_id, name)
 			SELECT 'XA', id, 'NORTH' FROM geography_types WHERE country = 'XA' AND code = 'region'`,
+		"a latitude without a longitude": `INSERT INTO geographies (country, type_id, name, latitude)
+			SELECT 'XA', id, 'South', 4.2 FROM geography_types WHERE country = 'XA' AND code = 'region'`,
+		"a latitude past 90": `INSERT INTO geographies (country, type_id, name, latitude, longitude)
+			SELECT 'XA', id, 'South', 90.5, 73.5 FROM geography_types WHERE country = 'XA' AND code = 'region'`,
+		"a longitude past 180": `INSERT INTO geographies (country, type_id, name, latitude, longitude)
+			SELECT 'XA', id, 'South', 4.2, -180.5 FROM geography_types WHERE country = 'XA' AND code = 'region'`,
 		"retired before in use": `INSERT INTO geographies (country, type_id, name, active_from, active_to)
 			SELECT 'XA', id, 'South', now(), now() - interval '1 day' FROM geography_types WHERE country = 'XA' AND code = 'region'`,
-		"deleting a place with children": `DELETE FROM geographies WHERE name = 'North'`,
+		"deleting a place with children": `DELETE FROM geographies WHERE country = 'XA' AND name = 'North'`,
 		"deleting a type with places":    `DELETE FROM geography_types WHERE country = 'XA' AND code = 'region'`,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -117,7 +123,7 @@ func TestFeatureGeographyLevelsHold(t *testing.T) {
 		},
 		"a place's new type leaving its children at its level": func(t *testing.T, tx pgx.Tx) error {
 			_, err := tx.Exec(t.Context(), `UPDATE geographies SET type_id =
-				(SELECT id FROM geography_types WHERE country = 'XA' AND code = 'ward') WHERE name = 'Port'`)
+				(SELECT id FROM geography_types WHERE country = 'XA' AND code = 'ward') WHERE country = 'XA' AND name = 'Port'`)
 			return err
 		},
 		"a new level for a type with places": func(t *testing.T, tx pgx.Tx) error {
@@ -141,7 +147,7 @@ func TestFeatureGeographiesAllowWhatTheLevelsAllow(t *testing.T) {
 	require.NoError(t, place(t, tx, "XA", "town", "South", "Port2"))
 	_, err := tx.Exec(t.Context(), `INSERT INTO geographies (country, type_id, parent_id, name)
 		SELECT 'XA', t.id, g.id, 'Port' FROM geography_types t, geographies g
-		WHERE t.country = 'XA' AND t.code = 'town' AND g.name = 'South'`)
+		WHERE t.country = 'XA' AND t.code = 'town' AND g.country = 'XA' AND g.name = 'South'`)
 	require.NoError(t, err, "a sibling name under another parent")
 	_, err = tx.Exec(t.Context(), `UPDATE geography_types SET level = 2 WHERE country = 'XA' AND code = 'city'`)
 	require.NoError(t, err, "no places of that type yet")
@@ -173,10 +179,10 @@ func TestFeatureAGeographyKeepsItsNameInOtherLanguages(t *testing.T) {
 	tx := geographyWorld(t)
 	var dv string
 	require.NoError(t, tx.QueryRow(t.Context(), `UPDATE geographies SET name_translations = '{"dv": "އުތުރު"}'
-		WHERE name = 'North' RETURNING name_translations->>'dv'`).Scan(&dv))
+		WHERE country = 'XA' AND name = 'North' RETURNING name_translations->>'dv'`).Scan(&dv))
 	assert.Equal(t, "އުތުރު", dv)
 	var none string
-	require.NoError(t, tx.QueryRow(t.Context(), `SELECT name_translations::text FROM geographies WHERE name = 'Port'`).Scan(&none))
+	require.NoError(t, tx.QueryRow(t.Context(), `SELECT name_translations::text FROM geographies WHERE country = 'XA' AND name = 'Port'`).Scan(&none))
 	assert.Equal(t, "{}", none, "none by default")
 }
 
@@ -185,6 +191,6 @@ func TestFeatureGeographyUpdatedAtFollowsChanges(t *testing.T) {
 	assertUpdatedAtFollowsChanges(t, tx,
 		`INSERT INTO geographies (country, type_id, name, updated_at)
 			SELECT 'XA', id, 'South', '2000-01-01' FROM geography_types WHERE country = 'XA' AND code = 'region'`,
-		`UPDATE geographies SET short_name = 'S.' WHERE name = 'South'`,
-		`SELECT updated_at = now() FROM geographies WHERE name = 'South'`)
+		`UPDATE geographies SET short_name = 'S.' WHERE country = 'XA' AND name = 'South'`,
+		`SELECT updated_at = now() FROM geographies WHERE country = 'XA' AND name = 'South'`)
 }

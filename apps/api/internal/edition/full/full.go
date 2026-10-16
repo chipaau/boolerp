@@ -170,7 +170,7 @@ type SeedSettings struct {
 }
 
 // DataSeeders load the seed files every database needs (C135, C137): audit_log's
-// monthly partitions (C146), the reference lists, the app catalogue (C165), and the
+// monthly partitions (C146), the reference lists (with the geographies, C215), the app catalogue (C165), and the
 // operator tenant (C142) with its apps (C166), in
 // dependency order like Migrations. Both cmd/deploy (in
 // production) and cmd/seed (in development) run them, as the migration role (db),
@@ -182,6 +182,8 @@ func DataSeeders(db *pgxpool.Pool, s SeedSettings) []seed.Seeder {
 		referenceseeds.NewLegalForms(db),
 		referenceseeds.NewSectors(db),
 		referenceseeds.NewInstitutionTypes(db),
+		referenceseeds.NewGeographyTypes(db),
+		referenceseeds.NewGeographies(db),
 		tenancyseeds.NewApps(db, Apps),
 		authorizationseeds.NewCapabilities(db, Apps),
 		authorizationseeds.NewRoles(db, Roles, Apps),
