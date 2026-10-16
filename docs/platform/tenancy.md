@@ -157,9 +157,11 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
     carries none), by name, `q` on the name.
   - `GET /api/v1/institution-types`: `{code, name, sector: {code, name}}`, by sector then
     name, optional `sector` filter and `q` on the name; types of a retired sector are left out.
-  - `GET /api/v1/geography-types?country=MV` (C215, C217): `country` is required; the
-    country's address levels `{id, code, name, level}`, by level; a form shows a picker or a
-    text field for each, labelled by its name.
+  - `GET /api/v1/geography-types[?country=MV]` (C215, C217, C220): the address levels
+    `{id, country, code, name, level, placeCount}`, by the country's name, then level, then name; `q` on the
+    name or code. With `country`, one country's, for a form's picker or text field per level,
+    labelled by its name; without, every country's, for the admin console. `placeCount` is how
+    many current places of the level are listed (none: the level is typed).
   - `GET /api/v1/geographies?country=MV[&parent=<id>]` (C215, C217): `country` is required;
     the places under `parent`, or at level 1 without it, as one picker's choices
     `{id, type, typeName, level, code, name, shortName, latitude, longitude, hasChildren}`,

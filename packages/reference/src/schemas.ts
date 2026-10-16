@@ -41,3 +41,18 @@ export const institutionTypeSchema = z.object({
 })
 export type InstitutionType = z.infer<typeof institutionTypeSchema>
 export const institutionTypePageSchema = listOf(institutionTypeSchema)
+
+/**
+ * A country's address level (GET /api/v1/geography-types, C215): its level (1 under the country),
+ * the label a form shows, and how many current places of it are listed (none: the level is typed).
+ */
+export const geographyTypeSchema = z.object({
+  id,
+  country: z.string().length(2),
+  code: z.string(),
+  name: z.string(),
+  level: z.number().int().min(1).max(9),
+  placeCount: z.number().int().nonnegative(),
+})
+export type GeographyType = z.infer<typeof geographyTypeSchema>
+export const geographyTypePageSchema = listOf(geographyTypeSchema)

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { act, fireEvent, render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 
 import { ListToolbar, SEARCH_DEBOUNCE_MS } from "@workspace/ui/components/list-toolbar"
 
@@ -66,5 +67,30 @@ describe("ListToolbar", () => {
   it("offers no clearing when nothing is on", () => {
     render(<ListToolbar search={{ value: undefined, onChange: vi.fn(), placeholder: "Search" }} onClear={vi.fn()} />)
     expect(screen.queryByText("Clear filters")).not.toBeInTheDocument()
+  })
+
+  it("picks a long list's filter in a searchable combobox", async () => {
+    const onCountry = vi.fn()
+    const options = [
+      { value: "MV", label: "Maldives", keywords: "MV MDV" },
+      { value: "LK", label: "Sri Lanka", keywords: "LK LKA" },
+    ]
+    const { rerender } = render(
+      <ListToolbar
+        filters={[{ key: "country", label: "Country", type: "combobox", placeholder: "All countries", options, value: undefined, onChange: onCountry }]}
+      />
+    )
+    const box = screen.getByRole("combobox", { name: "Country" })
+    expect(box).toHaveAttribute("placeholder", "All countries")
+    const user = userEvent.setup()
+    await user.type(box, "mdv")
+    await user.click(await screen.findByRole("option", { name: "Maldives" }))
+    expect(onCountry).toHaveBeenLastCalledWith("MV")
+    rerender(
+      <ListToolbar
+        filters={[{ key: "country", label: "Country", type: "combobox", placeholder: "All countries", options, value: "LK", onChange: onCountry }]}
+      />
+    )
+    expect(screen.getByRole("combobox", { name: "Country" })).toHaveValue("Sri Lanka")
   })
 })

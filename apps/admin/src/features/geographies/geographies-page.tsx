@@ -23,7 +23,11 @@ const matches = (text: string, q: string) => !q.trim() || text.toLowerCase().inc
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
 /** Where each tab lives: the tab is the path, so it can be linked to and survives a reload (C218). */
-const TAB_PATHS = { geographies: '/geographies/geographies', countries: '/geographies/countries' } as const
+const TAB_PATHS = {
+  geographies: '/geographies/geographies',
+  countries: '/geographies/countries',
+  'geography-types': '/geographies/geography-types',
+} as const
 
 /**
  * The geographies screen's title and tabs, which each tab's page renders above its own list: the
@@ -38,6 +42,7 @@ export function GeographiesHeader({ tab, meta, actions }: { tab: GeographiesTab;
         <TabsList>
           <TabsTrigger value="geographies">Geographies</TabsTrigger>
           <TabsTrigger value="countries">Countries</TabsTrigger>
+          <TabsTrigger value="geography-types">Geography types</TabsTrigger>
         </TabsList>
       </Tabs>
     </>
