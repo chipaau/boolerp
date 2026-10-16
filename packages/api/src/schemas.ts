@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { rememberedPageSize } from '@workspace/ui/lib/page-size'
 
 /** A page of a list (C68): `{items, page, pageSize, total}`, each item parsed with `item`. */
 export function listOf<T extends z.ZodType>(item: T) {
@@ -21,7 +22,8 @@ export const timestamp = z.iso.datetime({ offset: true })
 /**
  * The list parameters every list route validates in its search (C174): page and pageSize within
  * the API's limits, an optional search, and a sort among `sorts` (each optionally descending,
- * comma-separated). Invalid values fall back to the defaults instead of failing the route.
+ * comma-separated). Invalid values fall back to the defaults instead of failing the route. A URL
+ * without a page size opens at the one this browser remembers the viewer choosing (C222).
  */
 export function listSearch<const S extends string>(opts: { sorts: readonly S[]; defaultPageSize?: number }) {
   const size = opts.defaultPageSize ?? 25
@@ -30,7 +32,13 @@ export function listSearch<const S extends string>(opts: { sorts: readonly S[]; 
     .refine((v) => v.split(',').every((p) => (opts.sorts as readonly string[]).includes(p.replace(/^-/, ''))))
   return z.object({
     page: z.coerce.number().int().min(1).catch(1).default(1),
-    pageSize: z.coerce.number().int().min(1).max(100).catch(size).default(size),
+    pageSize: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .catch(() => rememberedPageSize(size))
+      .default(() => rememberedPageSize(size)),
     q: z.string().trim().min(1).max(100).optional().catch(undefined),
     sort: sort.optional().catch(undefined),
   })

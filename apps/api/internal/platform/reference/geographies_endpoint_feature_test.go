@@ -23,11 +23,12 @@ type geographyTypeItem struct {
 }
 
 type geographyItem struct {
-	ID, Type, TypeName, Name string
-	Level                    int
-	Code, ShortName          *string
-	Latitude, Longitude      *float64
-	HasChildren              bool
+	ID, Type, TypeName, Name, Country string
+	Level, ChildCount                 int
+	Code, ShortName, ParentID         *string
+	ParentName                        *string
+	Latitude, Longitude               *float64
+	HasChildren                       bool
 }
 
 func TestFeatureACountrysAddressLevelsAreListed(t *testing.T) {
@@ -74,7 +75,7 @@ func TestFeatureAPickerListsThePlacesUnderOneParent(t *testing.T) {
 	w := addressWorld(t)
 	h := referenceRouter(w.tx, &authztest.Stated{Allow: true})
 
-	rec, p := get[geographyItem](t, h, "/api/v1/geographies?country=XA")
+	rec, p := get[geographyItem](t, h, "/api/v1/geographies?country=XA&parent=none")
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	names := func(items []geographyItem) []string {
 		out := []string{}
@@ -83,11 +84,14 @@ func TestFeatureAPickerListsThePlacesUnderOneParent(t *testing.T) {
 		}
 		return out
 	}
-	assert.Equal(t, []string{"Capital", "North"}, names(p.Items), "level 1 without a parent, by name; Gone is retired")
+	assert.Equal(t, []string{"Capital", "North"}, names(p.Items), "level 1 with parent=none, by name; Gone is retired")
 	north := p.Items[1]
 	assert.Equal(t, "region", north.Type)
 	assert.Equal(t, "Region", north.TypeName)
-	assert.True(t, north.HasChildren, "Port is under it")
+	assert.True(t, north.HasChildren, "Port and Quay are under it")
+	assert.Equal(t, 2, north.ChildCount)
+	assert.Equal(t, "XA", north.Country)
+	assert.Nil(t, north.ParentName)
 	require.NotNil(t, north.ShortName)
 	assert.Equal(t, "N.", *north.ShortName)
 	require.NotNil(t, north.Latitude)
@@ -95,19 +99,55 @@ func TestFeatureAPickerListsThePlacesUnderOneParent(t *testing.T) {
 
 	_, p = get[geographyItem](t, h, "/api/v1/geographies?country=XA&parent="+w.north)
 	assert.Equal(t, []string{"Port", "Quay"}, names(p.Items))
+	require.NotNil(t, p.Items[0].ParentName)
+	assert.Equal(t, "North", *p.Items[0].ParentName, "each names its parent")
+	assert.Equal(t, w.north, *p.Items[0].ParentID)
 	assert.True(t, p.Items[0].HasChildren)
 	assert.False(t, p.Items[1].HasChildren)
 	_, p = get[geographyItem](t, h, "/api/v1/geographies?country=XA&parent="+w.north+"&q=qua")
 	assert.Equal(t, []string{"Quay"}, names(p.Items), "searched by name")
-	_, p = get[geographyItem](t, h, "/api/v1/geographies?country=XA&q=n.")
+	_, p = get[geographyItem](t, h, "/api/v1/geographies?country=XA&parent=none&q=n.")
 	assert.Equal(t, []string{"North"}, names(p.Items), "and by short name")
 	_, p = get[geographyItem](t, h, "/api/v1/geographies?country=XA&parent=not-a-place")
 	assert.Empty(t, p.Items, "a parent that is no place has nothing under it")
 
-	rec, _ = get[geographyItem](t, h, "/api/v1/geographies")
-	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "a country is required")
 	rec, _ = get[geographyItem](t, referenceRouter(w.tx, &authztest.Stated{Allow: false}), "/api/v1/geographies?country=XA")
 	assert.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+// Without a parent, every place at any level: the admin console's list (C221), of a country and a
+// type when given, by the country's name, then level, then name.
+func TestFeatureTheListShowsEveryPlace(t *testing.T) {
+	w := addressWorld(t)
+	h := referenceRouter(w.tx, &authztest.Stated{Allow: true})
+	names := func(items []geographyItem) []string {
+		out := []string{}
+		for _, i := range items {
+			if i.Country == "XA" || i.Country == "XB" {
+				out = append(out, i.Country+"/"+i.Name)
+			}
+		}
+		return out
+	}
+
+	_, p := get[geographyItem](t, h, "/api/v1/geographies?country=XA")
+	assert.Equal(t, []string{"XA/Capital", "XA/North", "XA/Port", "XA/Quay", "XA/Old Quarter"}, names(p.Items),
+		"every level, by level then name; Gone is retired")
+	assert.Equal(t, 5, p.Total)
+	assert.Equal(t, 25, p.PageSize, "the usual page; a picker asks for more")
+
+	_, p = get[geographyItem](t, h, "/api/v1/geographies?country=XA&type=town")
+	assert.Equal(t, []string{"XA/Port", "XA/Quay"}, names(p.Items), "of one type, by its code")
+
+	testdb.Exec(t, w.tx, `UPDATE countries SET name = 'Aardvark Testland' WHERE code = 'XB'`)
+	_, p = get[geographyItem](t, h, "/api/v1/geographies?q=o&pageSize=300")
+	assert.Equal(t, []string{"XB/South", "XA/North", "XA/Port", "XA/Old Quarter"}, names(p.Items),
+		"every country's, by the country's name first")
+	_, p = get[geographyItem](t, h, "/api/v1/geographies?q=o&sort=-name&pageSize=300")
+	assert.Equal(t, []string{"XB/South", "XA/Port", "XA/Old Quarter", "XA/North"}, names(p.Items))
+
+	rec, _ := get[geographyItem](t, h, "/api/v1/geographies?sort=places")
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "an unknown sort")
 }
 
 func TestFeatureAFailedPickerReadIsUnavailable(t *testing.T) {

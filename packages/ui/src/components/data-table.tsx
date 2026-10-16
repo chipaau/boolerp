@@ -14,6 +14,7 @@ import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
 import { EmptyState } from "@workspace/ui/components/empty-state"
 import { RowsShown } from "@workspace/ui/components/rows-shown"
+import { rememberPageSize } from "@workspace/ui/lib/page-size"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Table,
@@ -278,8 +279,13 @@ export function DataTable<T extends RowData>({
                 shown={Math.min(pageSize, total)}
                 total={total}
                 limit={pageSize}
-                // RowsShown offers All; the API serves at most MAX_PAGE_SIZE rows a page (C68).
-                onLimit={(n) => onPageSizeChange(Number.isFinite(n) ? n : MAX_PAGE_SIZE)}
+                // RowsShown offers All; the API serves at most MAX_PAGE_SIZE rows a page (C68). The
+                // choice is remembered for every list in the app (C222).
+                onLimit={(n) => {
+                  const size = Number.isFinite(n) ? n : MAX_PAGE_SIZE
+                  rememberPageSize(size)
+                  onPageSizeChange(size)
+                }}
               />
             ) : (
               <span className="tabular-nums">

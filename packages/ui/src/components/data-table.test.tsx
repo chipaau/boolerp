@@ -119,4 +119,13 @@ describe("DataTable", () => {
     expect(screen.getByText("Alpha")).toBeInTheDocument()
     expect(screen.queryByText("This list couldn't be loaded")).not.toBeInTheDocument()
   })
+
+  it("remembers the page size chosen for every list in the app (C222)", async () => {
+    const user = userEvent.setup()
+    const handlers = setup({ total: 249 })
+    await user.click(screen.getByRole("combobox", { name: "Rows to show" }))
+    await user.click(await screen.findByRole("option", { name: "50" }))
+    expect(handlers.onPageSizeChange).toHaveBeenCalledWith(50)
+    expect(localStorage.getItem("bool:list:page-size")).toBe("50")
+  })
 })

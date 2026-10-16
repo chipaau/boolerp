@@ -12,6 +12,7 @@ globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) =>
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {
   cleanup()
+  localStorage.clear() // a page size one test chose is not the next one's (C222)
   server.resetHandlers()
 })
 afterAll(() => server.close())

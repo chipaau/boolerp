@@ -62,12 +62,34 @@ describe('the countries tab', () => {
   })
 })
 
+describe('the remembered page size (C222)', () => {
+  it('opens every list at the size last chosen on any of them', async () => {
+    countriesApi([country('MV', 'Maldives', 407)], 249)
+    const seen: URLSearchParams[] = []
+    server.use(
+      http.get('/api/v1/geography-types', ({ request }) => {
+        seen.push(new URL(request.url).searchParams)
+        return HttpResponse.json({ items: [], page: 1, pageSize: 50, total: 0 })
+      })
+    )
+    const { router } = renderRoute('/geographies/countries')
+    await screen.findByText('Maldives')
+    await userEvent.click(screen.getByRole('combobox', { name: 'Rows to show' }))
+    await userEvent.click(await screen.findByRole('option', { name: '50' }))
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ pageSize: 50 }))
+
+    await router.navigate({ to: '/geographies/geography-types' })
+    await waitFor(() => expect(seen.at(-1)?.get('pageSize')).toBe('50'))
+  })
+})
+
 describe('the geographies tabs (C218)', () => {
   it('has each tab at its own path: /geographies opens the first, and the tabs move between them', async () => {
     countriesApi([country('MV', 'Maldives', 407)])
+    server.use(http.get('/api/v1/geographies', () => HttpResponse.json({ items: [], page: 1, pageSize: 25, total: 0 })))
     const { router } = renderRoute('/geographies')
     await waitFor(() => expect(router.state.location.pathname).toBe('/geographies/geographies'))
-    expect(await screen.findByRole('button', { name: 'Add a geography' })).toBeInTheDocument()
+    expect(await screen.findByRole('tab', { name: 'Geographies', selected: true })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('tab', { name: 'Countries' }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/geographies/countries'))

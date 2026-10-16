@@ -56,3 +56,26 @@ export const geographyTypeSchema = z.object({
 })
 export type GeographyType = z.infer<typeof geographyTypeSchema>
 export const geographyTypePageSchema = listOf(geographyTypeSchema)
+
+/**
+ * A place addresses pick from (GET /api/v1/geographies, C215, C221): its type and level, its
+ * country and parent, its point, and how many current places are under it (the next picker's).
+ */
+export const geographySchema = z.object({
+  id,
+  type: z.string(),
+  typeName: z.string(),
+  level: z.number().int().min(1).max(9),
+  country: z.string().length(2),
+  code: z.string().nullable(),
+  name: z.string(),
+  shortName: z.string().nullable(),
+  parentId: id.nullable(),
+  parentName: z.string().nullable(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  childCount: z.number().int().nonnegative(),
+  hasChildren: z.boolean(),
+})
+export type Geography = z.infer<typeof geographySchema>
+export const geographyPageSchema = listOf(geographySchema)

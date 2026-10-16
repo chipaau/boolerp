@@ -578,6 +578,9 @@ importers:
       '@workspace/session':
         specifier: workspace:*
         version: link:../session
+      '@workspace/ui':
+        specifier: workspace:*
+        version: link:../ui
       zod:
         specifier: ^4.6.5
         version: 4.6.5

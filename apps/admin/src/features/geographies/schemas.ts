@@ -16,6 +16,16 @@ export const countrySorts = ['name', 'code'] as const
 export const countryListSearch = listSearch({ sorts: countrySorts })
 export type CountryListSearch = z.infer<typeof countryListSearch>
 
+/** The geographies list's sort fields: the API's (C221). */
+export const geographySorts = ['country', 'level', 'name', 'code'] as const
+
+/** The geographies list's URL: page, pageSize, q, sort, and the country and type filters. */
+export const geographyListSearch = listSearch({ sorts: geographySorts }).extend({
+  country: z.string().regex(/^[A-Z]{2}$/).optional().catch(undefined),
+  type: z.string().regex(/^[a-z][a-z0-9_]{1,49}$/).optional().catch(undefined),
+})
+export type GeographyListSearch = z.infer<typeof geographyListSearch>
+
 /** The geography types list's sort fields: the API's (C220). */
 export const geographyTypeSorts = ['country', 'level', 'name', 'code'] as const
 

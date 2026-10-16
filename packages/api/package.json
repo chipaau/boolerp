@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@workspace/session": "workspace:*",
+    "@workspace/ui": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {
