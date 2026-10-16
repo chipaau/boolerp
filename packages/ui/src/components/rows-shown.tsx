@@ -9,8 +9,8 @@ const STEPS = [10, 20, 25, 50, 100] as const
  * A table footer's count with the number of rows as a dropdown in the sentence itself:
  * "Showing [10 ▾] of 213", and on a phone just "[10 ▾] of 213", so it sits on one line with the
  * pager (C219); the page above names what is listed. The choices are the steps that still cut the
- * list, then All. When every row fits on one page there is nothing to choose: just the count
- * ("19 of 19").
+ * list, then All. When every row already fits on one page the choice reads All ("Showing [All] of
+ * 19", not the page size, which would claim 25 of 19), and still offers the smaller pages.
  */
 function RowsShown({
   shown,
@@ -27,12 +27,11 @@ function RowsShown({
   className?: string
 }) {
   const steps = STEPS.filter((_, i) => i === 0 || STEPS[i - 1] < total)
-  const value = Number.isFinite(limit) ? String(limit) : "all"
-  const oneOrAllPages = Number.isFinite(limit) ? total <= limit : false
+  const value = Number.isFinite(limit) && total > limit ? String(limit) : "all"
   return (
     <span data-slot="rows-shown" className={cn("inline-flex items-center gap-2 whitespace-nowrap tabular-nums", className)}>
       <span className="hidden sm:inline">Showing</span>
-      {total > STEPS[0] && !oneOrAllPages ? (
+      {total > STEPS[0] ? (
         <SelectField
           aria-label="Rows to show"
           value={value}

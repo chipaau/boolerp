@@ -18,10 +18,15 @@ describe("RowsShown", () => {
     expect(container.textContent).toBe("Showing4of 4")
   })
 
-  it("shows the count, not a choice, when every row fits on one page", () => {
-    const { container } = render(<RowsShown shown={19} total={19} limit={25} onLimit={() => {}} />)
-    expect(container.textContent).toBe("Showing19of 19")
-    expect(screen.queryByRole("combobox", { name: "Rows to show" })).not.toBeInTheDocument()
+  it("reads All when every row fits on one page, and still offers smaller pages", async () => {
+    const user = userEvent.setup()
+    const onLimit = vi.fn()
+    render(<RowsShown shown={19} total={19} limit={25} onLimit={onLimit} />)
+    const choice = screen.getByRole("combobox", { name: "Rows to show" })
+    expect(choice).toHaveTextContent("All")
+    await user.click(choice)
+    await user.click(await screen.findByRole("option", { name: "10" }))
+    expect(onLimit).toHaveBeenCalledWith(10)
   })
 
   it("offers the same page sizes whatever is chosen, the default 25 among them", async () => {
@@ -45,7 +50,7 @@ describe("RowsShown", () => {
   })
 
   it("groups the thousands, as the page's own count does", () => {
-    const { container } = render(<RowsShown shown={5413} total={5413} limit={10000} onLimit={() => {}} />)
-    expect(container.textContent).toBe("Showing5,413of 5,413")
+    const { container } = render(<RowsShown shown={100} total={5413} limit={100} onLimit={() => {}} />)
+    expect(container.textContent).toMatch(/of 5,413$/)
   })
 })
