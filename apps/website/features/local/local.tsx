@@ -148,7 +148,7 @@ export function Local() {
     <section ref={section} id="local" className="relative overflow-hidden bg-background">
       <div aria-hidden="true" className="office-grid pointer-events-none absolute inset-0" />
 
-      <div className="relative mx-auto w-full max-w-7xl px-6 pb-24 pt-24 2xl:max-w-[88rem]">
+      <div className="relative mx-auto w-full max-w-7xl px-6 pb-24 pt-24 lg:motion-safe:pb-48 2xl:max-w-[88rem]">
         <div className="max-w-2xl">
           <p className="text-overline tracking-[0.28em] text-muted-foreground">Designed for local realities</p>
           <h2 className="section-title mt-4 text-foreground">

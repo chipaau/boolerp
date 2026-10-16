@@ -285,27 +285,39 @@ export function Tickets() {
           .to(q('[data-tickets-heading] h2'), { color: 'var(--foreground)', textShadow: '0 0 0 rgb(0 0 0 / 0)', duration: 1.2, ease: 'sine.inOut' }, 0.15)
           .to(q('[data-tickets-heading] h2 span'), { color: 'var(--brand)', duration: 1.2, ease: 'sine.inOut' }, 0.15)
 
-        // the section sits a screen up, under the end of Deploy (which lies on it like a sheet of paper,
-        // globals.css .deploy-sheet), and is held still from there: the first screen of scrolling lifts
-        // Deploy away to uncover the orange, the rest plays the tickets
+        // the section sits under Deploy, top to top (Deploy lies on it like a sheet of paper, globals.css
+        // .deploy-sheet; --deploy-h, its height, sets how far up it tucks), and is held still from
+        // there: scrolling first lifts Deploy away to uncover the orange, then plays the tickets
+        const root = document.documentElement
+        const deploy = document.getElementById('deployment')
+        const lift = () => deploy?.offsetHeight ?? innerHeight
+        const tuck = () => root.style.setProperty('--deploy-h', `${lift()}px`)
+        tuck()
+        const watch = new ResizeObserver(() => {
+          tuck()
+          ScrollTrigger.refresh()
+        })
+        if (deploy) watch.observe(deploy)
         const pin = ScrollTrigger.create({
           trigger: section.current,
           start: 'top top',
-          end: () => `+=${innerHeight * 2.9}`,
+          end: () => `+=${lift() + innerHeight * 1.9}`,
           pin: true,
           invalidateOnRefresh: true,
           onToggle: (self) => document.documentElement.toggleAttribute('data-pinned', self.isActive),
         })
         const play = ScrollTrigger.create({
-          start: () => pin.start + innerHeight,
+          start: () => pin.start + lift(),
           end: () => pin.end,
           scrub: 1,
           animation: tl,
           invalidateOnRefresh: true,
         })
         return () => {
+          watch.disconnect()
           play.kill()
           pin.kill()
+          root.style.removeProperty('--deploy-h')
         }
       })
       return () => mm.revert()
@@ -314,10 +326,12 @@ export function Tickets() {
   )
 
   return (
-    <section ref={section} id="solutions" className="tickets-field relative z-0 overflow-hidden lg:motion-safe:-mt-[100svh] lg:motion-safe:h-svh">
+    <section ref={section} id="solutions" className="tickets-field relative z-0 overflow-hidden lg:motion-safe:-mt-[calc(var(--deploy-h,100svh)-2px)] lg:motion-safe:h-svh">
 
-      {/* the cream the orange fades into as the tickets come */}
-      <div data-tickets-cream="" aria-hidden="true" className="invisible absolute inset-0 bg-background opacity-0" />
+      {/* the cream (and the drafting paper) the orange fades into as the tickets come */}
+      <div data-tickets-cream="" aria-hidden="true" className="invisible absolute inset-0 bg-background opacity-0">
+        <div className="office-grid absolute inset-0" />
+      </div>
       {/* the heading, large, in the middle of the screen (the tickets fly over it) */}
       <div data-tickets-heading="" className="relative z-0 mx-auto max-w-5xl px-6 pt-24 text-center lg:motion-safe:absolute lg:motion-safe:inset-x-0 lg:motion-safe:top-1/2 lg:motion-safe:-translate-y-1/2 lg:motion-safe:pt-0">
         <p className="text-overline tracking-[0.28em] text-white/80">Our solutions</p>

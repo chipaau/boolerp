@@ -1,33 +1,29 @@
-import { Button } from '@workspace/ui/components/button'
+import { ArrowRight } from 'lucide-react'
 import { Brand } from './brand'
-import { CTA } from './cta'
 import { HeaderMotion } from './header-motion'
+import { HexFill } from './hex-fill'
+import { CELL, CELL_LABEL } from './header-cell'
 import { NavLinks } from './nav-links'
 
 /**
- * The site's top bar: brand, sections, and the ways in. Sign in is always there; Get started joins
- * it once the hero's own buttons have scrolled away, so the page never offers two at once
- * (HeaderMotion, which also moves the bar aside while the visitor scrolls down).
+ * The site's top bar, ruled into cells: the brand, then the sections and Sign in, then Contact us in
+ * amber, the way in. Each cell fills with hexagons on hover (nav-links.tsx). HeaderMotion moves the
+ * bar aside while the visitor scrolls down.
  */
 export function SiteHeader({ className }: { className?: string }) {
   return (
     <HeaderMotion className={className}>
-      <div className="mx-auto flex h-20 max-w-7xl items-center gap-8 px-6 2xl:max-w-[88rem]">
-        <Brand className="text-[1.6rem]" />
-        <NavLinks />
-        <div className="ml-auto flex items-center lg:ml-0">
-          <Button render={<a href="#sign-in" />}>
-            Sign in
-          </Button>
-          {/* hidden (and inert) while the hero's buttons are on screen */}
-          <span
-            data-header-cta=""
-            className="-my-2 grid max-w-0 overflow-hidden py-2 opacity-0 transition-[max-width,opacity,margin] duration-300 ease-out group-data-[cta=true]/header:ml-2 group-data-[cta=true]/header:max-w-48 group-data-[cta=true]/header:opacity-100"
-          >
-            <Button variant="brand" className={CTA} render={<a href="#get-started" />}>
-              Get started
-            </Button>
-          </span>
+      <div className="flex h-14 border-b border-border bg-background">
+        <div className="flex items-center px-6">
+          <Brand className="text-[1.3rem] [&_img]:h-7" />
+        </div>
+        <div className="ml-auto flex h-full">
+          <NavLinks />
+          <a href="/#contact" className={`${CELL} header-cell-accent w-[8.5rem] xl:w-[9.5rem]`}>
+            <HexFill />
+            <span className={CELL_LABEL}>Contact us</span>
+            <ArrowRight className="relative size-4" strokeWidth={1.8} />
+          </a>
         </div>
       </div>
     </HeaderMotion>

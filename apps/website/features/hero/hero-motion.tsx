@@ -54,8 +54,6 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
       const glow = one<HTMLElement>('[data-today-glow]')
       const tiles = q('[data-live-tile="app"]')
       const today = one<HTMLElement>('[data-live-tile="today"] [data-live-tile-face]')
-      const underline = one<SVGSVGElement>('[data-hero-underline]')
-      const drawn = 'inset(-50% -5% -50% -5%)' // the stroke uncovered, round caps included (globals.css)
       const tilt = one<HTMLElement>('[data-hero-tilt]')
       const trail = one<SVGSVGElement>('[data-bee-trail]')
       const trailDots = one<SVGPathElement>('[data-bee-trail-dots]')
@@ -155,9 +153,8 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
         gsap.to([landed, ...reveals], { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', onComplete: finish })
         gsap.to(shadow ?? [], { opacity: SHADOW_OPACITY, duration: 0.5 })
         gsap.to(sharp ?? [], { opacity: 1, duration: 0.5, ease: 'sine.out' })
-        gsap.to(underline ?? [], { clipPath: drawn, duration: 0.5 })
       }
-      if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !sharp || !glow || !today || !underline || !trail || !trailDots || !trailReveal) return finish()
+      if (!scene || !air || !landed || !target || !shadow || !airClip || !landClip || !rest || !sharp || !glow || !today || !trail || !trailDots || !trailReveal) return finish()
 
       // ── the scroll story's bee ───────────────────────────────────────────────────────────────
       // The story says where the bee belongs (story.ts, onBee): on the hero's tablet at the top, away
@@ -422,8 +419,6 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
               flight(tl, measure(hero, scene, air, target))
               focus(tl, SCENE_TIMING.focus)
             }
-            // the headline's stroke draws on from left to right as the bee crosses above it
-            tl.to(underline!, { clipPath: drawn, duration: mobile ? 1 : 1.5, ease: 'sine.inOut' }, mobile ? 0.4 : 0.5)
             // the supporting copy settles in while the bee is still in the air
             tl.to(reveals, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1 }, mobile ? 0.2 : 1.2)
           })

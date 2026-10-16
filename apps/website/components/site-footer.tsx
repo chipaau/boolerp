@@ -2,21 +2,27 @@ import { ArrowUp } from 'lucide-react'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Brand } from './brand'
 import { CTA, CTA_ARROW } from './cta'
+import { CELL, CELL_LABEL } from './header-cell'
+import { HexFill } from './hex-fill'
 
 const LEGAL = ['Privacy', 'Terms', 'Security']
 
 /**
- * The page's close: the last call (the promise and Book a demo), then the brand and Back to top,
- * then the small print. Holds the #contact anchor every call to action points at.
+ * The page's close: the last call (the promise and Book a demo), then a ruled bar like the header's
+ * with the brand, the small print and Back to top. Holds the #contact anchor every call to action
+ * points at.
  */
 export function SiteFooter() {
   return (
     <footer id="contact" className="relative overflow-hidden border-t border-border/60 bg-background">
 
+      {/* the drafting paper behind the last call, fading out toward the bar below */}
+      <div aria-hidden="true" className="office-grid grid-fade-bottom pointer-events-none absolute inset-0" />
+
       {/* the last call */}
-      <div className="relative mx-auto grid w-full max-w-7xl gap-8 px-6 pb-16 pt-20 lg:grid-cols-[1.2fr_1fr] lg:items-end 2xl:max-w-[88rem]">
+      <div className="relative mx-auto grid w-full max-w-7xl gap-8 px-6 py-24 lg:grid-cols-[1.2fr_1fr] lg:items-end 2xl:max-w-[88rem]">
         <div>
-          <p className="text-overline tracking-[0.28em] text-(--brand)">Ready to simplify your operations?</p>
+          <p className="text-overline tracking-[0.28em] text-muted-foreground">Ready to simplify your operations?</p>
           <h2 className="section-title mt-4 text-foreground">
             Let’s build a workspace <span className="text-(--brand)">that works for you.</span>
           </h2>
@@ -37,26 +43,25 @@ export function SiteFooter() {
         </div>
       </div>
 
-      {/* the brand, and Back to top */}
-      <div className="relative mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-6 border-t border-border/60 px-6 py-8 2xl:max-w-[88rem]">
-        <Brand className="text-[1.5rem]" />
-        <Button size="lg" variant="outline" render={<a href="#" />}>
-          Back to top
-          <ButtonArrow>
-            <ArrowUp strokeWidth={2} />
-          </ButtonArrow>
-        </Button>
-      </div>
-
-      {/* the small print */}
-      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-3 border-t border-border/60 px-6 py-6 text-[13px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between 2xl:max-w-[88rem]">
-        <span>© {new Date().getFullYear()} Bool · Malé, Maldives</span>
-        <nav aria-label="Legal" className="flex flex-wrap gap-x-6 gap-y-2">
+      {/* the brand and the small print, then Back to top: one ruled bar, its cells filling with
+          hexagons on hover as the header's do */}
+      <div className="flex min-h-14 flex-wrap border-t border-border">
+        <div className="flex items-center gap-4 px-6 py-3">
+          <Brand className="text-[1.3rem] [&_img]:h-7" />
+          <span className="text-[13px] text-muted-foreground">© {new Date().getFullYear()} · Malé, Maldives</span>
+        </div>
+        <nav aria-label="Legal" className="ml-auto flex h-14">
           {LEGAL.map((l) => (
-            <a key={l} href="#" className="transition-colors hover:text-foreground">
-              {l}
+            <a key={l} href="#" className={`${CELL} px-5 sm:w-[7.25rem]`}>
+              <HexFill />
+              <span className={CELL_LABEL}>{l}</span>
             </a>
           ))}
+          <a href="#" className={`${CELL} px-5 sm:w-[8.5rem]`}>
+            <HexFill />
+            <span className={CELL_LABEL}>Back to top</span>
+            <ArrowUp className="relative size-4" strokeWidth={1.8} />
+          </a>
         </nav>
       </div>
     </footer>

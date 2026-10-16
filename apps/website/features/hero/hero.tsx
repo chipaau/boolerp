@@ -1,5 +1,4 @@
 import Image from 'next/image'
-import { HandStroke } from '@/components/hand-stroke'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
 import { Hexagon } from '@workspace/ui/components/hexagon'
 import { CTA, CTA_ARROW } from '@/components/cta'
@@ -35,7 +34,7 @@ export function Hero() {
       <script dangerouslySetInnerHTML={{ __html: MOTION_GATE }} />
       <HeroMotion className="relative isolate grid overflow-hidden bg-background lg:min-h-svh">
         {/* the drafting paper the next section is drawn on, under the hero too */}
-        <div aria-hidden="true" className="office-grid pointer-events-none absolute inset-0 -z-10" />
+        <div aria-hidden="true" className="office-grid grid-fade-top pointer-events-none absolute inset-0 -z-10" />
         {/* the scroll story's room: dark grey behind the playing tablet, faded in as it comes forward (story.ts) */}
         <div data-story-backdrop="" aria-hidden="true" className="pointer-events-none invisible fixed inset-0 -z-10 bg-surface-inverted opacity-0">
           {/* the drafting paper the next section is drawn on, here in light lines */}
@@ -49,13 +48,7 @@ export function Hero() {
           <div className="max-w-xl lg:max-w-[38%]">
             <p className="text-overline tracking-[0.28em] text-muted-foreground">One workspace. Multiple apps.</p>
             <h1 className="mt-5 text-balance text-[clamp(2.5rem,min(3.9vw,7svh),4.75rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
-              One workspace for{' '}
-              <span className="relative inline-block">
-                everything
-                {/* the hand-drawn amber stroke, wiped on from left to right as the bee passes over */}
-                <HandStroke data-hero-underline="" />
-              </span>{' '}
-              your team runs.
+              One workspace for everything your team runs.
             </h1>
             <p data-hero-reveal="copy" className="mt-6 max-w-lg text-pretty text-[clamp(1.0625rem,min(1.35vw,2.45svh),1.375rem)] leading-snug text-muted-foreground">
               Tasks, inventory, assets, procurement, notes and analytics. Connected in one workspace.
