@@ -304,6 +304,15 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   below the place that lists no places anywhere in the country is typed and required
   (`typedPlaces/<code>` `required`); typed names only those levels (`exists`, `excluded`, one
   per level, `unique`).
+- **A tenant's apps** (C166, C224), behind the `Operator` chain, whole apps only (no modules):
+  `GET /api/v1/tenants/{tenantID}/apps` (every current app the tenant may have, an `operator`
+  app only for the operator tenant, the default ones first, then by name, each with `on` and
+  its live activation's `activeFrom`, in the list envelope), `PUT …/apps/{key}` (turns it on,
+  `activated_by` the caller: `201` with `Location` when it was off, `200` when it was already
+  on), and `DELETE …/apps/{key}` (turns it off by ending the activation, a default app
+  included; `204`, or `404` when it is not on). An app the tenant may not have (unknown,
+  retired, or an operator app elsewhere) is `404`. Cerbos decides as for the addresses:
+  `tenancy:tenant` `list`, then `view` or `update` on the tenant.
 - The lookup before any tenant is known (C131): a `SECURITY DEFINER` function owned by
   `erp_lookup`, a `NOLOGIN BYPASSRLS` role with column-level `SELECT` on only the
   columns it reads and no writes. It pins `search_path`, schema-qualifies its tables,
