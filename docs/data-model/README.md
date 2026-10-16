@@ -1,6 +1,6 @@
 # Data model status
 
-Updated: 2026-10-08.
+Updated: 2026-10-16.
 Status: open. The confirmed and implemented tables are listed below, each with its
 confirmation. (A `sessions`
 table was approved for sessions in PostgreSQL and withdrawn when sessions moved to the
@@ -35,8 +35,9 @@ migrations or queries against that table.
 
 Tenant semantics and the isolation model must be settled before approving
 tenant-scoped employee persistence. UUID versions, identifier formats, soft
-deletion, hierarchy storage, bilingual fields, and identity linkage are not
-automatically inherited.
+deletion, hierarchy storage, and identity linkage are not automatically inherited.
+Text in other languages follows one pattern (C216): `<field>_translations jsonb` beside
+the English field, checked by `is_translations`.
 
 ## Approved tables
 
@@ -159,6 +160,58 @@ The rows come from `apps/api/internal/platform/reference/seeds/institution_types
 loaded by `cmd/deploy` and `cmd/seed` after the sectors (C135, C137). Row-level security
 as for `countries`. The migration is
 `apps/api/internal/platform/reference/migrations/00004_institution_types.sql`.
+
+### `geography_types` (platform reference data, C215)
+
+Fields confirmed 2026-10-16 by the user, keeping `active_to` (no `listed` flag: whether a
+level is a picker follows from the places listed under the chosen place above it). The
+levels of a country's addresses; several types may share a level (the Maldives' atolls
+and cities are both level 1). Global reference data, not tenant-scoped.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default. |
+| `country` | `char(2)` | Not null; references `countries.code`, `ON DELETE RESTRICT`. |
+| `code` | `text` | Not null; CHECK `^[a-z][a-z0-9_]{1,49}$`; unique with `country`. |
+| `name` | `text` | Not null, not blank: the form's label ("Atoll"). |
+| `level` | `smallint` | Not null; 1 to 9; 1 is directly under the country. |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable: retired; null = in use; not before `active_from`. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger on every update. |
+
+A unique constraint on `(id, country)` is the target of `geographies`' two-column foreign
+key, so a place's type is of its own country. Row-level security as for `countries`. The
+rows will come from a seed file with `geographies`. The migration is
+`apps/api/internal/platform/reference/migrations/00005_geography_types.sql`.
+
+### `geographies` (platform reference data, C215)
+
+Fields confirmed 2026-10-16 by the user, adding `short_name` and `name_translations` (the
+translations pattern, C216). The places addresses pick
+from: the Maldives' atolls, cities, islands, and Malé's wards; a country's states. Global
+reference data, not tenant-scoped.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `id` | `uuid` | Primary key, `uuidv7()` default. |
+| `country` | `char(2)` | Not null; references `countries.code`, `ON DELETE RESTRICT`. |
+| `type_id` | `uuid` | Not null; `(type_id, country)` references `geography_types (id, country)`, `ON DELETE RESTRICT`, so the type is the place's own country's; indexed. |
+| `parent_id` | `uuid` | Null only for a place of level 1; `(parent_id, country)` references `geographies (id, country)`, `ON DELETE RESTRICT`; indexed. |
+| `code` | `text` | Nullable: the official code where one exists (ISO 3166-2 `MV-26`, `US-CA`, or a national code); not blank; unique with `country`. |
+| `name` | `text` | Not null, not blank; unique among its siblings, ignoring case (`country, parent_id, type_id, lower(name)`, nulls not distinct): island names repeat across atolls. |
+| `name_translations` | `jsonb` | Not null, `'{}'` default: the name in other languages, keyed by language tag (`{"dv": "މާފުށި"}`); CHECK `is_translations` (C216). |
+| `short_name` | `text` | Nullable, not blank: the short form addresses write ("K." for Kaafu). |
+| `active_from` | `timestamptz` | Not null, `now()` default. |
+| `active_to` | `timestamptz` | Nullable: retired; null = in use; not before `active_from`. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger on every update. |
+
+Triggers keep the levels, which a CHECK cannot (it reads other rows): a place of level 1
+has no parent; any other has a parent of a lower level, levels may be skipped (an island
+under a city); a place's type may not change while its children are at that level or
+above it; and a type's level may not change once it has places. A unique constraint on
+`(id, country)` is the target of the parent key and, later, of addresses. Row-level
+security as for `countries`. The migration is
+`apps/api/internal/platform/reference/migrations/00006_geographies.sql`.
 
 ### `tenants` (tenancy module, C115, C136, C139, C141, C195)
 

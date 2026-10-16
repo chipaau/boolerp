@@ -42,6 +42,11 @@
   `docs/data-model/README.md` when given.
 - Update `erd.dbml` and write the migration in the same change, after confirmation;
   queries against a table come only after its migration exists.
+- Text in another language (C216): the field keeps its English value, and its other
+  languages go beside it in `<field>_translations jsonb NOT NULL DEFAULT '{}'
+  CHECK (is_translations(<field>_translations))`, keyed by BCP 47 tag (`{"dv": "…"}`).
+  Never a `local_name` column, a per-language column, or a translations table; add one
+  only where a document needs it, as a field confirmation like any other column.
 
 ## Documentation
 
