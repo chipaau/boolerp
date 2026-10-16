@@ -35,6 +35,9 @@
 /* the shared typeface, self-hosted by Next (app/layout.tsx) instead of loaded from Google's stylesheet */
 :root {
   --font-sans: var(--font-lato), -apple-system, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  /* the website's focus ring in a deep amber rather than the apps' sage: the brand's own orange is
+     too light to see on the cream (about 2:1); this one keeps the 3:1 a focus ring needs */
+  --ring: #c2650f;
 }
 
 /* scan this app's own source (the shared UI package is scanned by its own globals.css) */
@@ -56,6 +59,16 @@
   to {
     opacity: 0.34; /* SHADOW_OPACITY in flight.ts */
   }
+}
+/* the header waits above the screen while the bee flies in past it, and comes down once the bee is
+   clear of it (hero-motion.tsx sets data-header-in) or the opening is done; without the script,
+   after the same 8 s as the rest of the opening */
+html[data-hero-motion="pending"]:not([data-header-in]) .site-header {
+  translate: 0 -100%;
+  animation: hero-header-in 0.3s 8s forwards;
+}
+@keyframes hero-header-in {
+  to { translate: 0 0; }
 }
 html[data-hero-motion="pending"] {
   [data-bee-landed],
@@ -554,7 +567,7 @@ html.lenis body {
 .ticket-stub {
   position: absolute;
   inset-inline: 0;
-  background: linear-gradient(170deg, #ffffff, #fffcf7);
+  background: linear-gradient(170deg, #fffdf9, #fcf6ec);
 }
 .ticket-body {
   top: 0;

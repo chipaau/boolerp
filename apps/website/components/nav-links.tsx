@@ -7,17 +7,16 @@ import { CELL, CELL_LABEL } from './header-cell'
 import { HexFill } from './hex-fill'
 
 // the products with a page of their own, in the Products menu
-const PRODUCTS: { label: string; href: string; icon: LucideIcon; body: string }[] = [
+export const PRODUCTS: { label: string; href: string; icon: LucideIcon; body: string }[] = [
   { label: 'Control Centre', href: '/control-centre', icon: SlidersHorizontal, body: 'The record every app reads' },
 ]
 
-// Products, then the home page's own sections (from any page, so through `/`)
-const NAV: { label: string; href: string; menu?: boolean }[] = [
+// Products, two of the home page's own sections (from any page, so through `/`), and About us
+export const NAV: { label: string; href: string; menu?: boolean }[] = [
   { label: 'Products', href: '/control-centre', menu: true },
   { label: 'Workspace', href: '/#workspace' },
   { label: 'Deployment', href: '/#deployment' },
-  { label: 'Solutions', href: '/#solutions' },
-  { label: 'Sign in', href: '#sign-in' },
+  { label: 'About us', href: '/about' },
 ]
 
 /**

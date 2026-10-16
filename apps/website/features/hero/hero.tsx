@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import { Button, ButtonArrow } from '@workspace/ui/components/button'
+import { HexGlyph } from '@workspace/ui/components/hex-glyph'
 import { Hexagon } from '@workspace/ui/components/hexagon'
 import { CTA, CTA_ARROW } from '@/components/cta'
 import { BeeAirborne, BeeLanded, BeeTrail } from './bee'
@@ -54,12 +55,9 @@ export function Hero() {
               Tasks, inventory, assets, procurement, notes and analytics. Connected in one workspace.
             </p>
             <div data-hero-reveal="cta" className="mt-9 flex flex-wrap items-center gap-3">
-              <Button size="lg" variant="brand" className={CTA} render={<a href="#get-started" />}>
-                Get started
+              <Button size="lg" variant="brand" className={CTA} render={<a href="/contact" />}>
+                Let’s talk
                 <ButtonArrow className={CTA_ARROW} />
-              </Button>
-              <Button size="lg" variant="outline" render={<a href="#contact" />}>
-                Book a demo
               </Button>
             </div>
             {/* who uses it: a few faces and the teams they come from */}
@@ -123,7 +121,7 @@ function Scene() {
 }
 
 /**
- * At the foot of the first view (the window's, since the hero can be a little taller), centred: a drop of amber running down a hairline under the words,
+ * At the foot of the first view (the window's, since the hero can be a little taller), centred: a small amber hexagon running down a hairline under the words,
  * to say the hero goes on; clicked, it glides into the story (story.ts). It goes as the story
  * starts; desktop only.
  */
@@ -138,7 +136,7 @@ function ScrollCue() {
       >
         <span className="text-overline tracking-[0.28em] text-muted-foreground transition-colors group-hover:text-foreground">Scroll to explore</span>
         <span aria-hidden="true" className="relative h-10 w-px bg-foreground/15">
-          <span className="scroll-cue-drop absolute -left-0.5 top-0 size-[5px] rounded-full bg-(--brand-soft)" />
+          <HexGlyph size={7} className="scroll-cue-drop absolute -left-[3px] top-0 text-(--brand-soft)" />
         </span>
       </button>
     </div>
@@ -182,8 +180,8 @@ function StoryCaptions() {
 function StoryCta() {
   return (
     <div data-story-cta="" className="invisible absolute inset-x-0 top-[89%] z-40 hidden justify-center opacity-0 lg:flex">
-      <Button size="lg" variant="brand" className={CTA} render={<a href="#contact" />}>
-        Book a demo
+      <Button size="lg" variant="brand" className={CTA} render={<a href="/contact" />}>
+        Let’s talk
         <ButtonArrow className={CTA_ARROW} />
       </Button>
     </div>

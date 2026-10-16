@@ -8,7 +8,7 @@ import './globals.css'
 const lato = Lato({ subsets: ['latin'], weight: ['300', '400', '700', '900'], style: ['normal', 'italic'], display: 'swap', variable: '--font-lato' })
 
 export const metadata: Metadata = {
-  title: 'Bool ERP — one system for your institution',
+  title: 'Bool ERP — one workspace for everything your team runs',
   description:
     'Multi-tenant ERP for Maldivian councils, ministries, health facilities, and companies. Inventory, HR, procurement, and performance — as cloud SaaS or self-hosted.',
   // the same mark as the other Bool apps (identity, workspace, admin)

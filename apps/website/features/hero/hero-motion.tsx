@@ -421,6 +421,8 @@ export function HeroMotion({ children, className }: { children: ReactNode; class
             }
             // the supporting copy settles in while the bee is still in the air
             tl.to(reveals, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1 }, mobile ? 0.2 : 1.2)
+            // and the header comes down once the bee is clear of it (globals.css, the opening)
+            tl.call(() => (html.dataset.headerIn = ''), [], mobile ? 0 : 1.5)
           })
           ready(clips, CLIP_WAIT_MS).then(
             () => start(),

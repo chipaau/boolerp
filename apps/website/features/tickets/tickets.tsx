@@ -137,7 +137,7 @@ function Back({ t }: { t: Ticket }) {
         <text x="50" y="158" fontSize="15" letterSpacing="4" fontWeight="700">
           BOOL / {t.name.toUpperCase()}
         </text>
-        <text x="47" y="362" fontSize="100" fontStyle="italic" fontWeight="400" letterSpacing="-2" fill="#FFF5E7">
+        <text x="47" y="352" fontSize="82" fontWeight="300" letterSpacing="-2" fill="#FFF5E7">
           {t.name}
         </text>
       </g>
@@ -184,7 +184,7 @@ function Front({ t }: { t: Ticket }) {
         </svg>
         <div className="relative flex h-full flex-col justify-between px-[9%] pb-[9%] pt-[10%]">
           <div>
-            <h3 className="text-[clamp(2.6rem,3.6vw,3.4rem)] italic leading-none tracking-[-0.03em] text-foreground">{t.name}</h3>
+            <h3 className="text-[clamp(2rem,2.7vw,2.5rem)] font-light leading-none tracking-[-0.03em] text-foreground">{t.name}</h3>
             <p className="card-body mt-[7%] max-w-[90%] text-foreground/75">{t.body}</p>
           </div>
           <ul className="grid gap-2.5">
@@ -200,7 +200,7 @@ function Front({ t }: { t: Ticket }) {
           </ul>
         </div>
       </div>
-      <a href="#contact" className="ticket-stub group/stub outline-none" aria-label={`${t.name}: let’s talk about Bool`}>
+      <a href="/contact" className="ticket-stub group/stub outline-none" aria-label={`${t.name}: let’s talk about Bool`}>
         <span className="flex h-full flex-col justify-center px-[8%]">
           <span className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.16em] text-(--brand)">
             {t.stub}
