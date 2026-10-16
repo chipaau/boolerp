@@ -18,7 +18,7 @@ export type AttentionTarget =
   | { to: '/admin-users'; search: { invite: 'Invited' } }
   | { to: '/billing'; search: { status: 'Overdue' } }
   | { to: '/billing'; search: { view: 'payments' } }
-  | { to: '/geographies'; search: { tab: 'places' } }
+  | { to: '/geographies/geographies'; search: Record<string, never> }
 
 export type AttentionItem = { key: AttentionKey; label: string; count: number; tone: AttentionTone; target: AttentionTarget }
 
@@ -38,7 +38,7 @@ export function useAttention(): AttentionItem[] {
       { key: 'payments-to-verify', label: 'Payments to verify', count: payments.filter((p) => p.status === 'Pending verification').length, tone: 'warning', target: { to: '/billing', search: { view: 'payments' } } },
       { key: 'invoices-overdue', label: 'Invoices overdue', count: invoices.filter((i) => i.status === 'Overdue').length, tone: 'danger', target: { to: '/billing', search: { status: 'Overdue' } } },
       { key: 'near-seat-limit', label: 'Tenants near their seat limit', count: tenants.filter(isNearSeatLimit).length, tone: 'caution', target: { to: '/tenants-prototype', search: { status: 'active' } } },
-      { key: 'unused-geographies', label: 'Geographies nobody uses', count: geos.filter((g) => !g.use && g.status !== 'Inactive').length, tone: 'muted', target: { to: '/geographies', search: { tab: 'places' } } },
+      { key: 'unused-geographies', label: 'Geographies nobody uses', count: geos.filter((g) => !g.use && g.status !== 'Inactive').length, tone: 'muted', target: { to: '/geographies/geographies', search: {} } },
     ]
     return items.filter((a) => a.count > 0)
   }, [tenants, users, invoices, payments, geos])

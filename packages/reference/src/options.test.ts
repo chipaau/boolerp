@@ -5,7 +5,7 @@ import { withPrimary } from './institution-types-field'
 
 describe('countryOptions', () => {
   it('shows the name, searches both codes, and shows the dialling prefix', () => {
-    expect(countryOptions([{ code: 'MV', alpha3: 'MDV', name: 'Maldives', phonePrefix: '+960' }])).toEqual([
+    expect(countryOptions([{ code: 'MV', alpha3: 'MDV', name: 'Maldives', phonePrefix: '+960', geographyCount: 407 }])).toEqual([
       { value: 'MV', label: 'Maldives', keywords: 'MV MDV', detail: '+960' },
     ])
   })

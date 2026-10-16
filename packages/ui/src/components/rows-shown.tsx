@@ -5,14 +5,15 @@ const STEPS = [10, 20, 50, 100] as const
 
 /**
  * A table footer's count with the number of rows as a dropdown in the sentence itself:
- * "Showing [10 ▾] of 213 items". The choices are the steps that still cut the list, then All.
+ * "Showing [10 ▾] of 213", and on a phone just "[10 ▾] of 213", so it sits on one line with the
+ * pager (C219); the page above names what is listed. The choices are the steps that still cut the
+ * list, then All.
  */
 function RowsShown({
   shown,
   total,
   limit,
   onLimit,
-  noun = "rows",
   className,
 }: {
   shown: number
@@ -20,14 +21,13 @@ function RowsShown({
   /** Rows the caller currently allows; `Infinity` means all. */
   limit: number
   onLimit: (limit: number) => void
-  noun?: string
   className?: string
 }) {
   const steps = STEPS.filter((_, i) => i === 0 || STEPS[i - 1] < total)
   const value = Number.isFinite(limit) ? String(limit) : "all"
   return (
-    <span data-slot="rows-shown" className={cn("inline-flex items-center gap-2 tabular-nums", className)}>
-      Showing
+    <span data-slot="rows-shown" className={cn("inline-flex items-center gap-2 whitespace-nowrap tabular-nums", className)}>
+      <span className="hidden sm:inline">Showing</span>
       {total > STEPS[0] ? (
         <SelectField
           aria-label="Rows to show"
@@ -39,7 +39,7 @@ function RowsShown({
       ) : (
         <span>{Math.min(shown, total)}</span>
       )}
-      of {total} {noun}
+      <span>of {total}</span>
     </span>
   )
 }

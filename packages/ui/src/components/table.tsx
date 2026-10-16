@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
 
 /**
- * One geometry for every table: 22px gutters, 14px column gap, an ivory header band with
+ * One geometry for every table: 22px gutters (16px on a phone), 14px column gap, an ivory header band with
  * 11px uppercase labels, 60px rows, a hairline under every row (including the last), no
  * vertical rules. Alignment follows the data type: text left, counts centre, money right,
  * status pills centre, actions right. Wrap in a borderless Card (`py-0 overflow-hidden`).
@@ -76,7 +76,7 @@ function TableHead({
       data-slot="table-head"
       aria-sort={sorted ? (sorted === "asc" ? "ascending" : "descending") : undefined}
       className={cn(
-        "h-[38px] px-[7px] text-micro font-bold tracking-[0.09em] whitespace-nowrap text-foreground uppercase first:pl-[22px] last:pr-[22px]",
+        "h-[38px] px-[7px] text-micro font-bold tracking-[0.09em] whitespace-nowrap text-foreground uppercase first:pl-4 last:pr-4 sm:first:pl-[22px] sm:last:pr-[22px]",
         alignClass[align],
         sortable && "cursor-pointer select-none hover:text-sage",
         className
@@ -99,7 +99,7 @@ function TableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "border-b border-divider px-[7px] py-[13px] align-middle text-body first:pl-[22px] last:pr-[22px] [&:has([role=checkbox])]:pr-0",
+        "border-b border-divider px-[7px] py-[13px] align-middle text-body first:pl-4 last:pr-4 sm:first:pl-[22px] sm:last:pr-[22px] [&:has([role=checkbox])]:pr-0",
         alignClass[align],
         numeric && "font-bold text-foreground tabular-nums",
         className
@@ -114,7 +114,7 @@ function TableToolbar({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="table-toolbar"
-      className={cn("flex flex-wrap items-center gap-3 border-b border-divider px-[22px] py-4", className)}
+      className={cn("flex flex-wrap items-center gap-3 border-b border-divider px-4 sm:px-[22px] py-4", className)}
       {...props}
     />
   )
@@ -126,7 +126,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="table-footer"
       className={cn(
-        "flex items-center justify-between gap-3 px-[22px] py-[14px] text-caption text-muted-foreground",
+        "flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5 px-4 sm:px-[22px] py-[14px] text-caption text-muted-foreground",
         className
       )}
       {...props}
@@ -146,7 +146,7 @@ function TableBulkBar({
       data-slot="table-bulk-bar"
       className={cn(
         // light: a soft sage band that stays part of the table; dark: the inverted tile, which reads well there
-        "flex animate-rise items-center gap-2.5 bg-sage-soft px-[22px] py-3 text-sage-soft-foreground dark:bg-surface-inverted dark:text-surface-inverted-foreground",
+        "flex animate-rise items-center gap-2.5 bg-sage-soft px-4 sm:px-[22px] py-3 text-sage-soft-foreground dark:bg-surface-inverted dark:text-surface-inverted-foreground",
         className
       )}
       {...props}
@@ -179,6 +179,29 @@ function TableBulkAction({
 }
 
 /** 30px square pager: current page on sage, others on ivory. */
+/**
+ * The pages a pager shows: the first, the last, and `siblings` either side of the current one, with
+ * "gap" where pages are left out (a single missing page is shown rather than a gap).
+ */
+function pageItems(page: number, pageCount: number, siblings = 1): (number | "gap")[] {
+  const keep = new Set([1, pageCount])
+  for (let p = page - siblings; p <= page + siblings; p++) if (p >= 1 && p <= pageCount) keep.add(p)
+  const pages = [...keep].sort((a, b) => a - b)
+  const items: (number | "gap")[] = []
+  pages.forEach((p, i) => {
+    const prev = pages[i - 1]
+    if (prev !== undefined && p - prev === 2) items.push(prev + 1)
+    else if (prev !== undefined && p - prev > 2) items.push("gap")
+    items.push(p)
+  })
+  return items
+}
+
+/**
+ * Previous, the pages, and next. On a phone only "3 / 10" sits between the arrows; from `sm` the
+ * first, the last, and the pages around the current one show, with "…" for the rest, so a long list
+ * never overflows its footer.
+ */
 function TablePagination({
   page,
   pageCount,
@@ -190,7 +213,7 @@ function TablePagination({
   pageCount: number
   onPageChange: (page: number) => void
 }) {
-  const pages = Array.from({ length: pageCount }, (_, i) => i + 1)
+  const items = pageItems(page, pageCount)
   const btn =
     "grid size-[30px] place-items-center rounded-[7px] text-compact transition-colors duration-instant ease-bool focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:text-faint"
   return (
@@ -198,17 +221,33 @@ function TablePagination({
       <button type="button" className={cn(btn, "bg-muted text-body hover:bg-secondary-hover")} disabled={page <= 1} onClick={() => onPageChange(page - 1)} aria-label="Previous page">
         <ChevronLeft className="size-3.5" />
       </button>
-      {pages.map((p) => (
-        <button
-          key={p}
-          type="button"
-          aria-current={p === page ? "page" : undefined}
-          className={cn(btn, p === page ? "bg-sage font-bold text-sage-foreground" : "bg-muted text-body hover:bg-secondary-hover")}
-          onClick={() => onPageChange(p)}
-        >
-          {p}
-        </button>
-      ))}
+      <span className="px-1 text-compact whitespace-nowrap text-body tabular-nums sm:hidden">
+        <span aria-hidden="true">
+          {page} / {pageCount}
+        </span>
+        <span className="sr-only">
+          Page {page} of {pageCount}
+        </span>
+      </span>
+      <span className="hidden items-center gap-[7px] sm:flex">
+        {items.map((p, i) =>
+          p === "gap" ? (
+            <span key={`gap-${i}`} aria-hidden="true" className="grid size-[30px] place-items-center text-compact text-faint">
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              type="button"
+              aria-current={p === page ? "page" : undefined}
+              className={cn(btn, p === page ? "bg-sage font-bold text-sage-foreground" : "bg-muted text-body hover:bg-secondary-hover")}
+              onClick={() => onPageChange(p)}
+            >
+              {p}
+            </button>
+          )
+        )}
+      </span>
       <button type="button" className={cn(btn, "bg-muted text-body hover:bg-secondary-hover")} disabled={page >= pageCount} onClick={() => onPageChange(page + 1)} aria-label="Next page">
         <ChevronRight className="size-3.5" />
       </button>

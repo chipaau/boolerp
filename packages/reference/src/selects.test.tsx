@@ -14,8 +14,8 @@ const page = (items: unknown[]) => ({ items, page: 1, pageSize: items.length || 
 
 const RESPONSES: Record<string, unknown> = {
   '/api/v1/countries?pageSize=300': page([
-    { code: 'MV', alpha3: 'MDV', name: 'Maldives', phonePrefix: '+960' },
-    { code: 'LK', alpha3: 'LKA', name: 'Sri Lanka', phonePrefix: '+94' },
+    { code: 'MV', alpha3: 'MDV', name: 'Maldives', phonePrefix: '+960', geographyCount: 407 },
+    { code: 'LK', alpha3: 'LKA', name: 'Sri Lanka', phonePrefix: '+94', geographyCount: 34 },
   ]),
   '/api/v1/legal-forms?country=MV&pageSize=100': page([
     { id: '0192f6a0-0000-7000-8000-000000000001', code: 'private_company', name: 'Private company', category: 'private', identityDocument: 'Company registration number' },

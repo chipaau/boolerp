@@ -39,7 +39,7 @@ function listApi(items: unknown[], total = items.length) {
 function referenceApi() {
   const page = (items: unknown[]) => HttpResponse.json({ items, page: 1, pageSize: 100, total: items.length })
   server.use(
-    http.get('/api/v1/countries', () => page([{ code: 'MV', alpha3: 'MDV', name: 'Maldives', phonePrefix: '+960' }])),
+    http.get('/api/v1/countries', () => page([{ code: 'MV', alpha3: 'MDV', name: 'Maldives', phonePrefix: '+960', geographyCount: 407 }])),
     http.get('/api/v1/legal-forms', ({ request }) =>
       page(
         new URL(request.url).searchParams.get('country') === 'MV'

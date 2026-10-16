@@ -141,7 +141,7 @@ export function TenantsPage() {
           }}
         />
       )}
-      <div className="px-8 pt-[26px] pb-24">
+      <div className="px-4 sm:px-8 pt-[26px] pb-24">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-5">
           <div className="min-w-0">
             <h1 className="text-[29px] leading-none font-black tracking-[-0.02em] text-foreground">Tenants</h1>

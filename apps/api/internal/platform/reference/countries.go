@@ -11,13 +11,15 @@ import (
 )
 
 type country struct {
-	Code        string `json:"code"`
-	Alpha3      string `json:"alpha3"`
-	Name        string `json:"name"`
-	PhonePrefix string `json:"phonePrefix"`
+	Code           string `json:"code"`
+	Alpha3         string `json:"alpha3"`
+	Name           string `json:"name"`
+	PhonePrefix    string `json:"phonePrefix"`
+	GeographyCount int    `json:"geographyCount"`
 }
 
-// countries answers the current countries (GET /api/v1/countries), all in one page.
+// countries answers the current countries (GET /api/v1/countries), all in one page, each with
+// how many current places it lists for address pickers (geographyCount, C215).
 // Cerbos decides first: reference:country list.
 func (m *Module) countries(authz authorization.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +39,7 @@ func (m *Module) countries(authz authorization.Authorizer) http.HandlerFunc {
 		}
 		items := make([]country, len(rows))
 		for i, c := range rows {
-			items[i] = country{c.Code, c.Alpha3, c.Name, c.PhonePrefix}
+			items[i] = country{c.Code, c.Alpha3, c.Name, c.PhonePrefix, c.GeographyCount}
 		}
 		response.Page(w, r, l, items, total)
 	}

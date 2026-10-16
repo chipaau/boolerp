@@ -15,8 +15,12 @@ var CountryListSpec = request.ListSpec{
 	DefaultPageSize: 300, MaxPageSize: 300,
 }
 
-// Country is a country as the list shows it.
-type Country struct{ Code, Alpha3, Name, PhonePrefix string }
+// Country is a country as the list shows it, with how many current places it lists for
+// address pickers (C215).
+type Country struct {
+	Code, Alpha3, Name, PhonePrefix string
+	GeographyCount                  int
+}
 
 // ListCountries reads one page of the current countries and how many match. q matches
 // the name or either code.
@@ -25,9 +29,11 @@ func ListCountries(ctx context.Context, db Querier, l request.List) ([]Country, 
 	q.Where(current("c"))
 	q.Search(l.Q, "c.name", "c.code", "c.alpha3")
 	items := []Country{}
-	total, err := q.Run(ctx, db, l, "c.code, c.alpha3, c.name, c.phone_prefix", func(rows pgx.Rows, total *int) error {
+	columns := `c.code, c.alpha3, c.name, c.phone_prefix,
+		(SELECT count(*) FROM geographies g WHERE g.country = c.code AND ` + current("g") + `)::int`
+	total, err := q.Run(ctx, db, l, columns, func(rows pgx.Rows, total *int) error {
 		var c Country
-		if err := rows.Scan(&c.Code, &c.Alpha3, &c.Name, &c.PhonePrefix, total); err != nil {
+		if err := rows.Scan(&c.Code, &c.Alpha3, &c.Name, &c.PhonePrefix, &c.GeographyCount, total); err != nil {
 			return err
 		}
 		items = append(items, c)

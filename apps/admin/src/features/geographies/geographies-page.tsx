@@ -9,49 +9,56 @@ import { useToast } from '@workspace/ui/components/toast'
 import { cn } from '@workspace/ui/lib/utils'
 import { PageTitle } from '@/components/layout/page'
 import { FilterPill, FilterSelect, FilterToolbar } from '@/components/filter-toolbar'
+import { useNavigate } from '@tanstack/react-router'
 import { useCountries, useGeographies, useGeographyActions, useGeographySummary } from './queries'
-import type { CountryStatus, GeographyStatus, GuardedResult } from './types'
-import { AddCountryModal, AddGeographyModal } from './geography-modals'
-
-export type GeographiesTab = 'places' | 'countries'
+import type { GeographiesTab } from './schemas'
+import type { GeographyStatus, GuardedResult } from './types'
+import { AddGeographyModal } from './geography-modals'
 
 const GEO_TONE: Record<GeographyStatus, BadgeTone> = { Active: 'success', Inactive: 'warning', Draft: 'neutral' }
-const COUNTRY_TONE: Record<CountryStatus, BadgeTone> = { Active: 'success', Inactive: 'neutral' }
 const GEO_STATUSES = ['All', 'Active', 'Inactive', 'Draft'] as const
-const COUNTRY_STATUSES = ['All', 'Active', 'Inactive'] as const
 const TYPE_FILTERS = ['Any type', 'Atoll', 'State', 'City', 'Island'] as const
 
 const matches = (text: string, q: string) => !q.trim() || text.toLowerCase().includes(q.trim().toLowerCase())
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
-/** Geographies screen: shared places (atolls, islands, cities) and the countries they sit in. */
-export function GeographiesPage({ tab, onTabChange }: { tab: GeographiesTab; onTabChange: (tab: GeographiesTab) => void }) {
-  const summary = useGeographySummary()
-  const [adding, setAdding] = useState<GeographiesTab | null>(null)
+/** Where each tab lives: the tab is the path, so it can be linked to and survives a reload (C218). */
+const TAB_PATHS = { geographies: '/geographies/geographies', countries: '/geographies/countries' } as const
 
+/**
+ * The geographies screen's title and tabs, which each tab's page renders above its own list: the
+ * tab is the path (C218), and each list keeps its own search in the URL (C174).
+ */
+export function GeographiesHeader({ tab, meta, actions }: { tab: GeographiesTab; meta: string; actions?: React.ReactNode }) {
+  const navigate = useNavigate()
+  return (
+    <>
+      <PageTitle overline="Admin" title="Geographies" meta={meta} actions={actions} className="mb-[18px]" />
+      <Tabs value={tab} onValueChange={(v) => void navigate({ to: TAB_PATHS[v as GeographiesTab] })} className="mb-4 gap-0">
+        <TabsList>
+          <TabsTrigger value="geographies">Geographies</TabsTrigger>
+          <TabsTrigger value="countries">Countries</TabsTrigger>
+        </TabsList>
+      </Tabs>
+    </>
+  )
+}
+
+/** The geographies tab: shared places (atolls, islands, cities), still the design prototype's fixtures. */
+export function GeographiesPlacesPage() {
+  const summary = useGeographySummary()
+  const [adding, setAdding] = useState(false)
   return (
     <div className="min-h-0 w-full overflow-y-auto">
-      <div className="px-8 pt-7 pb-24">
-        <PageTitle
-          overline="Admin"
-          title="Geographies"
+      <div className="px-4 sm:px-8 pt-7 pb-24">
+        <GeographiesHeader
+          tab="geographies"
           meta={`${summary.total} geographies across ${summary.activeCountries} active countries · ${summary.unused} ${summary.unused === 1 ? 'is not used by any tenant' : 'not used by any tenant'}`}
-          actions={<Button onClick={() => setAdding(tab)}>{tab === 'places' ? 'Add a geography' : 'Add a country'}</Button>}
-          className="mb-[18px]"
+          actions={<Button onClick={() => setAdding(true)}>Add a geography</Button>}
         />
-
-        <Tabs value={tab} onValueChange={(v) => onTabChange(v as GeographiesTab)} className="mb-4 gap-0">
-          <TabsList>
-            <TabsTrigger value="places">Geographies</TabsTrigger>
-            <TabsTrigger value="countries">Countries</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {tab === 'places' ? <PlacesTable /> : <CountriesTable />}
+        <PlacesTable />
       </div>
-
-      <AddGeographyModal open={adding === 'places'} onClose={() => setAdding(null)} />
-      <AddCountryModal open={adding === 'countries'} onClose={() => setAdding(null)} />
+      <AddGeographyModal open={adding} onClose={() => setAdding(false)} />
     </div>
   )
 }
@@ -175,79 +182,6 @@ function PlacesTable() {
               </Fragment>
             ))}
             {!shown && <EmptyRow colSpan={6} text="No geography matches those filters." onClear={clear} />}
-          </TableBody>
-        </Table>
-      </Card>
-    </>
-  )
-}
-
-function CountriesTable() {
-  const countries = useCountries()
-  const { setCountryStatus } = useGeographyActions()
-  const report = useGuardedToast()
-  const [q, setQ] = useState('')
-  const [status, setStatus] = useState<(typeof COUNTRY_STATUSES)[number]>('All')
-
-  const rows = countries.filter((c) => matches(`${c.name} ${c.code} ${c.dial}`, q) && (status === 'All' || c.status === status))
-  const clear = () => (setQ(''), setStatus('All'))
-
-  return (
-    <>
-      <FilterToolbar query={q} onQuery={setQ} placeholder="Filter countries" count={`${rows.length} of ${countries.length} countries`} filtersOn={!!q || status !== 'All'} onClear={clear}>
-        {COUNTRY_STATUSES.map((s) => (
-          <FilterPill key={s} active={status === s} onClick={() => setStatus(s)}>
-            {s}
-          </FilterPill>
-        ))}
-      </FilterToolbar>
-
-      <Card className="gap-0 overflow-clip py-0">
-        <Table>
-          <TableHeader>
-            <TableRow className="h-auto hover:bg-transparent">
-              <TableHead>Country</TableHead>
-              <TableHead className="hidden md:table-cell">Code</TableHead>
-              <TableHead className="hidden md:table-cell">Dialing</TableHead>
-              <TableHead className="hidden lg:table-cell">Added</TableHead>
-              <TableHead className="hidden md:table-cell">Geographies</TableHead>
-              <TableHead className="text-right">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((c) => (
-              <TableRow key={c.code}>
-                <TableCell>
-                  <div className="font-bold text-foreground">{c.name}</div>
-                  <div className="text-fine text-muted-foreground md:hidden">
-                    {c.code} · {c.dial}
-                  </div>
-                </TableCell>
-                <TableCell className="hidden font-mono text-caption text-body md:table-cell">{c.code}</TableCell>
-                <TableCell className="hidden font-mono text-caption text-body md:table-cell">{c.dial}</TableCell>
-                <TableCell className="hidden text-muted-foreground lg:table-cell">{c.added}</TableCell>
-                <TableCell className={cn('hidden md:table-cell', c.geographyCount ? 'text-body' : 'text-muted-foreground')}>{c.geographyCount || 'None yet'}</TableCell>
-                <TableCell align="right">
-                  <Badge
-                    variant={COUNTRY_TONE[c.status]}
-                    size="sm"
-                    render={
-                      <button
-                        type="button"
-                        title={c.status === 'Active' ? 'Deactivate' : 'Activate'}
-                        onClick={() => {
-                          const next = c.status === 'Active' ? 'Inactive' : 'Active'
-                          report(setCountryStatus(c.code, next), `${c.name} is now ${next.toLowerCase()}.`)
-                        }}
-                      />
-                    }
-                  >
-                    {c.status}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-            {!rows.length && <EmptyRow colSpan={6} text="No country matches those filters." onClear={clear} />}
           </TableBody>
         </Table>
       </Card>

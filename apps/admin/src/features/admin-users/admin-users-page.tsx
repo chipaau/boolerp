@@ -47,7 +47,7 @@ export function AdminUsersPage({ initialInvite }: { initialInvite?: InviteState 
 
   return (
     <div className="min-h-0 w-full overflow-y-auto">
-      <div className="px-8 pt-7 pb-24">
+      <div className="px-4 sm:px-8 pt-7 pb-24">
         <PageTitle
           overline="Admin"
           title="Admin users"
