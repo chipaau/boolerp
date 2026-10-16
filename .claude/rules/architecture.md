@@ -43,7 +43,7 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
     `return v.Err()`, or `problem.Invalid(path, code, detail)` for one field; paths are JSON
     paths (`institutionTypes/1/code`), pointers come from `problem.Field`/`problem.Pointer`.
   - "in use now" in SQL: `is_current(active_from, active_to)` (C211), never a hand-written
-    condition;
+    condition; a `<field>_translations` column's check: `is_translations(...)` (C216);
   - lists in a store: `postgres.ListQuery` (`Where`, `Equal`, `Search`, `Run`: sorts, a
     stable key, the window count, past-last-page counting); seed files: `seed.ReadCSV`;
   - route protection: the named chains of `platform.Services`, built with

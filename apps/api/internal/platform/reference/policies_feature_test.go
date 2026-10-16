@@ -50,7 +50,7 @@ func assertUpdatedAtFollowsChanges(t *testing.T, tx pgx.Tx, insert, update, read
 }
 
 func TestFeatureReferenceTablesAreReadOnlyForEveryone(t *testing.T) {
-	for _, table := range []string{"countries", "legal_forms", "sectors", "institution_types"} {
+	for _, table := range []string{"countries", "legal_forms", "sectors", "institution_types", "geography_types", "geographies"} {
 		t.Run(table, func(t *testing.T) { assertEveryoneOnlyReads(t, table) })
 	}
 }

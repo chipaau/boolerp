@@ -1,0 +1,377 @@
+# Geography types (C215): each country's address levels (level 1 under the country;
+# several types may share a level).
+# The Maldives: compiled for Bool (atoll and city 1, island and resort island 2, Malé's
+# wards 3). Other countries: the ISO 3166-2 subdivision categories of the places in
+# geographies.csv, as listed by Debian iso-codes (commit 90b9fe5, fetched 2026-10-16);
+# a category at two levels in one country is coded with its level (rayon_1, rayon_2).
+country,code,name,level
+MV,atoll,Atoll,1
+MV,city,City,1
+MV,island,Island,2
+MV,resort_island,Resort island,2
+MV,ward,Ward,3
+AD,parish,Parish,1
+AE,emirate,Emirate,1
+AF,province,Province,1
+AG,dependency,Dependency,1
+AG,parish,Parish,1
+AL,county,County,1
+AM,city,City,1
+AM,region,Region,1
+AO,province,Province,1
+AR,city,City,1
+AR,province,Province,1
+AT,state,State,1
+AU,state,State,1
+AU,territory,Territory,1
+AZ,autonomous_republic,Autonomous republic,1
+AZ,municipality_1,Municipality,1
+AZ,rayon_1,Rayon,1
+AZ,municipality_2,Municipality,2
+AZ,rayon_2,Rayon,2
+BA,district_with_special_status,District with special status,1
+BA,entity,Entity,1
+BB,parish,Parish,1
+BD,division,Division,1
+BD,district,District,2
+BE,region,Region,1
+BE,province,Province,2
+BF,region,Region,1
+BF,province,Province,2
+BG,district,District,1
+BH,governorate,Governorate,1
+BI,province,Province,1
+BJ,department,Department,1
+BN,district,District,1
+BO,department,Department,1
+BQ,special_municipality,Special municipality,1
+BR,federal_district,Federal district,1
+BR,state,State,1
+BS,district,District,1
+BS,island,Island,1
+BT,district,District,1
+BW,city,City,1
+BW,district,District,1
+BW,town,Town,1
+BY,city,City,1
+BY,oblast,Oblast,1
+BZ,district,District,1
+CA,province,Province,1
+CA,territory,Territory,1
+CD,city,City,1
+CD,province,Province,1
+CF,commune,Commune,1
+CF,economic_prefecture,Economic prefecture,1
+CF,prefecture,Prefecture,1
+CG,department,Department,1
+CH,canton,Canton,1
+CI,autonomous_district,Autonomous district,1
+CI,district,District,1
+CL,region,Region,1
+CM,region,Region,1
+CN,autonomous_region,Autonomous region,1
+CN,municipality,Municipality,1
+CN,province,Province,1
+CN,special_administrative_region,Special administrative region,1
+CO,capital_district,Capital district,1
+CO,department,Department,1
+CR,province,Province,1
+CU,province,Province,1
+CU,special_municipality,Special municipality,1
+CV,geographical_region,Geographical region,1
+CV,municipality,Municipality,2
+CY,district,District,1
+CZ,capital_city,Capital city,1
+CZ,region,Region,1
+CZ,district,District,2
+DE,land,Land,1
+DJ,city,City,1
+DJ,region,Region,1
+DK,region,Region,1
+DM,parish,Parish,1
+DO,region,Region,1
+DO,district,District,2
+DO,province,Province,2
+DZ,province,Province,1
+EC,province,Province,1
+EE,county,County,1
+EE,rural_municipality,Rural municipality,2
+EE,urban_municipality,Urban municipality,2
+EG,governorate,Governorate,1
+ER,region,Region,1
+ES,autonomous_city_in_north_africa,Autonomous city in north africa,1
+ES,autonomous_community,Autonomous community,1
+ES,province,Province,2
+ET,administration,Administration,1
+ET,regional_state,Regional state,1
+FI,region,Region,1
+FJ,dependency,Dependency,1
+FJ,division,Division,1
+FJ,province,Province,2
+FM,state,State,1
+FR,metropolitan_collectivity_with_special_status_1,Metropolitan collectivity with special status,1
+FR,metropolitan_region,Metropolitan region,1
+FR,overseas_departmental_collectivity,Overseas departmental collectivity,1
+FR,overseas_unique_territorial_collectivity,Overseas unique territorial collectivity,1
+FR,european_collectivity,European collectivity,2
+FR,metropolitan_collectivity_with_special_status_2,Metropolitan collectivity with special status,2
+FR,metropolitan_department,Metropolitan department,2
+GA,province,Province,1
+GB,country,Country,1
+GB,province,Province,1
+GB,city_corporation,City corporation,2
+GB,council_area,Council area,2
+GB,district,District,2
+GB,london_borough,London borough,2
+GB,metropolitan_district,Metropolitan district,2
+GB,two_tier_county,Two-tier county,2
+GB,unitary_authority,Unitary authority,2
+GD,dependency,Dependency,1
+GD,parish,Parish,1
+GE,autonomous_republic,Autonomous republic,1
+GE,city,City,1
+GE,region,Region,1
+GH,region,Region,1
+GL,municipality,Municipality,1
+GM,city,City,1
+GM,division,Division,1
+GN,administrative_region,Administrative region,1
+GN,governorate,Governorate,1
+GN,prefecture,Prefecture,2
+GQ,region,Region,1
+GQ,province,Province,2
+GR,administrative_region,Administrative region,1
+GR,self_governed_part,Self-governed part,1
+GT,department,Department,1
+GW,autonomous_sector,Autonomous sector,1
+GW,province,Province,1
+GW,region,Region,2
+GY,region,Region,1
+HN,department,Department,1
+HR,city,City,1
+HR,county,County,1
+HT,department,Department,1
+HU,capital_city,Capital city,1
+HU,city_with_county_rights,City with county rights,1
+HU,county,County,1
+ID,geographical_unit,Geographical unit,1
+ID,capital_district,Capital district,2
+ID,province,Province,2
+ID,special_region,Special region,2
+IE,province,Province,1
+IE,county,County,2
+IL,district,District,1
+IN,state,State,1
+IN,union_territory,Union territory,1
+IQ,governorate_1,Governorate,1
+IQ,region,Region,1
+IQ,governorate_2,Governorate,2
+IR,province,Province,1
+IS,region,Region,1
+IS,municipality,Municipality,2
+IT,autonomous_region,Autonomous region,1
+IT,region,Region,1
+IT,autonomous_province,Autonomous province,2
+IT,decentralized_regional_entity,Decentralized regional entity,2
+IT,free_municipal_consortium,Free municipal consortium,2
+IT,metropolitan_city,Metropolitan city,2
+IT,province,Province,2
+JM,parish,Parish,1
+JO,governorate,Governorate,1
+JP,prefecture,Prefecture,1
+KE,county,County,1
+KG,city,City,1
+KG,region,Region,1
+KH,autonomous_municipality,Autonomous municipality,1
+KH,province,Province,1
+KI,group_of_islands_20_inhabited_islands,Group of islands (20 inhabited islands),1
+KM,island,Island,1
+KN,state,State,1
+KN,parish,Parish,2
+KP,capital_city,Capital city,1
+KP,metropolitan_city,Metropolitan city,1
+KP,province,Province,1
+KP,special_city,Special city,1
+KR,metropolitan_city,Metropolitan city,1
+KR,province,Province,1
+KR,special_city,Special city,1
+KR,special_self_governing_city,Special self-governing city,1
+KR,special_self_governing_province,Special self-governing province,1
+KW,governorate,Governorate,1
+KZ,city,City,1
+KZ,region,Region,1
+LA,prefecture,Prefecture,1
+LA,province,Province,1
+LB,governorate,Governorate,1
+LC,district,District,1
+LI,commune,Commune,1
+LK,province,Province,1
+LK,district,District,2
+LR,county,County,1
+LS,district,District,1
+LT,county,County,1
+LT,city_municipality,City municipality,2
+LT,district_municipality,District municipality,2
+LT,municipality,Municipality,2
+LU,canton,Canton,1
+LV,municipality,Municipality,1
+LV,state_city,State city,1
+LY,popularate,Popularate,1
+MA,region,Region,1
+MA,prefecture,Prefecture,2
+MA,province,Province,2
+MC,quarter,Quarter,1
+MD,autonomous_territorial_unit,Autonomous territorial unit,1
+MD,city,City,1
+MD,district,District,1
+MD,territorial_unit,Territorial unit,1
+ME,municipality,Municipality,1
+MG,province,Province,1
+MH,chain_of_islands,Chain (of islands),1
+MH,municipality,Municipality,2
+MK,municipality,Municipality,1
+ML,district,District,1
+ML,region,Region,1
+MM,region,Region,1
+MM,state,State,1
+MM,union_territory,Union territory,1
+MN,capital_city,Capital city,1
+MN,province,Province,1
+MR,region,Region,1
+MT,local_council,Local council,1
+MU,dependency,Dependency,1
+MU,district,District,1
+MW,region,Region,1
+MW,district,District,2
+MX,federal_entity,Federal entity,1
+MX,state,State,1
+MY,federal_territory,Federal territory,1
+MY,state,State,1
+MZ,city,City,1
+MZ,province,Province,1
+NA,region,Region,1
+NE,region,Region,1
+NE,urban_community,Urban community,1
+NG,capital_territory,Capital territory,1
+NG,state,State,1
+NI,autonomous_region,Autonomous region,1
+NI,department,Department,1
+NL,province,Province,1
+NL,special_municipality,Special municipality,1
+NO,arctic_region,Arctic region,1
+NO,county,County,1
+NP,province,Province,1
+NR,district,District,1
+NZ,region,Region,1
+NZ,special_island_authority,Special island authority,1
+OM,governorate,Governorate,1
+PA,indigenous_region,Indigenous region,1
+PA,province,Province,1
+PE,municipality,Municipality,1
+PE,region,Region,1
+PG,autonomous_region,Autonomous region,1
+PG,district,District,1
+PG,province,Province,1
+PH,region,Region,1
+PH,province,Province,2
+PK,federal_capital_territory,Federal capital territory,1
+PK,pakistan_administered_area,Pakistan administered area,1
+PK,province,Province,1
+PL,voivodship,Voivodship,1
+PS,governorate,Governorate,1
+PT,autonomous_region,Autonomous region,1
+PT,district,District,1
+PW,state,State,1
+PY,capital,Capital,1
+PY,department,Department,1
+QA,municipality,Municipality,1
+RO,department,Department,1
+RO,municipality,Municipality,1
+RS,autonomous_province,Autonomous province,1
+RS,city,City,1
+RS,district_1,District,1
+RS,district_2,District,2
+RU,administrative_region,Administrative region,1
+RU,administrative_territory,Administrative territory,1
+RU,autonomous_city,Autonomous city,1
+RU,autonomous_district,Autonomous district,1
+RU,autonomous_region,Autonomous region,1
+RU,republic,Republic,1
+RW,city,City,1
+RW,province,Province,1
+SA,region,Region,1
+SB,capital_territory,Capital territory,1
+SB,province,Province,1
+SC,district,District,1
+SD,state,State,1
+SE,county,County,1
+SG,district,District,1
+SH,geographical_entity,Geographical entity,1
+SI,municipality,Municipality,1
+SI,urban_municipality,Urban municipality,1
+SK,region,Region,1
+SL,area,Area,1
+SL,province,Province,1
+SM,municipality,Municipality,1
+SN,region,Region,1
+SO,region,Region,1
+SR,district,District,1
+SS,state,State,1
+ST,autonomous_region,Autonomous region,1
+ST,district,District,1
+SV,department,Department,1
+SY,province,Province,1
+SZ,region,Region,1
+TD,province,Province,1
+TG,region,Region,1
+TH,metropolitan_administration,Metropolitan administration,1
+TH,province,Province,1
+TH,special_administrative_city,Special administrative city,1
+TJ,autonomous_region,Autonomous region,1
+TJ,capital_territory,Capital territory,1
+TJ,districts_under_republic_administration,Districts under republic administration,1
+TJ,region,Region,1
+TL,municipality,Municipality,1
+TL,special_administrative_region,Special administrative region,1
+TM,city,City,1
+TM,region,Region,1
+TN,governorate,Governorate,1
+TO,division,Division,1
+TR,province,Province,1
+TT,borough,Borough,1
+TT,city,City,1
+TT,region,Region,1
+TT,ward,Ward,1
+TV,island_council,Island council,1
+TV,town_council,Town council,1
+TW,city,City,1
+TW,county,County,1
+TW,special_municipality,Special municipality,1
+TZ,region,Region,1
+UA,city,City,1
+UA,region,Region,1
+UA,republic,Republic,1
+UG,geographical_region,Geographical region,1
+UG,city,City,2
+UG,district,District,2
+UM,islands_groups_of_islands,"Islands, groups of islands",1
+US,district,District,1
+US,state,State,1
+UY,department,Department,1
+UZ,city,City,1
+UZ,region,Region,1
+UZ,republic,Republic,1
+VC,parish,Parish,1
+VE,capital_district,Capital district,1
+VE,federal_dependency,Federal dependency,1
+VE,state,State,1
+VN,municipality,Municipality,1
+VN,province,Province,1
+VU,province,Province,1
+WF,administrative_precinct,Administrative precinct,1
+WS,district,District,1
+YE,governorate,Governorate,1
+YE,municipality,Municipality,1
+ZA,province,Province,1
+ZM,province,Province,1
+ZW,province,Province,1

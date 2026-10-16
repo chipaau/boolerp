@@ -118,6 +118,70 @@ Table institution_types {
   '''
 }
 
+Table geography_types {
+  id uuid [pk, default: `uuidv7()`]
+  country char(2) [not null, ref: > countries.code, note: 'ON DELETE RESTRICT']
+  code text [not null, note: 'e.g. atoll; CHECK ^[a-z][a-z0-9_]{1,49}$']
+  name text [not null, note: 'the form label, e.g. Atoll; not blank']
+  level smallint [not null, note: '1 = directly under the country; CHECK 1..9']
+  active_from timestamptz [not null, default: `now()`]
+  active_to timestamptz [note: 'retired; null = in use; CHECK active_to >= active_from']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  indexes {
+    (country, code) [unique]
+    (id, country) [unique, note: 'target of geographies (type_id, country)']
+  }
+
+  Note: '''
+  Confirmed 2026-10-16 (C215); migration platform/reference/migrations/00005_geography_types.sql.
+  The levels of a country's addresses (MV: atoll and city 1, island 2, ward 3; US: state 1,
+  city 2); several types may share a level. A level is a picker where places of it are
+  listed under the chosen place above, and typed text otherwise. Global reference data.
+  RLS enabled: everyone reads; no write policy yet, so only the migration role writes.
+  '''
+}
+
+Table geographies {
+  id uuid [pk, default: `uuidv7()`]
+  country char(2) [not null, ref: > countries.code, note: 'ON DELETE RESTRICT']
+  type_id uuid [not null, note: 'FK (type_id, country) -> geography_types (id, country), ON DELETE RESTRICT; indexed']
+  parent_id uuid [note: 'null only at level 1; FK (parent_id, country) -> geographies (id, country), ON DELETE RESTRICT; indexed']
+  code text [note: 'official code where one exists (ISO 3166-2 MV-26, US-CA, or national); not blank']
+  name text [not null, note: 'not blank; unique among siblings, case-insensitive']
+  name_translations jsonb [not null, default: `'{}'`, note: 'the name in other languages (C216), e.g. {"dv": "..."}; CHECK is_translations']
+  short_name text [note: 'as addresses write it, e.g. K.; not blank']
+  latitude numeric(8,6) [note: 'the place\'s point (its centre); null = none known; CHECK -90..90; both or neither']
+  longitude numeric(9,6) [note: 'CHECK -180..180']
+  active_from timestamptz [not null, default: `now()`]
+  active_to timestamptz [note: 'retired; null = in use; CHECK active_to >= active_from']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`, note: 'set by trigger on every update']
+
+  indexes {
+    (country, code) [unique]
+    (id, country) [unique, note: 'target of parent_id here and of addresses']
+    (country, parent_id, type_id, name) [unique, note: 'on lower(name), NULLS NOT DISTINCT']
+    type_id
+    parent_id
+  }
+
+  Note: '''
+  Confirmed 2026-10-16 (C215), with short_name, name_translations (C216), and latitude and
+  longitude; migration
+  platform/reference/migrations/00006_geographies.sql. The places addresses pick from
+  (MV atolls, cities, islands, Malé's wards; US states). Triggers keep the levels: a place
+  of level 1 has no parent, any other a parent of a lower level (levels may be skipped);
+  a place's type may not change to its children's level or deeper, nor a type's level
+  once it has places. Global reference data. RLS enabled: everyone reads; no write
+  policy yet, so only the migration role writes.
+  '''
+}
+
+Ref: geographies.(type_id, country) > geography_types.(id, country) [delete: restrict]
+Ref: geographies.(parent_id, country) > geographies.(id, country) [delete: restrict]
+
 // ---------------------------------------------------------------------------
 // tenancy module (C115, C136, C138)
 // ---------------------------------------------------------------------------

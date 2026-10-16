@@ -75,7 +75,7 @@ func TestDeploySeedersInOrder(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.apps", "authorization.capabilities", "authorization.roles", "tenancy.operator", "tenancy.operator_apps", "identity.team_accounts", "tenancy.operator_members", "authorization.team_roles"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "reference.geography_types", "reference.geographies", "tenancy.apps", "authorization.capabilities", "authorization.roles", "tenancy.operator", "tenancy.operator_apps", "identity.team_accounts", "tenancy.operator_members", "authorization.team_roles"}, names)
 }
 
 func TestDataSeedersAreTheSeedFiles(t *testing.T) {
@@ -84,7 +84,7 @@ func TestDataSeedersAreTheSeedFiles(t *testing.T) {
 	for i, s := range seeders {
 		names[i] = s.Name()
 	}
-	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "tenancy.apps", "authorization.capabilities", "authorization.roles", "tenancy.operator", "tenancy.operator_apps"}, names)
+	assert.Equal(t, []string{"audit.partitions", "reference.countries", "reference.legal_forms", "reference.sectors", "reference.institution_types", "reference.geography_types", "reference.geographies", "tenancy.apps", "authorization.capabilities", "authorization.roles", "tenancy.operator", "tenancy.operator_apps"}, names)
 }
 
 func TestSampleSeeders(t *testing.T) {
