@@ -11,6 +11,26 @@ admin console's global roles (`admin.administrator`, `admin.viewer`) mirrored fr
 team's Administrator role seeded, and the caller's capabilities loaded per request and sent
 to Cerbos as roles (C177); the `Operator` chain (C178) and `GET /api/v1/tenants` (C179).
 
+## The Admin console's roles (C227)
+
+Cerbos never receives a role from the `roles` table. A role is a bundle of capabilities; the
+principal carries the capabilities the caller's roles grant, beside the fixed caller facts
+`user`, `account`, `client`, and `member`, and policies name capabilities only.
+
+The Admin console's global roles are Bool's functions, with separation of duties:
+
+| Role | Function | Can | Cannot |
+| --- | --- | --- | --- |
+| Administrator | platform owners | everything, including admin users and archiving a tenant | |
+| Operations | setting tenants up | create a tenant; set its details, address, apps, and first Control Centre administrators (C228) | take it live, suspend, archive; finance |
+| Finance | invoicing and payments | billing and dunning; take a tenant live, suspend for non-payment, reactivate | change setup or administrators; archive |
+| Support | helping customers | see tenants and their setup, resend invitations and set-password links, read the audit trail | any change |
+
+There is no Viewer role (`admin.viewer` goes). The tenant capabilities follow the duties:
+`tenancy:tenant:view`, `:manage` (create and set up), `:activate`, `:suspend` (with
+reactivate), `:archive`. Administrator and Operations are built first; Finance and Support
+come with their screens.
+
 ## Required boundary
 
 Authorization belongs in the application execution path for employee operations.

@@ -29,7 +29,8 @@ Bool's SaaS only until first-run setup exists ([self-hosting](self-hosting.md)).
 - Required services and dependency versions.
 - Secure first-run setup, configuration, migrations, upgrades, backup, and restore.
 - The Hydra clients' production bootstrap; custom-domain callbacks, verification, and
-  certificate provisioning and renewal (step 7f).
+  their per-host certificates (step 7f). Platform hosts are covered by one free Let's
+  Encrypt wildcard (`*.bool.mv`) through DNS-01 on Cloudflare (C229).
 - Background-worker packaging and optional operational backends.
 
 Licensing and the rest of self-hosting are in [self-hosting](self-hosting.md). See

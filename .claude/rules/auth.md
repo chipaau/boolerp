@@ -15,6 +15,12 @@ Read [identity](../../docs/platform/identity.md) and
 - Never replace removed providers with an allow-all policy or an authentication bypass.
 - Keep credentials, tokens, and private employee content out of logs, traces, and cache keys.
 - Do not confuse global account disablement with tenant-specific access removal.
+- Cerbos never receives a role from the `roles` table (C227): our roles are bundles of
+  capabilities, and the principal carries only those capabilities, beside the fixed caller
+  facts `user`, `account`, `client`, and `member`. Policies name capabilities, never roles.
+- The Admin console's roles are Bool's functions (C227): Administrator, Operations, Finance,
+  Support; no Viewer. Keep separation of duties: setting a tenant up, taking it live or
+  billing it, and ending it are different capabilities; only Administrators manage admin users.
 - Authorization (C150): Cerbos policies are static YAML; the caller's tenant capabilities
   are sent as Cerbos roles and record facts as attributes. Default to attribute-based
   rules (a derived role or condition on the caller's relationship to the record); add a
