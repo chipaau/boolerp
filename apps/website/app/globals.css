@@ -32,6 +32,14 @@
   text-transform: uppercase;
 }
 
+/* nothing scrolls the page sideways: the hero's glow and bee reach past the screen's edge while its
+   story plays (story.ts lets them), the hero then pinned to the window; clip, not hidden, so the
+   pinned sections still pin */
+html,
+body {
+  overflow-x: clip;
+}
+
 /* the site's dark, one colour wherever it appears (the header's hover, the dark stages and bands,
    the ticket button): bg-ink, text-ink, fill-ink; its shades are mixed from it */
 @theme {

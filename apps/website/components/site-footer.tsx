@@ -46,25 +46,28 @@ export function SiteFooter({ call = true }: { call?: boolean }) {
 
       {/* the brand and the small print, then Back to top: one ruled bar, its cells filling with
           hexagons on hover as the header's do, and its last cell in amber like the header's Let's talk.
-          On phones the cells take a row of their own under the brand, Back to top one more */}
+          Below desktop width the cells take a row of their own under the brand; on phones Back to top
+          one more, as the four don't fit across */}
       <div className="flex flex-wrap border-t border-border">
-        <div className="flex w-full items-center gap-4 gutter py-3 sm:w-auto">
+        <div className="flex w-full items-center gap-4 gutter py-3 lg:w-auto">
           <Brand className="text-[1.3rem] [&_img]:h-7" />
           <span className="text-[13px] text-muted-foreground">© {new Date().getFullYear()} · Malé, Maldives</span>
         </div>
-        <nav aria-label="Legal" className="flex h-14 w-full border-t border-border sm:ml-auto sm:w-auto sm:border-t-0">
-          {LEGAL.map((l) => (
-            <a key={l} href="#" className={`${CELL} flex-1 px-5 first:border-l-0 sm:w-[7.25rem] sm:flex-none sm:first:border-l`}>
-              <HexFill />
-              <span className={CELL_LABEL}>{l}</span>
-            </a>
-          ))}
-        </nav>
-        <a href="#" className={`${CELL} header-cell-accent h-14! w-full border-t border-l-0 px-5 sm:w-[8.5rem] sm:border-t-0 sm:border-l xl:w-[9.5rem]`}>
-          <HexFill />
-          <span className={CELL_LABEL}>Back to top</span>
-          <ArrowUp className="relative size-4" strokeWidth={1.8} />
-        </a>
+        <div className="flex w-full flex-wrap border-t border-border sm:flex-nowrap lg:ml-auto lg:w-auto lg:border-t-0">
+          <nav aria-label="Legal" className="flex h-14 w-full sm:w-auto sm:flex-3 lg:flex-none">
+            {LEGAL.map((l) => (
+              <a key={l} href="#" className={`${CELL} flex-1 px-5 first:border-l-0 lg:w-[7.25rem] lg:flex-none lg:first:border-l`}>
+                <HexFill />
+                <span className={CELL_LABEL}>{l}</span>
+              </a>
+            ))}
+          </nav>
+          <a href="#" className={`${CELL} header-cell-accent h-14! w-full border-t border-l-0 px-5 sm:w-auto sm:flex-1 sm:border-t-0 sm:border-l lg:w-[8.5rem] lg:flex-none xl:w-[9.5rem]`}>
+            <HexFill />
+            <span className={CELL_LABEL}>Back to top</span>
+            <ArrowUp className="relative size-4" strokeWidth={1.8} />
+          </a>
+        </div>
       </div>
     </footer>
   )

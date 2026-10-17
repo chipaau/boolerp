@@ -341,7 +341,7 @@ export function Tickets() {
       </div>
 
       {/* the tickets */}
-      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 items-center justify-items-center gap-8 gutter py-16 sm:grid-cols-3 sm:gap-6 lg:motion-safe:h-full lg:motion-safe:pb-0 lg:motion-safe:pt-[12svh]">
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 items-center justify-items-center gap-8 gutter py-16 lg:grid-cols-3 lg:gap-6 lg:motion-safe:h-full lg:motion-safe:pb-0 lg:motion-safe:pt-[12svh]">
         {TICKETS.map((t) => (
           <div key={t.id} className="w-full max-w-[min(21rem,calc((100svh-12rem)*524/740))] lg:motion-safe:[&>[data-ticket]]:invisible">
             <TicketCard t={t} />

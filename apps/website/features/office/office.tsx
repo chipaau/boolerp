@@ -217,12 +217,12 @@ export function Office() {
               <SharedCard />
             </div>
           </div>
-          {/* below lg: every app's card in turn, with its rooms */}
+          {/* below lg: every app's card in turn, with (at most two of) its rooms */}
           <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3 lg:motion-safe:hidden">
             {ROOMS.map((room) => (
               <div key={room.id}>
                 <div className="mx-auto mb-2 flex max-w-md justify-center gap-2">
-                  {room.tiles.map((t) => (
+                  {room.tiles.slice(0, 2).map((t) => (
                     <img key={t.src} src={`/workspace/${t.src}.webp`} alt="" width={900} height={675} loading="lazy" className="h-auto w-1/2 max-w-48" />
                   ))}
                 </div>
