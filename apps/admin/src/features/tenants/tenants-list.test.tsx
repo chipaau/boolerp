@@ -448,7 +448,7 @@ describe('the tenants list', () => {
     })
   })
 
-  describe('step 3, the new tenant’s apps (C224)', () => {
+  describe('step 3, the new tenant’s apps (C224, C226)', () => {
     /** Saves a registered address in Kaafu, Maafushi, landing on step 3. */
     async function toApps(form: HTMLElement) {
       await pick(form, 'Registered address atoll', 'kaa', /Kaafu/)
@@ -468,12 +468,14 @@ describe('the tenants list', () => {
       expect(within(form).queryByRole('checkbox', { name: 'Calendar' }), 'a default app is not switched here').not.toBeInTheDocument()
       const hrms = within(form).getByRole('checkbox', { name: 'HRMS' })
       expect(hrms).not.toBeChecked()
-      expect(within(form).getByRole('checkbox', { name: 'Analytics' }), 'coming soon (C225)').toHaveAttribute('aria-disabled', 'true')
-      expect(within(form).getByText('Coming soon')).toBeInTheDocument()
+      expect(within(form).queryByText('Analytics'), 'an app coming soon is not shown (C226)').not.toBeInTheDocument()
+      expect(within(form).getByText('Optional apps')).toBeInTheDocument()
+      expect(within(form).getByText('Control Centre and Calendar are included.')).toBeInTheDocument()
 
       await userEvent.click(hrms)
       await waitFor(() => expect(within(form).getByRole('checkbox', { name: 'HRMS' })).toBeChecked())
       expect(switched).toEqual(['on hrms'])
+      expect(await within(form).findByText('Control Centre and Calendar are included · 1 more app.')).toBeInTheDocument()
       await userEvent.click(within(form).getByRole('checkbox', { name: 'HRMS' }))
       await waitFor(() => expect(within(form).getByRole('checkbox', { name: 'HRMS' })).not.toBeChecked())
       expect(switched).toEqual(['on hrms', 'off hrms'])
@@ -483,13 +485,13 @@ describe('the tenants list', () => {
       await userEvent.click(within(form).getByRole('button', { name: 'Continue' }))
       await userEvent.click(await within(form).findByRole('button', { name: 'Review' }))
       // The review lists the apps the tenant has on, from the API.
-      const card = (await within(form).findByRole('button', { name: 'Edit Apps' })).parentElement!.parentElement!
+      const card = (await within(form).findByRole('button', { name: 'Edit Apps & modules' })).parentElement!.parentElement!
       expect(within(card).getByText('HRMS')).toBeInTheDocument()
       expect(within(card).getAllByText('Included')).toHaveLength(2)
       // And the address saved on step 2, not the prototype's.
       const address = within(form).getByRole('button', { name: 'Edit Address' }).parentElement!.parentElement!
       expect(within(address).getByText('H. Sosun Villa, Sosun Magu, Maldives')).toBeInTheDocument()
-      expect(within(address).getByText('Same as the registered address')).toBeInTheDocument()
+      expect(within(address).getByText('Same as address')).toBeInTheDocument()
     })
   })
 

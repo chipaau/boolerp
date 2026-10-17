@@ -21,7 +21,7 @@ import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
 import { Stepper, StepperFooter, StepperLayout } from '@workspace/ui/components/stepper'
 import { useToast } from '@workspace/ui/components/toast'
 import { ADDRESS_FORM_ID, TenantAddressStep, useTenantAddressLines } from './tenant-address-step'
-import { TenantAppsStep, useTenantAppLines } from './tenant-apps-step'
+import { TenantAppsStep, useTenantAppLines, useTenantApps } from './tenant-apps-step'
 import { cn } from '@workspace/ui/lib/utils'
 import { Field, ReviewCard, StepHeading, fieldClass } from '@/components/form-field'
 import { useCurrentUser } from '@/components/layout/user-context'
@@ -51,10 +51,10 @@ const HEADINGS: [string, string][] = [
   ['Who runs it', 'A tenant needs at least one owner before it can be activated. Add the people who should be invited.'],
   ['Check it over', 'Everything you have set, in one place.'],
 ]
-// The ledes that differ when the steps are saved to the API (C223, C224).
+// The ledes that differ when the steps are saved to the API: only where the prototype's would be
+// untrue (C226): the address must be saved to go on (C223).
 const LEDES: Partial<Record<number, string>> = {
   1: 'Where the tenant is registered, printed on its invoices. Save it to go on.',
-  2: 'The apps every tenant gets are already on. Switch on the others they pay for; each is saved at once.',
 }
 const appLabel = (a: AppName) => a
 
@@ -107,8 +107,6 @@ export function AddTenantWizard({
   const core = useCoreApps()
   const countries = useActiveCountries()
 
-  // With the API a tenant has whole apps, no modules (C224).
-  const steps = onCreated ? STEPS.map((s, i) => (i === 2 ? { ...s, title: 'Apps' } : s)) : STEPS
   const [step, setStep] = useState(0)
   // The tenant step 1 created (C223): the wizard goes on with it, and step 1 is done.
   const [created, setCreated] = useState<Tenant | null>(null)
@@ -190,7 +188,7 @@ export function AddTenantWizard({
       toast(INVALID_FORM_MESSAGE, { ok: false })
       void form.validateAllFields('submit')
       void form.validate('submit')
-    } else toast(`${steps[i].title} still needs ${m.join(', ')}.`, { ok: false })
+    } else toast(`${STEPS[i].title} still needs ${m.join(', ')}.`, { ok: false })
     return true
   }
   /**
@@ -279,15 +277,18 @@ export function AddTenantWizard({
 
   const optional = catalog.filter((a) => !core.includes(a.name))
   const extraApps = optional.filter((a) => f.apps[a.name]).length
-  const last = steps.length - 1
+  const last = STEPS.length - 1
   // The review's apps and addresses, read when it opens: the steps before have saved them by then.
   const appLines = useTenantAppLines(step === last ? created : null)
+  // The apps step's note counts the tenant's other apps that are on, as the prototype's does.
+  const tenantApps = useTenantApps(step >= 2 ? created : null)
+  const extraTenantApps = tenantApps.filter((a) => a.on && !a.isDefault).length
   const addressLines = useTenantAddressLines(step === last ? created : null, (code) => countryName(code) ?? code)
   const notes = onCreated
     ? [
         ready ? 'Ready to create. Its address comes next.' : 'Creating the tenant needs this step only.',
         addressSaved ? 'Saved. Saving again replaces it.' : 'Needed to go on.',
-        'Each app is saved as you switch it.',
+        `Control Centre and Calendar are included${extraTenantApps ? ` · ${extraTenantApps} more ${extraTenantApps === 1 ? 'app' : 'apps'}` : ''}.`,
         'Not saved yet: the tenant’s page will invite them.',
         `${created?.name ?? 'The tenant'} and its address are saved.`,
       ]
@@ -302,7 +303,7 @@ export function AddTenantWizard({
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[940px]" showCloseButton>
-        <StepperLayout rail={<Stepper title="New tenant" steps={steps} current={step} complete={complete} onStep={go} />}>
+        <StepperLayout rail={<Stepper title="New tenant" steps={STEPS} current={step} complete={complete} onStep={go} />}>
           <StepHeading
             title={HEADINGS[step][0]}
             lede={onCreated && LEDES[step] ? LEDES[step] : HEADINGS[step][1]}
@@ -719,7 +720,7 @@ export function AddTenantWizard({
                 }
               />
               <ReviewCard
-                title={steps[2].title}
+                title="Apps & modules"
                 onEdit={() => setStep(2)}
                 lines={
                   created

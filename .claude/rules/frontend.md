@@ -41,6 +41,16 @@ them by default. See [product scope](../../docs/product/scope.md) and
 - Tabs on a landing page are paths (C218): each tab is its own route at `/<section>/<tab>`
   (`/geographies/countries`), with its own `validateSearch`, loader, and list state; `/<section>`
   redirects to its first tab. Never a `?tab=` parameter. The tab bar navigates between the paths.
+- Integrating a screen that has a prototype (C226): build it as the prototype draws it — its layout,
+  order, headings, labels, placeholders, notes, badges, and behaviour — unless the user explicitly
+  says otherwise. Change only what a confirmed decision makes absent or impossible (a feature not built,
+  a rule such as C202's asterisks, data that comes per country), keep the rest verbatim, and list
+  every difference in the pull request. Never rename, retitle, reword, add sections, or show data the
+  prototype does not, on your own judgement; ask first. The prototype is the page without the API
+  (`/tenants-prototype`, the same component without `onCreated`). Text a decision makes untrue
+  stays as the prototype has it unless the user says otherwise ("Apps & modules" stays). Once every
+  part of a prototype is integrated, ask the user whether to remove the prototype; never remove it
+  without that answer.
 - Mark every required form field with an asterisk (*) after its label: `Label`/`Field`
   `required`, and `required` or `aria-required` on the control (C202). Optional fields have no mark.
 - Read [frontend structure](../../docs/architecture/frontend.md). Workspace apps (Control
