@@ -12,8 +12,8 @@ import { FormErrorBanner, FormField, TextField } from '@workspace/ui/components/
 import type { FormErrors } from '@workspace/api'
 import { useToast } from '@workspace/ui/components/toast'
 import { Field } from '@/components/form-field'
-import { tenantMutations } from './api'
-import { addressStepSchema, emptyAddress, toAddressInput } from './schemas'
+import { tenantMutations, tenantQueries } from './api'
+import { addressLine, addressStepSchema, emptyAddress, toAddressInput } from './schemas'
 import type { AddressStep, Tenant } from './schemas'
 
 /** The id of step 2's form, which the wizard's footer button submits. */
@@ -71,16 +71,17 @@ export function TenantAddressStep({ tenant, onSaved, onBusy }: { tenant: Tenant;
         void form.handleSubmit()
       }}
     >
-      <AddressFields form={form} prefix="registered" title="Registered address" errors={registered.formErrors} />
+      {/* As the prototype draws it (C226): one address, untitled, until a separate mailing address is asked for. */}
+      <AddressFields form={form} prefix="registered" title="Registered address" showTitle={!mailingIsRegistered} errors={registered.formErrors} />
       <form.Field name="mailingIsRegistered">
         {(field) => (
           <label className="flex cursor-pointer items-center gap-2.5 text-compact text-body">
             <Checkbox checked={field.state.value} onCheckedChange={(v) => field.handleChange(Boolean(v))} />
-            Mailing address is the same as the registered address
+            Mailing address is the same as this address
           </label>
         )}
       </form.Field>
-      {!mailingIsRegistered && <AddressFields form={form} prefix="mailing" title="Mailing address" errors={mailing.formErrors} />}
+      {!mailingIsRegistered && <AddressFields form={form} prefix="mailing" title="Mailing address" showTitle errors={mailing.formErrors} />}
     </form>
   )
 }
@@ -90,7 +91,20 @@ export function TenantAddressStep({ tenant, onSaved, onBusy }: { tenant: Tenant;
  * listed, down to a place with nothing under it (the deepest carries the API's geographyId error), a
  * text field for each level with none, and the street part.
  */
-function AddressFields({ form, prefix, title, errors }: { form: StepForm; prefix: Prefix; title: string; errors: FormErrors | null }) {
+function AddressFields({
+  form,
+  prefix,
+  title,
+  showTitle,
+  errors,
+}: {
+  form: StepForm
+  prefix: Prefix
+  /** Names the address's fields to assistive technology, and heads them when showTitle. */
+  title: string
+  showTitle: boolean
+  errors: FormErrors | null
+}) {
   const address = useStore(form.store, (s) => s.values[prefix])
   const types = useQuery(referenceQueries.geographyTypes(address.country))
   const levels = addressLevels(types.data ?? [])
@@ -114,7 +128,7 @@ function AddressFields({ form, prefix, title, errors }: { form: StepForm; prefix
 
   return (
     <fieldset className="grid min-w-0 gap-4 sm:grid-cols-2">
-      <legend className="mb-1 text-overline text-faint">{title}</legend>
+      <legend className={showTitle ? 'mb-1 text-overline text-faint' : 'sr-only'}>{title}</legend>
       <form.Field
         name={`${prefix}.country`}
         listeners={{
@@ -127,7 +141,7 @@ function AddressFields({ form, prefix, title, errors }: { form: StepForm; prefix
         }}
       >
         {(field) => (
-          <FormField field={field} label="Country" required className="sm:col-span-2">
+          <FormField field={field} label="Country" required>
             {(c) => (
               <CountrySelect
                 id={c.id}
@@ -185,20 +199,19 @@ function AddressFields({ form, prefix, title, errors }: { form: StepForm; prefix
         </form.Field>
       ))}
 
+      <form.Field name={`${prefix}.postalCode`}>{(field) => <TextField field={field} label="Postal code" placeholder="20026" />}</form.Field>
       <form.Field name={`${prefix}.line1`}>
         {(field) => (
           <TextField
             field={field}
             label="Address"
             required
-            placeholder="H. Sosun Villa, Sosun Magu"
-            hint="The house or building, and the street."
+            placeholder="NCIT, Kalaafaanu Hingun"
             className="sm:col-span-2"
           />
         )}
       </form.Field>
-      <form.Field name={`${prefix}.line2`}>{(field) => <TextField field={field} label="Address line 2" placeholder="3rd floor" />}</form.Field>
-      <form.Field name={`${prefix}.postalCode`}>{(field) => <TextField field={field} label="Postal code" placeholder="20026" />}</form.Field>
+      <form.Field name={`${prefix}.line2`}>{(field) => <TextField field={field} label="Address line 2" placeholder="3rd floor" className="sm:col-span-2" />}</form.Field>
       <FormErrorBanner errors={errors} className="sm:col-span-2" />
     </fieldset>
   )
@@ -212,4 +225,16 @@ function levelOf(levels: readonly AddressLevel[], code: string) {
 /** The listed types the next picker offers: those of the first listed level below `level`. */
 function nextListedTypes(levels: readonly AddressLevel[], level: number) {
   return levels.find((l) => l.listed && l.level > level)?.types.map((t) => ({ typeName: t.name })) ?? []
+}
+
+/** The review step's lines for a tenant's saved addresses (C217), labelled as the prototype's (C226): the registered one, and the mailing one or that it is the same. */
+export function useTenantAddressLines(tenant: Tenant | null, countryName: (code: string) => string): [string, string][] {
+  const addresses = useQuery({ ...tenantQueries.addresses(tenant?.id ?? ''), enabled: tenant !== null }).data?.items ?? []
+  const of = (kind: string) => addresses.find((a) => a.kind === kind)
+  const registered = of('registered')
+  const mailing = of('mailing')
+  return [
+    ['Address', registered ? addressLine(registered, countryName) : 'Not set'],
+    ['Mailing address', mailing ? addressLine(mailing, countryName) : 'Same as address'],
+  ]
 }
