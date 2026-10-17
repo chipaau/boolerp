@@ -19,3 +19,9 @@ var (
 		Description:  "Sees everything in the admin console and changes nothing.",
 		Capabilities: []string{"tenancy:tenant:view"}}
 )
+
+// ControlCentreAdministrator is a tenant's administrator (C228): the operator hands it to the
+// tenant's first administrators, and it grows with Control Centre's capabilities, declared
+// here as Control Centre gains them. Until then it grants nothing beyond membership.
+var ControlCentreAdministrator = Role{Key: "control-centre.administrator", App: ControlCentre.Key, Name: "Administrator",
+	Description: "Runs the tenant in Control Centre: its people, roles, and settings."}

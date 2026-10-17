@@ -20,7 +20,8 @@ Project bool_erp {
 Table users {
   id uuid [pk, default: `uuidv7()`]
   kratos_identity_id uuid [not null, unique, note: 'the Kratos identity (a token sub)']
-  email text [not null, note: 'personal data: never logged, cached, or traced']
+  email text [not null, note: 'the primary address; personal data: never logged, cached, or traced']
+  emails "text[]" [not null, default: `'{}'`, note: 'every verified address, lowercase (C230); GIN index; personal data']
   phone text [not null, note: 'contact number, not an identifier (C85)']
   display_name text
   avatar_url text [note: 'the picture trait; http(s) and not blank (check); personal data']
@@ -28,7 +29,7 @@ Table users {
   updated_at timestamptz [not null, default: `now()`]
 
   Note: '''
-  Confirmed 2026-10-01 (C94), avatar_url added 2026-10-05; migration
+  Confirmed 2026-10-01 (C94), avatar_url added 2026-10-05, emails 2026-10-17 (C230); migration
   identity/migrations/00001_users.sql.
   One row per person who has used the platform; a projection of their Kratos
   account, written by POST /api/auth/me (C157). Global, not tenant-scoped. RLS (C126):
@@ -305,11 +306,13 @@ Table domains {
 Table memberships {
   id uuid [pk, default: `uuidv7()`]
   tenant_id uuid [not null, ref: > tenants.id, note: 'ON DELETE RESTRICT']
-  user_id uuid [not null, ref: > users.id, note: 'ON DELETE RESTRICT (C134)']
+  user_id uuid [ref: > users.id, note: 'ON DELETE RESTRICT (C134); null only while invited, set once on claim (C230)']
+  invite_email text [note: 'the address invited, lowercase; required when user_id is null; personal data (C230)']
+  invite_name text [note: 'the name entered; required when user_id is null; personal data (C230)']
   status text [not null, default: 'invited', note: 'invited | active | disabled | ended']
   is_owner boolean [not null, default: false, note: 'invited or active only; one or more per tenant; at least one outside provisioning (C198)']
   invited_by uuid [ref: > users.id, note: 'null when provisioning or a seed created it']
-  invite_expires_at timestamptz [note: 'required when invited; past = expired']
+  invite_expires_at timestamptz [note: 'null until sent at activation (C228); past = expired']
   joined_at timestamptz [note: 'required when active or disabled']
   disabled_at timestamptz [note: 'required when disabled']
   ended_at timestamptz [note: 'required when ended']
@@ -319,16 +322,19 @@ Table memberships {
   indexes {
     (tenant_id, id) [unique, note: 'for tenant-aware foreign keys']
     (tenant_id, user_id) [unique, note: 'partial: WHERE status <> ended']
+    (tenant_id, invite_email) [unique, note: 'partial: WHERE status = invited (C230)']
+    invite_email [note: 'partial: WHERE user_id IS NULL (claiming)']
     tenant_id [note: 'partial: WHERE is_owner (the at-least-one-owner check)']
     user_id
   }
 
   Note: '''
-  Confirmed 2026-10-05 (C160); migration platform/tenancy/migrations/00004_memberships.sql.
-  A person's access to a tenant; not employment. Seats are invited and active rows. Tenant and
-  user never change; an ended membership is frozen (rejoining is a new row). RLS enabled: members
-  read and change their tenant's memberships; the operator also reads, creates, and changes
-  owner memberships of any tenant; none are deleted. lookup.active_membership (RequireMember)
+  Confirmed 2026-10-05 (C160), invitations by e-mail 2026-10-17 (C230); migration platform/tenancy/migrations/00004_memberships.sql.
+  A person's access to a tenant; not employment. Seats are invited and active rows. The tenant
+  never changes; the user is set once (an invitation claimed, C230); an ended membership is
+  frozen (rejoining is a new row). RLS enabled: members read and change their tenant's
+  memberships; the operator also reads, creates, and changes owner memberships and
+  invitations (live, or ended unclaimed) of any tenant (C228); none are deleted. lookup.active_membership (RequireMember)
   and lookup.memberships_of (the switcher) are owned by erp_lookup (C131).
   '''
 }
@@ -482,7 +488,8 @@ Table role_assignments {
   Note: '''
   Confirmed 2026-10-06 (C170); migration platform/authorization/migrations/00004_role_assignments.sql.
   No membership, no role. Tenant, membership, role fixed; ended rows frozen. RLS: a tenant reads
-  and changes its own; none deleted. Audited.
+  and changes its own; the operator also its control-centre.administrator assignments in any
+  tenant (C228); none deleted. Audited.
   '''
 }
 

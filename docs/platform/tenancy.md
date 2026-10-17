@@ -312,7 +312,19 @@ before it is added to the [diagram](../data-model/erd.dbml) or gets a migration
   on), and `DELETE …/apps/{key}` (turns it off by ending the activation, a default app
   included; `204`, or `404` when it is not on). An app the tenant may not have (unknown,
   retired, or an operator app elsewhere) is `404`. Each app also answers `isAvailable`
-  (C225): one coming soon is listed after the available ones, and turning it on is `409`. Cerbos decides as for the addresses:
+  (C225): one coming soon is listed after the available ones, and turning it on is `409`.
+- **A tenant's administrators** (C228, C230, C231), behind the `Operator` chain: the create
+  wizard's step 4. `GET /api/v1/tenants/{tenantID}/administrators` (the tenant's live
+  invitations, oldest first, each `{id, email, name, isOwner, inviteExpiresAt, createdAt}`,
+  `inviteExpiresAt` null until sent), `POST …/administrators` (`email` and `name` required,
+  `isOwner` optional: an invited membership naming the address, lowercase, and Control
+  Centre's Administrator, in one transaction; `201` with `Location` when new, `200` with the
+  live invitation already made for that address; `409` when Control Centre is off for the
+  tenant), and `DELETE …/administrators/{membershipID}` (cancels a live invitation and ends
+  its role; `204`, `404` when there is none, `409` for the only owner of a tenant past
+  provisioning). Cerbos decides as for the addresses. No account or user is created: the
+  invitation waits on the address (C230). Sending it when the tenant is activated, and
+  claiming it on sign-up, come with activation and application e-mail (12b). Cerbos decides as for the addresses:
   `tenancy:tenant` `list`, then `view` or `update` on the tenant.
 - The lookup before any tenant is known (C131): a `SECURITY DEFINER` function owned by
   `erp_lookup`, a `NOLOGIN BYPASSRLS` role with column-level `SELECT` on only the

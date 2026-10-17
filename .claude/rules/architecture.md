@@ -58,7 +58,9 @@ Read [architecture/backend.md](../../docs/architecture/backend.md) and
   read only through the read-only views its owner publishes, each `security_invoker = true`
   and tested as the runtime role; never join another module's tables. No transaction
   spans modules: effects in another module go through an outbox event written in the
-  same transaction and handled idempotently.
+  same transaction and handled idempotently. Exception (C231): the platform modules are one
+  service, so a platform flow may write several platform modules' tables in one transaction,
+  each through that module's Go functions, never its SQL.
 - Business modules receive the platform as one `platform.Services` bundle from the
   edition and protect routes with its named chains (`TenantUser`, `TenantClient(scopes…)`,
   `Operator`, and `Authenticated` for any authenticated caller outside a tenant, C199), built from single-purpose middlewares; the tenant travels in `context.Context`,

@@ -70,15 +70,25 @@ CREATE TRIGGER role_assignments_valid BEFORE INSERT OR UPDATE ON role_assignment
     FOR EACH ROW EXECUTE FUNCTION role_assignments_valid();
 
 -- Row-level security (C115): a tenant reads and changes only its own assignments (Cerbos
--- decides who); nothing deletes one.
+-- decides who); the operator tenant also reads, makes, and ends assignments of the one
+-- global role it hands a tenant's administrators, Control Centre's Administrator (C228),
+-- and no other role outside its own tenant. Nothing deletes one.
+-- +goose StatementBegin
+CREATE FUNCTION role_assignments_operator_may(role uuid) RETURNS boolean
+    LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
+        SELECT lookup.is_operator_tenant(current_tenant_id())
+           AND EXISTS (SELECT 1 FROM roles r
+                        WHERE r.id = role AND r.tenant_id IS NULL AND r.key = 'control-centre.administrator')
+    $$;
+-- +goose StatementEnd
 ALTER TABLE role_assignments ENABLE ROW LEVEL SECURITY;
 CREATE POLICY role_assignments_read ON role_assignments FOR SELECT
-    USING (tenant_id = current_tenant_id());
+    USING (tenant_id = current_tenant_id() OR role_assignments_operator_may(role_id));
 CREATE POLICY role_assignments_create ON role_assignments FOR INSERT
-    WITH CHECK (tenant_id = current_tenant_id());
+    WITH CHECK (tenant_id = current_tenant_id() OR role_assignments_operator_may(role_id));
 CREATE POLICY role_assignments_update ON role_assignments FOR UPDATE
-    USING (tenant_id = current_tenant_id())
-    WITH CHECK (tenant_id = current_tenant_id());
+    USING (tenant_id = current_tenant_id() OR role_assignments_operator_may(role_id))
+    WITH CHECK (tenant_id = current_tenant_id() OR role_assignments_operator_may(role_id));
 
 -- Every change is audited (C164).
 SELECT audit.enable('role_assignments');

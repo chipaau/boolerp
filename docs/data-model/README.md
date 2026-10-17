@@ -69,7 +69,8 @@ countries; only the migration role (migrations, `cmd/deploy`, `cmd/seed`) does. 
 ### `users` (identity module, C94)
 
 Approved 2026-10-01 by the user, with `phone`; `avatar_url` confirmed 2026-10-05 by the
-user, with the Kratos `picture` trait it copies. One row per person who has a Kratos
+user, with the Kratos `picture` trait it copies. `emails` confirmed 2026-10-17 by the user
+(C230): an account holds several verified addresses. One row per person who has a Kratos
 identity and has used the platform; it is the API's own key for a person, so other
 tables reference `users.id`, never the Kratos identity ID. It is not tenant-scoped:
 tenant membership and employee records are separate tables (identity rules), and some users
@@ -79,7 +80,8 @@ tenant membership and employee records are separate tables (identity rules), and
 | --- | --- | --- |
 | `id` | `uuid` | Primary key, `uuidv7()` default. |
 | `kratos_identity_id` | `uuid` | Not null, unique; the Kratos identity the user belongs to. |
-| `email` | `text` | Not null; a copy of the identity's login email trait. |
+| `email` | `text` | Not null; the account's primary address (the first of its e-mail traits), the one shown and written to. |
+| `emails` | `text[]` | Not null, `'{}'` default; every verified address of the account, lowercase and not blank, copied from Kratos at each registration and sync. Invitations are matched and claimed against it (C230). GIN index. No uniqueness constraint: Kratos keeps each address on one account. |
 | `phone` | `text` | Not null; a copy of the identity's phone trait. |
 | `display_name` | `text` | Nullable; a copy of the identity's name trait. |
 | `avatar_url` | `text` | Nullable; a copy of the identity's picture trait (filled from Google's `picture` claim). Check: starts with `http://` or `https://` and is not blank. |
@@ -87,7 +89,7 @@ tenant membership and employee records are separate tables (identity rules), and
 
 Kratos stays the authority for the copied traits; the identity module writes the row
 only when the person registers (`POST /api/auth/me` with their access token, from
-Hydra's `/userinfo`, C157), never as a side effect of another request. `email`, `phone`, `display_name`, and
+Hydra's `/userinfo`, C157), never as a side effect of another request. `email`, `emails`, `phone`, `display_name`, and
 `avatar_url` are personal data: never logged, cached, or traced. The migration is
 `apps/api/internal/platform/identity/migrations/00001_users.sql`.
 
@@ -359,32 +361,42 @@ The migration is `apps/api/internal/platform/tenancy/migrations/00003_domains.sq
 
 ### `memberships` (tenancy module, C160)
 
-Fields confirmed 2026-10-05 by the user. A person's access to a tenant they work in: one
-account, many memberships (C115). Not employment (the employee record is HRMS's); portal
+Fields confirmed 2026-10-05 by the user; `user_id` nullable while invited, `invite_email`,
+`invite_name`, and `invite_expires_at` null until sent confirmed 2026-10-17 by the user
+(C230), with `user_id` also null on an invitation that ended unclaimed (confirmed the same day). A person's access to a tenant they work in: one account, many memberships (C115). An
+invitation is an invited membership naming an e-mail: it points at the user holding that
+verified address, or waits until an account verifies it. Not employment (the employee record is HRMS's); portal
 users never become members (C133).
 
 | Column | Type | Rule |
 | --- | --- | --- |
 | `id` | `uuid` | Primary key, `uuidv7()` default; also unique `(tenant_id, id)` for tenant-aware foreign keys. |
 | `tenant_id` | `uuid` | Not null; references `tenants.id`, `ON DELETE RESTRICT`. |
-| `user_id` | `uuid` | Not null; references `users.id`, `ON DELETE RESTRICT` (a cross-module key, C134); indexed. |
+| `user_id` | `uuid` | References `users.id`, `ON DELETE RESTRICT` (a cross-module key, C134); indexed. Null only on an invitation not yet claimed (live, or ended unclaimed: cancelled or expired, `joined_at` null): set once when an account verifies the invited address, never changed after (a later account merge is the one audited exception, C230). |
+| `invite_email` | `text` | Lowercase, not blank; the address invited, on every invitation, kept after joining. Required when `user_id` is null. Personal data. |
+| `invite_name` | `text` | Not blank; the name the operator entered, shown until the person joins. Required when `user_id` is null. Personal data. |
 | `status` | `text` | Not null, default `invited`; `invited`, `active`, `disabled` (reversible), or `ended` (final). |
 | `is_owner` | `boolean` | Not null, default false; only when invited or active; one or more per tenant (C198). |
 | `invited_by` | `uuid` | Nullable; references `users.id`; null when provisioning or a seed created it. |
-| `invite_expires_at` | `timestamptz` | Required when invited; an invited row past it is an expired invitation. |
+| `invite_expires_at` | `timestamptz` | Null until the invitation is sent (when the tenant is activated, C228), then set; an invited row past it is an expired invitation. |
 | `joined_at` | `timestamptz` | Required when active or disabled. |
 | `disabled_at` | `timestamptz` | Required when disabled. |
 | `ended_at` | `timestamptz` | Required when ended. |
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |
 
-One live membership per person and tenant (unique while not ended); an ended membership is
+One live membership per person and tenant (unique while not ended), and one live invitation
+per address and tenant (unique while invited); an index on `invite_email` for rows without a
+user finds a new account's invitations. Claiming one (sent, not expired) sets `user_id`,
+`active`, and `joined_at` in one transaction; a person already a live member ends it instead. an ended membership is
 frozen history and rejoining is a new row. Tenant and user never change (a trigger). Seats
 are the tenant's invited and active memberships. A tenant may have several owners; one outside
 `provisioning` keeps at least one invited or active owner, checked at commit by constraint
 triggers on `tenants` and `memberships` (C198, changed 2026-10-15 in the original migration,
 C140): ownership moves by adding an owner, then the old one stepping down. Row-level security: members read and change their tenant's
 memberships (Cerbos decides who); the operator also reads, creates, and changes owner
-memberships of any tenant, and nothing else outside its own; nothing deletes one. Two
+memberships and invitations of any tenant (live, or ended without anyone joining, so it can
+cancel one, C228), and nothing else outside its own: a member who is not an owner, and their
+history, are the tenant's alone; nothing deletes one. Two
 lookups owned by `erp_lookup` (C131): `lookup.active_membership(tenant, user)` for
 `RequireMember` (the active membership and the tenant's status, in one call) and
 `lookup.memberships_of(user)` for the switcher (active memberships with each tenant's
@@ -568,7 +580,9 @@ in the tenant; tenant, membership, and role never change; an ended assignment is
 (giving the role again is a new row). Capabilities count only assignments live now, whose
 membership is active and whose role's app is on, so ending a membership or turning an app
 off removes access without touching assignments. Row-level security: a tenant reads and
-changes only its own; nothing deletes one. Audited. The migration is
+changes only its own; the operator tenant also reads, makes, and ends assignments of the one
+global role it hands a tenant's administrators, `control-centre.administrator` (C228), and
+no other role outside its own; nothing deletes one. Audited. The migration is
 `apps/api/internal/platform/authorization/migrations/00004_role_assignments.sql`.
 
 ### `billing_agreements` (billing module, C171)
