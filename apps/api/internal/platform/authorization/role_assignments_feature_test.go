@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/boolmv/erp/apps/api/internal/platform/authorization"
 	"github.com/boolmv/erp/apps/api/internal/platform/kit/testdb"
 )
 
@@ -89,4 +90,59 @@ func TestFeatureRoleAssignmentPolicies(t *testing.T) {
 	tag, err = testdb.Savepoint(t, w.tx, `DELETE FROM role_assignments WHERE tenant_id = $1`, w.a)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "nothing deletes an assignment")
+}
+
+// controlCentreAdministrator ensures the catalogue's control-centre app and its global
+// Administrator (the code's, C228) exist in the test's transaction, as the seeds would make
+// them, turns the app on in tenant, and returns the role's id.
+func (w assignWorld) controlCentreAdministrator(t *testing.T, tenant string) string {
+	t.Helper()
+	testdb.Exec(t, w.tx, `INSERT INTO apps (key, name, kind, is_default, is_available)
+		VALUES ('control-centre', 'Control Centre', 'workspace', true, true) ON CONFLICT (key) DO NOTHING`)
+	testdb.Exec(t, w.tx, `INSERT INTO roles (app_key, key, name) VALUES ('control-centre', $1, 'Administrator')
+		ON CONFLICT (key) DO NOTHING`, authorization.ControlCentreAdministrator.Key)
+	testdb.Exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) SELECT $1, 'control-centre'
+		WHERE NOT EXISTS (SELECT 1 FROM tenant_apps WHERE tenant_id = $1 AND app_key = 'control-centre' AND active_to IS NULL)`, tenant)
+	return testdb.ID(t, w.tx, `SELECT id FROM roles WHERE key = $1`, authorization.ControlCentreAdministrator.Key)
+}
+
+// The operator hands a tenant's administrators Control Centre's Administrator (C228), and no
+// other role outside its own tenant.
+func TestFeatureTheOperatorAssignsOnlyControlCentresAdministratorElsewhere(t *testing.T) {
+	w := newAssignWorld(t)
+	admin := w.controlCentreAdministrator(t, w.b)
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
+	testdb.Exec(t, w.tx, `ALTER TABLE role_assignments FORCE ROW LEVEL SECURITY`)
+	testdb.Exec(t, w.tx, `SELECT set_config('app.tenant_id', $1, true)`, w.operator)
+
+	ins := `INSERT INTO role_assignments (tenant_id, membership_id, role_id) VALUES ($1, $2, $3)`
+	given := testdb.ID(t, w.tx, ins+` RETURNING id`, w.b, w.memberB, admin)
+	testdb.AssertHas(t, w.tx, "role_assignments", map[string]any{"id": given, "tenant_id": w.b})
+	for name, role := range map[string]string{"a global role of another app": w.global, "the tenant's own role": w.mineB} {
+		_, err := testdb.Savepoint(t, w.tx, ins, w.b, w.memberB, role)
+		assert.Equal(t, "42501", testdb.PgCode(err), name)
+	}
+	tag, err := testdb.Savepoint(t, w.tx, `UPDATE role_assignments SET active_to = now() WHERE id = $1`, given)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), tag.RowsAffected(), "and ends it")
+}
+
+func TestFeatureAPlatformModuleAssignsAGlobalRoleInItsTransaction(t *testing.T) {
+	w := newAssignWorld(t)
+	ctx := t.Context()
+	admin := w.controlCentreAdministrator(t, w.b)
+
+	require.NoError(t, authorization.AssignGlobalRole(ctx, w.tx, w.b, w.memberB, authorization.ControlCentreAdministrator.Key))
+	require.NoError(t, authorization.AssignGlobalRole(ctx, w.tx, w.b, w.memberB, authorization.ControlCentreAdministrator.Key),
+		"already given: left as it is")
+	assert.Equal(t, 1, testdb.Count(t, w.tx, "role_assignments", map[string]any{"membership_id": w.memberB, "role_id": admin}))
+
+	require.ErrorIs(t, authorization.AssignGlobalRole(ctx, w.tx, w.a, w.memberA, "x-hr.nobody"), authorization.ErrNoRole)
+	require.ErrorIs(t, authorization.AssignGlobalRole(ctx, w.tx, w.a, w.memberA, authorization.ControlCentreAdministrator.Key),
+		authorization.ErrAppOff, "Control Centre is not on in A")
+
+	require.NoError(t, authorization.EndGlobalRole(ctx, w.tx, w.memberB, authorization.ControlCentreAdministrator.Key))
+	testdb.AssertMissing(t, w.tx, "role_assignments", map[string]any{"membership_id": w.memberB, "role_id": admin, "active_to": nil})
+	require.NoError(t, authorization.EndGlobalRole(ctx, w.tx, w.memberB, authorization.ControlCentreAdministrator.Key),
+		"nothing open: left as it is")
 }

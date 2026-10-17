@@ -19,7 +19,7 @@ func (m *Module) Routes(s platform.Services) func(chi.Router) {
 
 // TenantsRoutes returns the admin console's tenant routes, relative to where the edition
 // mounts them (/api/v1/tenants), behind the Operator chain (C178): the registry, each
-// tenant's addresses (C217), and its apps (C224).
+// tenant's addresses (C217), its apps (C224), and its administrators (C228).
 func (m *Module) TenantsRoutes(s platform.Services) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Group(func(r chi.Router) {
@@ -35,6 +35,11 @@ func (m *Module) TenantsRoutes(s platform.Services) func(chi.Router) {
 				r.Get("/", m.apps(s.Authz))
 				r.Put("/{key}", m.turnOnApp(s.Authz))
 				r.Delete("/{key}", m.turnOffApp(s.Authz))
+			})
+			r.Route("/{tenantID}/administrators", func(r chi.Router) {
+				r.Get("/", m.administrators(s.Authz))
+				r.Post("/", m.inviteAdministrator(s.Authz))
+				r.Delete("/{membershipID}", m.cancelAdministrator(s.Authz))
 			})
 		})
 	}

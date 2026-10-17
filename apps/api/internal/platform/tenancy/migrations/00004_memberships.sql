@@ -1,5 +1,7 @@
--- Memberships (C160; fields confirmed 2026-10-05): a person's access to a tenant they
--- work in. One account, many memberships (C115): each has its own status, and ending
+-- Memberships (C160; fields confirmed 2026-10-05, invitations by e-mail 2026-10-17, C230): a
+-- person's access to a tenant they work in. An invitation is an invited membership naming an
+-- e-mail: it points at the user holding that verified address, or waits until an account
+-- verifies it (then it is claimed: user_id set, active, joined_at). One account, many memberships (C115): each has its own status, and ending
 -- one removes access to that tenant only. A membership is not employment: the employee
 -- record is HRMS's. Portal users (students, patients) never become members (C133).
 -- Seats are the tenant's invited and active memberships. A tenant has one or more owners
@@ -10,9 +12,14 @@
 CREATE TABLE memberships (
     id                uuid        PRIMARY KEY DEFAULT uuidv7(),
     tenant_id         uuid        NOT NULL REFERENCES tenants (id) ON DELETE RESTRICT,
-    -- The identity module's user (C134 allows the foreign key to its stable id). An
-    -- invitation always names an account: inviting someone without one creates it first.
-    user_id           uuid        NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+    -- The identity module's user (C134 allows the foreign key to its stable id). Null only
+    -- on an invitation not yet claimed (live, or ended unclaimed): an account verifying
+    -- invite_email sets it once (C230).
+    user_id           uuid        REFERENCES users (id) ON DELETE RESTRICT,
+    -- The address invited and the name entered (C230): on every invitation, kept after
+    -- joining as the record; personal data.
+    invite_email      text        CHECK (invite_email = lower(invite_email) AND btrim(invite_email) <> ''),
+    invite_name       text        CHECK (btrim(invite_name) <> ''),
     -- invited, then active; disabled is reversible (access paused in this tenant only);
     -- ended is final, kept as history. An expired invitation is an invited row whose
     -- invite_expires_at has passed, not a status.
@@ -24,6 +31,7 @@ CREATE TABLE memberships (
     is_owner          boolean     NOT NULL DEFAULT false,
     -- Who invited them; null when provisioning or a seed created the membership.
     invited_by        uuid        REFERENCES users (id) ON DELETE RESTRICT,
+    -- Null until the invitation is sent (when the tenant is activated, C228).
     invite_expires_at timestamptz,
     joined_at         timestamptz,
     disabled_at       timestamptz,
@@ -33,8 +41,11 @@ CREATE TABLE memberships (
 
     -- Tenant tables (role assignments) reference a membership with its tenant.
     UNIQUE (tenant_id, id),
+    -- Only an invitation waits without a user, and it names whom it is for; one cancelled
+    -- or expired before anyone claimed it ends without one.
+    CHECK (user_id IS NOT NULL OR status = 'invited' OR (status = 'ended' AND joined_at IS NULL)),
+    CHECK (user_id IS NOT NULL OR (invite_email IS NOT NULL AND invite_name IS NOT NULL)),
     -- The status timestamps follow the status.
-    CHECK (status <> 'invited' OR invite_expires_at IS NOT NULL),
     CHECK (status NOT IN ('active', 'disabled') OR joined_at IS NOT NULL),
     CHECK (status <> 'disabled' OR disabled_at IS NOT NULL),
     CHECK (status <> 'ended' OR ended_at IS NOT NULL),
@@ -44,6 +55,10 @@ CREATE TABLE memberships (
 
 -- One live membership per person and tenant; an ended one is history, never reused.
 CREATE UNIQUE INDEX memberships_one_live ON memberships (tenant_id, user_id) WHERE status <> 'ended';
+-- One live invitation per address and tenant (C230).
+CREATE UNIQUE INDEX memberships_one_invitation ON memberships (tenant_id, invite_email) WHERE status = 'invited';
+-- The invitations waiting on an address, which a newly verified address claims.
+CREATE INDEX memberships_unclaimed ON memberships (invite_email) WHERE user_id IS NULL;
 -- A tenant's owners (the "at least one owner" check below).
 CREATE INDEX memberships_owners ON memberships (tenant_id) WHERE is_owner;
 -- A person's memberships across tenants (the switcher, RequireMember).
@@ -52,12 +67,14 @@ CREATE INDEX memberships_user ON memberships (user_id);
 CREATE TRIGGER memberships_updated_at BEFORE UPDATE ON memberships
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- A membership is one person in one tenant: its tenant and user never change, and an
--- ended membership is frozen (rejoining is a new row).
+-- A membership is one person in one tenant: its tenant never changes, its user is set once
+-- (an invitation waiting on an address is claimed) and never changed after, and an ended
+-- membership is frozen (rejoining is a new row).
 -- +goose StatementBegin
 CREATE FUNCTION memberships_locked() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-    IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id OR NEW.user_id IS DISTINCT FROM OLD.user_id THEN
+    IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+       OR (OLD.user_id IS NOT NULL AND NEW.user_id IS DISTINCT FROM OLD.user_id) THEN
         RAISE EXCEPTION 'membership %: its tenant and user cannot change', OLD.id
             USING ERRCODE = 'check_violation';
     END IF;
@@ -158,21 +175,28 @@ RESET ROLE;
 
 -- Row-level security (C115): members read their tenant's memberships and, subject to
 -- authorization, add and change them; the operator tenant also reads, creates, and
--- changes owner memberships of any tenant (provisioning, owner support), and nothing
--- else outside its own tenant. Nothing deletes a membership (it is ended). Enabled,
+-- changes owner memberships and invitations of any tenant (provisioning, owner support,
+-- inviting a tenant's administrators, C228), and nothing else outside its own tenant: a
+-- member who is not an owner, and their history, are the tenant's alone. Cancelling an
+-- invitation ends it, and the operator still sees that it ended. Nothing deletes a membership (it is ended). Enabled,
 -- not forced, like the registry: the owning migration role provisions and seeds them.
 ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
+-- +goose StatementBegin
+-- The operator's share of another tenant's memberships: its owners, and its invitations,
+-- live or ended without anyone joining (a cancelled or expired one).
+CREATE FUNCTION memberships_operator_may(is_owner boolean, status text, joined_at timestamptz) RETURNS boolean
+    LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
+        SELECT lookup.is_operator_tenant(current_tenant_id())
+           AND (is_owner OR status = 'invited' OR (status = 'ended' AND joined_at IS NULL))
+    $$;
+-- +goose StatementEnd
 CREATE POLICY memberships_read ON memberships FOR SELECT
-    USING (tenant_id = current_tenant_id()
-           OR (is_owner AND lookup.is_operator_tenant(current_tenant_id())));
+    USING (tenant_id = current_tenant_id() OR memberships_operator_may(is_owner, status, joined_at));
 CREATE POLICY memberships_create ON memberships FOR INSERT
-    WITH CHECK (tenant_id = current_tenant_id()
-                OR (is_owner AND lookup.is_operator_tenant(current_tenant_id())));
+    WITH CHECK (tenant_id = current_tenant_id() OR memberships_operator_may(is_owner, status, joined_at));
 CREATE POLICY memberships_update ON memberships FOR UPDATE
-    USING (tenant_id = current_tenant_id()
-           OR (is_owner AND lookup.is_operator_tenant(current_tenant_id())))
-    WITH CHECK (tenant_id = current_tenant_id()
-                OR (is_owner AND lookup.is_operator_tenant(current_tenant_id())));
+    USING (tenant_id = current_tenant_id() OR memberships_operator_may(is_owner, status, joined_at))
+    WITH CHECK (tenant_id = current_tenant_id() OR memberships_operator_may(is_owner, status, joined_at));
 
 -- Every change is audited (C164).
 SELECT audit.enable('memberships');

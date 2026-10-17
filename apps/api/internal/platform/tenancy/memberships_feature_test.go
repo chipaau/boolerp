@@ -53,14 +53,17 @@ func TestFeatureMembershipConstraints(t *testing.T) {
 	w.member(t, a, u, true)
 
 	for name, sql := range map[string]string{
-		"second live membership":    `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, '` + u + `', now())`,
-		"unknown status":            `INSERT INTO memberships (tenant_id, user_id, status) VALUES ($1, '` + v + `', 'pending')`,
-		"invited without expiry":    `INSERT INTO memberships (tenant_id, user_id) VALUES ($1, '` + v + `')`,
-		"active without joining":    `INSERT INTO memberships (tenant_id, user_id, status) VALUES ($1, '` + v + `', 'active')`,
-		"disabled without the time": `INSERT INTO memberships (tenant_id, user_id, status, joined_at) VALUES ($1, '` + v + `', 'disabled', now())`,
-		"ended without the time":    `INSERT INTO memberships (tenant_id, user_id, status) VALUES ($1, '` + v + `', 'ended')`,
-		"disabled owner":            `INSERT INTO memberships (tenant_id, user_id, status, joined_at, disabled_at, is_owner) VALUES ($1, '` + v + `', 'disabled', now(), now(), true)`,
-		"unknown user":              `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, '0192f6a0-0000-7000-8000-000000000000', now())`,
+		"second live membership":               `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, '` + u + `', now())`,
+		"unknown status":                       `INSERT INTO memberships (tenant_id, user_id, status) VALUES ($1, '` + v + `', 'pending')`,
+		"invited without a user or an address": `INSERT INTO memberships (tenant_id) VALUES ($1)`,
+		"active without a user":                `INSERT INTO memberships (tenant_id, invite_email, invite_name, status, joined_at) VALUES ($1, 'x@x-tenancy.test', 'X', 'active', now())`,
+		"an address not lowercase":             `INSERT INTO memberships (tenant_id, invite_email, invite_name) VALUES ($1, 'X@x-tenancy.test', 'X')`,
+		"a blank name":                         `INSERT INTO memberships (tenant_id, invite_email, invite_name) VALUES ($1, 'x@x-tenancy.test', ' ')`,
+		"active without joining":               `INSERT INTO memberships (tenant_id, user_id, status) VALUES ($1, '` + v + `', 'active')`,
+		"disabled without the time":            `INSERT INTO memberships (tenant_id, user_id, status, joined_at) VALUES ($1, '` + v + `', 'disabled', now())`,
+		"ended without the time":               `INSERT INTO memberships (tenant_id, user_id, status) VALUES ($1, '` + v + `', 'ended')`,
+		"disabled owner":                       `INSERT INTO memberships (tenant_id, user_id, status, joined_at, disabled_at, is_owner) VALUES ($1, '` + v + `', 'disabled', now(), now(), true)`,
+		"unknown user":                         `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, '0192f6a0-0000-7000-8000-000000000000', now())`,
 	} {
 		_, err := testdb.Savepoint(t, w.tx, sql, a)
 		assert.Error(t, err, name)
@@ -273,16 +276,64 @@ func TestFeatureMembershipPolicies(t *testing.T) {
 	assert.Equal(t, "42501", testdb.PgCode(err), "but not into another tenant")
 
 	w.as(t, op)
-	assert.Equal(t, 2, visible(), "the operator sees its own members and other tenants' owners")
+	assert.Equal(t, 3, visible(), "the operator sees its own members, other tenants' owners, and their invitations")
 	_, err = testdb.Savepoint(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at, is_owner)
 		VALUES ($1, $2, now(), true)`, b, newcomer)
 	require.NoError(t, err, "the operator creates an owner membership")
 	_, err = testdb.Savepoint(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, invite_expires_at) VALUES ($1, $2, now())`, a, opStaff)
-	assert.Equal(t, "42501", testdb.PgCode(err), "but no other membership in another tenant")
+	require.NoError(t, err, "and invites a tenant's administrators (C228)")
+	_, err = testdb.Savepoint(t, w.tx, `INSERT INTO memberships (tenant_id, user_id, status, joined_at) VALUES ($1, $2, 'active', now())`, a, opStaff)
+	assert.Equal(t, "42501", testdb.PgCode(err), "but makes no one an active member of another tenant")
 	tag, err := testdb.Savepoint(t, w.tx, `UPDATE memberships SET status = 'disabled', disabled_at = now() WHERE user_id = $1`, staff)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "nor changes one")
 	tag, err = testdb.Savepoint(t, w.tx, `DELETE FROM memberships WHERE user_id = $1`, opStaff)
 	require.NoError(t, err)
 	assert.Zero(t, tag.RowsAffected(), "no one deletes a membership: it is ended")
+}
+
+// An invitation names an e-mail and waits on it until an account verifies it (C230): then it
+// is claimed, its user set once.
+func TestFeatureAnInvitationWaitsOnAnAddressUntilItIsClaimed(t *testing.T) {
+	w := newWorld(t)
+	a := w.tenant(t, "x-a", "XTA")
+	u := w.user(t, 1)
+	v := w.user(t, 2)
+	invite := `INSERT INTO memberships (tenant_id, invite_email, invite_name) VALUES ($1, 'ali@x-tenancy.test', 'Ali') RETURNING id`
+	m := testdb.ID(t, w.tx, invite, a)
+	testdb.AssertHas(t, w.tx, "memberships", map[string]any{"id": m, "user_id": nil, "status": "invited", "invite_expires_at": nil})
+	_, err := testdb.Savepoint(t, w.tx, invite, a)
+	assert.Equal(t, "23505", testdb.PgCode(err), "one live invitation per address and tenant")
+
+	testdb.Exec(t, w.tx, `UPDATE memberships SET user_id = $1, status = 'active', joined_at = now() WHERE id = $2`, u, m)
+	testdb.AssertHas(t, w.tx, "memberships", map[string]any{"id": m, "user_id": u, "invite_email": "ali@x-tenancy.test"})
+	_, err = testdb.Savepoint(t, w.tx, `UPDATE memberships SET user_id = $1 WHERE id = $2`, v, m)
+	assert.Equal(t, "23514", testdb.PgCode(err), "claimed once: its user never changes")
+	testdb.ID(t, w.tx, invite, a) // claimed, so the address may be invited again
+}
+
+// The operator sees other tenants' invitations and owners only: after the hand-over an
+// active member who is not an owner is the tenant's alone (C228).
+func TestFeatureTheOperatorSeesOnlyInvitationsAndOwnersElsewhere(t *testing.T) {
+	w := newWorld(t)
+	op := w.operator(t)
+	a := w.tenant(t, "x-a", "XTA")
+	w.member(t, a, w.user(t, 1), true)
+	staff := w.member(t, a, w.user(t, 2), false)
+	invited := testdb.ID(t, w.tx, `INSERT INTO memberships (tenant_id, invite_email, invite_name) VALUES ($1, 'ali@x-tenancy.test', 'Ali') RETURNING id`, a)
+	testdb.Exec(t, w.tx, `SET CONSTRAINTS ALL IMMEDIATE`)
+	testdb.Exec(t, w.tx, `ALTER TABLE memberships FORCE ROW LEVEL SECURITY`)
+	w.as(t, op)
+
+	var ids []string
+	rows, err := w.tx.Query(t.Context(), `SELECT id::text FROM memberships WHERE tenant_id = $1`, a)
+	require.NoError(t, err)
+	ids, err = pgx.CollectRows(rows, pgx.RowTo[string])
+	require.NoError(t, err)
+	assert.Len(t, ids, 2, "the owner and the invitation")
+	assert.NotContains(t, ids, staff)
+
+	tag, err := testdb.Savepoint(t, w.tx, `UPDATE memberships SET status = 'ended', ended_at = now() WHERE id = $1`, invited)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), tag.RowsAffected(), "the operator cancels an invitation")
 }

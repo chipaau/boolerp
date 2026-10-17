@@ -70,7 +70,7 @@ func DefaultApps() []string {
 
 // Roles are the edition's global roles (C167, C177), mirrored by the authorization.roles
 // seed file.
-var Roles = []authorization.Role{authorization.AdminAdministrator, authorization.AdminViewer}
+var Roles = []authorization.Role{authorization.AdminAdministrator, authorization.AdminViewer, authorization.ControlCentreAdministrator}
 
 // Policies are the edition's Cerbos policies, tests, and schemas, one entry per
 // module (C151): the shared authorization pieces, then each module's. cmd/policies
