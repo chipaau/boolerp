@@ -36,8 +36,9 @@ func newAppsWorld(t *testing.T) appsWorld {
 		a:        testdb.ID(t, tx, insert, "x-tapps-a", "XPA", "A", form, false),
 		b:        testdb.ID(t, tx, insert, "x-tapps-b", "XPB", "B", form, false),
 	}
-	testdb.Exec(t, tx, `INSERT INTO apps (key, name, kind) VALUES ('x-thr', 'Test HR', 'workspace'),
-		('x-tconsole', 'Test console', 'operator'), ('x-ttasks', 'Test tasks', 'workspace'), ('x-tgone', 'Gone', 'workspace')`)
+	testdb.Exec(t, tx, `INSERT INTO apps (key, name, kind, is_available) VALUES ('x-thr', 'Test HR', 'workspace', true),
+		('x-tconsole', 'Test console', 'operator', true), ('x-ttasks', 'Test tasks', 'workspace', true),
+		('x-tgone', 'Gone', 'workspace', true), ('x-tsoon', 'Coming soon', 'workspace', false)`)
 	testdb.Exec(t, tx, `UPDATE apps SET active_to = now() WHERE key = 'x-tgone'`)
 	return w
 }
@@ -51,6 +52,7 @@ func TestFeatureTenantAppRules(t *testing.T) {
 		"a second live activation":  `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ('` + w.a + `', 'x-thr')`,
 		"an operator app elsewhere": `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ('` + w.a + `', 'x-tconsole')`,
 		"a retired app":             `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ('` + w.a + `', 'x-tgone')`,
+		"an app coming soon":        `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ('` + w.a + `', 'x-tsoon')`,
 		"an unknown app":            `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ('` + w.a + `', 'x-tnope')`,
 		"moving it to a tenant":     `UPDATE tenant_apps SET tenant_id = '` + w.b + `' WHERE id = '` + live + `'`,
 		"changing its app":          `UPDATE tenant_apps SET app_key = 'x-tconsole' WHERE id = '` + live + `'`,

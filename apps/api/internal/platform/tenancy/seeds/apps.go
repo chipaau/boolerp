@@ -32,7 +32,8 @@ func (*Apps) Name() string { return "tenancy.apps" }
 var appKey = regexp.MustCompile(`^[a-z][a-z0-9-]{1,30}$`)
 
 // CheckApps rejects a list the table would refuse, before anything is written: a bad or
-// repeated key, a blank name, or an unknown kind.
+// repeated key, a blank name, an unknown kind, or a default app that is not a workspace
+// app or not available.
 func CheckApps(apps []authorization.App) error {
 	seen := map[string]bool{}
 	for _, a := range apps {
@@ -47,6 +48,8 @@ func CheckApps(apps []authorization.App) error {
 			return fmt.Errorf("app %s: kind %q", a.Key, a.Kind)
 		case a.IsDefault && a.Kind != authorization.Workspace:
 			return fmt.Errorf("app %s: only a workspace app can be a default app (C204)", a.Key)
+		case a.IsDefault && !a.IsAvailable:
+			return fmt.Errorf("app %s: a default app must be available (C225)", a.Key)
 		}
 		seen[a.Key] = true
 	}
@@ -66,13 +69,15 @@ func (s *Apps) Run(ctx context.Context, env seed.Env) error {
 	err := actor.Tx(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
 		for _, a := range s.apps {
 			tag, err := tx.Exec(ctx, `
-				INSERT INTO apps (key, name, kind, description, is_default) VALUES ($1, $2, $3, nullif($4, ''), $5)
+				INSERT INTO apps (key, name, kind, description, is_default, is_available)
+				VALUES ($1, $2, $3, nullif($4, ''), $5, $6)
 				ON CONFLICT (key) DO UPDATE
 				SET name = excluded.name, kind = excluded.kind, description = excluded.description,
-				    is_default = excluded.is_default, active_to = NULL
-				WHERE (apps.name, apps.kind, apps.description, apps.is_default, apps.active_to)
-				      IS DISTINCT FROM (excluded.name, excluded.kind, excluded.description, excluded.is_default, NULL::timestamptz)`,
-				a.Key, a.Name, string(a.Kind), a.Description, a.IsDefault)
+				    is_default = excluded.is_default, is_available = excluded.is_available, active_to = NULL
+				WHERE (apps.name, apps.kind, apps.description, apps.is_default, apps.is_available, apps.active_to)
+				      IS DISTINCT FROM (excluded.name, excluded.kind, excluded.description, excluded.is_default,
+				                        excluded.is_available, NULL::timestamptz)`,
+				a.Key, a.Name, string(a.Kind), a.Description, a.IsDefault, a.IsAvailable)
 			if err != nil {
 				return fmt.Errorf("app %s: %w", a.Key, err)
 			}

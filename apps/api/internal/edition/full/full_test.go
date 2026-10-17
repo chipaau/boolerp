@@ -125,7 +125,11 @@ func TestTheEditionsAppsAreValid(t *testing.T) {
 	for i, a := range Apps {
 		keys[i] = a.Key
 	}
-	assert.Equal(t, []string{"admin", "control-centre", "calendar"}, keys)
+	assert.Equal(t, []string{"admin", "control-centre", "calendar",
+		"health", "inventory", "tasks", "assets", "notes", "directory", "analytics"}, keys)
+	for _, a := range Apps[3:] {
+		assert.False(t, a.IsAvailable, "%s is coming soon (C225)", a.Key)
+	}
 	assert.Equal(t, []string{"control-centre", "calendar"}, DefaultApps(), "every new tenant starts with these (C204)")
 }
 

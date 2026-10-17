@@ -1,4 +1,5 @@
--- Apps (C165; fields and rows confirmed 2026-10-06, is_default 2026-10-15, C204): the
+-- Apps (C165; fields and rows confirmed 2026-10-06, is_default 2026-10-15, C204,
+-- is_available 2026-10-17, C225): the
 -- catalogue of Bool's apps that tenants activate, mirrored from code. Tenancy owns it with
 -- tenant_apps (C206): which apps exist and which a tenant has on; the authorization module
 -- references it for what each app grants (capabilities, roles). The code is the source of
@@ -19,10 +20,15 @@ CREATE TABLE apps (
     -- Turned on for every tenant when it is created (C204); only a workspace app can be.
     -- It applies to tenants created afterwards, and a tenant may turn it off later.
     is_default  boolean     NOT NULL DEFAULT false CHECK (NOT is_default OR kind = 'workspace'),
+    -- A tenant may have it turned on (C225); false lists it as coming soon. A new app is not
+    -- available until its code says so, and a default app must be.
+    is_available boolean    NOT NULL DEFAULT false,
     active_from timestamptz NOT NULL DEFAULT now(),
     active_to   timestamptz CHECK (active_to >= active_from),
     created_at  timestamptz NOT NULL DEFAULT now(),
-    updated_at  timestamptz NOT NULL DEFAULT now()
+    updated_at  timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT apps_default_available CHECK (NOT is_default OR is_available)
 );
 
 CREATE TRIGGER apps_updated_at BEFORE UPDATE ON apps

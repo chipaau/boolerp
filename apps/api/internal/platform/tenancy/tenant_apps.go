@@ -22,6 +22,9 @@ import (
 // the customer bought, D10). Whole apps only, no modules. Cerbos decides on the tenant:
 // viewing its apps is tenancy:tenant view, turning them on or off tenancy:tenant update.
 
+// ErrAppUnavailable is an app listed as coming soon (C225): a 409 until it is available.
+var ErrAppUnavailable = errors.New("tenancy: app not available yet")
+
 // ErrNoApp is an app the tenant may not have: unknown, retired, or an operator app
 // elsewhere; a 404.
 var ErrNoApp = errors.New("tenancy: no such app")
@@ -33,12 +36,13 @@ type tenantAppJSON struct {
 	Kind        string     `json:"kind"`
 	Description *string    `json:"description"`
 	IsDefault   bool       `json:"isDefault"`
+	IsAvailable bool       `json:"isAvailable"`
 	On          bool       `json:"on"`
 	ActiveFrom  *time.Time `json:"activeFrom"`
 }
 
 func tenantAppItem(a store.TenantApp) tenantAppJSON {
-	return tenantAppJSON{a.Key, a.Name, a.Kind, a.Description, a.IsDefault, a.On, a.ActiveFrom}
+	return tenantAppJSON{a.Key, a.Name, a.Kind, a.Description, a.IsDefault, a.IsAvailable, a.On, a.ActiveFrom}
 }
 
 // apps answers the apps a tenant may have, each with whether it is on, the default ones
@@ -75,7 +79,7 @@ func (m *Module) apps(authz authorization.Authorizer) http.HandlerFunc {
 // turnOnApp turns an app on for a tenant (PUT /api/v1/tenants/{tenantID}/apps/{key}):
 // Cerbos decides first (tenancy:tenant update, after list, see authorizeTenant). 201 with
 // the app and its Location when it was off, 200 when it was already on; 404 for an app the
-// tenant may not have.
+// tenant may not have, 409 for one coming soon (C225).
 func (m *Module) turnOnApp(authz authorization.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, ok := m.authorizeTenant(w, r, authz, "update")
@@ -87,6 +91,8 @@ func (m *Module) turnOnApp(authz authorization.Authorizer) http.HandlerFunc {
 		switch {
 		case errors.Is(err, ErrNoApp):
 			problem.Error(w, r, http.StatusNotFound, "There is no such app for this tenant.")
+		case errors.Is(err, ErrAppUnavailable):
+			problem.Error(w, r, http.StatusConflict, "This app is coming soon: it cannot be turned on yet.")
 		case err != nil:
 			m.logger.ErrorContext(r.Context(), "turning on a tenant's app failed", "error", err)
 			problem.Unavailable(w, r)
@@ -122,17 +128,20 @@ func (m *Module) turnOffApp(authz authorization.Authorizer) http.HandlerFunc {
 
 // TurnOnApp turns app key on for a tenant in the operator's transaction (ctx carries the
 // operator tenant and the actor, who is recorded as activating it), and returns the app and
-// whether it was off. An app the tenant may not have is ErrNoApp.
+// whether it was off. An app the tenant may not have is ErrNoApp; one coming soon,
+// ErrAppUnavailable.
 func (m *Module) TurnOnApp(ctx context.Context, tenantID, key string) (store.TenantApp, bool, error) {
 	var a store.TenantApp
 	var turnedOn bool
 	err := tenant.Tx(ctx, m.db, func(ctx context.Context, tx pgx.Tx) error {
-		_, ok, err := store.TenantAppByKey(ctx, tx, tenantID, key)
+		app, ok, err := store.TenantAppByKey(ctx, tx, tenantID, key)
 		switch {
 		case err != nil:
 			return err
 		case !ok:
 			return ErrNoApp
+		case !app.IsAvailable && !app.On:
+			return ErrAppUnavailable
 		}
 		if turnedOn, err = store.TurnOnTenantApp(ctx, tx, tenantID, key); err != nil {
 			return err

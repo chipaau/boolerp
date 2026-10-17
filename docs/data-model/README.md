@@ -430,7 +430,9 @@ other row. The migration is `apps/api/internal/platform/audit/migrations/00001_a
 Fields confirmed 2026-10-06 by the user, with the first rows: `admin` (Admin console,
 operator) and `control-centre` (Control Centre, workspace); business apps are added with
 their backend modules. `is_default` and the `calendar` row (Calendar, workspace, default)
-confirmed 2026-10-15 by the user (C204); Control Centre is default too. The catalogue of Bool's apps, mirrored from code: each module
+confirmed 2026-10-15 by the user (C204); Control Centre is default too. `is_available` and the
+coming-soon rows (Health Management, Inventory Management, Tasks, Asset Management, Notes,
+Directory, Analytics) confirmed 2026-10-17 by the user (C225). The catalogue of Bool's apps, mirrored from code: each module
 declares its app and the edition lists them (`full.Apps`); the `tenancy.apps` seed
 file writes them here on every `cmd/deploy` and `cmd/seed`. Global, not tenant-scoped.
 
@@ -440,7 +442,8 @@ file writes them here on every `cmd/deploy` and `cmd/seed`. Global, not tenant-s
 | `name` | `text` | Not null, not blank. |
 | `kind` | `text` | Not null; `workspace` (a tenant's members use it), `operator` (only the operator tenant may activate it), or `product` (a separate product across tenants, such as FindCare). |
 | `description` | `text` | Nullable. |
-| `is_default` | `boolean` | Not null, `false` default; only a `workspace` app may be `true`. Every new tenant starts with its default apps (C204); a tenant may turn one off later. |
+| `is_default` | `boolean` | Not null, `false` default; only a `workspace` app may be `true`, and only an available one. Every new tenant starts with its default apps (C204); a tenant may turn one off later. |
+| `is_available` | `boolean` | Not null, `false` default. A tenant may have it turned on; `false` lists it as coming soon, and `tenant_apps_valid` refuses to turn it on (C225). |
 | `active_from` | `timestamptz` | Not null, `now()` default. |
 | `active_to` | `timestamptz` | Nullable, not before `active_from`; set when the app leaves the code. |
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` defaults; `updated_at` set by a trigger. |

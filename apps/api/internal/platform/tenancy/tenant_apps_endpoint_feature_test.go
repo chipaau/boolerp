@@ -26,15 +26,17 @@ import (
 type tenantAppBody struct {
 	Key, Name, Kind string
 	IsDefault, On   bool
+	IsAvailable     bool
 	ActiveFrom      *string
 }
 
 func newTenantAppsWorld(t *testing.T) addressWorld {
 	t.Helper()
 	w := newAddressWorld(t)
-	testdb.Exec(t, w.tx, `INSERT INTO apps (key, name, kind, is_default) VALUES
-		('x-tcal', 'Test calendar', 'workspace', true), ('x-thr', 'Test HR', 'workspace', false),
-		('x-tconsole', 'Test console', 'operator', false), ('x-tgone', 'Gone', 'workspace', false)`)
+	testdb.Exec(t, w.tx, `INSERT INTO apps (key, name, kind, is_default, is_available) VALUES
+		('x-tcal', 'Test calendar', 'workspace', true, true), ('x-thr', 'Test HR', 'workspace', false, true),
+		('x-tconsole', 'Test console', 'operator', false, true), ('x-tgone', 'Gone', 'workspace', false, true),
+		('x-tsoon', 'Test soon', 'workspace', false, false)`)
 	testdb.Exec(t, w.tx, `UPDATE apps SET active_to = now() WHERE key = 'x-tgone'`)
 	testdb.Exec(t, w.tx, `INSERT INTO tenant_apps (tenant_id, app_key) VALUES ($1, 'x-tcal')`, w.clinic)
 	return w
@@ -67,7 +69,7 @@ func TestFeatureOperatorStaffListATenantsApps(t *testing.T) {
 	staff := "user:" + w.staff
 
 	apps := testApps(t, h, w.appsPath(""), staff)
-	require.Len(t, apps, 2, "no operator app for a customer, no retired one")
+	require.Len(t, apps, 3, "no operator app for a customer, no retired one")
 	assert.Equal(t, "x-tcal", apps[0].Key, "the default apps first")
 	assert.True(t, apps[0].IsDefault)
 	assert.True(t, apps[0].On, "on since it was created")
@@ -75,6 +77,10 @@ func TestFeatureOperatorStaffListATenantsApps(t *testing.T) {
 	assert.Equal(t, "x-thr", apps[1].Key)
 	assert.False(t, apps[1].On)
 	assert.Nil(t, apps[1].ActiveFrom)
+	assert.True(t, apps[1].IsAvailable)
+	assert.Equal(t, "x-tsoon", apps[2].Key, "those coming soon last (C225)")
+	assert.False(t, apps[2].IsAvailable)
+	assert.False(t, apps[2].On)
 	assert.Equal(t, []string{"list tenancy:tenant"}, authz.Cans)
 	require.Len(t, authz.Asked, 1)
 	assert.Equal(t, authorization.Resource{Kind: "tenancy:tenant", ID: w.clinic,
@@ -85,7 +91,7 @@ func TestFeatureOperatorStaffListATenantsApps(t *testing.T) {
 	for _, a := range testApps(t, h, "/api/v1/tenants/"+w.operator+"/apps", staff) {
 		keys = append(keys, a.Key)
 	}
-	assert.Equal(t, []string{"x-tcal", "x-tconsole", "x-thr"}, keys)
+	assert.Equal(t, []string{"x-tcal", "x-tconsole", "x-thr", "x-tsoon"}, keys)
 }
 
 func TestFeatureOperatorStaffTurnATenantsAppsOnAndOff(t *testing.T) {
@@ -132,6 +138,9 @@ func TestFeatureTheTenantAppRoutesRefuse(t *testing.T) {
 	}
 	assert.Equal(t, http.StatusNotFound, call(t, allow, http.MethodGet,
 		"/api/v1/tenants/0192f6a0-0000-7000-8000-000000000000/apps", staff, nil).Code, "no such tenant")
+	assert.Equal(t, http.StatusConflict, call(t, allow, http.MethodPut, w.appsPath("/x-tsoon"), staff, nil).Code,
+		"coming soon (C225)")
+	testdb.AssertMissing(t, w.tx, "tenant_apps", map[string]any{"tenant_id": w.clinic, "app_key": "x-tsoon"})
 
 	deny := addressRouter(w, &authztest.Stated{Allow: false})
 	for _, c := range []struct{ method, path string }{
@@ -149,6 +158,8 @@ func TestFeatureTurningAnAppOnOutsideHTTPChecksTheApp(t *testing.T) {
 	ctx := tenant.With(t.Context(), tenant.Tenant{ID: w.operator, IsOperator: true})
 	_, _, err := m.TurnOnApp(ctx, w.clinic, "x-tconsole")
 	require.ErrorIs(t, err, tenancy.ErrNoApp, "an operator app for a customer")
+	_, _, err = m.TurnOnApp(ctx, w.clinic, "x-tsoon")
+	require.ErrorIs(t, err, tenancy.ErrAppUnavailable, "an app coming soon")
 	a, on, err := m.TurnOnApp(ctx, w.clinic, "x-thr")
 	require.NoError(t, err)
 	assert.True(t, on)

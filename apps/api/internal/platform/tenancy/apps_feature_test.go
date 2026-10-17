@@ -21,7 +21,7 @@ import (
 // rolled-back transaction with test apps (x-…).
 
 var (
-	xHR    = authorization.App{Key: "x-thr", Name: "Test HR", Kind: authorization.Workspace, Description: "People", IsDefault: true}
+	xHR    = authorization.App{Key: "x-thr", Name: "Test HR", Kind: authorization.Workspace, Description: "People", IsDefault: true, IsAvailable: true}
 	xAdmin = authorization.App{Key: "x-tadmin", Name: "Test admin", Kind: authorization.Operator}
 )
 
@@ -36,15 +36,18 @@ func TestFeatureTheAppsSeederMirrorsTheCatalogue(t *testing.T) {
 	seedApps(t, tx, xHR, xAdmin)
 	seedApps(t, tx, xHR, xAdmin) // running again is fine
 
-	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-thr", "name": "Test HR", "kind": "workspace", "description": "People", "is_default": true})
-	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-tadmin", "kind": "operator", "description": nil, "is_default": false, "active_to": nil})
+	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-thr", "name": "Test HR", "kind": "workspace", "description": "People",
+		"is_default": true, "is_available": true})
+	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-tadmin", "kind": "operator", "description": nil, "is_default": false,
+		"is_available": false, "active_to": nil})
 	assert.Equal(t, 1, testdb.Count(t, tx, "apps", map[string]any{"key": "x-thr"}))
 
 	// A renamed app is updated; one no longer listed is retired, never deleted.
 	renamed := xHR
-	renamed.Name, renamed.IsDefault = "Test people", false
+	renamed.Name, renamed.IsDefault, renamed.IsAvailable = "Test people", false, false
 	seedApps(t, tx, renamed)
-	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-thr", "name": "Test people", "is_default": false, "active_to": nil})
+	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-thr", "name": "Test people", "is_default": false,
+		"is_available": false, "active_to": nil})
 	var retired bool
 	require.NoError(t, tx.QueryRow(t.Context(), `SELECT active_to IS NOT NULL FROM apps WHERE key = 'x-tadmin'`).Scan(&retired))
 	assert.True(t, retired)
@@ -62,7 +65,8 @@ func TestFeatureTheAppsSeederRefusesABadCatalogue(t *testing.T) {
 		"twice":                {xHR, xHR},
 		"blank name":           {{Key: "x-tblank", Name: " ", Kind: authorization.Workspace}},
 		"unknown kind":         {{Key: "x-tkind", Name: "x", Kind: "portal"}},
-		"default operator app": {{Key: "x-top", Name: "x", Kind: authorization.Operator, IsDefault: true}},
+		"default operator app": {{Key: "x-top", Name: "x", Kind: authorization.Operator, IsDefault: true, IsAvailable: true}},
+		"default coming soon":  {{Key: "x-tsoon", Name: "x", Kind: authorization.Workspace, IsDefault: true}},
 	} {
 		assert.Error(t, seeds.NewApps(tx, apps).Run(t.Context(), env), name)
 	}
@@ -74,13 +78,22 @@ func TestFeatureOnlyAWorkspaceAppCanBeADefaultApp(t *testing.T) {
 	for _, kind := range []string{"operator", "product"} {
 		_, err := tx.Exec(t.Context(), `SAVEPOINT s`)
 		require.NoError(t, err)
-		_, err = tx.Exec(t.Context(), `INSERT INTO apps (key, name, kind, is_default) VALUES ('x-tdefault', 'x', $1, true)`, kind)
+		_, err = tx.Exec(t.Context(), `INSERT INTO apps (key, name, kind, is_default, is_available) VALUES ('x-tdefault', 'x', $1, true, true)`, kind)
 		var pgErr *pgconn.PgError
 		require.ErrorAs(t, err, &pgErr, kind)
 		assert.Equal(t, "23514", pgErr.Code, "a CHECK violation for a default %s app", kind)
 		_, err = tx.Exec(t.Context(), `ROLLBACK TO SAVEPOINT s`)
 		require.NoError(t, err)
 	}
+}
+
+// A default app is on for every new tenant, so it cannot be coming soon (C225).
+func TestFeatureADefaultAppMustBeAvailable(t *testing.T) {
+	tx := testdb.OwnerTx(t)
+	_, err := testdb.Savepoint(t, tx, `INSERT INTO apps (key, name, kind, is_default) VALUES ('x-tdefault', 'x', 'workspace', true)`)
+	assert.Equal(t, "23514", testdb.PgCode(err))
+	testdb.Exec(t, tx, `INSERT INTO apps (key, name, kind) VALUES ('x-tnew', 'New', 'workspace')`)
+	testdb.AssertHas(t, tx, "apps", map[string]any{"key": "x-tnew", "is_available": false})
 }
 
 func TestFeatureTheRuntimeRoleOnlyReadsApps(t *testing.T) {

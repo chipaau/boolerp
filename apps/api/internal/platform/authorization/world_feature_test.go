@@ -43,8 +43,9 @@ func newAppsWorld(t *testing.T) appsWorld {
 		a:        testdb.ID(t, tx, insert, "x-authz-a", "XAA", "A", form, false),
 		b:        testdb.ID(t, tx, insert, "x-authz-b", "XAB", "B", form, false),
 	}
-	testdb.Exec(t, tx, `INSERT INTO apps (key, name, kind) VALUES ('x-hr', 'Test HR', 'workspace'),
-		('x-console', 'Test console', 'operator'), ('x-tasks', 'Test tasks', 'workspace'), ('x-gone', 'Gone', 'workspace')`)
+	testdb.Exec(t, tx, `INSERT INTO apps (key, name, kind, is_available) VALUES ('x-hr', 'Test HR', 'workspace', true),
+		('x-console', 'Test console', 'operator', true), ('x-tasks', 'Test tasks', 'workspace', true),
+		('x-gone', 'Gone', 'workspace', true)`)
 	testdb.Exec(t, tx, `UPDATE apps SET active_to = now() WHERE key = 'x-gone'`)
 	return w
 }

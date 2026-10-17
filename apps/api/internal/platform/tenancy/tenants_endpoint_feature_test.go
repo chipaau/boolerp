@@ -265,8 +265,8 @@ func newCreateWorld(t *testing.T) createWorld {
 	cw := createWorld{world: w, operator: w.operator(t)}
 	w.activate(t, cw.operator)
 	testdb.Exec(t, w.tx, `INSERT INTO institution_types (code, sector, name) VALUES ('x_tenancy_other', 'x_tenancy', 'Other test type')`)
-	testdb.Exec(t, w.tx, `INSERT INTO apps (key, name, kind, is_default) VALUES ('x-tcreate-on', 'On', 'workspace', true),
-		('x-tcreate-off', 'Off', 'workspace', false)`)
+	testdb.Exec(t, w.tx, `INSERT INTO apps (key, name, kind, is_default, is_available) VALUES ('x-tcreate-on', 'On', 'workspace', true, true),
+		('x-tcreate-off', 'Off', 'workspace', false, true)`)
 	cw.existing = w.tenant(t, "x-held", "XHELD")
 	testdb.Exec(t, w.tx, `UPDATE tenants SET legal_form_id = $1, identity_number = 'C-77', tax_number = 'TIN-77' WHERE id = $2`, w.formXT, cw.existing)
 	cw.staff = w.user(t, 1)
