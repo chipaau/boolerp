@@ -46,6 +46,32 @@ function RoomCard({ room }: { room: Room }) {
   )
 }
 
+/**
+ * The app's card on phones and tablets, where the story doesn't play: compact, so the six read at a
+ * glance (the full card is the desktop story's). Its logo, name and headline, one of its rooms drawn
+ * small, and what it does, a line each.
+ */
+function CompactCard({ room }: { room: Room }) {
+  return (
+    <article className="glass-card office-card relative overflow-hidden p-5">
+      <img src={`/workspace/${room.tiles[0].src}.webp`} alt="" width={900} height={675} loading="lazy" className="pointer-events-none absolute -right-3 -top-2 h-auto w-28 opacity-90" />
+      <div className="flex items-center gap-3 pr-24">
+        <Image src={room.logo} alt="" className="size-9 shrink-0 object-contain" />
+        <p className="card-label text-(--brand)">{room.title}</p>
+      </div>
+      <h3 className="mt-3 pr-20 text-[1.0625rem] leading-snug text-foreground">{room.headline}</h3>
+      <ul className="mt-4 grid gap-2 border-t border-border/60 pt-4">
+        {room.features.map(({ icon: Icon, text }) => (
+          <li key={text} className="flex items-start gap-2.5 text-[14px] leading-snug text-foreground/80">
+            <Icon className="mt-0.5 size-4 shrink-0 text-(--brand)" strokeWidth={1.8} />
+            {text}
+          </li>
+        ))}
+      </ul>
+    </article>
+  )
+}
+
 /** The end of the story: what every app shares. */
 function SharedCard() {
   return (
@@ -217,18 +243,14 @@ export function Office() {
               <SharedCard />
             </div>
           </div>
-          {/* below lg: every app's card in turn, with (at most two of) its rooms */}
-          <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3 lg:motion-safe:hidden">
+          {/* below lg (and with reduced motion): the six apps as compact cards, then what they share */}
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:motion-safe:hidden">
             {ROOMS.map((room) => (
-              <div key={room.id}>
-                <div className="mx-auto mb-2 flex max-w-md justify-center gap-2">
-                  {room.tiles.slice(0, 2).map((t) => (
-                    <img key={t.src} src={`/workspace/${t.src}.webp`} alt="" width={900} height={675} loading="lazy" className="h-auto w-1/2 max-w-48" />
-                  ))}
-                </div>
-                <RoomCard room={room} />
-              </div>
+              <CompactCard key={room.id} room={room} />
             ))}
+            <div className="md:col-span-2 lg:col-span-3">
+              <SharedCard />
+            </div>
           </div>
         </div>
 
