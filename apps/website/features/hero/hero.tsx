@@ -106,7 +106,7 @@ function Scene() {
   return (
     <div
       data-hero-scene=""
-      className="relative -ml-[59%] -mt-[8%] -mb-[12%] aspect-[1398/820] w-[155%] sm:my-0 [--bee-w:15cqw] [container-type:inline-size] sm:-ml-[51%] sm:w-[138%] lg:mx-auto lg:w-[max(min(calc(100%-3rem),77rem),min(calc((100svh-6rem)*1.98),calc(100vw-1rem),108rem))] lg:translate-y-[calc(0.5rem-7.5%)] 2xl:w-[max(min(calc(100%-3rem),85rem),min(calc((100svh-6rem)*1.98),calc(100vw-1rem),108rem))]"
+      className="relative -ml-[63%] -mt-[8%] -mb-[12%] aspect-[1398/820] w-[144%] sm:my-0 [--bee-w:15cqw] [container-type:inline-size] sm:-ml-[51%] sm:w-[138%] lg:mx-auto lg:w-[max(min(calc(100%-3rem),77rem),min(calc((100svh-6rem)*1.98),calc(100vw-1rem),108rem))] lg:translate-y-[calc(0.5rem-7.5%)] 2xl:w-[max(min(calc(100%-3rem),85rem),min(calc((100svh-6rem)*1.98),calc(100vw-1rem),108rem))]"
     >
       {/* the soft light the tablet floats in, gathered in the brand's hexagon behind it */}
       <div data-story-fade="" aria-hidden="true" className="hero-glow absolute" />
