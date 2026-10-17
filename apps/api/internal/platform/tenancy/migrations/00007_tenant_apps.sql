@@ -28,7 +28,8 @@ CREATE TRIGGER tenant_apps_updated_at BEFORE UPDATE ON tenant_apps
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- +goose StatementBegin
--- An operator app only in the operator tenant; a retired app is never turned on; an
+-- An operator app only in the operator tenant; a retired app, or one not yet available
+-- (coming soon, C225), is never turned on; an
 -- activation's tenant and app never change, and an ended one is frozen.
 CREATE FUNCTION tenant_apps_valid() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
@@ -48,6 +49,10 @@ BEGIN
     SELECT * INTO app FROM apps WHERE key = NEW.app_key;
     IF app.active_to IS NOT NULL THEN
         RAISE EXCEPTION 'app % is retired: it cannot be turned on', NEW.app_key
+            USING ERRCODE = 'check_violation';
+    END IF;
+    IF NOT app.is_available THEN
+        RAISE EXCEPTION 'app % is not available yet: it cannot be turned on', NEW.app_key
             USING ERRCODE = 'check_violation';
     END IF;
     IF app.kind = 'operator' AND NOT lookup.is_operator_tenant(NEW.tenant_id) THEN

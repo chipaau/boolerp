@@ -48,7 +48,12 @@ var Migrations = []postgres.ModuleMigrations{
 
 // Apps are the edition's apps (C165): the platform's own, then each business module's.
 // The tenancy.apps seed file mirrors them into the apps table (C206).
-var Apps = []authorization.App{authorization.Admin, authorization.ControlCentre, authorization.Calendar}
+var Apps = []authorization.App{
+	authorization.Admin, authorization.ControlCentre, authorization.Calendar,
+	// Coming soon (C225).
+	authorization.Health, authorization.Inventory, authorization.Tasks, authorization.Assets,
+	authorization.Notes, authorization.Directory, authorization.Analytics,
+}
 
 // DefaultApps are the keys of the apps every new tenant starts with (C204): the edition's
 // apps marked IsDefault. Creating a tenant turns them on; the seeds give them to the

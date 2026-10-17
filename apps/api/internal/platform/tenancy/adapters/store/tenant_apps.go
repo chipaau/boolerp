@@ -12,8 +12,8 @@ import (
 )
 
 // TenantAppListSpec is what GET /api/v1/tenants/{id}/apps accepts: the apps the tenant may
-// have, the default ones first, then by name.
-var TenantAppListSpec = request.ListSpec{Sorts: []string{"default", "name"}, DefaultSort: "-default,name"}
+// have, the default ones first, then those available before those coming soon, then by name.
+var TenantAppListSpec = request.ListSpec{Sorts: []string{"default", "available", "name"}, DefaultSort: "-default,-available,name"}
 
 // TenantApp is an app a tenant may have (C166, C224), and whether it has it on now (since
 // ActiveFrom).
@@ -21,6 +21,7 @@ type TenantApp struct {
 	Key, Name, Kind string
 	Description     *string
 	IsDefault, On   bool
+	IsAvailable     bool // false: coming soon (C225)
 	ActiveFrom      *time.Time
 }
 
@@ -37,17 +38,17 @@ func tenantAppMay(tenant string) string {
 	return `is_current(a.active_from, a.active_to) AND (a.kind <> 'operator' OR lookup.is_operator_tenant(` + tenant + `::uuid))`
 }
 
-const tenantAppColumns = `a.key, a.name, a.kind, a.description, a.is_default,
+const tenantAppColumns = `a.key, a.name, a.kind, a.description, a.is_default, a.is_available,
 	ta.id IS NOT NULL AND is_current(ta.active_from, ta.active_to), ta.active_from`
 
 func scanTenantApp(row pgx.Row, a *TenantApp, extra ...any) error {
-	return row.Scan(append([]any{&a.Key, &a.Name, &a.Kind, &a.Description, &a.IsDefault,
+	return row.Scan(append([]any{&a.Key, &a.Name, &a.Kind, &a.Description, &a.IsDefault, &a.IsAvailable,
 		&a.On, &a.ActiveFrom}, extra...)...)
 }
 
 // ListTenantApps reads the apps tenant may have, each with whether it is on, and how many.
 func ListTenantApps(ctx context.Context, tx pgx.Tx, tenant string, l request.List) ([]TenantApp, int, error) {
-	q := postgres.ListQuery{Key: "a.key", Sorts: map[string]string{"default": "a.is_default", "name": "a.name"}}
+	q := postgres.ListQuery{Key: "a.key", Sorts: map[string]string{"default": "a.is_default", "available": "a.is_available", "name": "a.name"}}
 	p := q.Arg(tenant)
 	q.From = tenantAppFrom(p)
 	q.Where(tenantAppMay(p))
