@@ -121,6 +121,26 @@ export function toCreateTenantInput(v: NewTenantForm): CreateTenantInput {
   }
 }
 
+/** An app's kind (C165): a tenant's workspace app, the operator's, or a product across tenants. */
+export const appKinds = ['workspace', 'operator', 'product'] as const
+
+/** An app a tenant may have, as GET /api/v1/tenants/{id}/apps returns it (C224): whether it is on, and since when. */
+export const tenantAppSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  kind: z.enum(appKinds),
+  description: z.string().nullable(),
+  isDefault: z.boolean(),
+  /** False: coming soon, listed but not yet turned on for anyone (C225). */
+  isAvailable: z.boolean(),
+  on: z.boolean(),
+  activeFrom: timestamp.nullable(),
+})
+export type TenantApp = z.infer<typeof tenantAppSchema>
+
+/** A page of a tenant's apps (C68). */
+export const tenantAppPageSchema = listOf(tenantAppSchema)
+
 /** A tenant's address kinds (C215): the registered address and, when it differs, the mailing one. */
 export const addressKinds = ['registered', 'mailing'] as const
 export type AddressKind = (typeof addressKinds)[number]
@@ -151,6 +171,16 @@ export const tenantAddressSchema = z.object({
   updatedAt: timestamp,
 })
 export type TenantAddress = z.infer<typeof tenantAddressSchema>
+
+/** A tenant's addresses (C68's envelope). */
+export const tenantAddressPageSchema = listOf(tenantAddressSchema)
+
+/** An address on one line, from the house to the country: the street part, the typed levels, then the places picked, deepest first. */
+export function addressLine(a: TenantAddress, countryName: (code: string) => string): string {
+  return [a.line1, a.line2, ...Object.values(a.typedPlaces), ...a.places.map((p) => p.name).reverse(), countryName(a.country), a.postalCode]
+    .filter(Boolean)
+    .join(', ')
+}
 
 /**
  * One address in a form (C176): the country, the places picked from level 1 down (the last is the

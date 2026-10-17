@@ -96,6 +96,69 @@ const search = () => screen.getByLabelText('Filter by name, code, or slug')
 /** Finds text in a toast, not in the copy Base UI keeps for screen readers (C214). */
 const inToast = { selector: '[data-slot="toast"] *' }
 
+/** Opens the wizard, creates a tenant in MV, and lands on step 2; returns the address PUTs and the app switches seen. */
+async function createdTenant(addressAnswer?: () => Response) {
+  listApi([tenant(1)])
+  referenceApi()
+  const puts: { kind: string; body: unknown }[] = []
+  const apps = [
+    { key: 'calendar', name: 'Calendar', kind: 'workspace', description: 'A tenant’s shared calendar', isDefault: true, isAvailable: true, on: true, activeFrom: '2026-10-16T09:00:00Z' },
+    { key: 'control-centre', name: 'Control Centre', kind: 'workspace', description: null, isDefault: true, isAvailable: true, on: true, activeFrom: '2026-10-16T09:00:00Z' },
+    { key: 'hrms', name: 'HRMS', kind: 'workspace', description: 'Employee records', isDefault: false, isAvailable: true, on: false, activeFrom: null as string | null },
+    { key: 'analytics', name: 'Analytics', kind: 'workspace', description: null, isDefault: false, isAvailable: false, on: false, activeFrom: null as string | null },
+  ]
+  const switched: string[] = []
+  const switchApp = (key: string, on: boolean) => {
+    switched.push(`${on ? 'on' : 'off'} ${key}`)
+    const app = apps.find((a) => a.key === key)!
+    Object.assign(app, { on, activeFrom: on ? '2026-10-16T10:00:00Z' : null })
+    return app
+  }
+  server.use(
+    http.get('/api/v1/tenants/:id/addresses', () => {
+      const items = puts.map((p) => ({
+        ...(p.body as object), kind: p.kind, places: [], geographyId: null, line2: null, postalCode: null,
+        latitude: null, longitude: null, updatedAt: '2026-10-16T09:00:00Z',
+      }))
+      return HttpResponse.json({ items, page: 1, pageSize: 25, total: items.length })
+    }),
+    http.get('/api/v1/tenants/:id/apps', () => HttpResponse.json({ items: apps, page: 1, pageSize: 100, total: apps.length })),
+    http.put('/api/v1/tenants/:id/apps/:key', ({ params }) => HttpResponse.json(switchApp(String(params.key), true), { status: 201 })),
+    http.delete('/api/v1/tenants/:id/apps/:key', ({ params }) => {
+      switchApp(String(params.key), false)
+      return new HttpResponse(null, { status: 204 })
+    }),
+    http.post('/api/v1/tenants', () =>
+      HttpResponse.json(tenant(2, { name: 'Tenant One', slug: 'tenant-one', code: 'TONE', status: 'provisioning', workspaceHost: null }), {
+        status: 201, headers: { Location: '/api/v1/tenants/' + tenant(2).id },
+      })
+    ),
+    http.put('/api/v1/tenants/:id/addresses/:kind', async ({ request, params }) => {
+      const body = await request.json()
+      puts.push({ kind: String(params.kind), body })
+      if (addressAnswer) return addressAnswer()
+      return HttpResponse.json({
+        kind: params.kind, country: 'MV', geographyId: MAAFUSHI, places: [], typedPlaces: { street: 'Sosun Magu' },
+        line1: 'H. Sosun Villa', line2: null, postalCode: null, latitude: null, longitude: null, updatedAt: '2026-10-16T09:00:00Z',
+      }, { status: 201 })
+    })
+  )
+  renderRoute('/tenants')
+  await screen.findByText('T1 · tenant-1')
+  await userEvent.click(screen.getByRole('button', { name: 'New tenant' }))
+  const form = await screen.findByRole('dialog')
+  expect(within(form).queryByRole('button', { name: 'Continue' }), 'nothing to go on to before creating').not.toBeInTheDocument()
+  await userEvent.type(within(form).getByLabelText('Name'), 'Tenant One')
+  await userEvent.type(within(form).getByLabelText('Code'), 'TONE')
+  await pick(form, 'Country', 'mdv', /Maldives/)
+  await pick(form, 'Legal form', 'ministry', /Government ministry/)
+  await pick(form, 'Time zone', 'maldives', /Indian \/ Maldives/)
+  await pick(form, 'Institution types', 'minis', 'Ministry')
+  await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))
+  await within(form).findByRole('heading', { name: 'Where they are' })
+  return { form, puts, switched }
+}
+
 describe('the tenants list', () => {
   it('shows the API tenants, with the lifecycle actions disabled', async () => {
     listApi([tenant(1), tenant(2, { status: 'suspended', parentId: tenant(1).id, parentName: 'Tenant 1', workspaceHost: null })])
@@ -317,42 +380,6 @@ describe('the tenants list', () => {
   })
 
   describe('step 2, the new tenant’s address (C223)', () => {
-    /** Opens the wizard, creates a tenant in MV, and lands on step 2; returns the PUTs seen. */
-    async function createdTenant(addressAnswer?: () => Response) {
-      listApi([tenant(1)])
-      referenceApi()
-      const puts: { kind: string; body: unknown }[] = []
-      server.use(
-        http.post('/api/v1/tenants', () =>
-          HttpResponse.json(tenant(2, { name: 'Tenant One', slug: 'tenant-one', code: 'TONE', status: 'provisioning', workspaceHost: null }), {
-            status: 201, headers: { Location: '/api/v1/tenants/' + tenant(2).id },
-          })
-        ),
-        http.put('/api/v1/tenants/:id/addresses/:kind', async ({ request, params }) => {
-          const body = await request.json()
-          puts.push({ kind: String(params.kind), body })
-          if (addressAnswer) return addressAnswer()
-          return HttpResponse.json({
-            kind: params.kind, country: 'MV', geographyId: MAAFUSHI, places: [], typedPlaces: { street: 'Sosun Magu' },
-            line1: 'H. Sosun Villa', line2: null, postalCode: null, latitude: null, longitude: null, updatedAt: '2026-10-16T09:00:00Z',
-          }, { status: 201 })
-        })
-      )
-      renderRoute('/tenants')
-      await screen.findByText('T1 · tenant-1')
-      await userEvent.click(screen.getByRole('button', { name: 'New tenant' }))
-      const form = await screen.findByRole('dialog')
-      expect(within(form).queryByRole('button', { name: 'Continue' }), 'nothing to go on to before creating').not.toBeInTheDocument()
-      await userEvent.type(within(form).getByLabelText('Name'), 'Tenant One')
-      await userEvent.type(within(form).getByLabelText('Code'), 'TONE')
-      await pick(form, 'Country', 'mdv', /Maldives/)
-      await pick(form, 'Legal form', 'ministry', /Government ministry/)
-      await pick(form, 'Time zone', 'maldives', /Indian \/ Maldives/)
-      await pick(form, 'Institution types', 'minis', 'Ministry')
-      await userEvent.click(within(form).getByRole('button', { name: 'Create tenant' }))
-      await within(form).findByRole('heading', { name: 'Where they are' })
-      return { form, puts }
-    }
 
     it('picks the places level by level, types the level with none listed, and saves it', async () => {
       const { form, puts } = await createdTenant()
@@ -418,6 +445,51 @@ describe('the tenants list', () => {
       await waitFor(() => expect(puts).toHaveLength(1))
       expect(await within(form).findByText('is required: Street is typed')).toBeInTheDocument()
       expect(within(form).getByRole('heading', { name: 'Where they are' }), 'still on the address').toBeInTheDocument()
+    })
+  })
+
+  describe('step 3, the new tenant’s apps (C224)', () => {
+    /** Saves a registered address in Kaafu, Maafushi, landing on step 3. */
+    async function toApps(form: HTMLElement) {
+      await pick(form, 'Registered address atoll', 'kaa', /Kaafu/)
+      await pick(form, 'Registered address island', 'maa', 'Maafushi')
+      await userEvent.type(within(form).getByLabelText('Street'), 'Sosun Magu')
+      await userEvent.type(within(form).getByLabelText('Address'), 'H. Sosun Villa')
+      await userEvent.click(within(form).getByRole('button', { name: 'Save and continue' }))
+      await within(form).findByRole('heading', { name: 'What they can open' })
+    }
+
+    it('shows the default apps as included and saves each other app as it is switched', async () => {
+      const { form, switched } = await createdTenant()
+      await toApps(form)
+
+      expect(await within(form).findByText('Calendar')).toBeInTheDocument()
+      expect(within(form).getAllByText('Included')).toHaveLength(2)
+      expect(within(form).queryByRole('checkbox', { name: 'Calendar' }), 'a default app is not switched here').not.toBeInTheDocument()
+      const hrms = within(form).getByRole('checkbox', { name: 'HRMS' })
+      expect(hrms).not.toBeChecked()
+      expect(within(form).getByRole('checkbox', { name: 'Analytics' }), 'coming soon (C225)').toHaveAttribute('aria-disabled', 'true')
+      expect(within(form).getByText('Coming soon')).toBeInTheDocument()
+
+      await userEvent.click(hrms)
+      await waitFor(() => expect(within(form).getByRole('checkbox', { name: 'HRMS' })).toBeChecked())
+      expect(switched).toEqual(['on hrms'])
+      await userEvent.click(within(form).getByRole('checkbox', { name: 'HRMS' }))
+      await waitFor(() => expect(within(form).getByRole('checkbox', { name: 'HRMS' })).not.toBeChecked())
+      expect(switched).toEqual(['on hrms', 'off hrms'])
+
+      await userEvent.click(within(form).getByRole('checkbox', { name: 'HRMS' }))
+      await waitFor(() => expect(switched).toHaveLength(3))
+      await userEvent.click(within(form).getByRole('button', { name: 'Continue' }))
+      await userEvent.click(await within(form).findByRole('button', { name: 'Review' }))
+      // The review lists the apps the tenant has on, from the API.
+      const card = (await within(form).findByRole('button', { name: 'Edit Apps' })).parentElement!.parentElement!
+      expect(within(card).getByText('HRMS')).toBeInTheDocument()
+      expect(within(card).getAllByText('Included')).toHaveLength(2)
+      // And the address saved on step 2, not the prototype's.
+      const address = within(form).getByRole('button', { name: 'Edit Address' }).parentElement!.parentElement!
+      expect(within(address).getByText('H. Sosun Villa, Sosun Magu, Maldives')).toBeInTheDocument()
+      expect(within(address).getByText('Same as the registered address')).toBeInTheDocument()
     })
   })
 

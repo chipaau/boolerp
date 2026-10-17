@@ -12,8 +12,8 @@ import { FormErrorBanner, FormField, TextField } from '@workspace/ui/components/
 import type { FormErrors } from '@workspace/api'
 import { useToast } from '@workspace/ui/components/toast'
 import { Field } from '@/components/form-field'
-import { tenantMutations } from './api'
-import { addressStepSchema, emptyAddress, toAddressInput } from './schemas'
+import { tenantMutations, tenantQueries } from './api'
+import { addressLine, addressStepSchema, emptyAddress, toAddressInput } from './schemas'
 import type { AddressStep, Tenant } from './schemas'
 
 /** The id of step 2's form, which the wizard's footer button submits. */
@@ -212,4 +212,16 @@ function levelOf(levels: readonly AddressLevel[], code: string) {
 /** The listed types the next picker offers: those of the first listed level below `level`. */
 function nextListedTypes(levels: readonly AddressLevel[], level: number) {
   return levels.find((l) => l.listed && l.level > level)?.types.map((t) => ({ typeName: t.name })) ?? []
+}
+
+/** The review step's lines for a tenant's saved addresses (C217): the registered one, and the mailing one or that it is the same. */
+export function useTenantAddressLines(tenant: Tenant | null, countryName: (code: string) => string): [string, string][] {
+  const addresses = useQuery({ ...tenantQueries.addresses(tenant?.id ?? ''), enabled: tenant !== null }).data?.items ?? []
+  const of = (kind: string) => addresses.find((a) => a.kind === kind)
+  const registered = of('registered')
+  const mailing = of('mailing')
+  return [
+    ['Registered address', registered ? addressLine(registered, countryName) : 'Not set'],
+    ['Mailing address', mailing ? addressLine(mailing, countryName) : 'Same as the registered address'],
+  ]
 }

@@ -20,7 +20,8 @@ import { SelectField } from '@workspace/ui/components/select'
 import { Segmented, SegmentedItem } from '@workspace/ui/components/segmented'
 import { Stepper, StepperFooter, StepperLayout } from '@workspace/ui/components/stepper'
 import { useToast } from '@workspace/ui/components/toast'
-import { ADDRESS_FORM_ID, TenantAddressStep } from './tenant-address-step'
+import { ADDRESS_FORM_ID, TenantAddressStep, useTenantAddressLines } from './tenant-address-step'
+import { TenantAppsStep, useTenantAppLines } from './tenant-apps-step'
 import { cn } from '@workspace/ui/lib/utils'
 import { Field, ReviewCard, StepHeading, fieldClass } from '@/components/form-field'
 import { useCurrentUser } from '@/components/layout/user-context'
@@ -50,6 +51,11 @@ const HEADINGS: [string, string][] = [
   ['Who runs it', 'A tenant needs at least one owner before it can be activated. Add the people who should be invited.'],
   ['Check it over', 'Everything you have set, in one place.'],
 ]
+// The ledes that differ when the steps are saved to the API (C223, C224).
+const LEDES: Partial<Record<number, string>> = {
+  1: 'Where the tenant is registered, printed on its invoices. Save it to go on.',
+  2: 'The apps every tenant gets are already on. Switch on the others they pay for; each is saved at once.',
+}
 const appLabel = (a: AppName) => a
 
 type DraftAdmin = { name: string; idNo: string; email: string; nat: Nationality }
@@ -79,7 +85,8 @@ const quietly = { dontUpdateMeta: true, dontValidate: true } as const
  * sends POST /api/v1/tenants, and the API's 422 lands on its fields (useApiMutation) or, for what
  * no field can show, in the banner above them. The created tenant then stays open in the wizard on
  * step 2, its registered address, which must be saved to go on (C223); step 1 is done and is not
- * reopened, and the last step ends with Done. Steps 3 to 5 are still the prototype's. Without
+ * reopened, and the last step ends with Done. Step 3 turns its apps on and off, each saved at once
+ * (C224). Steps 4 and 5 are still the prototype's. Without
  * `onCreated` (the design prototype's page) it saves the prototype's fixture profile.
  */
 export function AddTenantWizard({
@@ -100,6 +107,8 @@ export function AddTenantWizard({
   const core = useCoreApps()
   const countries = useActiveCountries()
 
+  // With the API a tenant has whole apps, no modules (C224).
+  const steps = onCreated ? STEPS.map((s, i) => (i === 2 ? { ...s, title: 'Apps' } : s)) : STEPS
   const [step, setStep] = useState(0)
   // The tenant step 1 created (C223): the wizard goes on with it, and step 1 is done.
   const [created, setCreated] = useState<Tenant | null>(null)
@@ -181,7 +190,7 @@ export function AddTenantWizard({
       toast(INVALID_FORM_MESSAGE, { ok: false })
       void form.validateAllFields('submit')
       void form.validate('submit')
-    } else toast(`${STEPS[i].title} still needs ${m.join(', ')}.`, { ok: false })
+    } else toast(`${steps[i].title} still needs ${m.join(', ')}.`, { ok: false })
     return true
   }
   /**
@@ -270,12 +279,15 @@ export function AddTenantWizard({
 
   const optional = catalog.filter((a) => !core.includes(a.name))
   const extraApps = optional.filter((a) => f.apps[a.name]).length
-  const last = STEPS.length - 1
+  const last = steps.length - 1
+  // The review's apps and addresses, read when it opens: the steps before have saved them by then.
+  const appLines = useTenantAppLines(step === last ? created : null)
+  const addressLines = useTenantAddressLines(step === last ? created : null, (code) => countryName(code) ?? code)
   const notes = onCreated
     ? [
         ready ? 'Ready to create. Its address comes next.' : 'Creating the tenant needs this step only.',
         addressSaved ? 'Saved. Saving again replaces it.' : 'Needed to go on.',
-        'Not saved yet: the tenant’s page will set these.',
+        'Each app is saved as you switch it.',
         'Not saved yet: the tenant’s page will invite them.',
         `${created?.name ?? 'The tenant'} and its address are saved.`,
       ]
@@ -290,10 +302,10 @@ export function AddTenantWizard({
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[940px]" showCloseButton>
-        <StepperLayout rail={<Stepper title="New tenant" steps={STEPS} current={step} complete={complete} onStep={go} />}>
+        <StepperLayout rail={<Stepper title="New tenant" steps={steps} current={step} complete={complete} onStep={go} />}>
           <StepHeading
             title={HEADINGS[step][0]}
-            lede={step === 1 && onCreated ? 'Where the tenant is registered, printed on its invoices. Save it to go on.' : HEADINGS[step][1]}
+            lede={onCreated && LEDES[step] ? LEDES[step] : HEADINGS[step][1]}
           />
 
           {step === 0 && (
@@ -571,7 +583,9 @@ export function AddTenantWizard({
             </div>
           )}
 
-          {step === 2 && (
+          {step === 2 && created && <TenantAppsStep tenant={created} />}
+
+          {step === 2 && !onCreated && (
             <div className="flex flex-col gap-2.5">
               <div className="text-overline text-faint">Included with every tenant</div>
               {catalog
@@ -695,17 +709,25 @@ export function AddTenantWizard({
               <ReviewCard
                 title="Address"
                 onEdit={() => setStep(1)}
-                lines={[
-                  ['Address', [f.addr.trim(), f.city !== '—' ? f.city : '', f.district, f.addrCountry, f.postal.trim()].filter(Boolean).join(', ') || 'Not set'],
-                  ['Mailing address', f.sameAsReg ? 'Same as address' : 'Separate, not yet filled'],
-                ]}
+                lines={
+                  created
+                    ? addressLines
+                    : [
+                        ['Address', [f.addr.trim(), f.city !== '—' ? f.city : '', f.district, f.addrCountry, f.postal.trim()].filter(Boolean).join(', ') || 'Not set'],
+                        ['Mailing address', f.sameAsReg ? 'Same as address' : 'Separate, not yet filled'],
+                      ]
+                }
               />
               <ReviewCard
-                title="Apps & modules"
+                title={steps[2].title}
                 onEdit={() => setStep(2)}
-                lines={catalog
-                  .filter((a) => f.apps[a.name] || core.includes(a.name))
-                  .map((a) => [appLabel(a.name), core.includes(a.name) ? 'Included' : (f.apps[a.name] ?? []).join(', ')] as [string, string])}
+                lines={
+                  created
+                    ? appLines
+                    : catalog
+                        .filter((a) => f.apps[a.name] || core.includes(a.name))
+                        .map((a) => [appLabel(a.name), core.includes(a.name) ? 'Included' : (f.apps[a.name] ?? []).join(', ')] as [string, string])
+                }
               />
               <ReviewCard
                 title="People to invite"
