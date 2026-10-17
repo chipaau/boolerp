@@ -13,14 +13,14 @@ const LEGAL = ['Privacy', 'Terms', 'Security']
  */
 export function SiteFooter({ call = true }: { call?: boolean }) {
   return (
-    <footer className="relative overflow-hidden border-t border-border/60 bg-background">
+    <footer className="relative overflow-hidden bg-background">
 
       {/* the drafting paper behind the last call, fading out toward the bar below */}
       {call && <div aria-hidden="true" className="office-grid grid-fade-bottom pointer-events-none absolute inset-0" />}
 
       {/* the last call (not on the contact page, which is the call) */}
       {call && (
-        <div className="section-y relative mx-auto grid w-full max-w-7xl gap-8 gutter lg:min-h-[calc(100svh-3.5rem)] lg:grid-cols-[1.2fr_1fr] lg:content-center lg:items-end 2xl:max-w-[88rem]">
+        <div className="section-y relative mx-auto grid w-full max-w-7xl gap-8 gutter lg:grid-cols-[1.2fr_1fr] lg:items-end 2xl:max-w-[88rem]">
           <div>
             <p className="text-overline tracking-[0.28em] text-muted-foreground">Ready to simplify your operations?</p>
             <h2 className="section-title mt-4 text-foreground">
@@ -45,25 +45,26 @@ export function SiteFooter({ call = true }: { call?: boolean }) {
       )}
 
       {/* the brand and the small print, then Back to top: one ruled bar, its cells filling with
-          hexagons on hover as the header's do, and its last cell in amber like the header's Let's talk */}
-      <div className={`flex min-h-14 flex-wrap ${call ? 'border-t border-border' : ''}`}>
-        <div className="flex items-center gap-4 gutter py-3">
+          hexagons on hover as the header's do, and its last cell in amber like the header's Let's talk.
+          On phones the cells take a row of their own under the brand, Back to top one more */}
+      <div className="flex flex-wrap border-t border-border">
+        <div className="flex w-full items-center gap-4 gutter py-3 sm:w-auto">
           <Brand className="text-[1.3rem] [&_img]:h-7" />
           <span className="text-[13px] text-muted-foreground">© {new Date().getFullYear()} · Malé, Maldives</span>
         </div>
-        <nav aria-label="Legal" className="ml-auto flex h-14">
+        <nav aria-label="Legal" className="flex h-14 w-full border-t border-border sm:ml-auto sm:w-auto sm:border-t-0">
           {LEGAL.map((l) => (
-            <a key={l} href="#" className={`${CELL} px-5 sm:w-[7.25rem]`}>
+            <a key={l} href="#" className={`${CELL} flex-1 px-5 first:border-l-0 sm:w-[7.25rem] sm:flex-none sm:first:border-l`}>
               <HexFill />
               <span className={CELL_LABEL}>{l}</span>
             </a>
           ))}
-          <a href="#" className={`${CELL} header-cell-accent px-5 sm:w-[8.5rem] xl:w-[9.5rem]`}>
-            <HexFill />
-            <span className={CELL_LABEL}>Back to top</span>
-            <ArrowUp className="relative size-4" strokeWidth={1.8} />
-          </a>
         </nav>
+        <a href="#" className={`${CELL} header-cell-accent h-14! w-full border-t border-l-0 px-5 sm:w-[8.5rem] sm:border-t-0 sm:border-l xl:w-[9.5rem]`}>
+          <HexFill />
+          <span className={CELL_LABEL}>Back to top</span>
+          <ArrowUp className="relative size-4" strokeWidth={1.8} />
+        </a>
       </div>
     </footer>
   )

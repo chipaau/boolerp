@@ -14,11 +14,11 @@ const BELIEFS: { icon: LucideIcon; title: string; body: string }[] = [
 export function About() {
   return (
     <>
-      <section className="scene relative overflow-hidden">
+      <section className="relative overflow-hidden">
         <div aria-hidden="true" className="office-grid grid-fade-top pointer-events-none absolute inset-0" />
         <div className="section-t-header section-b relative mx-auto w-full max-w-7xl gutter 2xl:max-w-[88rem]">
           <p className="text-overline tracking-[0.28em] text-muted-foreground">About us</p>
-          <h1 className="mt-4 max-w-3xl text-[clamp(2.5rem,3.9vw,3.6rem)] font-light leading-[1.05] tracking-[-0.035em] text-foreground">
+          <h1 className="mt-4 max-w-3xl page-title text-foreground">
             Made in the Maldives,
             <br />
             <span className="text-(--brand)">for how organisations work.</span>

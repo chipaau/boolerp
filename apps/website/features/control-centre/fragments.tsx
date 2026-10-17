@@ -8,7 +8,7 @@ import { ArrowRight, CircleAlert, GitBranch, UserMinus } from 'lucide-react'
  */
 export function Fragments() {
   return (
-    <div aria-hidden="true" className="cc-stage relative min-h-[30rem] overflow-hidden rounded-3xl bg-[#2a2622] p-6 sm:p-10">
+    <div aria-hidden="true" className="cc-stage relative min-h-[30rem] overflow-hidden rounded-3xl bg-ink p-6 sm:p-10">
       <div className="office-grid-dark pointer-events-none absolute inset-0" />
 
       {/* what needs attention */}

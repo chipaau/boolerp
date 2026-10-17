@@ -49,7 +49,7 @@ export function Hero() {
         <div data-story-fade="" className="relative z-10 mx-auto w-full max-w-7xl gutter 2xl:max-w-[88rem] pb-10 pt-24 lg:[grid-area:1/1] lg:self-center lg:py-0 lg:pt-4">
           <div className="max-w-xl lg:max-w-[38%]">
             <p className="text-overline tracking-[0.28em] text-muted-foreground">One workspace. Multiple apps.</p>
-            <h1 className="mt-5 text-balance text-[clamp(2.5rem,min(3.9vw,7svh),4.75rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
+            <h1 className="mt-4 text-balance text-[clamp(2.5rem,min(3.9vw,7svh),4.75rem)] font-light leading-[1.02] tracking-[-0.035em] text-foreground">
               One workspace for everything your team runs.
             </h1>
             <p data-hero-reveal="copy" className="mt-6 max-w-lg text-pretty text-[clamp(1.0625rem,min(1.35vw,2.45svh),1.375rem)] leading-snug text-muted-foreground">

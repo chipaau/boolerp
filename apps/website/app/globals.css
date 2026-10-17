@@ -32,6 +32,21 @@
   text-transform: uppercase;
 }
 
+/* the site's dark, one colour wherever it appears (the header's hover, the dark stages and bands,
+   the ticket button): bg-ink, text-ink, fill-ink; its shades are mixed from it */
+@theme {
+  --color-ink: #2a2622;
+}
+
+/* a page's own heading (Control Centre, About us, Contact): one size for every page but the home
+   page, whose hero is larger */
+@utility page-title {
+  font-size: clamp(2.5rem, 3.9vw, 3.6rem);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
 /* the site's vertical rhythm, tied to the screen rather than fixed: a section's space above and below
    is about an eighth of the window's height (never under 4rem or over 9rem), so the page breathes the
    same on a small laptop and a large monitor. section-y/-t/-b apply it; section-t-header adds the fixed
@@ -384,7 +399,7 @@ html.lenis body {
   transition: color 0.2s ease-out;
 }
 .header-cell .hex-fill polygon {
-  fill: #2a2622;
+  fill: var(--color-ink);
   stroke: rgb(255 255 255 / 0.05);
   stroke-width: 0.5;
   opacity: 0;
@@ -646,7 +661,7 @@ html.lenis body {
   transition: opacity 0.25s ease-out;
 }
 .ticket-button {
-  background: #2a2622;
+  background: var(--color-ink);
   border-radius: 3px;
   opacity: 0;
   transition: opacity 0.3s ease-out 0.08s, background-color 0.2s;
@@ -660,7 +675,7 @@ html.lenis body {
   opacity: 1;
 }
 .ticket-stub:hover .ticket-button {
-  background: #1f1c19;
+  background: color-mix(in oklab, var(--color-ink), black 25%);
 }
 @media (prefers-reduced-motion: reduce) {
   .ticket-stub { transition: none; }
@@ -752,7 +767,7 @@ a:not([data-slot]):focus-visible,
 .cc-ripple-app > div {
   border-color: color-mix(in oklab, rgb(240 154 67 / 0.7) calc(var(--lit) * 100%), rgb(255 255 255 / 0.1));
   /* solid, so the walkways end at its edge */
-  background: color-mix(in oklab, #43352a calc(var(--lit) * 100%), #312c27);
+  background: color-mix(in oklab, color-mix(in oklab, var(--color-ink), #f0913a 14%) calc(var(--lit) * 100%), color-mix(in oklab, var(--color-ink), white 4%));
   box-shadow: 0 0 calc(var(--lit) * 30px) rgb(240 145 58 / calc(var(--lit) * 0.25));
 }
 .cc-ripple-icon {
@@ -797,4 +812,32 @@ a:not([data-slot]):focus-visible,
 /* drafting paper fading out toward the bottom (the footer, toward its ruled bar) */
 .grid-fade-bottom {
   mask-image: linear-gradient(to bottom, #000 10%, transparent 85%);
+}
+
+/* the tour's sheets on phones (features/control-centre/tour.tsx): too narrow for their pieces to sit
+   where they are placed, so the pieces stack in order, the drawn lines between them left out */
+@media (width < 40rem) {
+  .tour-sheet {
+    aspect-ratio: auto;
+  }
+  .tour-sheet > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+    height: auto;
+    padding: 1.25rem;
+  }
+  .tour-sheet > div > * {
+    position: static !important;
+    translate: none !important;
+    width: auto !important;
+    max-width: 100%;
+  }
+  .tour-sheet > div > .tour-row {
+    width: 100% !important;
+  }
+  .tour-sheet > div > svg {
+    display: none;
+  }
 }

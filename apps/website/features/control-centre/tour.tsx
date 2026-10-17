@@ -9,10 +9,13 @@ import { HEX_MASK } from '@/components/hex'
 
 gsap.registerPlugin(ScrollTrigger, useGSAP)
 
-/** A sheet for an illustration, in the frosted glass of the site's other cards. */
+/**
+ * A sheet for an illustration, in the frosted glass of the site's other cards. Its pieces are placed
+ * on it; on phones, too narrow for that, they stack instead (globals.css, .tour-sheet).
+ */
 function Sheet({ children }: { children: React.ReactNode }) {
   return (
-    <div className="glass-card relative aspect-[5/4] w-full overflow-hidden rounded-3xl">
+    <div className="tour-sheet glass-card relative aspect-[5/4] w-full overflow-hidden rounded-3xl">
       <div className="relative size-full">{children}</div>
     </div>
   )
@@ -56,7 +59,7 @@ function TreeArt() {
         })}
       </svg>
       {nodes.map((n) => (
-        <Chip key={n.id} className={`-translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-bold ${n.root ? 'bg-[#2a2622]! text-[#fbf5ec]!' : ''}`} style={{ left: `${n.x}%`, top: `${n.y}%` }}>
+        <Chip key={n.id} className={`-translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-bold ${n.root ? 'bg-ink! text-[#fbf5ec]!' : ''}`} style={{ left: `${n.x}%`, top: `${n.y}%` }}>
           {n.label}
         </Chip>
       ))}
@@ -111,7 +114,7 @@ function ApprovalArt() {
         </div>
         <p className="mt-2 text-[12.5px] text-foreground/60">Purchase order · MVR 420,000</p>
       </Chip>
-      <div className="absolute inset-x-[10%] top-[52%] flex items-center justify-between">
+      <div className="tour-row absolute inset-x-[10%] top-[52%] flex items-center justify-between">
         {steps.map((s, i) => (
           <div key={s} className="contents">
             {i > 0 && <span data-draw-x="" className="tour-dash mx-2 h-0.5 grow origin-left" />}
@@ -144,11 +147,12 @@ function RolesArt() {
         </p>
       </Chip>
       <Chip className="right-[6%] top-[40%] w-[48%] p-4!">
-        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground/50">Site manager · Malé central</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground/50">Site manager</p>
         <div className="relative mt-2 h-6">
           <p data-swap-out="" className="invisible absolute inset-0 text-[14.5px] font-bold text-foreground/45 line-through">Ibrahim Shareef</p>
           <p data-swap-in="" className="absolute inset-0 text-[14.5px] font-bold">Claudia Reyes</p>
         </div>
+        <p className="mt-1 text-[12px] text-foreground/55">Malé central</p>
       </Chip>
       <svg aria-hidden="true" viewBox="0 0 100 80" preserveAspectRatio="none" className="absolute inset-0 size-full">
         <path data-draw="" pathLength={1} d="M 32 30 C 32 44, 50 40, 58 40" className="tour-line" />
@@ -176,7 +180,7 @@ function LogArt() {
   ]
   return (
     <Sheet>
-      <div className="absolute inset-x-[10%] top-[12%] grid gap-2.5">
+      <div className="tour-row absolute inset-x-[10%] top-[12%] grid gap-2.5">
         <p data-a="" className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-foreground/55">
           <Activity className="size-3.5 text-(--brand)" strokeWidth={2} /> Activity log
         </p>
@@ -196,11 +200,11 @@ function LogArt() {
 }
 
 const FEATURES = [
-  { id: 'tree', tab: 'One org tree', title: 'Your organisation, drawn once.', body: 'Divisions, departments and teams in one tree that every app follows.', Art: TreeArt },
-  { id: 'sites', tab: 'Places with rules', title: 'Set the rules once, reuse them.', body: 'Every site inherits how it stores, issues and tracks from its type.', Art: SitesArt },
-  { id: 'approvals', tab: 'Approval chains', title: 'Sign-off that follows your structure.', body: 'Who signs, in what order and above what value, for any app’s actions.', Art: ApprovalArt },
-  { id: 'roles', tab: 'Roles, not names', title: 'People change. Rules keep working.', body: 'Alerts and approvals go to whoever holds the role today.', Art: RolesArt },
-  { id: 'log', tab: 'On the record', title: 'Nothing happens off the record.', body: 'Every change in every app, who made it and when. Nobody can edit it.', Art: LogArt },
+  { id: 'tree', tab: 'One org tree', title: ['Your organisation,', 'drawn once.'], body: 'Divisions, departments and teams in one tree that every app follows.', Art: TreeArt },
+  { id: 'sites', tab: 'Places with rules', title: ['Set the rules once,', 'reuse them.'], body: 'Every site inherits how it stores, issues and tracks from its type.', Art: SitesArt },
+  { id: 'approvals', tab: 'Approval chains', title: ['Sign-off that follows', 'your structure.'], body: 'Who signs, in what order and above what value, for any app’s actions.', Art: ApprovalArt },
+  { id: 'roles', tab: 'Roles, not names', title: ['People change.', 'Rules keep working.'], body: 'Alerts and approvals go to whoever holds the role today.', Art: RolesArt },
+  { id: 'log', tab: 'On the record', title: ['Nothing happens', 'off the record.'], body: 'Every change in every app, who made it and when. Nobody can edit it.', Art: LogArt },
 ]
 
 /**
@@ -248,7 +252,9 @@ export function Tour() {
               <p className="text-overline tracking-[0.28em] text-muted-foreground">
                 {String(i + 1).padStart(2, '0')} · {tab}
               </p>
-              <h2 className="section-title mt-4 text-foreground">{title}</h2>
+              <h2 className="section-title mt-4 text-foreground">
+                {title[0]} <span className="text-(--brand)">{title[1]}</span>
+              </h2>
               <p className="section-lead mt-4 max-w-md text-muted-foreground">{body}</p>
             </div>
             <div className={`w-full max-w-[34rem] ${i % 2 ? 'lg:justify-self-end' : 'lg:justify-self-start'}`}>

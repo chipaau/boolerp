@@ -18,7 +18,7 @@ export function ControlCentre() {
         <div className="relative mx-auto grid w-full max-w-7xl section-t-header section-b items-center gap-14 gutter lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] 2xl:max-w-[88rem]">
           <div>
             <p className="text-overline tracking-[0.28em] text-muted-foreground">Control Centre</p>
-            <h1 className="mt-4 text-[clamp(2.5rem,3.9vw,3.6rem)] font-light leading-[1.05] tracking-[-0.035em] text-foreground">
+            <h1 className="mt-4 page-title text-foreground">
               The record
               <br />
               <span className="whitespace-nowrap text-(--brand)">every app reads.</span>

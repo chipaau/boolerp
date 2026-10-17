@@ -65,7 +65,7 @@ export function Ripple() {
   )
 
   return (
-    <section ref={section} className="relative overflow-hidden bg-[#2a2622] lg:motion-safe:pb-(--section-y)">
+    <section ref={section} className="relative overflow-hidden bg-ink lg:motion-safe:pb-(--section-y)">
       <div aria-hidden="true" className="office-grid-dark pointer-events-none absolute inset-0" />
 
       {/* the caption: what happens, then what came of it */}
@@ -106,8 +106,8 @@ export function Ripple() {
               </span>
             </span>
           </div>
-          <div data-ripple-event="" className="invisible absolute bottom-full left-1/2 mb-4 flex w-max -translate-x-1/2 items-center gap-2.5 rounded-full bg-(--brand-soft) py-2 pl-2 pr-4 text-[14px] font-bold text-[#2a2622] shadow-[0_12px_30px_-10px_rgb(240_145_58/0.7)]">
-            <span className="grid size-7 place-items-center rounded-full bg-[#2a2622]/12">
+          <div data-ripple-event="" className="invisible absolute bottom-full left-1/2 mb-4 flex w-max -translate-x-1/2 items-center gap-2.5 rounded-full bg-(--brand-soft) py-2 pl-2 pr-4 text-[14px] font-bold text-ink shadow-[0_12px_30px_-10px_rgb(240_145_58/0.7)]">
+            <span className="grid size-7 place-items-center rounded-full bg-ink/12">
               <UserMinus className="size-4" strokeWidth={2} />
             </span>
             Hugo Fernández · exited
